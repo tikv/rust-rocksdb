@@ -18,7 +18,7 @@ use comparator::{self, ComparatorCallback, compare_callback};
 
 use crocksdb_ffi::{self, DBOptions, DBWriteOptions, DBBlockBasedTableOptions, DBReadOptions,
                    DBRestoreOptions, DBCompressionType, DBRecoveryMode, DBSnapshot, DBInstance,
-                   DBFlushOptions};
+                   DBFlushOptions, DBRateLimiter};
 use libc::{self, c_int, size_t, c_void};
 use merge_operator::{self, MergeOperatorCallback, full_merge_callback, partial_merge_callback};
 use merge_operator::MergeFn;
@@ -92,6 +92,27 @@ impl BlockBasedOptions {
         unsafe {
             crocksdb_ffi::crocksdb_block_based_options_set_whole_key_filtering(self.inner, v);
         }
+    }
+}
+
+pub struct RateLimiter {
+    inner: *mut DBRateLimiter,
+}
+
+impl RateLimiter {
+    pub fn new(rate_bytes_per_sec: i64, refill_period_us: i64, fairness: i32) -> RateLimiter {
+        let limiter = unsafe {
+            crocksdb_ffi::crocksdb_ratelimiter_create(rate_bytes_per_sec,
+                                                      refill_period_us,
+                                                      fairness)
+        };
+        RateLimiter { inner: limiter }
+    }
+}
+
+impl Drop for RateLimiter {
+    fn drop(&mut self) {
+        unsafe { crocksdb_ffi::crocksdb_ratelimiter_destroy(self.inner) }
     }
 }
 
@@ -603,7 +624,17 @@ impl Options {
 
     pub fn set_compaction_readahead_size(&mut self, size: u64) {
         unsafe {
-            crocksdb_ffi::crocksdb_options_set_compaction_readahead_size(self.inner, size as size_t);
+            crocksdb_ffi::crocksdb_options_set_compaction_readahead_size(self.inner,
+                                                                         size as size_t);
+        }
+    }
+
+    pub fn set_ratelimiter(&mut self, rate_bytes_per_sec: i64) {
+        let rate_limiter = RateLimiter::new(rate_bytes_per_sec,
+                                            100 * 1000, // 100ms should work for most cases
+                                            10 /* should be good by leaving it at default 10 */);
+        unsafe {
+            crocksdb_ffi::crocksdb_options_set_ratelimiter(self.inner, rate_limiter.inner);
         }
     }
 }

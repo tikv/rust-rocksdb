@@ -116,6 +116,9 @@ impl Drop for RateLimiter {
     }
 }
 
+const DEFAULT_REFILL_PERIOD_US: i64 = 100 * 1000; // 100ms should work for most cases
+const DEFAULT_FAIRNESS: i32 = 10; // should be good by leaving it at default 10
+
 /// The UnsafeSnap must be destroyed by db, it maybe be leaked
 /// if not using it properly, hence named as unsafe.
 ///
@@ -508,12 +511,6 @@ impl Options {
         }
     }
 
-    pub fn set_filter_deletes(&mut self, filter: bool) {
-        unsafe {
-            crocksdb_ffi::crocksdb_options_set_filter_deletes(self.inner, filter);
-        }
-    }
-
     pub fn set_disable_auto_compactions(&mut self, disable: bool) {
         unsafe {
             if disable {
@@ -631,8 +628,8 @@ impl Options {
 
     pub fn set_ratelimiter(&mut self, rate_bytes_per_sec: i64) {
         let rate_limiter = RateLimiter::new(rate_bytes_per_sec,
-                                            100 * 1000, // 100ms should work for most cases
-                                            10 /* should be good by leaving it at default 10 */);
+                                            DEFAULT_REFILL_PERIOD_US,
+                                            DEFAULT_FAIRNESS);
         unsafe {
             crocksdb_ffi::crocksdb_options_set_ratelimiter(self.inner, rate_limiter.inner);
         }

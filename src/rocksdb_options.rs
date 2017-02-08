@@ -764,31 +764,3 @@ impl Drop for RestoreOptions {
         }
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use crocksdb_ffi::{DBStatisticsHistogramType, DBStatisticsTickerType};
-    use super::Options;
-
-    #[test]
-    fn test_set_max_manifest_file_size() {
-        let mut opts = Options::new();
-        let size = 20 * 1024 * 1024;
-        opts.set_max_manifest_file_size(size)
-    }
-
-    #[test]
-    fn test_enable_statistics() {
-        let mut opts = Options::new();
-        opts.enable_statistics();
-        opts.set_stats_dump_period_sec(60);
-        assert!(opts.get_statistics().is_some());
-        assert!(opts.get_statistics_histogram_string(DBStatisticsHistogramType::DbSeekMicros)
-            .is_some());
-        assert_eq!(opts.get_statistics_ticker_count(DBStatisticsTickerType::BlockCacheMiss),
-                   0);
-
-        let opts = Options::new();
-        assert!(opts.get_statistics().is_none());
-    }
-}

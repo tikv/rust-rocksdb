@@ -24,12 +24,7 @@ Feedback and pull requests welcome! If a particular feature of RocksDB is import
 
 First, use your system's package manager to install snappy.  This is optional, but lets rocksdb take advantage of better compression, and some code may require it.
 
-```bash
-VERSION=5.0.1
-wget https://github.com/facebook/rocksdb/archive/rocksdb-$VERSION.tar.gz
-tar xvf rocksdb-$VERSION.tar.gz && cd rocksdb-rocksdb-$VERSION && make shared_lib
-sudo make install
-```
+To install rocksdb, please refer to it's installation guide. For Windows users, please make sure you configure rocksdb with `CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS` enabled.
 
 Or enable feature `static-link`, the crate will download and complie RocksDB automatically, including it's dependencies.
 
@@ -183,7 +178,6 @@ fn badly_tuned_for_somebody_elses_disk() -> DB {
     opts.set_compaction_style(DBUniversalCompaction);
     opts.set_max_background_compactions(4);
     opts.set_max_background_flushes(4);
-    opts.set_filter_deletes(false);
     opts.set_disable_auto_compactions(true);
 
     DB::open(&opts, path).unwrap()

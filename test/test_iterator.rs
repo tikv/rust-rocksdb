@@ -1,5 +1,32 @@
+// Copyright 2017 PingCAP, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 use rocksdb::*;
 use tempdir::TempDir;
+
+struct FixedSuffixTransform {
+    pub suffix_len: usize,
+}
+
+impl SliceTransform for FixedSuffixTransform {
+    fn transform<'a>(&mut self, key: &'a [u8]) -> &'a [u8] {
+        &key[..self.suffix_len]
+    }
+
+    fn in_domain(&mut self, key: &[u8]) -> bool {
+        key.len() >= self.suffix_len
+    }
+}
 
 fn prev_collect<'a>(iter: &mut DBIterator<'a>) -> Vec<Kv> {
     let mut buf = vec![];
@@ -113,6 +140,54 @@ pub fn test_iterator() {
 }
 
 #[test]
+fn test_seek_for_prev() {
+    let path = TempDir::new("_rust_rocksdb_seek_for_prev").expect("");
+    let mut opts = Options::new();
+    opts.create_if_missing(true);
+    {
+        let db = DB::open(opts, path.path().to_str().unwrap()).unwrap();
+        let writeopts = WriteOptions::new();
+        db.put_opt(b"k1-0", b"a", &writeopts).unwrap();
+        db.put_opt(b"k1-1", b"b", &writeopts).unwrap();
+        db.put_opt(b"k1-3", b"d", &writeopts).unwrap();
+
+        let mut iter = db.iter();
+        iter.seek_for_prev(SeekKey::Key(b"k1-2"));
+        assert!(iter.valid());
+        assert_eq!(iter.key(), b"k1-1");
+        assert_eq!(iter.value(), b"b");
+
+        let mut iter = db.iter();
+        iter.seek_for_prev(SeekKey::Key(b"k1-3"));
+        assert!(iter.valid());
+        assert_eq!(iter.key(), b"k1-3");
+        assert_eq!(iter.value(), b"d");
+
+        let mut iter = db.iter();
+        iter.seek_for_prev(SeekKey::Start);
+        assert!(iter.valid());
+        assert_eq!(iter.key(), b"k1-0");
+        assert_eq!(iter.value(), b"a");
+
+        let mut iter = db.iter();
+        iter.seek_for_prev(SeekKey::End);
+        assert!(iter.valid());
+        assert_eq!(iter.key(), b"k1-3");
+        assert_eq!(iter.value(), b"d");
+
+        let mut iter = db.iter();
+        iter.seek_for_prev(SeekKey::Key(b"k0-0"));
+        assert!(!iter.valid());
+
+        let mut iter = db.iter();
+        iter.seek_for_prev(SeekKey::Key(b"k2-0"));
+        assert!(iter.valid());
+        assert_eq!(iter.key(), b"k1-3");
+        assert_eq!(iter.value(), b"d");
+    }
+}
+
+#[test]
 fn read_with_upper_bound() {
     let path = TempDir::new("_rust_rocksdb_read_with_upper_bound_test").expect("");
     let mut opts = Options::new();
@@ -137,4 +212,66 @@ fn read_with_upper_bound() {
         }
         assert_eq!(count, 2);
     }
+}
+
+#[test]
+fn test_total_order_seek() {
+    let path = TempDir::new("_rust_rocksdb_total_order_seek").expect("");
+    let mut bbto = BlockBasedOptions::new();
+    bbto.set_bloom_filter(10, false);
+    bbto.set_whole_key_filtering(false);
+    let mut opts = Options::new();
+    opts.create_if_missing(true);
+    opts.set_block_based_table_factory(&bbto);
+    opts.set_prefix_extractor("FixedSuffixTransform",
+                              Box::new(FixedSuffixTransform { suffix_len: 2 }))
+        .unwrap();
+    // also create prefix bloom for memtable
+    opts.set_memtable_prefix_bloom_size_ratio(0.1 as f64);
+
+    let keys = vec![b"k1-0", b"k1-1", b"k1-2", b"k2-0", b"k2-1", b"k2-2", b"k3-0", b"k3-1",
+                    b"k3-2"];
+    let db = DB::open(opts, path.path().to_str().unwrap()).unwrap();
+    let wopts = WriteOptions::new();
+
+    // sst1
+    db.put_opt(b"k1-0", b"a", &wopts).unwrap();
+    db.put_opt(b"k1-1", b"b", &wopts).unwrap();
+    db.put_opt(b"k1-2", b"c", &wopts).unwrap();
+    db.flush(true /* sync */).unwrap(); // flush memtable to sst file.
+
+    // sst2
+    db.put_opt(b"k2-0", b"a", &wopts).unwrap();
+    db.put_opt(b"k2-1", b"b", &wopts).unwrap();
+    db.put_opt(b"k2-2", b"c", &wopts).unwrap();
+    db.flush(true /* sync */).unwrap(); // flush memtable to sst file.
+
+    // memtable
+    db.put_opt(b"k3-0", b"a", &wopts).unwrap();
+    db.put_opt(b"k3-1", b"b", &wopts).unwrap();
+    db.put_opt(b"k3-2", b"c", &wopts).unwrap();
+
+    let mut iter = db.iter();
+    iter.seek(SeekKey::Key(b"k1-0"));
+    let mut key_count = 0;
+    while iter.valid() {
+        // only iterator sst files and memtable that contain keys has the same prefix with b"k1-0".
+        assert_eq!(keys[key_count], iter.key());
+        key_count = key_count + 1;
+        iter.next();
+    }
+    assert!(key_count == 3);
+
+    let mut ropts = ReadOptions::new();
+    ropts.set_total_order_seek(true);
+    let mut iter = db.iter_opt(ropts);
+    iter.seek(SeekKey::Key(b"k1-0"));
+    let mut key_count = 0;
+    while iter.valid() {
+        // iterator all sst files and memtables
+        assert_eq!(keys[key_count], iter.key());
+        key_count = key_count + 1;
+        iter.next();
+    }
+    assert!(key_count == 9);
 }

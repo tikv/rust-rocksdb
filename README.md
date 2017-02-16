@@ -1,9 +1,7 @@
 rust-rocksdb
 ============
-[![Build Status](https://travis-ci.org/spacejam/rust-rocksdb.svg?branch=master)](https://travis-ci.org/spacejam/rust-rocksdb)
-[![crates.io](http://meritbadge.herokuapp.com/rocksdb)](https://crates.io/crates/rocksdb)
 
-This library has been tested against RocksDB 3.13.1 on linux and OSX.  The 0.3.0 crate should work with the Rust 1.5 stable and nightly releases as of 1/4/16.
+This library has been tested against RocksDB 5.0.1 on Linux and macOS.
 
 ### status
   - [x] basic open/put/get/delete/close
@@ -20,23 +18,30 @@ This library has been tested against RocksDB 3.13.1 on linux and OSX.  The 0.3.0
   - [ ] slicetransform
   - [ ] windows support
 
-Feedback and pull requests welcome!  If a particular feature of RocksDB is important to you, please let me know by opening an issue, and I'll prioritize it.
+Feedback and pull requests welcome! If a particular feature of RocksDB is important to you, please let us know by opening an issue, and we will prioritize it.
 
 ###### Prerequisite: RocksDB
 
 First, use your system's package manager to install snappy.  This is optional, but lets rocksdb take advantage of better compression, and some code may require it.
 
 ```bash
-wget https://github.com/facebook/rocksdb/archive/rocksdb-3.8.tar.gz
-tar xvf rocksdb-3.8.tar.gz && cd rocksdb-rocksdb-3.8 && make shared_lib
+VERSION=5.0.1
+wget https://github.com/facebook/rocksdb/archive/rocksdb-$VERSION.tar.gz
+tar xvf rocksdb-$VERSION.tar.gz && cd rocksdb-rocksdb-$VERSION && make shared_lib
 sudo make install
+```
+
+Or enable feature `static-link`, the crate will download and complie RocksDB automatically, including it's dependencies.
+
+```bash
+cargo build --features static-link
 ```
 
 ### Running
 ###### Cargo.toml
 ```rust
-[dependencies]
-rocksdb = "0.3.0"
+[dependencies.rocksdb]
+git = "https://github.com/pingcap/rust-rocksdb.git"
 ```
 ###### Code
 ```rust

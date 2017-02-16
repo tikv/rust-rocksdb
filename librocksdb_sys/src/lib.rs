@@ -255,7 +255,8 @@ extern "C" {
                                                      percentile95: *mut c_double,
                                                      percentile99: *mut c_double,
                                                      average: *mut c_double,
-                                                     standard_deviation: *mut c_double) -> bool;
+                                                     standard_deviation: *mut c_double)
+                                                     -> bool;
     pub fn crocksdb_options_set_stats_dump_period_sec(options: *mut DBOptions, v: usize);
     pub fn crocksdb_options_set_num_levels(options: *mut DBOptions, v: c_int);
     pub fn crocksdb_options_set_db_log_dir(options: *mut DBOptions, path: *const c_char);
@@ -349,6 +350,8 @@ extern "C" {
                                      kLen: size_t,
                                      err: *mut *mut c_char);
     pub fn crocksdb_close(db: *mut DBInstance);
+    pub fn crocksdb_pause_bg_work(db: *mut DBInstance);
+    pub fn crocksdb_continue_bg_work(db: *mut DBInstance);
     pub fn crocksdb_destroy_db(options: *const DBOptions,
                                path: *const c_char,
                                err: *mut *mut c_char);

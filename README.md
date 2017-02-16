@@ -14,8 +14,8 @@ This library has been tested against RocksDB 5.0.1 on Linux and macOS.
   - [x] comparator
   - [x] snapshot
   - [x] column family operations
-  - [ ] prefix seek
-  - [ ] slicetransform
+  - [x] prefix seek
+  - [x] slicetransform
   - [ ] windows support
 
 Feedback and pull requests welcome! If a particular feature of RocksDB is important to you, please let us know by opening an issue, and we will prioritize it.

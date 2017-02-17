@@ -16,6 +16,10 @@ This library has been tested against RocksDB 5.0.1 on Linux and macOS.
   - [x] column family operations
   - [x] prefix seek
   - [x] slicetransform
+  - [x] rate limiter
+  - [x] statistics
+  - [x] recovery
+  - [x] backup
   - [ ] windows support
 
 Feedback and pull requests welcome! If a particular feature of RocksDB is important to you, please let us know by opening an issue, and we will prioritize it.

@@ -266,6 +266,10 @@ extern "C" {
                                                  prefix_extractor: *mut DBSliceTransform);
     pub fn crocksdb_options_set_memtable_prefix_bloom_size_ratio(options: *mut DBOptions,
                                                                  ratio: c_double);
+    pub fn crocksdb_options_set_soft_pending_compaction_bytes_limit(options: *mut DBOptions,
+                                                                    v: u64);
+    pub fn crocksdb_options_set_hard_pending_compaction_bytes_limit(options: *mut DBOptions,
+                                                                    v: u64);
     pub fn crocksdb_filterpolicy_create_bloom_full(bits_per_key: c_int) -> *mut DBFilterPolicy;
     pub fn crocksdb_filterpolicy_create_bloom(bits_per_key: c_int) -> *mut DBFilterPolicy;
     pub fn crocksdb_open(options: *mut DBOptions,

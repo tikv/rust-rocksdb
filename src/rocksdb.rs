@@ -1555,16 +1555,21 @@ mod test {
             db.put(b"b", b"v2").unwrap();
             let b = db.get(b"b");
             assert_eq!(b.unwrap().unwrap(), b"v2");
+            db.put(b"c", b"v3").unwrap();
+            let c = db.get(b"c");
+            assert_eq!(c.unwrap().unwrap(), b"v3");
         };
         prepare_data();
 
-        // Ensure delete range interface works to delete the specified range.
+        // Ensure delete range interface works to delete the specified range `[b"a", b"c")`.
         let cf_handle = db.cf_handle("default").unwrap();
         db.delete_range_cf(cf_handle, b"a", b"c").unwrap();
 
         let check_data = || {
             assert!(db.get(b"a").unwrap().is_none());
             assert!(db.get(b"b").unwrap().is_none());
+            let c = db.get(b"c");
+            assert_eq!(c.unwrap().unwrap(), b"v3");
         };
         check_data();
 

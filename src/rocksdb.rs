@@ -1182,6 +1182,19 @@ impl Writable for WriteBatch {
     }
 }
 
+impl WriteBatch {
+    pub fn delete_range(&self, begin_key: &[u8], end_key: &[u8]) -> Result<(), String> {
+        unsafe {
+            crocksdb_ffi::crocksdb_writebatch_delete_range(self.inner,
+                                                           begin_key.as_ptr(),
+                                                           begin_key.len(),
+                                                           end_key.as_ptr(),
+                                                           end_key.len());
+            Ok(())
+        }
+    }
+}
+
 pub struct DBVector {
     base: *mut u8,
     len: usize,
@@ -1538,10 +1551,10 @@ mod test {
         let prepare_data = || {
             db.put(b"a", b"v1").unwrap();
             let a = db.get(b"a");
-            assert_eq!(a.unwrap().unwrap().to_utf8().unwrap(), "v1");
+            assert_eq!(a.unwrap().unwrap(), b"v1");
             db.put(b"b", b"v2").unwrap();
             let b = db.get(b"b");
-            assert_eq!(b.unwrap().unwrap().to_utf8().unwrap(), "v2");
+            assert_eq!(b.unwrap().unwrap(), b"v2");
         };
         prepare_data();
 
@@ -1553,6 +1566,13 @@ mod test {
             assert!(db.get(b"a").unwrap().is_none());
             assert!(db.get(b"b").unwrap().is_none());
         };
+        check_data();
+
+        // Test `WriteBatch::delete_range()`
+        prepare_data();
+        let batch = WriteBatch::new();
+        batch.delete_range(b"a", b"c").unwrap();
+        assert!(db.write(batch).is_ok());
         check_data();
 
         // Test `WriteBatch::delete_range_cf()`

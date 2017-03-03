@@ -1296,8 +1296,8 @@ mod test {
         assert!(db.get(b"k1").unwrap().is_none());
         let p = db.write(batch);
         assert!(p.is_ok());
-        let r: Result<Option<DBVector>, String> = db.get(b"k1");
-        assert!(r.unwrap().unwrap().to_utf8().unwrap() == "v1111");
+        let r = db.get(b"k1");
+        assert_eq!(r.unwrap().unwrap(), b"v1111");
 
         // test delete
         let batch = WriteBatch::new();
@@ -1324,11 +1324,11 @@ mod test {
         batch.rollback_to_save_point().unwrap();
         let p = db.write(batch);
         assert!(p.is_ok());
-        let r: Result<Option<DBVector>, String> = db.get(b"k10");
-        assert!(r.unwrap().unwrap().to_utf8().unwrap() == "v10");
-        let r: Result<Option<DBVector>, String> = db.get(b"k11");
+        let r = db.get(b"k10");
+        assert_eq!(r.unwrap().unwrap(), b"v10");
+        let r = db.get(b"k11");
         assert!(r.unwrap().is_none());
-        let r: Result<Option<DBVector>, String> = db.get(b"k12");
+        let r = db.get(b"k12");
         assert!(r.unwrap().is_none());
     }
 

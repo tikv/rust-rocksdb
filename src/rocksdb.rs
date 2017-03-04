@@ -1320,15 +1320,21 @@ mod test {
         batch.put(b"k10", b"v10").unwrap();
         batch.set_save_point();
         batch.put(b"k11", b"v11").unwrap();
+        batch.set_save_point();
         batch.put(b"k12", b"v12").unwrap();
+        batch.set_save_point();
+        batch.put(b"k13", b"v13").unwrap();
+        batch.rollback_to_save_point().unwrap();
         batch.rollback_to_save_point().unwrap();
         let p = db.write(batch);
         assert!(p.is_ok());
         let r = db.get(b"k10");
         assert_eq!(r.unwrap().unwrap(), b"v10");
         let r = db.get(b"k11");
-        assert!(r.unwrap().is_none());
+        assert_eq!(r.unwrap().unwrap(), b"v11");
         let r = db.get(b"k12");
+        assert!(r.unwrap().is_none());
+        let r = db.get(b"k13");
         assert!(r.unwrap().is_none());
     }
 

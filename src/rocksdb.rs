@@ -1026,9 +1026,9 @@ impl Writable for DB {
     }
 
     fn delete_range(&self, begin_key: &[u8], end_key: &[u8]) -> Result<(), String> {
-        let batch = WriteBatch::new();
-        try!(batch.delete_range(begin_key, end_key));
-        self.write(batch)
+        let handle = try!(self.cf_handle("default")
+            .ok_or_else(|| format!("cf default not found.")));
+        self.delete_range_cf(handle, begin_key, end_key)
     }
 
     fn delete_range_cf(&self,

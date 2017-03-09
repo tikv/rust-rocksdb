@@ -18,13 +18,23 @@ use comparator::{self, ComparatorCallback, compare_callback};
 
 use crocksdb_ffi::{self, DBOptions, DBWriteOptions, DBBlockBasedTableOptions, DBReadOptions,
                    DBRestoreOptions, DBCompressionType, DBRecoveryMode, DBSnapshot, DBInstance,
-                   DBFlushOptions, DBRateLimiter};
+                   DBFlushOptions, DBStatisticsTickerType, DBStatisticsHistogramType,
+                   DBRateLimiter};
 use libc::{self, c_int, size_t, c_void};
 use merge_operator::{self, MergeOperatorCallback, full_merge_callback, partial_merge_callback};
 use merge_operator::MergeFn;
 use slice_transform::{SliceTransform, new_slice_transform};
 use std::ffi::{CStr, CString};
 use std::mem;
+
+#[derive(Default, Debug)]
+pub struct HistogramData {
+    pub median: f64,
+    pub percentile95: f64,
+    pub percentile99: f64,
+    pub average: f64,
+    pub standard_deviation: f64,
+}
 
 pub struct BlockBasedOptions {
     inner: *mut DBBlockBasedTableOptions,
@@ -549,6 +559,57 @@ impl Options {
         }
     }
 
+    pub fn get_statistics_ticker_count(&self, ticker_type: DBStatisticsTickerType) -> u64 {
+        unsafe {
+            crocksdb_ffi::crocksdb_options_statistics_get_ticker_count(self.inner, ticker_type)
+        }
+    }
+
+    pub fn get_and_reset_statistics_ticker_count(&self,
+                                                 ticker_type: DBStatisticsTickerType)
+                                                 -> u64 {
+        unsafe {
+            crocksdb_ffi::crocksdb_options_statistics_get_and_reset_ticker_count(self.inner,
+                                                                                 ticker_type)
+        }
+    }
+
+    pub fn get_statistics_histogram(&self,
+                                    hist_type: DBStatisticsHistogramType)
+                                    -> Option<HistogramData> {
+        unsafe {
+            let mut data = HistogramData::default();
+            let ret = crocksdb_ffi::crocksdb_options_statistics_get_histogram(self.inner,
+                                                hist_type,
+                                                &mut data.median,
+                                                &mut data.percentile95,
+                                                &mut data.percentile99,
+                                                &mut data.average,
+                                                &mut data.standard_deviation);
+            if !ret {
+                return None;
+            }
+            Some(data)
+        }
+    }
+
+    pub fn get_statistics_histogram_string(&self,
+                                           hist_type: DBStatisticsHistogramType)
+                                           -> Option<String> {
+        unsafe {
+            let value = crocksdb_ffi::crocksdb_options_statistics_get_histogram_string(self.inner,
+                                                                                       hist_type);
+
+            if value.is_null() {
+                return None;
+            }
+
+            let s = CStr::from_ptr(value).to_str().unwrap().to_owned();
+            libc::free(value as *mut c_void);
+            Some(s)
+        }
+    }
+
     pub fn get_statistics(&self) -> Option<String> {
         unsafe {
             let value = crocksdb_ffi::crocksdb_options_statistics_get_string(self.inner);
@@ -609,6 +670,24 @@ impl Options {
             };
             let transform = try!(new_slice_transform(c_name, transform));
             crocksdb_ffi::crocksdb_options_set_prefix_extractor(self.inner, transform);
+            Ok(())
+        }
+    }
+
+    pub fn set_memtable_insert_hint_prefix_extractor<S>(&mut self,
+                                                        name: S,
+                                                        transform: Box<SliceTransform>)
+                                                        -> Result<(), String>
+        where S: Into<Vec<u8>>
+    {
+        unsafe {
+            let c_name = match CString::new(name) {
+                Ok(s) => s,
+                Err(e) => return Err(format!("failed to convert to cstring: {:?}", e)),
+            };
+            let transform = try!(new_slice_transform(c_name, transform));
+            crocksdb_ffi::crocksdb_options_set_memtable_insert_with_hint_prefix_extractor(
+                self.inner, transform);
             Ok(())
         }
     }
@@ -763,28 +842,5 @@ impl Drop for RestoreOptions {
         unsafe {
             crocksdb_ffi::crocksdb_restore_options_destroy(self.inner);
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::Options;
-
-    #[test]
-    fn test_set_max_manifest_file_size() {
-        let mut opts = Options::new();
-        let size = 20 * 1024 * 1024;
-        opts.set_max_manifest_file_size(size)
-    }
-
-    #[test]
-    fn test_enable_statistics() {
-        let mut opts = Options::new();
-        opts.enable_statistics();
-        opts.set_stats_dump_period_sec(60);
-        assert!(opts.get_statistics().is_some());
-
-        let opts = Options::new();
-        assert!(opts.get_statistics().is_none());
     }
 }

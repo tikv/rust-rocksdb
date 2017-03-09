@@ -79,6 +79,7 @@ using rocksdb::RestoreOptions;
 using rocksdb::CompactRangeOptions;
 using rocksdb::RateLimiter;
 using rocksdb::NewGenericRateLimiter;
+using rocksdb::HistogramData;
 
 using std::shared_ptr;
 
@@ -116,6 +117,7 @@ struct crocksdb_envoptions_t      { EnvOptions        rep; };
 struct crocksdb_ingestexternalfileoptions_t  { IngestExternalFileOptions rep; };
 struct crocksdb_sstfilewriter_t   { SstFileWriter*    rep; };
 struct crocksdb_ratelimiter_t     { RateLimiter*      rep; };
+struct crocksdb_histogramdata_t   { HistogramData     rep; };
 
 struct crocksdb_compactionfiltercontext_t {
   CompactionFilter::Context rep;
@@ -527,6 +529,14 @@ void crocksdb_backup_engine_close(crocksdb_backup_engine_t* be) {
 void crocksdb_close(crocksdb_t* db) {
   delete db->rep;
   delete db;
+}
+
+void crocksdb_pause_bg_work(crocksdb_t* db) {
+  db->rep->PauseBackgroundWork();
+}
+
+void crocksdb_continue_bg_work(crocksdb_t* db) {
+  db->rep->ContinueBackgroundWork();
 }
 
 crocksdb_t* crocksdb_open_column_families(
@@ -1354,6 +1364,14 @@ const char* crocksdb_writebatch_data(crocksdb_writebatch_t* b, size_t* size) {
   return b->rep.Data().c_str();
 }
 
+void crocksdb_writebatch_set_save_point(crocksdb_writebatch_t* b) {
+  b->rep.SetSavePoint();
+}
+
+void crocksdb_writebatch_rollback_to_save_point(crocksdb_writebatch_t* b, char** errptr) {
+  SaveError(errptr, b->rep.RollbackToSavePoint());
+}
+
 crocksdb_block_based_table_options_t*
 crocksdb_block_based_options_create() {
   return new crocksdb_block_based_table_options_t;
@@ -1703,6 +1721,11 @@ void crocksdb_options_set_prefix_extractor(
   opt->rep.prefix_extractor.reset(prefix_extractor);
 }
 
+void crocksdb_options_set_memtable_insert_with_hint_prefix_extractor(
+    crocksdb_options_t* opt, crocksdb_slicetransform_t* prefix_extractor) {
+  opt->rep.memtable_insert_with_hint_prefix_extractor.reset(prefix_extractor);
+}
+
 void crocksdb_options_set_disable_data_sync(
     crocksdb_options_t* opt, int disable_data_sync) {
   opt->rep.disableDataSync = disable_data_sync;
@@ -2003,6 +2026,55 @@ char *crocksdb_options_statistics_get_string(crocksdb_options_t *opt) {
     return strdup(statistics->ToString().c_str());
   }
   return nullptr;
+}
+
+uint64_t crocksdb_options_statistics_get_ticker_count(crocksdb_options_t* opt,
+                                                      uint32_t ticker_type) {
+  rocksdb::Statistics* statistics = opt->rep.statistics.get();
+  if (statistics) {
+    return statistics->getTickerCount(ticker_type);
+  }
+  return 0;
+}
+
+uint64_t crocksdb_options_statistics_get_and_reset_ticker_count(crocksdb_options_t* opt,
+                                                                uint32_t ticker_type) {
+  rocksdb::Statistics* statistics = opt->rep.statistics.get();
+  if (statistics) {
+    return statistics->getAndResetTickerCount(ticker_type);
+  }
+  return 0;
+}
+
+char* crocksdb_options_statistics_get_histogram_string(crocksdb_options_t* opt,
+                                                       uint32_t type) {
+  rocksdb::Statistics* statistics = opt->rep.statistics.get();
+  if (statistics) {
+    return strdup(statistics->getHistogramString(type).c_str());
+  }
+  return nullptr;
+}
+
+unsigned char crocksdb_options_statistics_get_histogram(
+    crocksdb_options_t* opt,
+    uint32_t type,
+    double* median,
+    double* percentile95,
+    double* percentile99,
+    double* average,
+    double* standard_deviation) {
+  rocksdb::Statistics* statistics = opt->rep.statistics.get();
+  if (statistics) {
+    crocksdb_histogramdata_t data;
+    statistics->histogramData(type, &data.rep);
+    *median = data.rep.median;
+    *percentile95 = data.rep.percentile95;
+    *percentile99 = data.rep.percentile99;
+    *average = data.rep.average;
+    *standard_deviation = data.rep.standard_deviation;
+    return 1;
+  }
+  return 0;
 }
 
 void crocksdb_options_set_ratelimiter(crocksdb_options_t *opt, crocksdb_ratelimiter_t *limiter) {

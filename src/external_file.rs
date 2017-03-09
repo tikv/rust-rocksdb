@@ -1,4 +1,4 @@
-// Copyright 2016 PingCAP, Inc.
+// Copyright 2017 PingCAP, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,6 +21,8 @@ use std::ffi::CString;
 pub struct SstFileWriter {
     inner: *mut librocksdb_sys::SstFileWriter,
 }
+
+unsafe impl Send for SstFileWriter {}
 
 impl SstFileWriter {
     pub fn new(env_opt: &EnvOptions, opt: &Options) -> SstFileWriter {

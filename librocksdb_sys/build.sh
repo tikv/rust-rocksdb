@@ -49,7 +49,7 @@ function compile_z() {
     fi
 
     rm -rf zlib-1.2.11
-    download http://zlib.net/zlib-1.2.11.tar.gz zlib-1.2.11.tar.gz 1c9f62f0778697a09d36121ead88e08e
+    download https://github.com/madler/zlib/archive/v1.2.11.tar.gz zlib-1.2.11.tar.gz 0095d2d2d1f3442ce1318336637b695f
     tar xf zlib-1.2.11.tar.gz
     cd zlib-1.2.11
     CFLAGS='-fPIC' ./configure --static
@@ -106,11 +106,11 @@ function compile_rocksdb() {
         return
     fi
 
-    version=v5.0.1
-    vernum=5.0.1
+    version=v5.1.2
+    vernum=5.1.2
     echo building rocksdb-$version
     rm -rf rocksdb-$vernum
-    download https://github.com/facebook/rocksdb/archive/$version.tar.gz rocksdb-$version.tar.gz e5443504b430c71c04f19f13ebc89a4b
+    download https://github.com/facebook/rocksdb/archive/$version.tar.gz rocksdb-$version.tar.gz b682f574363edfea0e2f7dbf01fc0e5b
     tar xf rocksdb-$version.tar.gz
     wd=`pwd`
     cd rocksdb-$vernum

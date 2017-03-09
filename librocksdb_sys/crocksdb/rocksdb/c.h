@@ -202,6 +202,12 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_column_family_handle_destroy(
 
 extern C_ROCKSDB_LIBRARY_API void crocksdb_close(crocksdb_t* db);
 
+// This function will wait until all currently running background processes
+// finish. After it returns, no background process will be run until
+// crocksdb_continue_bg_work is called
+extern C_ROCKSDB_LIBRARY_API void crocksdb_pause_bg_work(crocksdb_t* db);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_continue_bg_work(crocksdb_t* db);
+
 extern C_ROCKSDB_LIBRARY_API void crocksdb_put(
     crocksdb_t* db, const crocksdb_writeoptions_t* options, const char* key,
     size_t keylen, const char* val, size_t vallen, char** errptr);
@@ -463,6 +469,8 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_writebatch_iterate(
     void (*deleted)(void*, const char* k, size_t klen));
 extern C_ROCKSDB_LIBRARY_API const char* crocksdb_writebatch_data(
     crocksdb_writebatch_t*, size_t* size);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_writebatch_set_save_point(crocksdb_writebatch_t*);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_writebatch_rollback_to_save_point(crocksdb_writebatch_t*, char** errptr);
 
 /* Block based table options */
 
@@ -587,6 +595,9 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_compression_options(
     crocksdb_options_t*, int, int, int, int);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_prefix_extractor(
     crocksdb_options_t*, crocksdb_slicetransform_t*);
+extern C_ROCKSDB_LIBRARY_API void
+crocksdb_options_set_memtable_insert_with_hint_prefix_extractor(
+    crocksdb_options_t*, crocksdb_slicetransform_t*);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_num_levels(
     crocksdb_options_t*, int);
 extern C_ROCKSDB_LIBRARY_API void
@@ -617,6 +628,21 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_options_enable_statistics(
 /* returns a pointer to a malloc()-ed, null terminated string */
 extern C_ROCKSDB_LIBRARY_API char* crocksdb_options_statistics_get_string(
     crocksdb_options_t* opt);
+extern C_ROCKSDB_LIBRARY_API uint64_t crocksdb_options_statistics_get_ticker_count(
+    crocksdb_options_t* opt, uint32_t ticker_type);
+extern C_ROCKSDB_LIBRARY_API uint64_t crocksdb_options_statistics_get_and_reset_ticker_count(
+    crocksdb_options_t* opt, uint32_t ticker_type);
+extern C_ROCKSDB_LIBRARY_API char*
+crocksdb_options_statistics_get_histogram_string(crocksdb_options_t* opt,
+                                                 uint32_t type);
+extern C_ROCKSDB_LIBRARY_API unsigned char crocksdb_options_statistics_get_histogram(
+    crocksdb_options_t* opt,
+    uint32_t type,
+    double* median,
+    double* percentile95,
+    double* percentile99,
+    double* average,
+    double* standard_deviation);
 
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_max_write_buffer_number(
     crocksdb_options_t*, int);

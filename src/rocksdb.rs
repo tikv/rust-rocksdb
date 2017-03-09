@@ -13,10 +13,11 @@
 // limitations under the License.
 //
 
-use crocksdb_ffi::{self, DBWriteBatch, DBCFHandle, DBInstance, DBBackupEngine};
+use crocksdb_ffi::{self, DBWriteBatch, DBCFHandle, DBInstance, DBBackupEngine,
+                   DBStatisticsTickerType, DBStatisticsHistogramType};
 use libc::{self, c_int, c_void, size_t};
 use rocksdb_options::{Options, ReadOptions, UnsafeSnap, WriteOptions, FlushOptions,
-                      RestoreOptions, IngestExternalFileOptions};
+                      RestoreOptions, IngestExternalFileOptions, HistogramData};
 use std::{fs, ptr, slice};
 use std::collections::BTreeMap;
 use std::collections::btree_map::Entry;
@@ -420,6 +421,18 @@ impl DB {
         }
 
         Ok(cfs)
+    }
+
+    pub fn pause_bg_work(&self) {
+        unsafe {
+            crocksdb_ffi::crocksdb_pause_bg_work(self.inner);
+        }
+    }
+
+    pub fn continue_bg_work(&self) {
+        unsafe {
+            crocksdb_ffi::crocksdb_continue_bg_work(self.inner);
+        }
     }
 
     pub fn path(&self) -> &str {
@@ -857,6 +870,28 @@ impl DB {
         self.opts.get_statistics()
     }
 
+    pub fn get_statistics_ticker_count(&self, ticker_type: DBStatisticsTickerType) -> u64 {
+        self.opts.get_statistics_ticker_count(ticker_type)
+    }
+
+    pub fn get_and_reset_statistics_ticker_count(&self,
+                                                 ticker_type: DBStatisticsTickerType)
+                                                 -> u64 {
+        self.opts.get_and_reset_statistics_ticker_count(ticker_type)
+    }
+
+    pub fn get_statistics_histogram_string(&self,
+                                           hist_type: DBStatisticsHistogramType)
+                                           -> Option<String> {
+        self.opts.get_statistics_histogram_string(hist_type)
+    }
+
+    pub fn get_statistics_histogram(&self,
+                                    hist_type: DBStatisticsHistogramType)
+                                    -> Option<HistogramData> {
+        self.opts.get_statistics_histogram(hist_type)
+    }
+
     pub fn get_options(&self) -> &Options {
         &self.opts
     }
@@ -998,6 +1033,19 @@ impl WriteBatch {
         unsafe {
             crocksdb_ffi::crocksdb_writebatch_clear(self.inner);
         }
+    }
+
+    pub fn set_save_point(&mut self) {
+        unsafe {
+            crocksdb_ffi::crocksdb_writebatch_set_save_point(self.inner);
+        }
+    }
+
+    pub fn rollback_to_save_point(&mut self) -> Result<(), String> {
+        unsafe {
+            ffi_try!(crocksdb_writebatch_rollback_to_save_point(self.inner));
+        }
+        Ok(())
     }
 }
 
@@ -1196,6 +1244,9 @@ mod test {
     use std::fs;
     use std::path::Path;
     use std::str;
+    use std::string::String;
+    use std::sync::*;
+    use std::thread;
     use super::*;
     use tempdir::TempDir;
 
@@ -1245,8 +1296,8 @@ mod test {
         assert!(db.get(b"k1").unwrap().is_none());
         let p = db.write(batch);
         assert!(p.is_ok());
-        let r: Result<Option<DBVector>, String> = db.get(b"k1");
-        assert!(r.unwrap().unwrap().to_utf8().unwrap() == "v1111");
+        let r = db.get(b"k1");
+        assert_eq!(r.unwrap().unwrap(), b"v1111");
 
         // test delete
         let batch = WriteBatch::new();
@@ -1263,6 +1314,28 @@ mod test {
         assert!(batch.data_size() > prev_size);
         batch.clear();
         assert_eq!(batch.data_size(), prev_size);
+
+        // test save point
+        let mut batch = WriteBatch::new();
+        batch.put(b"k10", b"v10").unwrap();
+        batch.set_save_point();
+        batch.put(b"k11", b"v11").unwrap();
+        batch.set_save_point();
+        batch.put(b"k12", b"v12").unwrap();
+        batch.set_save_point();
+        batch.put(b"k13", b"v13").unwrap();
+        batch.rollback_to_save_point().unwrap();
+        batch.rollback_to_save_point().unwrap();
+        let p = db.write(batch);
+        assert!(p.is_ok());
+        let r = db.get(b"k10");
+        assert_eq!(r.unwrap().unwrap(), b"v10");
+        let r = db.get(b"k11");
+        assert_eq!(r.unwrap().unwrap(), b"v11");
+        let r = db.get(b"k12");
+        assert!(r.unwrap().is_none());
+        let r = db.get(b"k13");
+        assert!(r.unwrap().is_none());
     }
 
     #[test]
@@ -1442,29 +1515,53 @@ mod test {
         let a = db.get_cf(cf_handle, b"a");
         assert!(a.unwrap().is_none());
     }
-}
 
-#[test]
-fn snapshot_test() {
-    let path = "_rust_rocksdb_snapshottest";
-    {
-        let db = DB::open_default(path).unwrap();
-        let p = db.put(b"k1", b"v1111");
-        assert!(p.is_ok());
-
-        let snap = db.snapshot();
-        let mut r: Result<Option<DBVector>, String> = snap.get(b"k1");
-        assert!(r.unwrap().unwrap().to_utf8().unwrap() == "v1111");
-
-        r = db.get(b"k1");
-        assert!(r.unwrap().unwrap().to_utf8().unwrap() == "v1111");
-
-        let p = db.put(b"k2", b"v2222");
-        assert!(p.is_ok());
-
-        assert!(db.get(b"k2").unwrap().is_some());
-        assert!(snap.get(b"k2").unwrap().is_none());
+    #[test]
+    fn test_pause_bg_work() {
+        let path = TempDir::new("_rust_rocksdb_pause_bg_work").expect("");
+        let db = DB::open_default(path.path().to_str().unwrap()).unwrap();
+        let db = Arc::new(db);
+        let db1 = db.clone();
+        let builder = thread::Builder::new().name(String::from("put-thread"));
+        let h = builder.spawn(move || {
+                db1.put(b"k1", b"v1").unwrap();
+                db1.put(b"k2", b"v2").unwrap();
+                db1.flush(true).unwrap();
+                db1.compact_range(None, None);
+            })
+            .unwrap();
+        // Wait until all currently running background processes finish.
+        db.pause_bg_work();
+        assert_eq!(db.get_property_int("rocksdb.num-running-compactions").unwrap(),
+                   0);
+        assert_eq!(db.get_property_int("rocksdb.num-running-flushes").unwrap(),
+                   0);
+        db.continue_bg_work();
+        h.join().unwrap();
     }
-    let opts = Options::new();
-    assert!(DB::destroy(&opts, path).is_ok());
+
+    #[test]
+    fn snapshot_test() {
+        let path = "_rust_rocksdb_snapshottest";
+        {
+            let db = DB::open_default(path).unwrap();
+            let p = db.put(b"k1", b"v1111");
+            assert!(p.is_ok());
+
+            let snap = db.snapshot();
+            let mut r: Result<Option<DBVector>, String> = snap.get(b"k1");
+            assert!(r.unwrap().unwrap().to_utf8().unwrap() == "v1111");
+
+            r = db.get(b"k1");
+            assert!(r.unwrap().unwrap().to_utf8().unwrap() == "v1111");
+
+            let p = db.put(b"k2", b"v2222");
+            assert!(p.is_ok());
+
+            assert!(db.get(b"k2").unwrap().is_some());
+            assert!(snap.get(b"k2").unwrap().is_none());
+        }
+        let opts = Options::new();
+        assert!(DB::destroy(&opts, path).is_ok());
+    }
 }

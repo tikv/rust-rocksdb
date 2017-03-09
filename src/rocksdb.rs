@@ -1026,8 +1026,7 @@ impl Writable for DB {
     }
 
     fn delete_range(&self, begin_key: &[u8], end_key: &[u8]) -> Result<(), String> {
-        let handle = try!(self.cf_handle("default")
-            .ok_or_else(|| format!("cf default not found.")));
+        let handle = self.cf_handle("default").unwrap();
         self.delete_range_cf(handle, begin_key, end_key)
     }
 

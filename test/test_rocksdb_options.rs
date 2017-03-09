@@ -107,3 +107,13 @@ fn test_memtable_insert_hint_prefix_extractor() {
     assert_eq!(db.get(b"k0-2").unwrap().unwrap(), b"b");
     assert_eq!(db.get(b"k0-3").unwrap().unwrap(), b"c");
 }
+
+#[test]
+fn test_pending_compaction_bytes_limit() {
+    let path = TempDir::new("_rust_rocksdb_pending_compaction_bytes_limit").expect("");
+    let mut opts = Options::new();
+    opts.create_if_missing(true);
+    opts.set_soft_pending_compaction_bytes_limit(64 * 1024 * 1024 * 1024);
+    opts.set_hard_pending_compaction_bytes_limit(256 * 1024 * 1024 * 1024);
+    let db = DB::open(opts, path.path().to_str().unwrap()).unwrap();
+}

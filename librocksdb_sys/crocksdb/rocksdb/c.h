@@ -202,6 +202,12 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_column_family_handle_destroy(
 
 extern C_ROCKSDB_LIBRARY_API void crocksdb_close(crocksdb_t* db);
 
+// This function will wait until all currently running background processes
+// finish. After it returns, no background process will be run until
+// crocksdb_continue_bg_work is called
+extern C_ROCKSDB_LIBRARY_API void crocksdb_pause_bg_work(crocksdb_t* db);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_continue_bg_work(crocksdb_t* db);
+
 extern C_ROCKSDB_LIBRARY_API void crocksdb_put(
     crocksdb_t* db, const crocksdb_writeoptions_t* options, const char* key,
     size_t keylen, const char* val, size_t vallen, char** errptr);
@@ -228,6 +234,13 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_single_delete_cf(
     crocksdb_t* db, const crocksdb_writeoptions_t* options,
     crocksdb_column_family_handle_t* column_family, const char* key,
     size_t keylen, char** errptr);
+
+extern C_ROCKSDB_LIBRARY_API void crocksdb_delete_range_cf(
+    crocksdb_t* db, const crocksdb_writeoptions_t* options,
+    crocksdb_column_family_handle_t* column_family,
+    const char* begin_key, size_t begin_keylen,
+    const char* end_key, size_t end_keylen,
+    char **errptr);
 
 extern C_ROCKSDB_LIBRARY_API void crocksdb_merge(
     crocksdb_t* db, const crocksdb_writeoptions_t* options, const char* key,
@@ -463,6 +476,8 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_writebatch_iterate(
     void (*deleted)(void*, const char* k, size_t klen));
 extern C_ROCKSDB_LIBRARY_API const char* crocksdb_writebatch_data(
     crocksdb_writebatch_t*, size_t* size);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_writebatch_set_save_point(crocksdb_writebatch_t*);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_writebatch_rollback_to_save_point(crocksdb_writebatch_t*, char** errptr);
 
 /* Block based table options */
 

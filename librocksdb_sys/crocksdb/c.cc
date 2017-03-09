@@ -531,6 +531,14 @@ void crocksdb_close(crocksdb_t* db) {
   delete db;
 }
 
+void crocksdb_pause_bg_work(crocksdb_t* db) {
+  db->rep->PauseBackgroundWork();
+}
+
+void crocksdb_continue_bg_work(crocksdb_t* db) {
+  db->rep->ContinueBackgroundWork();
+}
+
 crocksdb_t* crocksdb_open_column_families(
     const crocksdb_options_t* db_options,
     const char* name,
@@ -701,6 +709,17 @@ void crocksdb_single_delete_cf(
     char** errptr) {
   SaveError(errptr, db->rep->SingleDelete(options->rep, column_family->rep,
         Slice(key, keylen)));
+}
+
+void crocksdb_delete_range_cf(
+    crocksdb_t* db,
+    const crocksdb_writeoptions_t* options,
+    crocksdb_column_family_handle_t* column_family,
+    const char* begin_key, size_t begin_keylen,
+    const char* end_key, size_t end_keylen,
+    char** errptr) {
+  SaveError(errptr, db->rep->DeleteRange(options->rep, column_family->rep,
+        Slice(begin_key, begin_keylen), Slice(end_key, end_keylen)));
 }
 
 void crocksdb_merge(
@@ -1354,6 +1373,14 @@ void crocksdb_writebatch_iterate(
 const char* crocksdb_writebatch_data(crocksdb_writebatch_t* b, size_t* size) {
   *size = b->rep.GetDataSize();
   return b->rep.Data().c_str();
+}
+
+void crocksdb_writebatch_set_save_point(crocksdb_writebatch_t* b) {
+  b->rep.SetSavePoint();
+}
+
+void crocksdb_writebatch_rollback_to_save_point(crocksdb_writebatch_t* b, char** errptr) {
+  SaveError(errptr, b->rep.RollbackToSavePoint());
 }
 
 crocksdb_block_based_table_options_t*

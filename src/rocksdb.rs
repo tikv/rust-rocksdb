@@ -264,6 +264,12 @@ pub trait Writable {
     fn delete_cf(&self, cf: &CFHandle, key: &[u8]) -> Result<(), String>;
     fn single_delete(&self, key: &[u8]) -> Result<(), String>;
     fn single_delete_cf(&self, cf: &CFHandle, key: &[u8]) -> Result<(), String>;
+    fn delete_range(&self, begin_key: &[u8], end_key: &[u8]) -> Result<(), String>;
+    fn delete_range_cf(&self,
+                       cf: &CFHandle,
+                       begin_key: &[u8],
+                       end_key: &[u8])
+                       -> Result<(), String>;
 }
 
 /// A range of keys, `start_key` is included, but not `end_key`.
@@ -421,6 +427,18 @@ impl DB {
         }
 
         Ok(cfs)
+    }
+
+    pub fn pause_bg_work(&self) {
+        unsafe {
+            crocksdb_ffi::crocksdb_pause_bg_work(self.inner);
+        }
+    }
+
+    pub fn continue_bg_work(&self) {
+        unsafe {
+            crocksdb_ffi::crocksdb_continue_bg_work(self.inner);
+        }
     }
 
     pub fn path(&self) -> &str {
@@ -676,6 +694,24 @@ impl DB {
                                                cf.inner,
                                                key.as_ptr(),
                                                key.len() as size_t));
+            Ok(())
+        }
+    }
+
+    fn delete_range_cf_opt(&self,
+                           cf: &CFHandle,
+                           begin_key: &[u8],
+                           end_key: &[u8],
+                           writeopts: &WriteOptions)
+                           -> Result<(), String> {
+        unsafe {
+            ffi_try!(crocksdb_delete_range_cf(self.inner,
+                                              writeopts.inner,
+                                              cf.inner,
+                                              begin_key.as_ptr(),
+                                              begin_key.len() as size_t,
+                                              end_key.as_ptr(),
+                                              end_key.len() as size_t));
             Ok(())
         }
     }
@@ -988,6 +1024,19 @@ impl Writable for DB {
     fn single_delete_cf(&self, cf: &CFHandle, key: &[u8]) -> Result<(), String> {
         self.single_delete_cf_opt(cf, key, &WriteOptions::new())
     }
+
+    fn delete_range(&self, begin_key: &[u8], end_key: &[u8]) -> Result<(), String> {
+        let handle = self.cf_handle("default").unwrap();
+        self.delete_range_cf(handle, begin_key, end_key)
+    }
+
+    fn delete_range_cf(&self,
+                       cf: &CFHandle,
+                       begin_key: &[u8],
+                       end_key: &[u8])
+                       -> Result<(), String> {
+        self.delete_range_cf_opt(cf, begin_key, end_key, &WriteOptions::new())
+    }
 }
 
 impl Default for WriteBatch {
@@ -1021,6 +1070,19 @@ impl WriteBatch {
         unsafe {
             crocksdb_ffi::crocksdb_writebatch_clear(self.inner);
         }
+    }
+
+    pub fn set_save_point(&mut self) {
+        unsafe {
+            crocksdb_ffi::crocksdb_writebatch_set_save_point(self.inner);
+        }
+    }
+
+    pub fn rollback_to_save_point(&mut self) -> Result<(), String> {
+        unsafe {
+            ffi_try!(crocksdb_writebatch_rollback_to_save_point(self.inner));
+        }
+        Ok(())
     }
 }
 
@@ -1118,6 +1180,33 @@ impl Writable for WriteBatch {
                                                                cf.inner,
                                                                key.as_ptr(),
                                                                key.len() as size_t);
+            Ok(())
+        }
+    }
+
+    fn delete_range(&self, begin_key: &[u8], end_key: &[u8]) -> Result<(), String> {
+        unsafe {
+            crocksdb_ffi::crocksdb_writebatch_delete_range(self.inner,
+                                                           begin_key.as_ptr(),
+                                                           begin_key.len(),
+                                                           end_key.as_ptr(),
+                                                           end_key.len());
+            Ok(())
+        }
+    }
+
+    fn delete_range_cf(&self,
+                       cf: &CFHandle,
+                       begin_key: &[u8],
+                       end_key: &[u8])
+                       -> Result<(), String> {
+        unsafe {
+            crocksdb_ffi::crocksdb_writebatch_delete_range_cf(self.inner,
+                                                              cf.inner,
+                                                              begin_key.as_ptr(),
+                                                              begin_key.len(),
+                                                              end_key.as_ptr(),
+                                                              end_key.len());
             Ok(())
         }
     }
@@ -1219,6 +1308,9 @@ mod test {
     use std::fs;
     use std::path::Path;
     use std::str;
+    use std::string::String;
+    use std::sync::*;
+    use std::thread;
     use super::*;
     use tempdir::TempDir;
 
@@ -1268,8 +1360,8 @@ mod test {
         assert!(db.get(b"k1").unwrap().is_none());
         let p = db.write(batch);
         assert!(p.is_ok());
-        let r: Result<Option<DBVector>, String> = db.get(b"k1");
-        assert!(r.unwrap().unwrap().to_utf8().unwrap() == "v1111");
+        let r = db.get(b"k1");
+        assert_eq!(r.unwrap().unwrap(), b"v1111");
 
         // test delete
         let batch = WriteBatch::new();
@@ -1286,6 +1378,28 @@ mod test {
         assert!(batch.data_size() > prev_size);
         batch.clear();
         assert_eq!(batch.data_size(), prev_size);
+
+        // test save point
+        let mut batch = WriteBatch::new();
+        batch.put(b"k10", b"v10").unwrap();
+        batch.set_save_point();
+        batch.put(b"k11", b"v11").unwrap();
+        batch.set_save_point();
+        batch.put(b"k12", b"v12").unwrap();
+        batch.set_save_point();
+        batch.put(b"k13", b"v13").unwrap();
+        batch.rollback_to_save_point().unwrap();
+        batch.rollback_to_save_point().unwrap();
+        let p = db.write(batch);
+        assert!(p.is_ok());
+        let r = db.get(b"k10");
+        assert_eq!(r.unwrap().unwrap(), b"v10");
+        let r = db.get(b"k11");
+        assert_eq!(r.unwrap().unwrap(), b"v11");
+        let r = db.get(b"k12");
+        assert!(r.unwrap().is_none());
+        let r = db.get(b"k13");
+        assert!(r.unwrap().is_none());
     }
 
     #[test]
@@ -1465,29 +1579,105 @@ mod test {
         let a = db.get_cf(cf_handle, b"a");
         assert!(a.unwrap().is_none());
     }
-}
 
-#[test]
-fn snapshot_test() {
-    let path = "_rust_rocksdb_snapshottest";
-    {
-        let db = DB::open_default(path).unwrap();
-        let p = db.put(b"k1", b"v1111");
-        assert!(p.is_ok());
+    #[test]
+    fn test_delete_range() {
+        // Test `DB::delete_range()`
+        let path = TempDir::new("_rust_rocksdb_test_delete_range").expect("");
+        let db = DB::open_default(path.path().to_str().unwrap()).unwrap();
 
-        let snap = db.snapshot();
-        let mut r: Result<Option<DBVector>, String> = snap.get(b"k1");
-        assert!(r.unwrap().unwrap().to_utf8().unwrap() == "v1111");
+        // Prepare some data.
+        let prepare_data = || {
+            db.put(b"a", b"v1").unwrap();
+            let a = db.get(b"a");
+            assert_eq!(a.unwrap().unwrap(), b"v1");
+            db.put(b"b", b"v2").unwrap();
+            let b = db.get(b"b");
+            assert_eq!(b.unwrap().unwrap(), b"v2");
+            db.put(b"c", b"v3").unwrap();
+            let c = db.get(b"c");
+            assert_eq!(c.unwrap().unwrap(), b"v3");
+        };
+        prepare_data();
 
-        r = db.get(b"k1");
-        assert!(r.unwrap().unwrap().to_utf8().unwrap() == "v1111");
+        // Ensure delete range interface works to delete the specified range `[b"a", b"c")`.
+        db.delete_range(b"a", b"c").unwrap();
 
-        let p = db.put(b"k2", b"v2222");
-        assert!(p.is_ok());
+        let check_data = || {
+            assert!(db.get(b"a").unwrap().is_none());
+            assert!(db.get(b"b").unwrap().is_none());
+            let c = db.get(b"c");
+            assert_eq!(c.unwrap().unwrap(), b"v3");
+        };
+        check_data();
 
-        assert!(db.get(b"k2").unwrap().is_some());
-        assert!(snap.get(b"k2").unwrap().is_none());
+        // Test `DB::delete_range_cf()`
+        prepare_data();
+        let cf_handle = db.cf_handle("default").unwrap();
+        db.delete_range_cf(cf_handle, b"a", b"c").unwrap();
+        check_data();
+
+        // Test `WriteBatch::delete_range()`
+        prepare_data();
+        let batch = WriteBatch::new();
+        batch.delete_range(b"a", b"c").unwrap();
+        assert!(db.write(batch).is_ok());
+        check_data();
+
+        // Test `WriteBatch::delete_range_cf()`
+        prepare_data();
+        let batch = WriteBatch::new();
+        batch.delete_range_cf(cf_handle, b"a", b"c").unwrap();
+        assert!(db.write(batch).is_ok());
+        check_data();
     }
-    let opts = Options::new();
-    assert!(DB::destroy(&opts, path).is_ok());
+
+    #[test]
+    fn test_pause_bg_work() {
+        let path = TempDir::new("_rust_rocksdb_pause_bg_work").expect("");
+        let db = DB::open_default(path.path().to_str().unwrap()).unwrap();
+        let db = Arc::new(db);
+        let db1 = db.clone();
+        let builder = thread::Builder::new().name(String::from("put-thread"));
+        let h = builder.spawn(move || {
+                db1.put(b"k1", b"v1").unwrap();
+                db1.put(b"k2", b"v2").unwrap();
+                db1.flush(true).unwrap();
+                db1.compact_range(None, None);
+            })
+            .unwrap();
+        // Wait until all currently running background processes finish.
+        db.pause_bg_work();
+        assert_eq!(db.get_property_int("rocksdb.num-running-compactions").unwrap(),
+                   0);
+        assert_eq!(db.get_property_int("rocksdb.num-running-flushes").unwrap(),
+                   0);
+        db.continue_bg_work();
+        h.join().unwrap();
+    }
+
+    #[test]
+    fn snapshot_test() {
+        let path = "_rust_rocksdb_snapshottest";
+        {
+            let db = DB::open_default(path).unwrap();
+            let p = db.put(b"k1", b"v1111");
+            assert!(p.is_ok());
+
+            let snap = db.snapshot();
+            let mut r: Result<Option<DBVector>, String> = snap.get(b"k1");
+            assert!(r.unwrap().unwrap().to_utf8().unwrap() == "v1111");
+
+            r = db.get(b"k1");
+            assert!(r.unwrap().unwrap().to_utf8().unwrap() == "v1111");
+
+            let p = db.put(b"k2", b"v2222");
+            assert!(p.is_ok());
+
+            assert!(db.get(b"k2").unwrap().is_some());
+            assert!(snap.get(b"k2").unwrap().is_none());
+        }
+        let opts = Options::new();
+        assert!(DB::destroy(&opts, path).is_ok());
+    }
 }

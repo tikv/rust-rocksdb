@@ -32,7 +32,7 @@ First, use your system's package manager to install snappy.  This is optional, b
 
 To install rocksdb, please refer to it's installation guide. For Windows users, please make sure you configure rocksdb with `CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS` enabled.
 
-Or enable feature `static-link`, the crate will download and complie RocksDB automatically, including it's dependencies.
+Or enable feature `static-link`, the crate will download and complie RocksDB automatically, including its dependencies.
 
 ```bash
 cargo build --features static-link

@@ -49,7 +49,6 @@ pub struct DB {
     inner: *mut DBInstance,
     cfs: BTreeMap<String, CFHandle>,
     path: String,
-    opts: Options,
 }
 
 unsafe impl Send for DB {}
@@ -380,7 +379,6 @@ impl DB {
             inner: db,
             cfs: cf_map,
             path: path.to_owned(),
-            opts: opts,
         })
     }
 
@@ -891,33 +889,36 @@ impl DB {
     }
 
     pub fn get_statistics(&self) -> Option<String> {
-        self.opts.get_statistics()
+        self.get_options().get_statistics()
     }
 
     pub fn get_statistics_ticker_count(&self, ticker_type: DBStatisticsTickerType) -> u64 {
-        self.opts.get_statistics_ticker_count(ticker_type)
+        self.get_options().get_statistics_ticker_count(ticker_type)
     }
 
     pub fn get_and_reset_statistics_ticker_count(&self,
                                                  ticker_type: DBStatisticsTickerType)
                                                  -> u64 {
-        self.opts.get_and_reset_statistics_ticker_count(ticker_type)
+        self.get_options().get_and_reset_statistics_ticker_count(ticker_type)
     }
 
     pub fn get_statistics_histogram_string(&self,
                                            hist_type: DBStatisticsHistogramType)
                                            -> Option<String> {
-        self.opts.get_statistics_histogram_string(hist_type)
+        self.get_options().get_statistics_histogram_string(hist_type)
     }
 
     pub fn get_statistics_histogram(&self,
                                     hist_type: DBStatisticsHistogramType)
                                     -> Option<HistogramData> {
-        self.opts.get_statistics_histogram(hist_type)
+        self.get_options().get_statistics_histogram(hist_type)
     }
 
-    pub fn get_options(&self) -> &Options {
-        &self.opts
+    pub fn get_options(&self) -> Options {
+        unsafe {
+            let inner = crocksdb_ffi::crocksdb_get_options(self.inner);
+            Options::new_with(inner)
+        }
     }
 
     pub fn get_options_cf(&self, cf: &CFHandle) -> Options {

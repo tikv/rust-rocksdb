@@ -49,6 +49,7 @@ pub struct DB {
     inner: *mut DBInstance,
     cfs: BTreeMap<String, CFHandle>,
     path: String,
+    opts: Options,
 }
 
 unsafe impl Send for DB {}
@@ -379,6 +380,7 @@ impl DB {
             inner: db,
             cfs: cf_map,
             path: path.to_owned(),
+            opts: opts,
         })
     }
 
@@ -889,29 +891,29 @@ impl DB {
     }
 
     pub fn get_statistics(&self) -> Option<String> {
-        self.get_options().get_statistics()
+        self.opts.get_statistics()
     }
 
     pub fn get_statistics_ticker_count(&self, ticker_type: DBStatisticsTickerType) -> u64 {
-        self.get_options().get_statistics_ticker_count(ticker_type)
+        self.opts.get_statistics_ticker_count(ticker_type)
     }
 
     pub fn get_and_reset_statistics_ticker_count(&self,
                                                  ticker_type: DBStatisticsTickerType)
                                                  -> u64 {
-        self.get_options().get_and_reset_statistics_ticker_count(ticker_type)
+        self.opts.get_and_reset_statistics_ticker_count(ticker_type)
     }
 
     pub fn get_statistics_histogram_string(&self,
                                            hist_type: DBStatisticsHistogramType)
                                            -> Option<String> {
-        self.get_options().get_statistics_histogram_string(hist_type)
+        self.opts.get_statistics_histogram_string(hist_type)
     }
 
     pub fn get_statistics_histogram(&self,
                                     hist_type: DBStatisticsHistogramType)
                                     -> Option<HistogramData> {
-        self.get_options().get_statistics_histogram(hist_type)
+        self.opts.get_statistics_histogram(hist_type)
     }
 
     pub fn get_options(&self) -> Options {

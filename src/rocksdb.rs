@@ -923,7 +923,6 @@ impl DB {
     pub fn get_options_cf(&self, cf: &CFHandle) -> Options {
         unsafe {
             let inner = crocksdb_ffi::crocksdb_get_options_cf(self.inner, cf.inner);
-            assert!(!inner.is_null(), "could not get options cf");
             Options::new_with(inner)
         }
     }

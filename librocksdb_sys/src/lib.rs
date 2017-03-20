@@ -42,6 +42,7 @@ pub enum DBBackupEngine {}
 pub enum DBRestoreOptions {}
 pub enum DBSliceTransform {}
 pub enum DBRateLimiter {}
+pub enum DBLogger {}
 
 pub fn new_bloom_filter(bits: c_int) -> *mut DBFilterPolicy {
     unsafe { crocksdb_filterpolicy_create_bloom(bits) }
@@ -273,6 +274,7 @@ extern "C" {
     pub fn crocksdb_options_set_memtable_prefix_bloom_size_ratio(options: *mut DBOptions,
                                                                  ratio: c_double);
     pub fn crocksdb_options_set_ratelimiter(options: *mut DBOptions, limiter: *mut DBRateLimiter);
+    pub fn crocksdb_options_set_info_log(options: *mut DBOptions, logger: *mut DBLogger);
     pub fn crocksdb_ratelimiter_create(rate_bytes_per_sec: i64,
                                        refill_period_us: i64,
                                        fairness: i32)
@@ -703,6 +705,10 @@ extern "C" {
                                           name: extern "C" fn(*mut c_void) -> *const c_char)
                                           -> *mut DBSliceTransform;
     pub fn crocksdb_slicetransform_destroy(transform: *mut DBSliceTransform);
+    pub fn crocksdb_create_log_from_options(path: *const c_char,
+                                            options: *mut DBOptions,
+                                            err: *mut *mut c_char)
+                                            -> *mut DBLogger;
 }
 
 #[cfg(test)]

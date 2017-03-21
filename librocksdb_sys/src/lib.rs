@@ -709,6 +709,7 @@ extern "C" {
                                             options: *mut DBOptions,
                                             err: *mut *mut c_char)
                                             -> *mut DBLogger;
+    pub fn crocksdb_log_destroy(logger: *mut DBLogger);
 }
 
 #[cfg(test)]

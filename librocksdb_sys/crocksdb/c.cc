@@ -2802,4 +2802,9 @@ crocksdb_logger_t* crocksdb_create_log_from_options(
     return logger;
 }
 
+void crocksdb_log_destroy(
+    crocksdb_logger_t* logger) {
+    delete logger;
+}
+
 }  // end extern "C"

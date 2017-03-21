@@ -139,8 +139,7 @@ fn test_create_info_log() {
     opts.create_if_missing(true);
 
     let info_dir = TempDir::new("_rust_rocksdb_test_info_log_dir").expect("");
-    let info_path = info_dir.path().join("LOG");
-    opts.create_info_log(info_path.to_str().unwrap()).unwrap();
+    opts.create_info_log(info_dir.path().to_str().unwrap()).unwrap();
     let db = DB::open(opts, path.path().to_str().unwrap()).unwrap();
 
     drop(db);

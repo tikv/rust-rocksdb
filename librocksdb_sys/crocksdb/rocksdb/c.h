@@ -1127,7 +1127,8 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_free(void* ptr);
 
 extern C_ROCKSDB_LIBRARY_API crocksdb_logger_t* crocksdb_create_log_from_options(
     const char* path, crocksdb_options_t* opts, char** errptr);
-
+extern C_ROCKSDB_LIBRARY_API void crocksdb_log_destroy(
+    crocksdb_logger_t*);
 #ifdef __cplusplus
 }  /* end extern "C" */
 #endif

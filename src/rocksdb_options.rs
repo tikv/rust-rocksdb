@@ -756,6 +756,7 @@ impl Options {
         unsafe {
             let logger = ffi_try!(crocksdb_create_log_from_options(cpath.as_ptr(), self.inner));
             crocksdb_ffi::crocksdb_options_set_info_log(self.inner, logger);
+            crocksdb_ffi::crocksdb_log_destroy(logger);
         }
 
         Ok(())

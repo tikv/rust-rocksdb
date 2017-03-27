@@ -669,6 +669,12 @@ impl Options {
         }
     }
 
+    pub fn set_log_file_time_to_roll(&mut self, ttl: u64) {
+        unsafe {
+            crocksdb_ffi::crocksdb_options_set_log_file_time_to_roll(self.inner, ttl as size_t);
+        }
+    }
+
     pub fn set_keep_log_file_num(&mut self, num: u64) {
         unsafe {
             crocksdb_ffi::crocksdb_options_set_keep_log_file_num(self.inner, num as size_t);

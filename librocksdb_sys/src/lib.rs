@@ -221,6 +221,7 @@ extern "C" {
     pub fn crocksdb_options_set_max_bytes_for_level_multiplier(options: *mut DBOptions,
                                                                mul: c_int);
     pub fn crocksdb_options_set_max_log_file_size(options: *mut DBOptions, bytes: size_t);
+    pub fn crocksdb_options_set_log_file_time_to_roll(options: *mut DBOptions, bytes: size_t);
     pub fn crocksdb_options_set_keep_log_file_num(options: *mut DBOptions, num: size_t);
     pub fn crocksdb_options_set_max_manifest_file_size(options: *mut DBOptions, bytes: u64);
     pub fn crocksdb_options_set_hash_skip_list_rep(options: *mut DBOptions,

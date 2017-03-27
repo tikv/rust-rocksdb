@@ -15,6 +15,8 @@ use rocksdb::{DB, Options, WriteOptions, SliceTransform};
 use rocksdb::crocksdb_ffi::{DBStatisticsHistogramType as HistogramType,
                             DBStatisticsTickerType as TickerType};
 use std::path::Path;
+use std::thread;
+use std::time::Duration;
 use tempdir::TempDir;
 
 
@@ -139,11 +141,22 @@ fn test_create_info_log() {
     let mut opts = Options::new();
     opts.create_if_missing(true);
 
+    opts.set_log_file_time_to_roll(1);
+    opts.set_max_log_file_size(100);
+
     let info_dir = TempDir::new("_rust_rocksdb_test_info_log_dir").expect("");
     opts.create_info_log(info_dir.path().to_str().unwrap()).unwrap();
+
     let db = DB::open(opts, path.path().to_str().unwrap()).unwrap();
 
     assert!(Path::new(info_dir.path().join("LOG").to_str().unwrap()).is_file());
 
+    thread::sleep(Duration::from_secs(2));
+
+    // The LOG must be rolled many times.
+    let count = info_dir.path().read_dir().unwrap().count();
+    assert!(count > 1);
+
     drop(db);
+
 }

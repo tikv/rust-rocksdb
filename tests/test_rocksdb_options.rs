@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use rocksdb::{DB, Options, WriteOptions, SliceTransform, Writable};
+use rocksdb::{DB, Options, BlockBasedOptions, WriteOptions, SliceTransform, Writable};
 use rocksdb::crocksdb_ffi::{DBStatisticsHistogramType as HistogramType,
                             DBStatisticsTickerType as TickerType, DBInfoLogLevel as InfoLogLevel};
 use std::path::Path;
@@ -140,7 +140,6 @@ fn test_create_info_log() {
     let path = TempDir::new("_rust_rocksdb_test_create_info_log_opt").expect("");
     let mut opts = Options::new();
     opts.create_if_missing(true);
-
     opts.set_info_log_level(InfoLogLevel::DBDebug);
     opts.set_log_file_time_to_roll(1);
 
@@ -148,7 +147,6 @@ fn test_create_info_log() {
     opts.create_info_log(info_dir.path().to_str().unwrap()).unwrap();
 
     let db = DB::open(opts, path.path().to_str().unwrap()).unwrap();
-
     assert!(Path::new(info_dir.path().join("LOG").to_str().unwrap()).is_file());
 
     thread::sleep(Duration::from_secs(2));
@@ -170,7 +168,6 @@ fn test_auto_roll_max_size_info_log() {
     let path = TempDir::new("_rust_rocksdb_test_max_size_info_log_opt").expect("");
     let mut opts = Options::new();
     opts.create_if_missing(true);
-
     opts.set_max_log_file_size(10);
 
     let info_dir = TempDir::new("_rust_rocksdb_max_size_info_log_dir").expect("");
@@ -179,9 +176,21 @@ fn test_auto_roll_max_size_info_log() {
     let db = DB::open(opts, path.path().to_str().unwrap()).unwrap();
     assert!(Path::new(info_dir.path().join("LOG").to_str().unwrap()).is_file());
 
+    drop(db);
+
     // The LOG must be rolled many times.
     let count = info_dir.path().read_dir().unwrap().count();
     assert!(count > 1);
+}
 
+#[test]
+fn test_set_pin_l0_filter_and_index_blocks_in_cache() {
+    let path = TempDir::new("_rust_rocksdb_set_cache_and_index").expect("");
+    let mut opts = Options::new();
+    opts.create_if_missing(true);
+    let mut block_opts = BlockBasedOptions::new();
+    block_opts.set_pin_l0_filter_and_index_blocks_in_cache(true);
+    opts.set_block_based_table_factory(&block_opts);
+    let db = DB::open(opts, path.path().to_str().unwrap()).unwrap();
     drop(db);
 }

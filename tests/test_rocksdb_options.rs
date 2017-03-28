@@ -11,9 +11,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use rocksdb::{DB, Options, WriteOptions, SliceTransform};
+use rocksdb::{DB, Options, WriteOptions, SliceTransform, Writable};
 use rocksdb::crocksdb_ffi::{DBStatisticsHistogramType as HistogramType,
-                            DBStatisticsTickerType as TickerType};
+                            DBStatisticsTickerType as TickerType, DBInfoLogLevel as InfoLogLevel};
 use std::path::Path;
 use std::thread;
 use std::time::Duration;
@@ -141,8 +141,8 @@ fn test_create_info_log() {
     let mut opts = Options::new();
     opts.create_if_missing(true);
 
+    opts.set_info_log_level(InfoLogLevel::DBDebug);
     opts.set_log_file_time_to_roll(1);
-    opts.set_max_log_file_size(100);
 
     let info_dir = TempDir::new("_rust_rocksdb_test_info_log_dir").expect("");
     opts.create_info_log(info_dir.path().to_str().unwrap()).unwrap();
@@ -153,10 +153,35 @@ fn test_create_info_log() {
 
     thread::sleep(Duration::from_secs(2));
 
+    for i in 0..200 {
+        db.put(format!("k_{}", i).as_bytes(), b"v").unwrap();
+        db.flush(true).unwrap();
+    }
+
+    drop(db);
+
+    // The LOG must be rolled many times.
+    let count = info_dir.path().read_dir().unwrap().count();
+    assert!(count > 1);
+}
+
+#[test]
+fn test_auto_roll_max_size_info_log() {
+    let path = TempDir::new("_rust_rocksdb_test_max_size_info_log_opt").expect("");
+    let mut opts = Options::new();
+    opts.create_if_missing(true);
+
+    opts.set_max_log_file_size(10);
+
+    let info_dir = TempDir::new("_rust_rocksdb_max_size_info_log_dir").expect("");
+    opts.create_info_log(info_dir.path().to_str().unwrap()).unwrap();
+
+    let db = DB::open(opts, path.path().to_str().unwrap()).unwrap();
+    assert!(Path::new(info_dir.path().join("LOG").to_str().unwrap()).is_file());
+
     // The LOG must be rolled many times.
     let count = info_dir.path().read_dir().unwrap().count();
     assert!(count > 1);
 
     drop(db);
-
 }

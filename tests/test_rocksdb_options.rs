@@ -194,3 +194,27 @@ fn test_set_pin_l0_filter_and_index_blocks_in_cache() {
     let db = DB::open(opts, path.path().to_str().unwrap()).unwrap();
     drop(db);
 }
+
+#[test]
+fn test_get_block_cache_usage() {
+    let path = TempDir::new("_rust_rocksdb_set_cache_and_index").expect("");
+    let mut opts = Options::new();
+    opts.create_if_missing(true);
+    let mut block_opts = BlockBasedOptions::new();
+    block_opts.set_lru_cache(16 * 1024 * 1024);
+    opts.set_block_based_table_factory(&block_opts);
+    let db = DB::open(opts, path.path().to_str().unwrap()).unwrap();
+
+    for i in 0..200 {
+        db.put(format!("k_{}", i).as_bytes(), b"v").unwrap();
+    }
+    db.flush(true).unwrap();
+    for i in 0..200 {
+        db.get(format!("k_{}", i).as_bytes()).unwrap();
+    }
+
+    assert!(db.get_options().get_block_cache_usage() > 0);
+
+    let opts = Options::new();
+    assert_eq!(opts.get_block_cache_usage(), 0);
+}

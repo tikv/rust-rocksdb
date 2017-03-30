@@ -414,6 +414,13 @@ static char* CopyString(const std::string& str) {
   return result;
 }
 
+static char* CopyCString(const std::string& str) {
+  char* result = reinterpret_cast<char*>(malloc(sizeof(char) * str.size() + 1));
+  memcpy(result, str.data(), sizeof(char) * str.size());
+  result[str.size()] = '\0';
+  return result;
+}
+
 crocksdb_t* crocksdb_open(
     const crocksdb_options_t* options,
     const char* name,
@@ -920,8 +927,7 @@ char* crocksdb_property_value(
     const char* propname) {
   std::string tmp;
   if (db->rep->GetProperty(Slice(propname), &tmp)) {
-    // We use strdup() since we expect human readable output.
-    return strdup(tmp.c_str());
+    return CopyCString(tmp);
   } else {
     return nullptr;
   }
@@ -933,8 +939,7 @@ char* crocksdb_property_value_cf(
     const char* propname) {
   std::string tmp;
   if (db->rep->GetProperty(column_family->rep, Slice(propname), &tmp)) {
-    // We use strdup() since we expect human readable output.
-    return strdup(tmp.c_str());
+    return CopyCString(tmp);
   } else {
     return nullptr;
   }

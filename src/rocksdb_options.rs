@@ -19,7 +19,7 @@ use comparator::{self, ComparatorCallback, compare_callback};
 use crocksdb_ffi::{self, DBOptions, DBWriteOptions, DBBlockBasedTableOptions, DBReadOptions,
                    DBRestoreOptions, DBCompressionType, DBRecoveryMode, DBSnapshot, DBInstance,
                    DBFlushOptions, DBStatisticsTickerType, DBStatisticsHistogramType,
-                   DBRateLimiter};
+                   DBRateLimiter, DBInfoLogLevel};
 use libc::{self, c_int, size_t, c_void};
 use merge_operator::{self, MergeOperatorCallback, full_merge_callback, partial_merge_callback};
 use merge_operator::MergeFn;
@@ -101,6 +101,14 @@ impl BlockBasedOptions {
     pub fn set_whole_key_filtering(&mut self, v: bool) {
         unsafe {
             crocksdb_ffi::crocksdb_block_based_options_set_whole_key_filtering(self.inner, v);
+        }
+    }
+
+    pub fn set_pin_l0_filter_and_index_blocks_in_cache(&mut self, v: bool) {
+        unsafe {
+            crocksdb_ffi::crocksdb_block_based_options_set_pin_l0_filter_and_index_blocks_in_cache(
+                self.inner,
+                v as u8);
         }
     }
 }
@@ -246,9 +254,9 @@ impl WriteOptions {
     pub fn disable_wal(&mut self, disable: bool) {
         unsafe {
             if disable {
-                crocksdb_ffi::crocksdb_writeoptions_disable_WAL(self.inner, 1);
+                crocksdb_ffi::crocksdb_writeoptions_disable_wal(self.inner, 1);
             } else {
-                crocksdb_ffi::crocksdb_writeoptions_disable_WAL(self.inner, 0);
+                crocksdb_ffi::crocksdb_writeoptions_disable_wal(self.inner, 0);
             }
         }
     }
@@ -283,6 +291,15 @@ impl Default for Options {
 impl Options {
     pub fn new() -> Options {
         Options::default()
+    }
+
+    pub unsafe fn from_raw(inner: *mut DBOptions) -> Options {
+        assert!(!inner.is_null(),
+                "could not new rocksdb options with null inner");
+        Options {
+            inner: inner,
+            filter: None,
+        }
     }
 
     pub fn increase_parallelism(&mut self, parallelism: i32) {
@@ -417,16 +434,6 @@ impl Options {
     pub fn set_bytes_per_sync(&mut self, nbytes: u64) {
         unsafe {
             crocksdb_ffi::crocksdb_options_set_bytes_per_sync(self.inner, nbytes);
-        }
-    }
-
-    pub fn set_disable_data_sync(&mut self, disable: bool) {
-        unsafe {
-            if disable {
-                crocksdb_ffi::crocksdb_options_set_disable_data_sync(self.inner, 1);
-            } else {
-                crocksdb_ffi::crocksdb_options_set_disable_data_sync(self.inner, 0);
-            }
         }
     }
 
@@ -659,9 +666,40 @@ impl Options {
         }
     }
 
+    pub fn set_wal_dir(&mut self, path: &str) {
+        let path = CString::new(path.as_bytes()).unwrap();
+        unsafe {
+            crocksdb_ffi::crocksdb_options_set_wal_dir(self.inner, path.as_ptr());
+        }
+    }
+
+    pub fn set_wal_ttl_seconds(&mut self, ttl: u64) {
+        unsafe {
+            crocksdb_ffi::crocksdb_options_set_wal_ttl_seconds(self.inner, ttl as u64);
+        }
+    }
+
+    pub fn set_wal_size_limit_mb(&mut self, limit: u64) {
+        unsafe {
+            crocksdb_ffi::crocksdb_options_set_wal_size_limit_mb(self.inner, limit as u64);
+        }
+    }
+
     pub fn set_max_log_file_size(&mut self, size: u64) {
         unsafe {
             crocksdb_ffi::crocksdb_options_set_max_log_file_size(self.inner, size as size_t);
+        }
+    }
+
+    pub fn set_log_file_time_to_roll(&mut self, ttl: u64) {
+        unsafe {
+            crocksdb_ffi::crocksdb_options_set_log_file_time_to_roll(self.inner, ttl as size_t);
+        }
+    }
+
+    pub fn set_info_log_level(&mut self, level: DBInfoLogLevel) {
+        unsafe {
+            crocksdb_ffi::crocksdb_options_set_info_log_level(self.inner, level);
         }
     }
 
@@ -726,6 +764,27 @@ impl Options {
         unsafe {
             crocksdb_ffi::crocksdb_options_set_ratelimiter(self.inner, rate_limiter.inner);
         }
+    }
+
+    // Create a info log with `path` and save to options logger field directly.
+    // TODO: export more logger options like level, roll size, time, etc...
+    pub fn create_info_log(&self, path: &str) -> Result<(), String> {
+        let cpath = match CString::new(path.as_bytes()) {
+            Ok(c) => c,
+            Err(_) => {
+                return Err("Failed to convert path to CString when creating rocksdb info log"
+                    .to_owned())
+            }
+        };
+
+        unsafe {
+            let logger = ffi_try!(crocksdb_create_log_from_options(cpath.as_ptr(), self.inner));
+            crocksdb_ffi::crocksdb_options_set_info_log(self.inner, logger);
+            // logger uses shared_ptr, it is OK to destroy here.
+            crocksdb_ffi::crocksdb_log_destroy(logger);
+        }
+
+        Ok(())
     }
 }
 

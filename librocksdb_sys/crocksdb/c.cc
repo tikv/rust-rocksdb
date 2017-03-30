@@ -1053,6 +1053,20 @@ void crocksdb_enable_file_deletions(
   SaveError(errptr, db->rep->EnableFileDeletions(force));
 }
 
+crocksdb_options_t* crocksdb_get_options(const crocksdb_t* db) {
+  crocksdb_options_t* options = new crocksdb_options_t;
+  options->rep = db->rep->GetOptions();
+  return options;
+}
+
+crocksdb_options_t* crocksdb_get_options_cf(
+    const crocksdb_t* db,
+    crocksdb_column_family_handle_t* column_family) {
+  crocksdb_options_t* options = new crocksdb_options_t;
+  options->rep = db->rep->GetOptions(column_family->rep);
+  return options;
+}
+
 void crocksdb_destroy_db(
     const crocksdb_options_t* options,
     const char* name,
@@ -1466,11 +1480,6 @@ void crocksdb_block_based_options_set_pin_l0_filter_and_index_blocks_in_cache(
   options->rep.pin_l0_filter_and_index_blocks_in_cache = v;
 }
 
-void crocksdb_block_based_options_set_skip_table_builder_flush(
-    crocksdb_block_based_table_options_t* options, unsigned char v) {
-  options->rep.skip_table_builder_flush = v;
-}
-
 void crocksdb_options_set_block_based_table_factory(
     crocksdb_options_t *opt,
     crocksdb_block_based_table_options_t* table_options) {
@@ -1737,11 +1746,6 @@ void crocksdb_options_set_memtable_insert_with_hint_prefix_extractor(
   opt->rep.memtable_insert_with_hint_prefix_extractor.reset(prefix_extractor);
 }
 
-void crocksdb_options_set_disable_data_sync(
-    crocksdb_options_t* opt, int disable_data_sync) {
-  opt->rep.disableDataSync = disable_data_sync;
-}
-
 void crocksdb_options_set_use_fsync(
     crocksdb_options_t* opt, int use_fsync) {
   opt->rep.use_fsync = use_fsync;
@@ -1757,11 +1761,11 @@ void crocksdb_options_set_wal_dir(
   opt->rep.wal_dir = v;
 }
 
-void crocksdb_options_set_WAL_ttl_seconds(crocksdb_options_t* opt, uint64_t ttl) {
+void crocksdb_options_set_wal_ttl_seconds(crocksdb_options_t* opt, uint64_t ttl) {
   opt->rep.WAL_ttl_seconds = ttl;
 }
 
-void crocksdb_options_set_WAL_size_limit_MB(
+void crocksdb_options_set_wal_size_limit_mb(
     crocksdb_options_t* opt, uint64_t limit) {
   opt->rep.WAL_size_limit_MB = limit;
 }
@@ -1841,11 +1845,6 @@ void crocksdb_options_set_allow_concurrent_memtable_write(crocksdb_options_t* op
 void crocksdb_options_set_enable_write_thread_adaptive_yield(
     crocksdb_options_t* opt, unsigned char v) {
   opt->rep.enable_write_thread_adaptive_yield = v;
-}
-
-void crocksdb_options_set_verify_checksums_in_compaction(
-    crocksdb_options_t* opt, unsigned char v) {
-  opt->rep.verify_checksums_in_compaction = v;
 }
 
 void crocksdb_options_set_max_sequential_skip_in_iterations(
@@ -1993,11 +1992,6 @@ void crocksdb_options_set_plain_table_factory(
 void crocksdb_options_set_max_successive_merges(
     crocksdb_options_t* opt, size_t v) {
   opt->rep.max_successive_merges = v;
-}
-
-void crocksdb_options_set_min_partial_merge_operands(
-    crocksdb_options_t* opt, uint32_t v) {
-  opt->rep.min_partial_merge_operands = v;
 }
 
 void crocksdb_options_set_bloom_locality(
@@ -2373,7 +2367,7 @@ void crocksdb_writeoptions_set_sync(
   opt->rep.sync = v;
 }
 
-void crocksdb_writeoptions_disable_WAL(crocksdb_writeoptions_t* opt, int disable) {
+void crocksdb_writeoptions_disable_wal(crocksdb_writeoptions_t* opt, int disable) {
   opt->rep.disableWAL = disable;
 }
 
@@ -2466,19 +2460,21 @@ crocksdb_envoptions_t* crocksdb_envoptions_create() {
 void crocksdb_envoptions_destroy(crocksdb_envoptions_t* opt) { delete opt; }
 
 crocksdb_sstfilewriter_t* crocksdb_sstfilewriter_create(
-    const crocksdb_envoptions_t* env, const crocksdb_options_t* io_options) {
+    const crocksdb_envoptions_t* env, const crocksdb_options_t* io_options,
+    crocksdb_column_family_handle_t* column_family) {
   crocksdb_sstfilewriter_t* writer = new crocksdb_sstfilewriter_t;
   writer->rep =
-      new SstFileWriter(env->rep, io_options->rep, io_options->rep.comparator);
+      new SstFileWriter(env->rep, io_options->rep, io_options->rep.comparator, column_family->rep);
   return writer;
 }
 
 crocksdb_sstfilewriter_t* crocksdb_sstfilewriter_create_with_comparator(
     const crocksdb_envoptions_t* env, const crocksdb_options_t* io_options,
-    const crocksdb_comparator_t* comparator) {
+    const crocksdb_comparator_t* comparator,
+    crocksdb_column_family_handle_t* column_family) {
   crocksdb_sstfilewriter_t* writer = new crocksdb_sstfilewriter_t;
   writer->rep =
-      new SstFileWriter(env->rep, io_options->rep, io_options->rep.comparator);
+      new SstFileWriter(env->rep, io_options->rep, comparator, column_family->rep);
   return writer;
 }
 
@@ -2779,5 +2775,20 @@ void crocksdb_delete_file_in_range_cf(
 }
 
 void crocksdb_free(void* ptr) { free(ptr); }
+
+crocksdb_logger_t *crocksdb_create_log_from_options(const char *path,
+                                                    crocksdb_options_t *opts,
+                                                    char **errptr) {
+  crocksdb_logger_t *logger = new crocksdb_logger_t;
+  if (SaveError(errptr, CreateLoggerFromOptions(std::string(path), opts->rep,
+                                                &logger->rep))) {
+    delete logger;
+    return NULL;
+  }
+
+  return logger;
+}
+
+void crocksdb_log_destroy(crocksdb_logger_t *logger) { delete logger; }
 
 }  // end extern "C"

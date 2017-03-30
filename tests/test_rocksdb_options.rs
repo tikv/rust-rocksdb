@@ -11,9 +11,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use rocksdb::{DB, Options, WriteOptions, SliceTransform};
+use rocksdb::{DB, Options, BlockBasedOptions, WriteOptions, SliceTransform, Writable};
 use rocksdb::crocksdb_ffi::{DBStatisticsHistogramType as HistogramType,
-                            DBStatisticsTickerType as TickerType};
+                            DBStatisticsTickerType as TickerType, DBInfoLogLevel as InfoLogLevel};
+use std::path::Path;
+use std::thread;
+use std::time::Duration;
 use tempdir::TempDir;
 
 
@@ -119,6 +122,78 @@ fn test_set_ratelimiter() {
     drop(db);
 }
 
+#[test]
+fn test_set_wal_opt() {
+    let path = TempDir::new("_rust_rocksdb_test_set_wal_opt").expect("");
+    let mut opts = Options::new();
+    opts.create_if_missing(true);
+    opts.set_wal_ttl_seconds(86400);
+    opts.set_wal_size_limit_mb(10);
+    let wal_dir = TempDir::new("_rust_rocksdb_test_set_wal_dir").expect("");
+    opts.set_wal_dir(wal_dir.path().to_str().unwrap());
+    let db = DB::open(opts, path.path().to_str().unwrap()).unwrap();
+    drop(db);
+}
+
+#[test]
+fn test_create_info_log() {
+    let path = TempDir::new("_rust_rocksdb_test_create_info_log_opt").expect("");
+    let mut opts = Options::new();
+    opts.create_if_missing(true);
+    opts.set_info_log_level(InfoLogLevel::DBDebug);
+    opts.set_log_file_time_to_roll(1);
+
+    let info_dir = TempDir::new("_rust_rocksdb_test_info_log_dir").expect("");
+    opts.create_info_log(info_dir.path().to_str().unwrap()).unwrap();
+
+    let db = DB::open(opts, path.path().to_str().unwrap()).unwrap();
+    assert!(Path::new(info_dir.path().join("LOG").to_str().unwrap()).is_file());
+
+    thread::sleep(Duration::from_secs(2));
+
+    for i in 0..200 {
+        db.put(format!("k_{}", i).as_bytes(), b"v").unwrap();
+        db.flush(true).unwrap();
+    }
+
+    drop(db);
+
+    // The LOG must be rolled many times.
+    let count = info_dir.path().read_dir().unwrap().count();
+    assert!(count > 1);
+}
+
+#[test]
+fn test_auto_roll_max_size_info_log() {
+    let path = TempDir::new("_rust_rocksdb_test_max_size_info_log_opt").expect("");
+    let mut opts = Options::new();
+    opts.create_if_missing(true);
+    opts.set_max_log_file_size(10);
+
+    let info_dir = TempDir::new("_rust_rocksdb_max_size_info_log_dir").expect("");
+    opts.create_info_log(info_dir.path().to_str().unwrap()).unwrap();
+
+    let db = DB::open(opts, path.path().to_str().unwrap()).unwrap();
+    assert!(Path::new(info_dir.path().join("LOG").to_str().unwrap()).is_file());
+
+    drop(db);
+
+    // The LOG must be rolled many times.
+    let count = info_dir.path().read_dir().unwrap().count();
+    assert!(count > 1);
+}
+
+#[test]
+fn test_set_pin_l0_filter_and_index_blocks_in_cache() {
+    let path = TempDir::new("_rust_rocksdb_set_cache_and_index").expect("");
+    let mut opts = Options::new();
+    opts.create_if_missing(true);
+    let mut block_opts = BlockBasedOptions::new();
+    block_opts.set_pin_l0_filter_and_index_blocks_in_cache(true);
+    opts.set_block_based_table_factory(&block_opts);
+    let db = DB::open(opts, path.path().to_str().unwrap()).unwrap();
+    drop(db);
+}
 #[test]
 fn test_pending_compaction_bytes_limit() {
     let path = TempDir::new("_rust_rocksdb_pending_compaction_bytes_limit").expect("");

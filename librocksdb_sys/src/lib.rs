@@ -42,6 +42,7 @@ pub enum DBBackupEngine {}
 pub enum DBRestoreOptions {}
 pub enum DBSliceTransform {}
 pub enum DBRateLimiter {}
+pub enum DBLogger {}
 
 pub fn new_bloom_filter(bits: c_int) -> *mut DBFilterPolicy {
     unsafe { crocksdb_filterpolicy_create_bloom(bits) }
@@ -133,6 +134,18 @@ pub enum DBStatisticsHistogramType {
     DbSeekMicros = 19,
 }
 
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub enum DBInfoLogLevel {
+    DBDebug = 0,
+    DBInfo = 1,
+    DBWarn = 2,
+    DBError = 3,
+    DBFatal = 4,
+    DBHeader = 5,
+    DBNumInfoLog = 6,
+}
+
 pub fn error_message(ptr: *mut c_char) -> String {
     let c_str = unsafe { CStr::from_ptr(ptr) };
     let s = format!("{}", c_str.to_string_lossy());
@@ -158,6 +171,8 @@ macro_rules! ffi_try {
 // TODO audit the use of boolean arguments, b/c I think they need to be u8
 // instead...
 extern "C" {
+    pub fn crocksdb_get_options(db: *mut DBInstance) -> *mut DBOptions;
+    pub fn crocksdb_get_options_cf(db: *mut DBInstance, cf: *mut DBCFHandle) -> *mut DBOptions;
     pub fn crocksdb_options_create() -> *mut DBOptions;
     pub fn crocksdb_options_destroy(opts: *mut DBOptions);
     pub fn crocksdb_cache_create_lru(capacity: size_t) -> *mut DBCache;
@@ -190,6 +205,8 @@ extern "C" {
     pub fn crocksdb_options_set_block_based_table_factory(
         options: *mut DBOptions,
         block_options: *mut DBBlockBasedTableOptions);
+    pub fn crocksdb_block_based_options_set_pin_l0_filter_and_index_blocks_in_cache(
+        block_options: *mut DBBlockBasedTableOptions, v: c_uchar);
     pub fn crocksdb_options_increase_parallelism(options: *mut DBOptions, threads: c_int);
     pub fn crocksdb_options_optimize_level_style_compaction(options: *mut DBOptions,
                                                             memtable_memory_budget: c_int);
@@ -200,7 +217,6 @@ extern "C" {
     pub fn crocksdb_options_set_max_total_wal_size(options: *mut DBOptions, size: u64);
     pub fn crocksdb_options_set_use_fsync(options: *mut DBOptions, v: c_int);
     pub fn crocksdb_options_set_bytes_per_sync(options: *mut DBOptions, bytes: u64);
-    pub fn crocksdb_options_set_disable_data_sync(options: *mut DBOptions, v: c_int);
     pub fn crocksdb_options_optimize_for_point_lookup(options: *mut DBOptions,
                                                       block_cache_size_mb: u64);
     pub fn crocksdb_options_set_table_cache_numshardbits(options: *mut DBOptions, bits: c_int);
@@ -219,6 +235,8 @@ extern "C" {
     pub fn crocksdb_options_set_max_bytes_for_level_multiplier(options: *mut DBOptions,
                                                                mul: c_int);
     pub fn crocksdb_options_set_max_log_file_size(options: *mut DBOptions, bytes: size_t);
+    pub fn crocksdb_options_set_log_file_time_to_roll(options: *mut DBOptions, bytes: size_t);
+    pub fn crocksdb_options_set_info_log_level(options: *mut DBOptions, level: DBInfoLogLevel);
     pub fn crocksdb_options_set_keep_log_file_num(options: *mut DBOptions, num: size_t);
     pub fn crocksdb_options_set_max_manifest_file_size(options: *mut DBOptions, bytes: u64);
     pub fn crocksdb_options_set_hash_skip_list_rep(options: *mut DBOptions,
@@ -261,6 +279,9 @@ extern "C" {
     pub fn crocksdb_options_set_stats_dump_period_sec(options: *mut DBOptions, v: usize);
     pub fn crocksdb_options_set_num_levels(options: *mut DBOptions, v: c_int);
     pub fn crocksdb_options_set_db_log_dir(options: *mut DBOptions, path: *const c_char);
+    pub fn crocksdb_options_set_wal_dir(options: *mut DBOptions, path: *const c_char);
+    pub fn crocksdb_options_set_wal_ttl_seconds(options: *mut DBOptions, ttl: u64);
+    pub fn crocksdb_options_set_wal_size_limit_mb(options: *mut DBOptions, limit: u64);
     pub fn crocksdb_options_set_prefix_extractor(options: *mut DBOptions,
                                                  prefix_extractor: *mut DBSliceTransform);
     pub fn crocksdb_options_set_memtable_insert_with_hint_prefix_extractor(options: *mut DBOptions,
@@ -268,6 +289,7 @@ extern "C" {
     pub fn crocksdb_options_set_memtable_prefix_bloom_size_ratio(options: *mut DBOptions,
                                                                  ratio: c_double);
     pub fn crocksdb_options_set_ratelimiter(options: *mut DBOptions, limiter: *mut DBRateLimiter);
+    pub fn crocksdb_options_set_info_log(options: *mut DBOptions, logger: *mut DBLogger);
     pub fn crocksdb_ratelimiter_create(rate_bytes_per_sec: i64,
                                        refill_period_us: i64,
                                        fairness: i32)
@@ -286,7 +308,7 @@ extern "C" {
     pub fn crocksdb_writeoptions_create() -> *mut DBWriteOptions;
     pub fn crocksdb_writeoptions_destroy(writeopts: *mut DBWriteOptions);
     pub fn crocksdb_writeoptions_set_sync(writeopts: *mut DBWriteOptions, v: bool);
-    pub fn crocksdb_writeoptions_disable_WAL(writeopts: *mut DBWriteOptions, v: c_int);
+    pub fn crocksdb_writeoptions_disable_wal(writeopts: *mut DBWriteOptions, v: c_int);
     pub fn crocksdb_put(db: *mut DBInstance,
                         writeopts: *mut DBWriteOptions,
                         k: *const u8,
@@ -633,11 +655,13 @@ extern "C" {
 
     // SstFileWriter
     pub fn crocksdb_sstfilewriter_create(env: *mut EnvOptions,
-                                         io_options: *const DBOptions)
+                                         io_options: *const DBOptions,
+                                         cf: *mut DBCFHandle)
                                          -> *mut SstFileWriter;
     pub fn crocksdb_sstfilewriter_create_with_comparator(env: *mut EnvOptions,
                                                          io_options: *const DBOptions,
-                                                         comparator: *const DBComparator)
+                                                         comparator: *const DBComparator,
+                                                         cf: *mut DBCFHandle)
                                                          -> *mut SstFileWriter;
     pub fn crocksdb_sstfilewriter_open(writer: *mut SstFileWriter,
                                        name: *const c_char,
@@ -700,6 +724,11 @@ extern "C" {
                                           name: extern "C" fn(*mut c_void) -> *const c_char)
                                           -> *mut DBSliceTransform;
     pub fn crocksdb_slicetransform_destroy(transform: *mut DBSliceTransform);
+    pub fn crocksdb_create_log_from_options(path: *const c_char,
+                                            options: *mut DBOptions,
+                                            err: *mut *mut c_char)
+                                            -> *mut DBLogger;
+    pub fn crocksdb_log_destroy(logger: *mut DBLogger);
 }
 
 #[cfg(test)]

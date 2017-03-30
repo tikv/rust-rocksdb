@@ -1486,9 +1486,9 @@ void crocksdb_options_set_block_based_table_factory(
 size_t crocksdb_options_get_block_cache_usage(crocksdb_options_t *opt) {
   if (opt) {
     if (opt->rep.table_factory != nullptr) {
-      void* block_based_table_opt = opt->rep.table_factory->GetOptions();
-      if (block_based_table_opt) {
-        return static_cast<BlockBasedTableOptions*>(block_based_table_opt)->block_cache->GetUsage();
+      void* table_opt = opt->rep.table_factory->GetOptions();
+      if (table_opt && strcmp(opt->rep.table_factory->Name(), "BlockBasedTable") == 0) {
+        return static_cast<BlockBasedTableOptions*>(table_opt)->block_cache->GetUsage();
       }
     }
   }

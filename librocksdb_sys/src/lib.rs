@@ -72,8 +72,8 @@ pub enum DBCompactionStyle {
 
 #[repr(C)]
 pub enum DBUniversalCompactionStyle {
-    crocksdb_similar_size_compaction_stop_style = 0,
-    crocksdb_total_size_compaction_stop_style = 1,
+    SimilarSizeCompactionStopStyle = 0,
+    TotalSizeCompactionStopStyle = 1,
 }
 
 #[derive(Copy, Clone, PartialEq)]

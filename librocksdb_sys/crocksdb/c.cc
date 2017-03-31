@@ -85,6 +85,8 @@ using std::shared_ptr;
 
 extern "C" {
 
+const char* block_base_table_str = "BlockBasedTable";
+
 struct crocksdb_t                 { DB*               rep; };
 struct crocksdb_backup_engine_t   { BackupEngine*     rep; };
 struct crocksdb_backup_engine_info_t { std::vector<BackupInfo> rep; };
@@ -1484,12 +1486,10 @@ void crocksdb_options_set_block_based_table_factory(
 }
 
 size_t crocksdb_options_get_block_cache_usage(crocksdb_options_t *opt) {
-  if (opt) {
-    if (opt->rep.table_factory != nullptr) {
-      void* table_opt = opt->rep.table_factory->GetOptions();
-      if (table_opt && strcmp(opt->rep.table_factory->Name(), "BlockBasedTable") == 0) {
-        return static_cast<BlockBasedTableOptions*>(table_opt)->block_cache->GetUsage();
-      }
+  if (opt && opt->rep.table_factory != nullptr) {
+    void* table_opt = opt->rep.table_factory->GetOptions();
+    if (table_opt && strcmp(opt->rep.table_factory->Name(), block_base_table_str) == 0) {
+      return static_cast<BlockBasedTableOptions*>(table_opt)->block_cache->GetUsage();
     }
   }
   return 0;

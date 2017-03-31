@@ -72,8 +72,8 @@ pub enum DBCompactionStyle {
 
 #[repr(C)]
 pub enum DBUniversalCompactionStyle {
-    SimilarSizeCompactionStopStyle = 0,
-    TotalSizeCompactionStopStyle = 1,
+    SimilarSize = 0,
+    TotalSize = 1,
 }
 
 #[derive(Copy, Clone, PartialEq)]

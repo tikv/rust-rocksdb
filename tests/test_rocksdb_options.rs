@@ -210,5 +210,5 @@ fn test_set_max_subcompactions() {
     let mut opts = Options::new();
     opts.create_if_missing(true);
     opts.set_max_subcompactions(4);
-    let db = DB::open(opts, path.path().to_str().unwrap()).unwrap();
+    DB::open(opts, path.path().to_str().unwrap()).unwrap();
 }

@@ -1,3 +1,4 @@
+sudo: false 
 language: rust
 
 rust:
@@ -8,6 +9,17 @@ rust:
 os:
   - linux
   - osx
+
+matrix:
+  include:
+    - os: linux
+      env: COMPILER=g++-4.8 CXX=g++-4.8
+      addons:
+         apt:
+            sources: ['ubuntu-toolchain-r-test']
+            packages: ['g++-4.8', 'zlib1g-dev', 'libbz2-dev', 'libsnappy-dev', 'curl', 'libdw-dev', 'libelf-dev', 'elfutils', 'binutils-dev']
+    - os: osx
+      env: COMPILER=clang++ CXX=clang++
 
 script:
   - make test

@@ -204,6 +204,15 @@ fn test_pending_compaction_bytes_limit() {
     let db = DB::open(opts, path.path().to_str().unwrap()).unwrap();
 }
 
+#[test]
+fn test_set_max_subcompactions() {
+    let path = TempDir::new("_rust_rocksdb_max_subcompactions").expect("");
+    let mut opts = Options::new();
+    opts.create_if_missing(true);
+    opts.set_max_subcompactions(4);
+    DB::open(opts, path.path().to_str().unwrap()).unwrap();
+}
+
 
 #[test]
 fn test_get_block_cache_usage() {

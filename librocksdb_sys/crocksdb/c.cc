@@ -1485,6 +1485,10 @@ void crocksdb_options_set_block_based_table_factory(
   }
 }
 
+void crocksdb_options_set_max_subcompactions(crocksdb_options_t *opt, size_t v) {
+  opt->rep.max_subcompactions = v;
+}
+
 size_t crocksdb_options_get_block_cache_usage(crocksdb_options_t *opt) {
   if (opt && opt->rep.table_factory != nullptr) {
     void* table_opt = opt->rep.table_factory->GetOptions();

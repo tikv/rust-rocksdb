@@ -191,8 +191,7 @@ fn test_set_pin_l0_filter_and_index_blocks_in_cache() {
     let mut block_opts = BlockBasedOptions::new();
     block_opts.set_pin_l0_filter_and_index_blocks_in_cache(true);
     opts.set_block_based_table_factory(&block_opts);
-    let db = DB::open(opts, path.path().to_str().unwrap()).unwrap();
-    drop(db);
+    DB::open(opts, path.path().to_str().unwrap()).unwrap();
 }
 #[test]
 fn test_pending_compaction_bytes_limit() {
@@ -201,7 +200,7 @@ fn test_pending_compaction_bytes_limit() {
     opts.create_if_missing(true);
     opts.set_soft_pending_compaction_bytes_limit(64 * 1024 * 1024 * 1024);
     opts.set_hard_pending_compaction_bytes_limit(256 * 1024 * 1024 * 1024);
-    let db = DB::open(opts, path.path().to_str().unwrap()).unwrap();
+    DB::open(opts, path.path().to_str().unwrap()).unwrap();
 }
 
 #[test]
@@ -213,11 +212,13 @@ fn test_set_max_subcompactions() {
     DB::open(opts, path.path().to_str().unwrap()).unwrap();
 }
 
-
 #[test]
 fn test_get_block_cache_usage() {
     let path = TempDir::new("_rust_rocksdb_set_cache_and_index").expect("");
+
     let mut opts = Options::new();
+    assert_eq!(opts.get_block_cache_usage(), 0);
+
     opts.create_if_missing(true);
     let mut block_opts = BlockBasedOptions::new();
     block_opts.set_lru_cache(16 * 1024 * 1024);
@@ -233,7 +234,4 @@ fn test_get_block_cache_usage() {
     }
 
     assert!(db.get_options().get_block_cache_usage() > 0);
-
-    let opts = Options::new();
-    assert_eq!(opts.get_block_cache_usage(), 0);
 }

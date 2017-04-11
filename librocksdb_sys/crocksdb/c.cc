@@ -1042,6 +1042,14 @@ void crocksdb_flush(
   SaveError(errptr, db->rep->Flush(options->rep));
 }
 
+void crocksdb_flush_cf(
+    crocksdb_t* db,
+    const crocksdb_flushoptions_t* options,
+    crocksdb_column_family_handle_t* column_family,
+    char** errptr) {
+  SaveError(errptr, db->rep->Flush(options->rep, column_family->rep));
+}
+
 void crocksdb_disable_file_deletions(
     crocksdb_t* db,
     char** errptr) {

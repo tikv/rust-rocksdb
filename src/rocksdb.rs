@@ -733,7 +733,7 @@ impl DB {
         unsafe {
             let mut opts = FlushOptions::new();
             opts.set_wait(sync);
-            ffi_try!(crocksdb_flush_cf(self.inner, opts.inner, cf.inner));
+            ffi_try!(crocksdb_flush_cf(self.inner, cf.inner, opts.inner));
             Ok(())
         }
     }

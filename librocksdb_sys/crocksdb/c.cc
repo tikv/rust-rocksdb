@@ -1044,8 +1044,8 @@ void crocksdb_flush(
 
 void crocksdb_flush_cf(
     crocksdb_t* db,
-    const crocksdb_flushoptions_t* options,
     crocksdb_column_family_handle_t* column_family,
+    const crocksdb_flushoptions_t* options,
     char** errptr) {
   SaveError(errptr, db->rep->Flush(options->rep, column_family->rep));
 }

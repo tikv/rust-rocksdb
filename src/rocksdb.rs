@@ -1802,7 +1802,8 @@ mod test {
         }
         db.flush_cf(cf_handle, true).unwrap();
 
-        let total_sst_files_size = db.get_property_int_cf(cf_handle, "rocksdb.total-sst-files-size").unwrap();
+        let total_sst_files_size = db.get_property_int_cf(cf_handle, "rocksdb.total-sst-files-size")
+            .unwrap();
         assert!(total_sst_files_size > 0);
     }
 }

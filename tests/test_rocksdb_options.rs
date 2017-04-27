@@ -244,3 +244,13 @@ fn test_get_block_cache_usage() {
 
     assert!(db.get_options().get_block_cache_usage() > 0);
 }
+
+#[test]
+fn test_direct_read_write() {
+    let path = TempDir::new("_rust_rocksdb_direct_read_write").expect("");
+    let mut opts = Options::new();
+    opts.create_if_missing(true);
+    opts.set_use_direct_reads(true);
+    opts.set_use_direct_writes(true);
+    DB::open(opts, path.path().to_str().unwrap()).unwrap();
+}

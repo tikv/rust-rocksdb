@@ -800,9 +800,7 @@ impl Options {
     }
 
     pub fn get_block_cache_usage(&self) -> u64 {
-        unsafe {
-            crocksdb_ffi::crocksdb_options_get_block_cache_usage(self.inner) as u64
-        }
+        unsafe { crocksdb_ffi::crocksdb_options_get_block_cache_usage(self.inner) as u64 }
     }
 }
 

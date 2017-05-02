@@ -248,6 +248,8 @@ extern "C" {
     pub fn crocksdb_options_set_compression_per_level(options: *mut DBOptions,
                                                       level_values: *const DBCompressionType,
                                                       num_levels: size_t);
+    pub fn crocksdb_options_set_base_background_compactions(optinos: *mut DBOptions,
+                                                            base_bg_compactions: c_int);
     pub fn crocksdb_options_set_max_background_compactions(options: *mut DBOptions,
                                                            max_bg_compactions: c_int);
     pub fn crocksdb_options_set_max_background_flushes(options: *mut DBOptions,
@@ -582,8 +584,7 @@ extern "C" {
                              cf: *mut DBCFHandle,
                              options: *const DBFlushOptions,
                              err: *mut *mut c_char);
-    pub fn crocksdb_sync_wal(db: *mut DBInstance,
-                             err: *mut *mut c_char);
+    pub fn crocksdb_sync_wal(db: *mut DBInstance, err: *mut *mut c_char);
 
     pub fn crocksdb_approximate_sizes(db: *mut DBInstance,
                                       num_ranges: c_int,

@@ -274,3 +274,12 @@ fn test_set_level_compaction_dynamic_level_bytes() {
     opts.set_level_compaction_dynamic_level_bytes(true);
     DB::open(opts, path.path().to_str().unwrap()).unwrap();
 }
+
+#[test]
+fn test_set_base_background_compactions() {
+    let path = TempDir::new("_rust_rocksdb_base_background_compactions").expect("");
+    let mut opts = Options::new();
+    opts.create_if_missing(true);
+    opts.set_base_background_compactions(4);
+    DB::open(opts, path.path().to_str().unwrap()).unwrap();
+}

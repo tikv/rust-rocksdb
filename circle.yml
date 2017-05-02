@@ -41,7 +41,7 @@ dependencies:
       else
         rustup default "nightly-${RUSTC_DATE}";
       fi
-    - make -f travis-build/Makefile prepare-rustfmt
+    - cargo install rustfmt
   post:
     # cargo test also use debug
     - cargo build --features "static-link":
@@ -52,6 +52,6 @@ dependencies:
 
 test:
   override:
-    - make format && git diff-index --quiet HEAD -- || (echo please make format and run tests before creating a pr!; exit 1)
+    - cargo fmt && git diff-index --quiet HEAD -- || (echo please make format and run tests before creating a pr!; exit 1)
     - cargo test --features "static-link" -- --nocapture
     - cargo test --features "static-link" --bench benches -- --nocapture

@@ -615,6 +615,13 @@ extern "C" {
                                      start_key_len: size_t,
                                      limit_key: *const u8,
                                      limit_key_len: size_t);
+    pub fn crocksdb_compact_range_cf_opt(db: *mut DBInstance,
+                                         cf: *mut DBCFHandle,
+                                         compact_options: *mut DBCompactOptions,
+                                         start_key: *const u8,
+                                         start_key_len: size_t,
+                                         limit_key: *const u8,
+                                         limit_key_len: size_t);
     pub fn crocksdb_delete_file_in_range(db: *mut DBInstance,
                                          range_start_key: *const u8,
                                          range_start_key_len: size_t,

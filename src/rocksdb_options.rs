@@ -19,7 +19,7 @@ use comparator::{self, ComparatorCallback, compare_callback};
 use crocksdb_ffi::{self, DBOptions, DBWriteOptions, DBBlockBasedTableOptions, DBReadOptions,
                    DBRestoreOptions, DBCompressionType, DBRecoveryMode, DBSnapshot, DBInstance,
                    DBFlushOptions, DBStatisticsTickerType, DBStatisticsHistogramType,
-                   DBRateLimiter, DBInfoLogLevel};
+                   DBRateLimiter, DBInfoLogLevel, DBCompactOptions};
 use libc::{self, c_int, size_t, c_void};
 use merge_operator::{self, MergeOperatorCallback, full_merge_callback, partial_merge_callback};
 use merge_operator::MergeFn;

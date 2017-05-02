@@ -1,13 +1,26 @@
 language: rust
-
+sudo: required
 rust:
-  - stable
-  - beta
-  - nightly
+- beta
+- nightly
+- stable
 
 os:
   - linux
   - osx
 
+before_script:
+- |
+  pip install 'travis-cargo<0.2' --user &&
+  export PATH=$HOME/.local/bin:$PATH
+
 script:
-  - rustc -Z parse-only src/lib.rs
+- |
+  travis-cargo build -- --all-features &&
+  travis-cargo test -- --all-features &&
+  travis-cargo --only stable doc -- --all-features
+
+env:
+  global:
+  - RUST_TEST_THREADS=1
+  - LD_LIBRARY_PATH: "/usr/local/lib"

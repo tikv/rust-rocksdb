@@ -12,9 +12,6 @@ os:
 
 before_script:
 - |
-  sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y &
-  sudo apt-get update -y &&
-  sudo apt-get install -y g++-4.8 zlib1g-dev libbz2-dev libsnappy-dev curl libdw-dev libelf-dev elfutils binutils-dev &
   sudo pip install travis-cargo
 
 script:

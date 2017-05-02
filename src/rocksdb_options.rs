@@ -262,6 +262,30 @@ impl WriteOptions {
     }
 }
 
+pub struct CompactOptions {
+    pub inner: *mut DBCompactOptions,
+}
+
+impl CompactOptions {
+    pub fn new() -> CompactOptions {
+        unsafe { CompactOptions { inner: crocksdb_ffi::crocksdb_compactoptions_create() } }
+    }
+
+    pub fn set_exclusive_manual_compaction(&mut self, v: bool) {
+        unsafe {
+            crocksdb_ffi::crocksdb_compactoptions_set_exclusive_manual_compaction(self.inner, v);
+        }
+    }
+}
+
+impl Drop for CompactOptions {
+    fn drop(&mut self) {
+        unsafe {
+            crocksdb_ffi::crocksdb_compactoptions_destroy(self.inner);
+        }
+    }
+}
+
 pub struct Options {
     pub inner: *mut DBOptions,
     filter: Option<CompactionFilterHandle>,

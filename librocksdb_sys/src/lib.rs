@@ -43,6 +43,7 @@ pub enum DBRestoreOptions {}
 pub enum DBSliceTransform {}
 pub enum DBRateLimiter {}
 pub enum DBLogger {}
+pub enum DBCompactOptions {}
 
 pub fn new_bloom_filter(bits: c_int) -> *mut DBFilterPolicy {
     unsafe { crocksdb_filterpolicy_create_bloom(bits) }
@@ -583,8 +584,7 @@ extern "C" {
                              cf: *mut DBCFHandle,
                              options: *const DBFlushOptions,
                              err: *mut *mut c_char);
-    pub fn crocksdb_sync_wal(db: *mut DBInstance,
-                             err: *mut *mut c_char);
+    pub fn crocksdb_sync_wal(db: *mut DBInstance, err: *mut *mut c_char);
 
     pub fn crocksdb_approximate_sizes(db: *mut DBInstance,
                                       num_ranges: c_int,
@@ -601,6 +601,10 @@ extern "C" {
                                          range_limit_key: *const *const u8,
                                          range_limit_key_len: *const size_t,
                                          sizes: *mut uint64_t);
+    pub fn crocksdb_compactoptions_create() -> *mut DBCompactOptions;
+    pub fn crocksdb_compactoptions_destroy(opt: *mut DBCompactOptions);
+    pub fn crocksdb_compactoptions_set_exclusive_manual_compaction(opt: *mut DBCompactOptions,
+                                                                   v: bool);
     pub fn crocksdb_compact_range(db: *mut DBInstance,
                                   start_key: *const u8,
                                   start_key_len: size_t,

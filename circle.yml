@@ -42,16 +42,24 @@ dependencies:
         rustup default "nightly-${RUSTC_DATE}";
       fi
     - cargo install rustfmt
+    - |
+      if [[ ! -e $HOME/.local/lib/librocksdb.so ]]; then
+        export CPLUS_INCLUDE_PATH="${LOCAL_PREFIX}/include" && \
+        cd /tmp && \
+        curl -L https://github.com/facebook/rocksdb/archive/v5.2.1.tar.gz -o rocksdb.tar.gz && \
+        tar xf rocksdb.tar.gz && \
+        cd rocksdb-5.2.1 && \
+        INSTALL_PATH=${LOCAL_PREFIX} make -j install-shared;
+      fi
   post:
     # cargo test also use debug
-    - cargo build --features "static-link":
+    - cargo build -v:
         timeout: 1800
-    - cargo test --features "static-link" --no-run:
+    - cargo test --v --no-run:
         timeout: 1800
 
 
 test:
   override:
     - cargo fmt && git diff-index --quiet HEAD -- || (echo please make format and run tests before creating a pr!; exit 1)
-    - cargo test --features "static-link" -- --nocapture
-    - cargo test --features "static-link" --bench benches -- --nocapture
+    - cargo test -- --nocapture

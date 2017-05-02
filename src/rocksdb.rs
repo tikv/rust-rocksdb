@@ -744,6 +744,17 @@ impl DB {
         }
     }
 
+    /// Sync the wal. Note that Write() followed by SyncWAL() is not exactly the
+    /// same as Write() with sync=true: in the latter case the changes won't be
+    /// visible until the sync is done.
+    /// Currently only works if allow_mmap_writes = false in Options.
+    pub fn sync_wal(&self) -> Result<(), String> {
+        unsafe {
+            ffi_try!(crocksdb_sync_wal(self.inner));
+            Ok(())
+        }
+    }
+
     /// Return the approximate file system space used by keys in each ranges.
     ///
     /// Note that the returned sizes measure file system space usage, so
@@ -1343,12 +1354,20 @@ pub struct SstFileWriter {
 unsafe impl Send for SstFileWriter {}
 
 impl SstFileWriter {
-    pub fn new(env_opt: &EnvOptions, opt: &Options, cf: &CFHandle) -> SstFileWriter {
+    pub fn new(env_opt: &EnvOptions, opt: &Options) -> SstFileWriter {
         unsafe {
             SstFileWriter {
-                inner: crocksdb_ffi::crocksdb_sstfilewriter_create(env_opt.inner,
-                                                                   opt.inner,
-                                                                   cf.inner),
+                inner: crocksdb_ffi::crocksdb_sstfilewriter_create(env_opt.inner, opt.inner),
+            }
+        }
+    }
+
+    pub fn new_cf(env_opt: &EnvOptions, opt: &Options, cf: &CFHandle) -> SstFileWriter {
+        unsafe {
+            SstFileWriter {
+                inner: crocksdb_ffi::crocksdb_sstfilewriter_create_cf(env_opt.inner,
+                                                                      opt.inner,
+                                                                      cf.inner),
             }
         }
     }

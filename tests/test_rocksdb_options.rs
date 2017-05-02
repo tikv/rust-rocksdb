@@ -136,6 +136,17 @@ fn test_set_wal_opt() {
 }
 
 #[test]
+fn test_sync_wal() {
+    let path = TempDir::new("_rust_rocksdb_test_sync_wal").expect("");
+    let mut opts = Options::new();
+    opts.create_if_missing(true);
+    let db = DB::open(opts, path.path().to_str().unwrap()).unwrap();
+    db.put(b"key", b"value").unwrap();
+    db.sync_wal().unwrap();
+    drop(db);
+}
+
+#[test]
 fn test_create_info_log() {
     let path = TempDir::new("_rust_rocksdb_test_create_info_log_opt").expect("");
     let mut opts = Options::new();
@@ -213,6 +224,16 @@ fn test_set_max_subcompactions() {
 }
 
 #[test]
+fn test_set_bytes_per_sync() {
+    let path = TempDir::new("_rust_rocksdb_bytes_per_sync").expect("");
+    let mut opts = Options::new();
+    opts.create_if_missing(true);
+    opts.set_bytes_per_sync(1024 * 1024);
+    opts.set_wal_bytes_per_sync(1024 * 1024);
+    DB::open(opts, path.path().to_str().unwrap()).unwrap();
+}
+
+#[test]
 fn test_set_optimize_filters_for_hits() {
     let path = TempDir::new("_rust_rocksdb_optimize_filters_for_hits").expect("");
     let mut opts = Options::new();
@@ -243,6 +264,15 @@ fn test_get_block_cache_usage() {
     }
 
     assert!(db.get_options().get_block_cache_usage() > 0);
+}
+
+#[test]
+fn test_set_level_compaction_dynamic_level_bytes() {
+    let path = TempDir::new("_rust_rocksdb_level_compaction_dynamic_level_bytes").expect("");
+    let mut opts = Options::new();
+    opts.create_if_missing(true);
+    opts.set_level_compaction_dynamic_level_bytes(true);
+    DB::open(opts, path.path().to_str().unwrap()).unwrap();
 }
 
 #[test]

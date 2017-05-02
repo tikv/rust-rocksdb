@@ -360,6 +360,9 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_flush_cf(
     crocksdb_t* db, crocksdb_column_family_handle_t* column_family,
     const crocksdb_flushoptions_t* options, char** errptr);
 
+extern C_ROCKSDB_LIBRARY_API void crocksdb_sync_wal(
+    crocksdb_t* db, char** errptr);
+
 extern C_ROCKSDB_LIBRARY_API void crocksdb_disable_file_deletions(crocksdb_t* db,
                                                                char** errptr);
 
@@ -787,6 +790,8 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_compaction_readahead_size
     crocksdb_options_t*, size_t);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_max_subcompactions(
     crocksdb_options_t*, size_t);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_wal_bytes_per_sync(
+    crocksdb_options_t*, uint64_t);
 
 enum {
   crocksdb_tolerate_corrupted_tail_records_recovery = 0,
@@ -998,6 +1003,9 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_envoptions_destroy(
 
 extern C_ROCKSDB_LIBRARY_API crocksdb_sstfilewriter_t*
 crocksdb_sstfilewriter_create(const crocksdb_envoptions_t* env,
+                              const crocksdb_options_t* io_options);
+extern C_ROCKSDB_LIBRARY_API crocksdb_sstfilewriter_t*
+crocksdb_sstfilewriter_create_cf(const crocksdb_envoptions_t* env,
                              const crocksdb_options_t* io_options,
                              crocksdb_column_family_handle_t* column_family);
 extern C_ROCKSDB_LIBRARY_API crocksdb_sstfilewriter_t*

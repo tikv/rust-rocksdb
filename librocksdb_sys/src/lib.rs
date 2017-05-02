@@ -257,6 +257,7 @@ extern "C" {
     pub fn crocksdb_options_set_compaction_readahead_size(options: *mut DBOptions, v: size_t);
     pub fn crocksdb_options_set_wal_recovery_mode(options: *mut DBOptions, mode: DBRecoveryMode);
     pub fn crocksdb_options_set_max_subcompactions(options: *mut DBOptions, v: size_t);
+    pub fn crocksdb_options_set_wal_bytes_per_sync(options: *mut DBOptions, v: u64);
     pub fn crocksdb_options_enable_statistics(options: *mut DBOptions);
     pub fn crocksdb_options_statistics_get_string(options: *mut DBOptions) -> *const c_char;
     pub fn crocksdb_options_statistics_get_ticker_count(options: *mut DBOptions,
@@ -287,6 +288,8 @@ extern "C" {
     pub fn crocksdb_options_set_prefix_extractor(options: *mut DBOptions,
                                                  prefix_extractor: *mut DBSliceTransform);
     pub fn crocksdb_options_set_optimize_filters_for_hits(options: *mut DBOptions, v: bool);
+    pub fn crocksdb_options_set_level_compaction_dynamic_level_bytes(options: *mut DBOptions,
+                                                                     v: bool);
     pub fn crocksdb_options_set_memtable_insert_with_hint_prefix_extractor(options: *mut DBOptions,
                                                  prefix_extractor: *mut DBSliceTransform);
     pub fn crocksdb_options_set_memtable_prefix_bloom_size_ratio(options: *mut DBOptions,
@@ -581,6 +584,8 @@ extern "C" {
                              cf: *mut DBCFHandle,
                              options: *const DBFlushOptions,
                              err: *mut *mut c_char);
+    pub fn crocksdb_sync_wal(db: *mut DBInstance,
+                             err: *mut *mut c_char);
 
     pub fn crocksdb_approximate_sizes(db: *mut DBInstance,
                                       num_ranges: c_int,
@@ -663,9 +668,12 @@ extern "C" {
 
     // SstFileWriter
     pub fn crocksdb_sstfilewriter_create(env: *mut EnvOptions,
-                                         io_options: *const DBOptions,
-                                         cf: *mut DBCFHandle)
+                                         io_options: *const DBOptions)
                                          -> *mut SstFileWriter;
+    pub fn crocksdb_sstfilewriter_create_cf(env: *mut EnvOptions,
+                                            io_options: *const DBOptions,
+                                            cf: *mut DBCFHandle)
+                                            -> *mut SstFileWriter;
     pub fn crocksdb_sstfilewriter_create_with_comparator(env: *mut EnvOptions,
                                                          io_options: *const DBOptions,
                                                          comparator: *const DBComparator,

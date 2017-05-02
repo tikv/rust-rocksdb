@@ -1050,6 +1050,12 @@ void crocksdb_flush_cf(
   SaveError(errptr, db->rep->Flush(options->rep, column_family->rep));
 }
 
+void crocksdb_sync_wal(
+    crocksdb_t* db,
+    char** errptr) {
+  SaveError(errptr, db->rep->SyncWAL());
+}
+
 void crocksdb_disable_file_deletions(
     crocksdb_t* db,
     char** errptr) {
@@ -1495,6 +1501,10 @@ void crocksdb_options_set_block_based_table_factory(
 
 void crocksdb_options_set_max_subcompactions(crocksdb_options_t *opt, size_t v) {
   opt->rep.max_subcompactions = v;
+}
+
+void crocksdb_options_set_wal_bytes_per_sync(crocksdb_options_t *opt, uint64_t v) {
+  opt->rep.wal_bytes_per_sync = v;
 }
 
 size_t crocksdb_options_get_block_cache_usage(crocksdb_options_t *opt) {
@@ -2490,6 +2500,14 @@ crocksdb_envoptions_t* crocksdb_envoptions_create() {
 void crocksdb_envoptions_destroy(crocksdb_envoptions_t* opt) { delete opt; }
 
 crocksdb_sstfilewriter_t* crocksdb_sstfilewriter_create(
+    const crocksdb_envoptions_t* env, const crocksdb_options_t* io_options) {
+  crocksdb_sstfilewriter_t* writer = new crocksdb_sstfilewriter_t;
+  writer->rep =
+      new SstFileWriter(env->rep, io_options->rep, io_options->rep.comparator);
+  return writer;
+}
+
+crocksdb_sstfilewriter_t* crocksdb_sstfilewriter_create_cf(
     const crocksdb_envoptions_t* env, const crocksdb_options_t* io_options,
     crocksdb_column_family_handle_t* column_family) {
   crocksdb_sstfilewriter_t* writer = new crocksdb_sstfilewriter_t;

@@ -3,10 +3,14 @@
 set -e
 
 con=1
-if [[ -f /proc/cpuinfo ]]; then
-    con=`grep -c processor /proc/cpuinfo`
+if [ "$MAKE_PARALLELISM" ]; then
+  con=$MAKE_PARALLELISM
 else
-    con=`sysctl -n hw.ncpu 2>/dev/null || echo 1`
+  if [[ -f /proc/cpuinfo ]]; then
+      con=`grep -c processor /proc/cpuinfo`
+  else
+      con=`sysctl -n hw.ncpu 2>/dev/null || echo 1`
+  fi
 fi
 
 function error() {
@@ -106,11 +110,11 @@ function compile_rocksdb() {
         return
     fi
 
-    version=v5.1.2
-    vernum=5.1.2
+    version=v5.2.1
+    vernum=5.2.1
     echo building rocksdb-$version
     rm -rf rocksdb-$vernum
-    download https://github.com/facebook/rocksdb/archive/$version.tar.gz rocksdb-$version.tar.gz b682f574363edfea0e2f7dbf01fc0e5b
+    download https://github.com/facebook/rocksdb/archive/$version.tar.gz rocksdb-$version.tar.gz c4a436bc769a0c836bc2e3567e83a8aa
     tar xf rocksdb-$version.tar.gz
     wd=`pwd`
     cd rocksdb-$vernum

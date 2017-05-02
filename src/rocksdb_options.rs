@@ -473,6 +473,12 @@ impl Options {
         }
     }
 
+    pub fn set_level_compaction_dynamic_level_bytes(&mut self, v: bool) {
+        unsafe {
+            crocksdb_ffi::crocksdb_options_set_level_compaction_dynamic_level_bytes(self.inner, v);
+        }
+    }
+
     pub fn set_use_direct_reads(&mut self, v: bool) {
         unsafe {
             crocksdb_ffi::crocksdb_options_set_use_direct_reads(self.inner, v);
@@ -557,6 +563,12 @@ impl Options {
     pub fn set_max_subcompactions(&mut self, n: usize) {
         unsafe {
             crocksdb_ffi::crocksdb_options_set_max_subcompactions(self.inner, n);
+        }
+    }
+
+    pub fn set_wal_bytes_per_sync(&mut self, n: u64) {
+        unsafe {
+            crocksdb_ffi::crocksdb_options_set_wal_bytes_per_sync(self.inner, n);
         }
     }
 

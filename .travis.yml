@@ -16,9 +16,8 @@ before_script:
 
 script:
 - |
-  travis-cargo build -- --all-features &&
-  travis-cargo test -- --all-features &&
-  travis-cargo --only stable doc -- --all-features
+  cargo build --features static-link
+  cargo test --all --features static-link
 
 env:
   global:

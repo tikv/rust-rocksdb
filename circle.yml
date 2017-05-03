@@ -55,7 +55,7 @@ dependencies:
     # cargo test also use debug
     - cargo build -v:
         timeout: 1800
-    - cargo test --v --no-run:
+    - cargo test -v --no-run:
         timeout: 1800
 
 

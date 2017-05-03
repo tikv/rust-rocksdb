@@ -6,6 +6,10 @@ rust:
 - nightly
 - stable
 
+cache:
+  directories:
+  - target
+
 os:
   - linux
 #  - osx

@@ -11,13 +11,12 @@ os:
 #  - osx
 
 before_script:
-- |
-  sudo pip install travis-cargo
+- cargo install rustfmt
 
 script:
-- |
-  cargo build --features static-link
-  cargo test --all --features static-link
+- cargo fmt && git diff-index --quiet HEAD -- || (echo please make format and run tests before creating a pr!; exit 1)
+- cargo build --features static-link
+- cargo test --all --features static-link
 
 env:
   global:

@@ -19,7 +19,7 @@ use comparator::{self, ComparatorCallback, compare_callback};
 use crocksdb_ffi::{self, DBOptions, DBWriteOptions, DBBlockBasedTableOptions, DBReadOptions,
                    DBRestoreOptions, DBCompressionType, DBRecoveryMode, DBSnapshot, DBInstance,
                    DBFlushOptions, DBStatisticsTickerType, DBStatisticsHistogramType,
-                   DBRateLimiter, DBInfoLogLevel};
+                   DBRateLimiter, DBInfoLogLevel, DBCompactOptions};
 use libc::{self, c_int, size_t, c_void};
 use merge_operator::{self, MergeOperatorCallback, full_merge_callback, partial_merge_callback};
 use merge_operator::MergeFn;
@@ -262,6 +262,30 @@ impl WriteOptions {
     }
 }
 
+pub struct CompactOptions {
+    pub inner: *mut DBCompactOptions,
+}
+
+impl CompactOptions {
+    pub fn new() -> CompactOptions {
+        unsafe { CompactOptions { inner: crocksdb_ffi::crocksdb_compactoptions_create() } }
+    }
+
+    pub fn set_exclusive_manual_compaction(&mut self, v: bool) {
+        unsafe {
+            crocksdb_ffi::crocksdb_compactoptions_set_exclusive_manual_compaction(self.inner, v);
+        }
+    }
+}
+
+impl Drop for CompactOptions {
+    fn drop(&mut self) {
+        unsafe {
+            crocksdb_ffi::crocksdb_compactoptions_destroy(self.inner);
+        }
+    }
+}
+
 pub struct Options {
     pub inner: *mut DBOptions,
     filter: Option<CompactionFilterHandle>,
@@ -476,6 +500,18 @@ impl Options {
     pub fn set_level_compaction_dynamic_level_bytes(&mut self, v: bool) {
         unsafe {
             crocksdb_ffi::crocksdb_options_set_level_compaction_dynamic_level_bytes(self.inner, v);
+        }
+    }
+
+    pub fn set_use_direct_reads(&mut self, v: bool) {
+        unsafe {
+            crocksdb_ffi::crocksdb_options_set_use_direct_reads(self.inner, v);
+        }
+    }
+
+    pub fn set_use_direct_writes(&mut self, v: bool) {
+        unsafe {
+            crocksdb_ffi::crocksdb_options_set_use_direct_writes(self.inner, v);
         }
     }
 

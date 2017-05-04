@@ -43,6 +43,7 @@ pub enum DBRestoreOptions {}
 pub enum DBSliceTransform {}
 pub enum DBRateLimiter {}
 pub enum DBLogger {}
+pub enum DBCompactOptions {}
 
 pub fn new_bloom_filter(bits: c_int) -> *mut DBFilterPolicy {
     unsafe { crocksdb_filterpolicy_create_bloom(bits) }
@@ -285,6 +286,8 @@ extern "C" {
     pub fn crocksdb_options_set_wal_dir(options: *mut DBOptions, path: *const c_char);
     pub fn crocksdb_options_set_wal_ttl_seconds(options: *mut DBOptions, ttl: u64);
     pub fn crocksdb_options_set_wal_size_limit_mb(options: *mut DBOptions, limit: u64);
+    pub fn crocksdb_options_set_use_direct_reads(options: *mut DBOptions, v: bool);
+    pub fn crocksdb_options_set_use_direct_writes(options: *mut DBOptions, v: bool);
     pub fn crocksdb_options_set_prefix_extractor(options: *mut DBOptions,
                                                  prefix_extractor: *mut DBSliceTransform);
     pub fn crocksdb_options_set_optimize_filters_for_hits(options: *mut DBOptions, v: bool);
@@ -601,6 +604,10 @@ extern "C" {
                                          range_limit_key: *const *const u8,
                                          range_limit_key_len: *const size_t,
                                          sizes: *mut uint64_t);
+    pub fn crocksdb_compactoptions_create() -> *mut DBCompactOptions;
+    pub fn crocksdb_compactoptions_destroy(opt: *mut DBCompactOptions);
+    pub fn crocksdb_compactoptions_set_exclusive_manual_compaction(opt: *mut DBCompactOptions,
+                                                                   v: bool);
     pub fn crocksdb_compact_range(db: *mut DBInstance,
                                   start_key: *const u8,
                                   start_key_len: size_t,
@@ -612,6 +619,13 @@ extern "C" {
                                      start_key_len: size_t,
                                      limit_key: *const u8,
                                      limit_key_len: size_t);
+    pub fn crocksdb_compact_range_cf_opt(db: *mut DBInstance,
+                                         cf: *mut DBCFHandle,
+                                         compact_options: *mut DBCompactOptions,
+                                         start_key: *const u8,
+                                         start_key_len: size_t,
+                                         limit_key: *const u8,
+                                         limit_key_len: size_t);
     pub fn crocksdb_delete_file_in_range(db: *mut DBInstance,
                                          range_start_key: *const u8,
                                          range_start_key_len: size_t,

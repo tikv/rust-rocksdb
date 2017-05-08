@@ -105,6 +105,20 @@ function compile_lz4() {
     cd ../..
 }
 
+function compile_zstd() {
+    if [[ -f libzstd.a ]]; then
+        return
+    fi
+
+    rm -rf zstd-1.2.0
+    download https://github.com/facebook/zstd/archive/v1.2.0.tar.gz zstd-1.2.0.tar.gz d7777b0aafa7002a4dee1e2db42afe30
+    tar xvzf zstd-1.2.0.tar.gz
+    cd zstd-1.2.0
+    make -j $con
+    mv lib/libzstd.a ..
+    cd ..
+}
+
 function compile_rocksdb() {
     if [[ -f librocksdb.a ]]; then
         return
@@ -142,7 +156,7 @@ function find_library() {
 }
 
 if [[ $# -eq 0 ]]; then
-    error $0 [compile_bz2\|compile_z\|compile_lz4\|compile_rocksdb\|compile_snappy\|find_library]
+    error $0 [compile_bz2\|compile_z\|compile_lz4\|compile_zstd\|compile_rocksdb\|compile_snappy\|find_library]
 fi
 
 $@

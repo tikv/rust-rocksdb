@@ -114,7 +114,7 @@ function compile_zstd() {
     download https://github.com/facebook/zstd/archive/v1.2.0.tar.gz zstd-1.2.0.tar.gz d7777b0aafa7002a4dee1e2db42afe30
     tar xvzf zstd-1.2.0.tar.gz
     cd zstd-1.2.0
-    make -j $con
+    make CFLAGS='-fPIC' -j $con
     mv lib/libzstd.a ..
     cd ..
 }

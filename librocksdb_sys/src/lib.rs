@@ -62,6 +62,8 @@ pub enum DBCompressionType {
     DBBz2 = 3,
     DBLz4 = 4,
     DBLz4hc = 5,
+    DBXpress = 6,
+    DBZSTD = 7,
 }
 
 #[repr(C)]

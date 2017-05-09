@@ -113,10 +113,10 @@ function compile_zstd() {
     rm -rf zstd-1.2.0
     download https://github.com/facebook/zstd/archive/v1.2.0.tar.gz zstd-1.2.0.tar.gz d7777b0aafa7002a4dee1e2db42afe30
     tar xvzf zstd-1.2.0.tar.gz
-    cd zstd-1.2.0
-    make CFLAGS='-fPIC' -j $con
-    mv lib/libzstd.a ..
-    cd ..
+    cd zstd-1.2.0/lib
+    make CPPFLAGS='-fPIC -I. -I./common' -j $con
+    mv libzstd.a ../..
+    cd ../..
 }
 
 function compile_rocksdb() {

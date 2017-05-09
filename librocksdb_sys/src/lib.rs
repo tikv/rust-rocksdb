@@ -62,7 +62,7 @@ pub enum DBCompressionType {
     DBBz2 = 3,
     DBLz4 = 4,
     DBLz4hc = 5,
-    DBXpress = 6,
+    // DBXpress = 6, not support currently.
     DBZSTD = 7,
 }
 

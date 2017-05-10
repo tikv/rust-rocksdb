@@ -15,7 +15,7 @@ os:
 #  - osx
 
 before_script:
-- cargo install --force --git https://github.com/tennix/rustfmt --tag v0.6 || true
+- cargo install --force --git https://github.com/tennix/rustfmt --tag v0.6.1 || true
 
 script:
 - cargo fmt && git diff-index --quiet HEAD -- || (echo please make format and run tests before creating a pr!; exit 1)

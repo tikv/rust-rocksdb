@@ -41,7 +41,7 @@ dependencies:
       else
         rustup default "nightly-${RUSTC_DATE}";
       fi
-    - cargo install --force --git https://github.com/tennix/rustfmt --tag v0.6 || true
+    - cargo install --force --git https://github.com/tennix/rustfmt --tag v0.6.1 || true
     - |
       if [[ ! -e $HOME/.local/lib/librocksdb.so ]]; then
         export CPLUS_INCLUDE_PATH="${LOCAL_PREFIX}/include" && \

@@ -14,9 +14,6 @@ os:
   - linux
 #  - osx
 
-env: 
-  - RUSTFMT_VERSION=v0.6.0
-
 before_script:
 - make -f travis-build/Makefile prepare-rustfmt
 
@@ -29,3 +26,4 @@ env:
   global:
   - RUST_TEST_THREADS=1
   - LD_LIBRARY_PATH: "/usr/local/lib"
+  - RUSTFMT_VERSION=v0.6.0

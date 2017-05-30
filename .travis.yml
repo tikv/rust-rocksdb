@@ -14,6 +14,9 @@ os:
   - linux
 #  - osx
 
+env: 
+  - RUSTFMT_VERSION=v0.6.0
+
 before_script:
 - make -f travis-build/Makefile prepare-rustfmt
 

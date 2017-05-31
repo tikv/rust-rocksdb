@@ -468,17 +468,14 @@ impl DB {
 
     pub fn get_opt(&self, key: &[u8], readopts: &ReadOptions) -> Result<Option<DBVector>, String> {
         unsafe {
-            let val_len: size_t = 0;
-            let val_len_ptr = &val_len as *const size_t;
-            let val = ffi_try!(crocksdb_get(self.inner,
-                                            readopts.get_inner(),
-                                            key.as_ptr(),
-                                            key.len() as size_t,
-                                            val_len_ptr));
+            let val = ffi_try!(crocksdb_get_pinned(self.inner,
+                                                   readopts.get_inner(),
+                                                   key.as_ptr(),
+                                                   key.len() as size_t));
             if val.is_null() {
                 Ok(None)
             } else {
-                Ok(Some(DBVector::from_c(val, val_len)))
+                Ok(Some(DBVector::from_pinned_slice(val)))
             }
         }
     }
@@ -493,53 +490,6 @@ impl DB {
                       readopts: &ReadOptions)
                       -> Result<Option<DBVector>, String> {
         unsafe {
-            let val_len: size_t = 0;
-            let val_len_ptr = &val_len as *const size_t;
-            let val = ffi_try!(crocksdb_get_cf(self.inner,
-                                               readopts.get_inner(),
-                                               cf.inner,
-                                               key.as_ptr(),
-                                               key.len() as size_t,
-                                               val_len_ptr));
-            if val.is_null() {
-                Ok(None)
-            } else {
-                Ok(Some(DBVector::from_c(val, val_len)))
-            }
-        }
-    }
-
-    pub fn get_cf(&self, cf: &CFHandle, key: &[u8]) -> Result<Option<DBVector>, String> {
-        self.get_cf_opt(cf, key, &ReadOptions::new())
-    }
-
-    pub fn get_pinned_opt(&self,
-                          key: &[u8],
-                          readopts: &ReadOptions)
-                          -> Result<Option<DBVector>, String> {
-        unsafe {
-            let val = ffi_try!(crocksdb_get_pinned(self.inner,
-                                                   readopts.get_inner(),
-                                                   key.as_ptr(),
-                                                   key.len() as size_t));
-            if val.is_null() {
-                Ok(None)
-            } else {
-                Ok(Some(DBVector::from_pinned_slice(val)))
-            }
-        }
-    }
-
-    pub fn get_pinned(&self, key: &[u8]) -> Result<Option<DBVector>, String> {
-        self.get_pinned_opt(key, &ReadOptions::new())
-    }
-
-    pub fn get_pinned_cf_opt(&self,
-                             cf: &CFHandle,
-                             key: &[u8],
-                             readopts: &ReadOptions)
-                             -> Result<Option<DBVector>, String> {
-        unsafe {
             let val = ffi_try!(crocksdb_get_pinned_cf(self.inner,
                                                       readopts.get_inner(),
                                                       cf.inner,
@@ -553,8 +503,8 @@ impl DB {
         }
     }
 
-    pub fn get_pinned_cf(&self, cf: &CFHandle, key: &[u8]) -> Result<Option<DBVector>, String> {
-        self.get_pinned_cf_opt(cf, key, &ReadOptions::new())
+    pub fn get_cf(&self, cf: &CFHandle, key: &[u8]) -> Result<Option<DBVector>, String> {
+        self.get_cf_opt(cf, key, &ReadOptions::new())
     }
 
     pub fn create_cf(&mut self, name: &str, opts: &Options) -> Result<&CFHandle, String> {
@@ -1316,7 +1266,6 @@ impl Writable for WriteBatch {
 pub struct DBVector {
     base: *mut u8,
     len: usize,
-    is_pinned: bool,
     pinned_slice: *mut DBPinnableSlice,
 }
 
@@ -1352,28 +1301,13 @@ impl Deref for DBVector {
 
 impl Drop for DBVector {
     fn drop(&mut self) {
-        if self.is_pinned {
-            unsafe {
-                crocksdb_ffi::crocksdb_pinnableslice_destroy(self.pinned_slice);
-            }
-        } else {
-            unsafe {
-                libc::free(self.base as *mut c_void);
-            }
+        unsafe {
+            crocksdb_ffi::crocksdb_pinnableslice_destroy(self.pinned_slice);
         }
     }
 }
 
 impl DBVector {
-    pub fn from_c(val: *mut u8, val_len: size_t) -> DBVector {
-        DBVector {
-            base: val,
-            len: val_len as usize,
-            is_pinned: false,
-            pinned_slice: 0 as *mut DBPinnableSlice,
-        }
-    }
-
     pub fn from_pinned_slice(s: *mut DBPinnableSlice) -> DBVector {
         let val_len: size_t = 0;
         let val_len_ptr = &val_len as *const size_t;
@@ -1381,7 +1315,6 @@ impl DBVector {
         DBVector {
             base: val,
             len: val_len as usize,
-            is_pinned: true,
             pinned_slice: s,
         }
     }
@@ -1741,20 +1674,6 @@ mod test {
             let name = entry.file_name();
             assert!(name.to_str().unwrap().find("LOG").is_none());
         }
-    }
-
-    #[test]
-    fn get_pinned_test() {
-        let path = TempDir::new("_rust_rocksdb_get_pinned_test").expect("");
-        let db = DB::open_default(path.path().to_str().unwrap()).unwrap();
-
-        db.put(b"k", b"v").unwrap();
-        let a = db.get_pinned(b"k");
-        assert_eq!(a.unwrap().unwrap().to_utf8().unwrap(), "v");
-
-        let cf_handle = db.cf_handle("default").unwrap();
-        let a = db.get_pinned_cf(cf_handle, b"k");
-        assert_eq!(a.unwrap().unwrap().to_utf8().unwrap(), "v");
     }
 
     #[test]

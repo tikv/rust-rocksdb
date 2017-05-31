@@ -2087,6 +2087,10 @@ void crocksdb_options_set_fifo_compaction_options(
   opt->rep.compaction_options_fifo = fifo->rep;
 }
 
+void crocksdb_options_set_compaction_pri(crocksdb_options_t *opt, unsigned char pri) {
+  opt->rep.compaction_pri = static_cast<rocksdb::CompactionPri>(pri);
+}
+
 char *crocksdb_options_statistics_get_string(crocksdb_options_t *opt) {
   rocksdb::Statistics *statistics = opt->rep.statistics.get();
   if (statistics) {

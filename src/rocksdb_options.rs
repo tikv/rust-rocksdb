@@ -579,6 +579,12 @@ impl Options {
         }
     }
 
+    pub fn set_compaction_pri(&mut self, pri: crocksdb_ffi::DBCompactionPri) {
+        unsafe {
+            crocksdb_ffi::crocksdb_options_set_compaction_pri(self.inner, pri);
+        }
+    }
+
     pub fn set_base_background_compactions(&mut self, n: c_int) {
         unsafe {
             crocksdb_ffi::crocksdb_options_set_base_background_compactions(self.inner, n);

@@ -1269,25 +1269,13 @@ pub struct DBVector {
 
 impl Debug for DBVector {
     fn fmt(&self, formatter: &mut Formatter) -> fmt::Result {
-        let mut val_len: size_t = 0;
-        let val_len_ptr = &mut val_len as *mut size_t;
-        unsafe {
-            let val = crocksdb_ffi::crocksdb_pinnableslice_value(self.pinned_slice, val_len_ptr);
-            write!(formatter, "{:?}", slice::from_raw_parts(val, val_len))
-        }
+        write!(formatter, "{:?}", &**self)
     }
 }
 
 impl<'a> PartialEq<&'a [u8]> for DBVector {
     fn eq(&self, rhs: &&[u8]) -> bool {
-        let mut val_len: size_t = 0;
-        let val_len_ptr = &mut val_len as *mut size_t;
-        let val =
-            unsafe { crocksdb_ffi::crocksdb_pinnableslice_value(self.pinned_slice, val_len_ptr) };
-        if val_len != rhs.len() {
-            return false;
-        }
-        unsafe { libc::memcmp(val as *mut c_void, rhs.as_ptr() as *mut c_void, val_len) == 0 }
+        **rhs == **self
     }
 }
 

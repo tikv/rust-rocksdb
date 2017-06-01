@@ -2892,11 +2892,7 @@ void crocksdb_pinnableslice_destroy(crocksdb_pinnableslice_t* v) { delete v; }
 
 const char* crocksdb_pinnableslice_value(const crocksdb_pinnableslice_t* v,
                                         size_t* vlen) {
-  if (!v) {
-    *vlen = 0;
-    return NULL;
-  }
-
+  // v can't be null.
   *vlen = v->rep.size();
   return v->rep.data();
 }

@@ -1264,38 +1264,42 @@ impl Writable for WriteBatch {
 }
 
 pub struct DBVector {
-    base: *mut u8,
-    len: usize,
     pinned_slice: *mut DBPinnableSlice,
 }
 
 impl Debug for DBVector {
     fn fmt(&self, formatter: &mut Formatter) -> fmt::Result {
+        let mut val_len: size_t = 0;
+        let val_len_ptr = &mut val_len as *mut size_t;
         unsafe {
-            write!(formatter,
-                   "{:?}",
-                   slice::from_raw_parts(self.base, self.len))
+            let val = crocksdb_ffi::crocksdb_pinnableslice_value(self.pinned_slice, val_len_ptr);
+            write!(formatter, "{:?}", slice::from_raw_parts(val, val_len))
         }
     }
 }
 
 impl<'a> PartialEq<&'a [u8]> for DBVector {
     fn eq(&self, rhs: &&[u8]) -> bool {
-        if self.len != rhs.len() {
+        let mut val_len: size_t = 0;
+        let val_len_ptr = &mut val_len as *mut size_t;
+        let val =
+            unsafe { crocksdb_ffi::crocksdb_pinnableslice_value(self.pinned_slice, val_len_ptr) };
+        if val_len != rhs.len() {
             return false;
         }
-        unsafe {
-            libc::memcmp(self.base as *mut c_void,
-                         rhs.as_ptr() as *mut c_void,
-                         self.len) == 0
-        }
+        unsafe { libc::memcmp(val as *mut c_void, rhs.as_ptr() as *mut c_void, val_len) == 0 }
     }
 }
 
 impl Deref for DBVector {
     type Target = [u8];
     fn deref(&self) -> &[u8] {
-        unsafe { slice::from_raw_parts(self.base, self.len) }
+        let mut val_len: size_t = 0;
+        let val_len_ptr = &mut val_len as *mut size_t;
+        unsafe {
+            let val = crocksdb_ffi::crocksdb_pinnableslice_value(self.pinned_slice, val_len_ptr);
+            slice::from_raw_parts(val, val_len)
+        }
     }
 }
 
@@ -1309,14 +1313,7 @@ impl Drop for DBVector {
 
 impl DBVector {
     pub fn from_pinned_slice(s: *mut DBPinnableSlice) -> DBVector {
-        let mut val_len: size_t = 0;
-        let val_len_ptr = &mut val_len as *mut size_t;
-        let val = unsafe { crocksdb_ffi::crocksdb_pinnableslice_value(s, val_len_ptr) };
-        DBVector {
-            base: val,
-            len: val_len as usize,
-            pinned_slice: s,
-        }
+        DBVector { pinned_slice: s }
     }
 
     pub fn to_utf8(&self) -> Option<&str> {

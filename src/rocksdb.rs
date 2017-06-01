@@ -1309,8 +1309,8 @@ impl Drop for DBVector {
 
 impl DBVector {
     pub fn from_pinned_slice(s: *mut DBPinnableSlice) -> DBVector {
-        let val_len: size_t = 0;
-        let val_len_ptr = &val_len as *const size_t;
+        let mut val_len: size_t = 0;
+        let val_len_ptr = &mut val_len as *mut size_t;
         let val = unsafe { crocksdb_ffi::crocksdb_pinnableslice_value(s, val_len_ptr) };
         DBVector {
             base: val,

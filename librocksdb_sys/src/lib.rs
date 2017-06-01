@@ -779,7 +779,7 @@ extern "C" {
                                   kLen: size_t,
                                   err: *mut *mut c_char)
                                   -> *mut DBPinnableSlice;
-    pub fn crocksdb_pinnableslice_value(s: *mut DBPinnableSlice, valLen: *const size_t) -> *mut u8;
+    pub fn crocksdb_pinnableslice_value(s: *mut DBPinnableSlice, valLen: *mut size_t) -> *mut u8;
     pub fn crocksdb_pinnableslice_destroy(v: *mut DBPinnableSlice);
 }
 

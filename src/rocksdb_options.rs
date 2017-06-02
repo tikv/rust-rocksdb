@@ -579,9 +579,9 @@ impl Options {
         }
     }
 
-    pub fn set_compaction_pri(&mut self, pri: crocksdb_ffi::DBCompactionPri) {
+    pub fn compaction_priority(&mut self, priority: crocksdb_ffi::CompactionPriority) {
         unsafe {
-            crocksdb_ffi::crocksdb_options_set_compaction_pri(self.inner, pri);
+            crocksdb_ffi::crocksdb_options_set_compaction_priority(self.inner, priority);
         }
     }
 

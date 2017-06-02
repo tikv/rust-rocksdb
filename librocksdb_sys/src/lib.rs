@@ -91,7 +91,7 @@ pub enum DBRecoveryMode {
 
 #[derive(Copy, Clone, PartialEq)]
 #[repr(C)]
-pub enum DBCompactionPri {
+pub enum CompactionPriority {
     // In Level-based compaction, it Determines which file from a level to be
     // picked to merge to the next level. We suggest people try
     // kMinOverlappingRatio first when you tune your database.
@@ -335,7 +335,8 @@ extern "C" {
                                                                     v: u64);
     pub fn crocksdb_options_set_hard_pending_compaction_bytes_limit(options: *mut DBOptions,
                                                                     v: u64);
-    pub fn crocksdb_options_set_compaction_pri(options: *mut DBOptions, v: DBCompactionPri);
+    pub fn crocksdb_options_set_compaction_priority(options: *mut DBOptions,
+                                                    v: CompactionPriority);
     pub fn crocksdb_filterpolicy_create_bloom_full(bits_per_key: c_int) -> *mut DBFilterPolicy;
     pub fn crocksdb_filterpolicy_create_bloom(bits_per_key: c_int) -> *mut DBFilterPolicy;
     pub fn crocksdb_open(options: *mut DBOptions,

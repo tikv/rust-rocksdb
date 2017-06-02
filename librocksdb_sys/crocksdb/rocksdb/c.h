@@ -840,7 +840,7 @@ enum {
     compaction_by_oldest_smallest_seq_first = 2,
     compaction_by_min_overlapping_ratio = 3,
 };
-extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_compaction_pri(
+extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_compaction_priority(
     crocksdb_options_t*, unsigned char);
 
 /* RateLimiter */

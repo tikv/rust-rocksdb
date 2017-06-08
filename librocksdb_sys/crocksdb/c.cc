@@ -808,7 +808,7 @@ void crocksdb_multi_get(
     size_t num_keys, const char* const* keys_list,
     const size_t* keys_list_sizes,
     char** values_list, size_t* values_list_sizes,
-    char** errs) {
+    char** errptr) {
   std::vector<Slice> keys(num_keys);
   for (size_t i = 0; i < num_keys; i++) {
     keys[i] = Slice(keys_list[i], keys_list_sizes[i]);
@@ -819,14 +819,15 @@ void crocksdb_multi_get(
     if (statuses[i].ok()) {
       values_list[i] = CopyString(values[i]);
       values_list_sizes[i] = values[i].size();
-      errs[i] = nullptr;
     } else {
       values_list[i] = nullptr;
       values_list_sizes[i] = 0;
       if (!statuses[i].IsNotFound()) {
-        errs[i] = strdup(statuses[i].ToString().c_str());
-      } else {
-        errs[i] = nullptr;
+        SaveError(errptr, statuses[i]);
+        while (i--) {
+          free(values_list[i]);
+        }
+        return;
       }
     }
   }
@@ -839,7 +840,7 @@ void crocksdb_multi_get_cf(
     size_t num_keys, const char* const* keys_list,
     const size_t* keys_list_sizes,
     char** values_list, size_t* values_list_sizes,
-    char** errs) {
+    char** errptr) {
   std::vector<Slice> keys(num_keys);
   std::vector<ColumnFamilyHandle*> cfs(num_keys);
   for (size_t i = 0; i < num_keys; i++) {
@@ -852,14 +853,15 @@ void crocksdb_multi_get_cf(
     if (statuses[i].ok()) {
       values_list[i] = CopyString(values[i]);
       values_list_sizes[i] = values[i].size();
-      errs[i] = nullptr;
     } else {
       values_list[i] = nullptr;
       values_list_sizes[i] = 0;
       if (!statuses[i].IsNotFound()) {
-        errs[i] = strdup(statuses[i].ToString().c_str());
-      } else {
-        errs[i] = nullptr;
+        SaveError(errptr, statuses[i]);
+        while (i--) {
+          free(values_list[i]);
+        }
+        return;
       }
     }
   }

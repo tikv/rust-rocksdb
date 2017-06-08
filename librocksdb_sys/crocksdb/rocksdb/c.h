@@ -281,14 +281,14 @@ extern C_ROCKSDB_LIBRARY_API char* crocksdb_get_cf(
 extern C_ROCKSDB_LIBRARY_API void crocksdb_multi_get(
     crocksdb_t* db, const crocksdb_readoptions_t* options, size_t num_keys,
     const char* const* keys_list, const size_t* keys_list_sizes,
-    char** values_list, size_t* values_list_sizes, char** errs);
+    char** values_list, size_t* values_list_sizes, char** errptr);
 
 extern C_ROCKSDB_LIBRARY_API void crocksdb_multi_get_cf(
     crocksdb_t* db, const crocksdb_readoptions_t* options,
     const crocksdb_column_family_handle_t* const* column_families,
     size_t num_keys, const char* const* keys_list,
     const size_t* keys_list_sizes, char** values_list,
-    size_t* values_list_sizes, char** errs);
+    size_t* values_list_sizes, char** errptr);
 
 extern C_ROCKSDB_LIBRARY_API crocksdb_iterator_t* crocksdb_create_iterator(
     crocksdb_t* db, const crocksdb_readoptions_t* options);

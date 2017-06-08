@@ -507,6 +507,72 @@ impl DB {
         self.get_cf_opt(cf, key, &ReadOptions::new())
     }
 
+    pub fn multi_get_cf_opt(&self,
+                            cfs: &[&CFHandle],
+                            keys: &[&[u8]],
+                            readopts: &ReadOptions)
+                            -> Result<Vec<Option<DBVector>>, String> {
+        unsafe {
+            let num_keys = keys.len() as size_t;
+            let mut cf_list = Vec::with_capacity(num_keys);
+            let mut key_list = Vec::with_capacity(num_keys);
+            let mut key_sizes = Vec::with_capacity(num_keys);
+            let mut value_list = Vec::with_capacity(num_keys);
+            let mut value_sizes = Vec::with_capacity(num_keys);
+            let mut err = ptr::null_mut();
+            for i in 0..num_keys {
+                cf_list.push(cfs[i].inner);
+                key_list.push(keys[i].as_ptr());
+                key_sizes.push(keys[i].len() as size_t);
+                value_list.push(ptr::null_mut());
+                value_sizes.push(0);
+            }
+
+            crocksdb_ffi::crocksdb_multi_get_cf(self.inner,
+                                                readopts.get_inner(),
+                                                cf_list.as_ptr(),
+                                                num_keys,
+                                                key_list.as_ptr(),
+                                                key_sizes.as_ptr(),
+                                                value_list.as_mut_ptr(),
+                                                value_sizes.as_mut_ptr(),
+                                                &mut err);
+            if !err.is_null() {
+                return Err(crocksdb_ffi::error_message(err));
+            }
+            let values: Vec<_> = (0..num_keys)
+                .map(|i| {
+                    if 0 == value_sizes[i] {
+                        None
+                    } else {
+                        Some(DBVector::from_c(value_list[i], value_sizes[i]))
+                    }
+                })
+                .collect();
+            Ok(values)
+        }
+    }
+
+    pub fn multi_get_cf(&self,
+                        cfs: &[&CFHandle],
+                        keys: &[&[u8]])
+                        -> Result<Vec<Option<DBVector>>, String> {
+        self.multi_get_cf_opt(cfs, keys, &ReadOptions::new())
+    }
+
+    pub fn multi_get_opt(&self,
+                         keys: &[&[u8]],
+                         readopts: &ReadOptions)
+                         -> Result<Vec<Option<DBVector>>, String> {
+        let cfs = vec![self.cf_handle(DEFAULT_COLUMN_FAMILY).unwrap(); keys.len()];
+        self.multi_get_cf_opt(&cfs, keys, readopts)
+    }
+
+    pub fn multi_get(&self, keys: &[&[u8]]) -> Result<Vec<Option<DBVector>>, String> {
+        let cfs = vec![self.cf_handle(DEFAULT_COLUMN_FAMILY).unwrap(); keys.len()];
+        self.multi_get_cf_opt(&cfs, keys, &ReadOptions::new())
+    }
+
     pub fn create_cf(&mut self, name: &str, opts: &Options) -> Result<&CFHandle, String> {
         let cname = match CString::new(name.as_bytes()) {
             Ok(c) => c,
@@ -1836,5 +1902,29 @@ mod test {
         let total_sst_files_size = db.get_property_int_cf(cf_handle, "rocksdb.total-sst-files-size")
             .unwrap();
         assert!(total_sst_files_size > 0);
+    }
+
+    #[test]
+    fn test_multi_get() {
+        let path = TempDir::new("_rust_rocksdb_multi_get").expect("");
+        let mut opts = Options::new();
+        opts.create_if_missing(true);
+        let db = DB::open(opts, path.path().to_str().unwrap()).unwrap();
+
+        let kvpairs = vec![("k_1".as_bytes(), "v_sdfsdf".as_bytes()),
+                           ("k_2".as_bytes(), "v_sdge".as_bytes()),
+                           ("k_3".as_bytes(), "v_3jqrsy4".as_bytes())];
+        for &(k, v) in kvpairs.iter() {
+            assert!(db.put(k, v).is_ok());
+        }
+        let mut keys: Vec<&[u8]> = kvpairs.iter().map(|&(k, _)| k).collect();
+        keys.insert(1, "k_11".as_bytes());
+        keys.insert(3, "k_31".as_bytes());
+        let vals = db.multi_get(&keys).unwrap();
+        assert!(vals[0].is_some());
+        assert!(vals[1].is_none());
+        assert!(vals[2].is_some());
+        assert!(vals[3].is_none());
+        assert!(vals[4].is_some());
     }
 }

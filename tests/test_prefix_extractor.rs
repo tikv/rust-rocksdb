@@ -15,16 +15,16 @@ use rocksdb::*;
 use tempdir::TempDir;
 
 struct FixedPrefixTransform {
-    pub suffix_len: usize,
+    pub prefix_len: usize,
 }
 
 impl SliceTransform for FixedPrefixTransform {
     fn transform<'a>(&mut self, key: &'a [u8]) -> &'a [u8] {
-        &key[..self.suffix_len]
+        &key[..self.prefix_len]
     }
 
     fn in_domain(&mut self, key: &[u8]) -> bool {
-        key.len() >= self.suffix_len
+        key.len() >= self.prefix_len
     }
 }
 
@@ -57,7 +57,7 @@ fn test_prefix_extractor_compatibility() {
         opts.create_if_missing(false);
         opts.set_block_based_table_factory(&bbto);
         opts.set_prefix_extractor("FixedPrefixTransform",
-                                  Box::new(FixedPrefixTransform { suffix_len: 2 }))
+                                  Box::new(FixedPrefixTransform { prefix_len: 2 }))
             .unwrap();
         // also create prefix bloom for memtable
         opts.set_memtable_prefix_bloom_size_ratio(0.1 as f64);

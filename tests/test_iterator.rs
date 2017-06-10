@@ -28,11 +28,34 @@ impl SliceTransform for FixedPrefixTransform {
     }
 }
 
+struct FixedSuffixTransform {
+    pub suffix_len: usize,
+}
+
+impl SliceTransform for FixedSuffixTransform {
+    fn transform<'a>(&mut self, key: &'a [u8]) -> &'a [u8] {
+        &key[..(key.len() - self.suffix_len)]
+    }
+
+    fn in_domain(&mut self, key: &[u8]) -> bool {
+        key.len() >= self.suffix_len
+    }
+}
+
 fn prev_collect<'a>(iter: &mut DBIterator<'a>) -> Vec<Kv> {
     let mut buf = vec![];
     while iter.valid() {
         buf.push(iter.kv().unwrap());
         iter.prev();
+    }
+    buf
+}
+
+fn next_collect<'a>(iter: &mut DBIterator<'a>) -> Vec<Kv> {
+    let mut buf = vec![];
+    while iter.valid() {
+        buf.push(iter.kv().unwrap());
+        iter.next();
     }
     buf
 }
@@ -203,14 +226,8 @@ fn read_with_upper_bound() {
         readopts.set_iterate_upper_bound(b"k2");
         let mut iter = db.iter_opt(readopts);
         iter.seek(SeekKey::Start);
-        let mut count = 0;
-        while iter.valid() {
-            count += 1;
-            if !iter.next() {
-                break;
-            }
-        }
-        assert_eq!(count, 2);
+        let vec = next_collect(&mut iter);
+        assert_eq!(vec.len(), 2);
     }
 }
 
@@ -251,7 +268,23 @@ fn test_total_order_seek() {
     db.put_opt(b"k3-2", b"b", &wopts).unwrap();
     db.put_opt(b"k3-3", b"c", &wopts).unwrap();
 
+    let mut ropts = ReadOptions::new();
+    ropts.set_prefix_same_as_start(true);
+    let mut iter = db.iter_opt(ropts);
+    // only iterate sst files and memtables that contain keys with the same prefix as b"k1"
+    // and the keys is iterated as valid when prefixed as b"k1"
+    iter.seek(SeekKey::Key(b"k1-0"));
+    let mut key_count = 0;
+    while iter.valid() {
+        assert_eq!(keys[key_count], iter.key());
+        key_count = key_count + 1;
+        iter.next();
+    }
+    assert!(key_count == 3);
+
     let mut iter = db.iter();
+    // only iterate sst files and memtables that contain keys with the same prefix as b"k1"
+    // but it still can next/prev to the keys which is not prefixed as b"k1" with prefix_same_as_start
     iter.seek(SeekKey::Key(b"k1-0"));
     let mut key_count = 0;
     while iter.valid() {
@@ -260,19 +293,6 @@ fn test_total_order_seek() {
         iter.next();
     }
     assert!(key_count == 4);
-
-    let mut ropts = ReadOptions::new();
-    ropts.set_prefix_same_as_start(true);
-    let mut iter = db.iter_opt(ropts);
-    iter.seek(SeekKey::Key(b"k1-0"));
-    let mut key_count = 0;
-    while iter.valid() {
-        // only iterator sst files and memtable that contain keys has the same prefix with b"k1"
-        assert_eq!(keys[key_count], iter.key());
-        key_count = key_count + 1;
-        iter.next();
-    }
-    assert!(key_count == 3);
 
     let mut ropts = ReadOptions::new();
     ropts.set_total_order_seek(true);
@@ -286,4 +306,34 @@ fn test_total_order_seek() {
         iter.next();
     }
     assert!(key_count == 9);
+}
+
+#[test]
+fn test_fixed_suffix_seek() {
+    let path = TempDir::new("_rust_rocksdb_fixed_suffix_seek").expect("");
+    let mut bbto = BlockBasedOptions::new();
+    bbto.set_bloom_filter(10, false);
+    bbto.set_whole_key_filtering(false);
+    let mut opts = Options::new();
+    opts.create_if_missing(true);
+    opts.set_block_based_table_factory(&bbto);
+    opts.set_prefix_extractor("FixedSuffixTransform",
+                              Box::new(FixedSuffixTransform { suffix_len: 2 }))
+        .unwrap();
+
+    let db = DB::open(opts, path.path().to_str().unwrap()).unwrap();
+    db.put(b"k-eghe-5", b"a").unwrap();
+    db.put(b"k-24yfae-6", b"a").unwrap();
+    db.put(b"k-h1fwd-7", b"a").unwrap();
+    db.flush(true).unwrap();
+
+    let mut iter = db.iter();
+    iter.seek(SeekKey::Key(b"k-24yfae-8"));
+    let vec = prev_collect(&mut iter);
+    assert!(vec.len() == 2);
+
+    let mut iter = db.iter();
+    iter.seek(SeekKey::Key(b"k-24yfa-9"));
+    let vec = prev_collect(&mut iter);
+    assert!(vec.len() == 0);
 }

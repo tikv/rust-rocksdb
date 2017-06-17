@@ -17,9 +17,9 @@ fn main() {
 
     if !cfg!(feature = "static-link") {
         match pkg_config::Config::new().atleast_version(ROCKSDB_VERSION).probe("rocksdb") {
-            Ok(_)=>(),
+            Ok(_) => (),
             Err(_) => {
-                panic!("failed to find rocksdb >= {} by pkg-config",ROCKSDB_VERSION);
+                panic!("failed to find rocksdb >= {} by pkg-config", ROCKSDB_VERSION);
             }
         }
         gcc::Config::new()

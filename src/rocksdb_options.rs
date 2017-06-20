@@ -158,7 +158,7 @@ impl UnsafeSnap {
 
 pub struct ReadOptions {
     inner: *mut DBReadOptions,
-    upper_bound: Vec<u8>,
+    upper_bound: Option<Vec<u8>>,
 }
 
 impl Drop for ReadOptions {
@@ -174,7 +174,7 @@ impl Default for ReadOptions {
             assert!(!opts.is_null(), "Unable to create rocksdb read options");
             ReadOptions {
                 inner: opts,
-                upper_bound: vec![],
+                upper_bound: None,
             }
         }
     }
@@ -200,11 +200,17 @@ impl ReadOptions {
     }
 
     pub fn set_iterate_upper_bound(&mut self, key: &[u8]) {
-        self.upper_bound = Vec::from(key);
+        self.upper_bound = Some(Vec::from(key));
         unsafe {
             crocksdb_ffi::crocksdb_readoptions_set_iterate_upper_bound(self.inner,
-                                                                       self.upper_bound.as_ptr(),
-                                                                       self.upper_bound.len());
+                                                                       self.upper_bound
+                                                                           .as_ref()
+                                                                           .unwrap()
+                                                                           .as_ptr(),
+                                                                       self.upper_bound
+                                                                           .as_ref()
+                                                                           .unwrap()
+                                                                           .len());
         }
     }
 

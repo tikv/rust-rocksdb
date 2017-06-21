@@ -29,6 +29,8 @@
 #include "rocksdb/table.h"
 #include "rocksdb/rate_limiter.h"
 #include "rocksdb/utilities/backupable_db.h"
+#include "rocksdb/table_properties.h"
+#include "rocksdb/types.h"
 
 using rocksdb::Cache;
 using rocksdb::ColumnFamilyDescriptor;
@@ -83,6 +85,11 @@ using rocksdb::HistogramData;
 using rocksdb::PinnableSlice;
 using rocksdb::FilterBitsBuilder;
 using rocksdb::FilterBitsReader;
+using rocksdb::TablePropertiesCollectorFactory;
+using rocksdb::TablePropertiesCollector;
+using rocksdb::EntryType;
+using rocksdb::SequenceNumber;
+using rocksdb::UserCollectedProperties;
 
 using std::shared_ptr;
 
@@ -120,6 +127,7 @@ struct crocksdb_livefiles_t       { std::vector<LiveFileMetaData> rep; };
 struct crocksdb_column_family_handle_t  { ColumnFamilyHandle* rep; };
 struct crocksdb_envoptions_t      { EnvOptions        rep; };
 struct crocksdb_ingestexternalfileoptions_t  { IngestExternalFileOptions rep; };
+struct crocksdb_tablepropertiescollectorfactorycontext_t {TablePropertiesCollectorFactory::Context rep;};
 struct crocksdb_sstfilewriter_t   { SstFileWriter*    rep; };
 struct crocksdb_ratelimiter_t     { RateLimiter*      rep; };
 struct crocksdb_histogramdata_t   { HistogramData     rep; };
@@ -2188,6 +2196,163 @@ DB::RunManualCompaction
 custom cache
 table_properties_collectors
 */
+
+struct crocksdb_tablepropertiescollector_t : public TablePropertiesCollector {
+    void *state_;
+    void (*destructor_)(void *);
+    void (*add_userkey_)(
+            void *,
+            const char *key, size_t key_length,
+            const char *value, size_t value_length,
+            int entry_type, uint64_t seq,
+            uint64_t file_size);
+    void (*finish_)(void *, char ***keys, int *pair_count, char ***value);
+    void (*readable_properties_)(void *);
+    unsigned char need_compact_;
+    const char *(*name_)(void *);
+
+    virtual ~crocksdb_tablepropertiescollector_t() {
+        (*destructor_)(state_);
+    }
+
+    virtual Status AddUserKey(const Slice &key, const Slice &value,
+                              EntryType type, SequenceNumber seq,
+                              uint64_t file_size) override {
+        (*add_userkey_)(
+                state_,
+                key.data(), key.size(),
+                value.data(), value.size(),
+                static_cast<int>(type),
+                seq,
+                file_size);
+        return Status::OK();
+    }
+
+    virtual Status Finish(UserCollectedProperties *properties) override {
+        char **keys, **values;
+        int pair_count;
+        (*finish_)(state_, &keys, &pair_count, &values);
+        if (nullptr == keys || nullptr == values) {
+            return Status::OK();
+        }
+        for (int i = 0; i < pair_count; i++) {
+            properties->insert(std::make_pair(std::string(keys[i]), std::string(values[i])));
+            free(keys[i]);
+            free(values[i]);
+        }
+        // free the memory
+        free(keys);
+        free(values);
+        return Status::OK();
+    }
+
+    virtual UserCollectedProperties GetReadableProperties() const override {
+        (*readable_properties_)(state_);
+        return UserCollectedProperties{};
+    }
+
+    virtual bool NeedCompact() const override { return need_compact_; }
+
+    virtual const char *Name() const override {
+        return (*name_)(state_);
+    }
+};
+
+struct crocksdb_tablepropertiescollectorfactory_t : public TablePropertiesCollectorFactory {
+    void *state_;
+    void (*destructor_)(void *);
+    crocksdb_tablepropertiescollector_t *(*create_table_properties_collector_)(
+            void *, uint32_t);
+    const char *(*name_)(void *);
+    void (*destructor_collector)(void *);
+    void (*add_userkey_collector)(
+            void *,
+            const char *key, size_t key_length,
+            const char *value, size_t value_length,
+            int entry_type, uint64_t seq,
+            uint64_t file_size);
+    void (*finish_collector)(void *, char ***keys, int *pair_count, char ***value);
+    void (*readable_properties_collector)(void *);
+    unsigned char need_compact_collector;
+    const char *(*name_collector)(void *);
+
+    virtual ~crocksdb_tablepropertiescollectorfactory_t() { (*destructor_)(state_); }
+
+    virtual TablePropertiesCollector *CreateTablePropertiesCollector(
+            TablePropertiesCollectorFactory::Context context) {
+        void* collector_proxy = (*create_table_properties_collector_)(state_, context.column_family_id);
+        crocksdb_tablepropertiescollector_t *result = new crocksdb_tablepropertiescollector_t;
+        result->state_ = collector_proxy;
+        result->destructor_ = destructor_collector;
+        result->add_userkey_ = add_userkey_collector;
+        result->finish_ = finish_collector;
+        result->readable_properties_ = readable_properties_collector;
+        result->need_compact_ = false;
+        result->name_=name_collector;
+        return result;
+    }
+
+    virtual const char *Name() const override { return (*name_)(state_); }
+};
+
+void crocksdb_tablepropertiescollector_set_need_compact(
+        crocksdb_tablepropertiescollector_t *collector,
+        unsigned char whether_need_compact) {
+    collector->need_compact_ = whether_need_compact;
+}
+
+void crocksdb_options_add_table_properities_collector_factory(
+        crocksdb_options_t *opt, crocksdb_tablepropertiescollectorfactory_t *factory) {
+    opt->rep.table_properties_collector_factories.push_back(std::shared_ptr<TablePropertiesCollectorFactory>(factory));
+}
+
+crocksdb_tablepropertiescollector_t *crocksdb_tablepropertiescollector_create(
+        void *state,
+        void (*destructor)(void *),
+        void (*add_userkey)(
+                void *,
+                const char *key, size_t key_length,
+                const char *value, size_t value_length,
+                int entry_type, uint64_t seq,
+                uint64_t file_size),
+        void (*finish)(void *, char ***keys, int *pair_count, char ***values),
+        void (*readable_properties)(void *),
+        const char *(*name)(void *)) {
+    crocksdb_tablepropertiescollector_t *result = new crocksdb_tablepropertiescollector_t;
+    result->state_ = state;
+    result->destructor_ = destructor;
+    result->add_userkey_ = add_userkey;
+    result->finish_ = finish;
+    result->readable_properties_ = readable_properties;
+    result->need_compact_ = false;
+    result->name_ = name;
+    return result;
+}
+
+void crocksdb_tablepropertiescollector_destroy(crocksdb_tablepropertiescollector_t *collector) {
+    delete collector;
+}
+
+crocksdb_tablepropertiescollectorfactory_t *crocksdb_tablepropertiescollectorfactory_create(
+        void *state, void (*destructor)(void *),
+        crocksdb_tablepropertiescollector_t *(*create_table_properties_collector)(
+                void *, uint32_t),
+        const char *(*name)(void *)) {
+    crocksdb_tablepropertiescollectorfactory_t *result =
+            new crocksdb_tablepropertiescollectorfactory_t;
+    result->state_ = state;
+    result->destructor_ = destructor;
+    result->create_table_properties_collector_ = create_table_properties_collector;
+
+    result->name_ = name;
+    return result;
+}
+
+void crocksdb_tablepropertiescollectorfactory_destroy(
+        crocksdb_tablepropertiescollectorfactory_t *factory) {
+    delete factory;
+}
+
 
 crocksdb_compactionfilter_t* crocksdb_compactionfilter_create(
     void* state,

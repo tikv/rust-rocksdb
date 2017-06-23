@@ -111,7 +111,11 @@ typedef struct crocksdb_ingestexternalfileoptions_t crocksdb_ingestexternalfileo
 typedef struct crocksdb_sstfilewriter_t   crocksdb_sstfilewriter_t;
 typedef struct crocksdb_ratelimiter_t     crocksdb_ratelimiter_t;
 typedef struct crocksdb_pinnableslice_t   crocksdb_pinnableslice_t;
-
+typedef struct crocksdb_tablepropertiescollector_t  crocksdb_tablepropertiescollector_t;
+typedef struct crocksdb_tablepropertiescollectorfactory_t crocksdb_tablepropertiescollectorfactory_t;
+typedef struct crocksdb_tablepropertiescollectorfactorycontext_t
+        crocksdb_tablepropertiescollectorfactorycontext_t;
+ typedef struct crocksdb_usercollectedproperties_t crocksdb_usercollectedproperties_t;
 /* DB operations */
 
 extern C_ROCKSDB_LIBRARY_API crocksdb_t* crocksdb_open(
@@ -1173,6 +1177,52 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_pinnableslice_destroy(
 extern C_ROCKSDB_LIBRARY_API const char* crocksdb_pinnableslice_value(
     const crocksdb_pinnableslice_t* t, size_t* vlen);
 
+/* Table Properties Collector Factory */
+extern C_ROCKSDB_LIBRARY_API crocksdb_tablepropertiescollectorfactory_t*
+crocksdb_tablepropertiescollectorfactory_create(
+        void* state, void (*destructor)(void*),
+        crocksdb_tablepropertiescollector_t* (*create_table_properties_collector)(
+                void*,uint32_t),
+        const char* (*name)(void*),
+        void (*destructor_collector)(void *),
+        void (*add_userkey_collector)(
+            void *,
+            const char *key, size_t key_length,
+            const char *value, size_t value_length,
+            int entry_type, uint64_t seq,
+            uint64_t file_size),
+        void (*finish_collector)(void *, crocksdb_usercollectedproperties_t* props),
+        void (*readable_properties_collector)(void *),
+        unsigned char need_compact_collector,
+        const char *(*name_collector)(void *));
+extern C_ROCKSDB_LIBRARY_API void crocksdb_options_add_table_properities_collector_factory(
+        crocksdb_options_t*, crocksdb_tablepropertiescollectorfactory_t*);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_tablepropertiescollectorfactory_destroy(
+        crocksdb_tablepropertiescollectorfactory_t*);
+
+/* Table Properties Collector */
+extern C_ROCKSDB_LIBRARY_API crocksdb_tablepropertiescollector_t*
+crocksdb_tablepropertiescollector_create(
+        void *state,
+        void (*destructor)(void *),
+        void (*add_userkey)(void*,const char* key, size_t key_length,
+                const char* value, size_t value_length,
+                int type,
+                uint64_t seq,
+                uint64_t file_size),
+        void (*finish)(void *, crocksdb_usercollectedproperties_t* props),
+        void (*readable_properties)(void *),
+        const char *(*name)(void *));
+
+extern C_ROCKSDB_LIBRARY_API void crocksdb_tablepropertiescollector_set_need_compact(
+        crocksdb_tablepropertiescollector_t*, unsigned char);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_tablepropertiescollector_destroy(
+        crocksdb_tablepropertiescollector_t*);
+
+extern C_ROCKSDB_LIBRARY_API void crocksdb_add_property(
+        crocksdb_usercollectedproperties_t* props, 
+        const char* key, size_t key_length, 
+        const char* value, size_t value_length);
 #ifdef __cplusplus
 }  /* end extern "C" */
 #endif

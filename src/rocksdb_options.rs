@@ -14,6 +14,8 @@
 //
 
 use compaction_filter::{CompactionFilter, new_compaction_filter, CompactionFilterHandle};
+use table_properties_collector::{TablePropertiesCollector};
+use table_properties_collector_factory::{TablePropertiesCollectorFactory,new_table_properties_collector_factory,TablePropertiesCollectorFactoryHandle};
 use comparator::{self, ComparatorCallback, compare_callback};
 
 use crocksdb_ffi::{self, DBOptions, DBWriteOptions, DBBlockBasedTableOptions, DBReadOptions,
@@ -295,6 +297,7 @@ impl Drop for CompactOptions {
 pub struct Options {
     pub inner: *mut DBOptions,
     filter: Option<CompactionFilterHandle>,
+    collector_factory: Option<TablePropertiesCollectorFactoryHandle>,
 }
 
 impl Drop for Options {
@@ -313,6 +316,7 @@ impl Default for Options {
             Options {
                 inner: opts,
                 filter: None,
+                collector_factory: None,
             }
         }
     }
@@ -329,6 +333,7 @@ impl Options {
         Options {
             inner: inner,
             filter: None,
+            collector_factory: None,
         }
     }
 
@@ -375,6 +380,28 @@ impl Options {
                                                                      .as_ref()
                                                                      .unwrap()
                                                                      .inner);
+            Ok(())
+        }
+    }
+
+    pub fn add_table_properties_collector_factory<S>(&mut self,
+                                    name: S,
+                                    collector_factory: Box<TablePropertiesCollectorFactory>)
+                                    -> Result<(), String>
+        where S: Into<Vec<u8>>
+    {
+        unsafe {
+            let c_name = match CString::new(name) {
+                Ok(s) => s,
+                Err(e) => return Err(format!("failed to convert to cstring: {:?}", e)),
+            };
+            let factory = new_table_properties_collector_factory(c_name, collector_factory);
+            crocksdb_ffi::crocksdb_options_add_table_properities_collector_factory(self.inner,
+                                                                 factory
+                                                                     .as_ref()
+                                                                     .unwrap()
+                                                                     .inner);
+            mem::forget(factory);
             Ok(())
         }
     }

@@ -45,6 +45,8 @@ pub enum DBRateLimiter {}
 pub enum DBLogger {}
 pub enum DBCompactOptions {}
 pub enum DBPinnableSlice {}
+pub enum DBTablePropertiesCollector {}
+pub enum DBTablePropertiesCollectorFactory {}
 
 pub fn new_bloom_filter(bits: c_int) -> *mut DBFilterPolicy {
     unsafe { crocksdb_filterpolicy_create_bloom(bits) }
@@ -65,6 +67,16 @@ pub enum DBCompressionType {
     DBLz4hc = 5,
     // DBXpress = 6, not support currently.
     DBZstd = 7,
+}
+
+#[repr(C)]
+#[derive(PartialEq, Eq, Clone, Copy)]
+pub enum EntryType {
+    EntryPut = 0,
+    EntryDelete = 1,
+    EntrySingleDelete = 2,
+    EntryMerge = 3,
+    EntryOther = 4,
 }
 
 #[repr(C)]
@@ -235,6 +247,8 @@ extern "C" {
                                                             memtable_memory_budget: c_int);
     pub fn crocksdb_options_set_compaction_filter(options: *mut DBOptions,
                                                   filter: *mut DBCompactionFilter);
+    pub fn crocksdb_options_add_table_properities_collector_factory(options: *mut DBOptions,
+                                                  collector_factory: *mut DBTablePropertiesCollectorFactory);                                            
     pub fn crocksdb_options_set_create_if_missing(options: *mut DBOptions, v: bool);
     pub fn crocksdb_options_set_max_open_files(options: *mut DBOptions, files: c_int);
     pub fn crocksdb_options_set_max_total_wal_size(options: *mut DBOptions, size: u64);
@@ -694,6 +708,49 @@ extern "C" {
                                                           ignore_snapshot: bool);
     pub fn crocksdb_compactionfilter_destroy(filter: *mut DBCompactionFilter);
 
+    // Table properties collector
+    pub fn crocksdb_tablepropertiescollector_create(state: *mut c_void,
+                                                    destructor: extern "C" fn(*mut c_void),
+                                                    add_userkey: extern "C" fn(*mut c_void,
+                                                                               *const u8,
+                                                                               size_t,
+                                                                               *const u8,
+                                                                               size_t,
+                                                                               c_int,
+                                                                               u64,
+                                                                               u64),
+                                                    finish: extern "C" fn(*mut c_void,
+                                                                          *mut c_void),
+                                                    readable_properties: extern "C" fn(*mut c_void),
+                                                    name: extern "C" fn(*mut c_void) -> *const c_char)
+                                                    -> *mut DBTablePropertiesCollector;
+    pub fn crocksdb_tablepropertiescollector_set_need_compact(collector: *mut DBTablePropertiesCollector,
+                                                              need_compact: bool);
+    pub fn crocksdb_tablepropertiescollector_destroy(collector: *mut DBTablePropertiesCollector);
+
+    // Table properties collector factory
+    pub fn crocksdb_tablepropertiescollectorfactory_create(state: *mut c_void,
+                                                    destructor: extern "C" fn(*mut c_void),
+                                                    create_table_properties_collector: extern "C" fn(*mut c_void, u32)-> *mut c_void,
+                                                    name: extern "C" fn(*mut c_void) -> *const c_char,
+                                                    collector_destructor: extern "C" fn(*mut c_void),
+                                                    collector_add_userkey: extern "C" fn(*mut c_void,
+                                                                               *const u8,
+                                                                               size_t,
+                                                                               *const u8,
+                                                                               size_t,
+                                                                               c_int,
+                                                                               u64,
+                                                                               u64),
+                                                    collector_finish: extern "C" fn(*mut c_void,
+                                                                                    *mut c_void),
+                                                    collector_readable_properties: extern "C" fn(*mut c_void),
+                                                    collector_name: extern "C" fn(*mut c_void) -> *const c_char)
+                                                    -> *mut DBTablePropertiesCollectorFactory;
+    pub fn crocksdb_tablepropertiescollectorfactory_destroy(collector_factory: *mut DBTablePropertiesCollectorFactory);
+
+
+
     // EnvOptions
     pub fn crocksdb_envoptions_create() -> *mut EnvOptions;
     pub fn crocksdb_envoptions_destroy(opt: *mut EnvOptions);
@@ -807,6 +864,11 @@ extern "C" {
                                         valLen: *mut size_t)
                                         -> *const u8;
     pub fn crocksdb_pinnableslice_destroy(v: *mut DBPinnableSlice);
+    pub fn crocksdb_add_property(props: *mut c_void,
+                                key: *const u8,
+                                key_length: size_t,
+                                value: *const u8,
+                                value_length: size_t)-> c_void;
 }
 
 #[cfg(test)]

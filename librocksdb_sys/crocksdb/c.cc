@@ -1890,8 +1890,8 @@ void crocksdb_options_set_bytes_per_sync(
   opt->rep.bytes_per_sync = v;
 }
 
-void crocksdb_options_set_enable_pipelined_write(crocksdb_options_t* opt,
-                                                         unsigned char v) {
+void crocksdb_options_set_enable_pipelined_write(crocksdb_options_t *opt,
+                                                 unsigned char v) {
   opt->rep.enable_pipelined_write = v;
 }
 

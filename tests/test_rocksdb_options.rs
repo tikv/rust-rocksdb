@@ -353,6 +353,7 @@ fn test_allow_concurrent_memtable_write() {
     }
 }
 
+#[test]
 fn test_enable_pipelined_write() {
     let path = TempDir::new("_rust_rocksdb_enable_pipelined_write").expect("");
     let mut opts = Options::new();

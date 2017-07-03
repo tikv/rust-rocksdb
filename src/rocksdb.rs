@@ -42,8 +42,7 @@ impl Drop for CFHandle {
 }
 
 fn build_cstring_list(str_list: &[&str]) -> Vec<CString> {
-    str_list
-        .into_iter()
+    str_list.into_iter()
         .map(|s| CString::new(s.as_bytes()).unwrap())
         .collect()
 }
@@ -350,8 +349,7 @@ impl DB {
             // These handles will be populated by DB.
             let cfhandles: Vec<_> = cfs_v.iter().map(|_| ptr::null_mut()).collect();
 
-            let cfopts: Vec<_> = cf_opts_v
-                .iter()
+            let cfopts: Vec<_> = cf_opts_v.iter()
                 .map(|x| x.inner as *const crocksdb_ffi::DBOptions)
                 .collect();
 
@@ -383,11 +381,11 @@ impl DB {
         };
 
         Ok(DB {
-               inner: db,
-               cfs: cf_map,
-               path: path.to_owned(),
-               opts: opts,
-           })
+            inner: db,
+            cfs: cf_map,
+            path: path.to_owned(),
+            opts: opts,
+        })
     }
 
     pub fn destroy(opts: &Options, path: &str) -> Result<(), String> {
@@ -412,7 +410,7 @@ impl DB {
             Err(_) => {
                 return Err("Failed to convert path to CString when list \
                             column families"
-                                   .to_owned())
+                    .to_owned())
             }
         };
 
@@ -522,12 +520,12 @@ impl DB {
                 ffi_try!(crocksdb_create_column_family(self.inner, opts.inner, cname_ptr));
             let handle = CFHandle { inner: cf_handler };
             Ok(match self.cfs.entry(name.to_owned()) {
-                   Entry::Occupied(mut e) => {
-                       e.insert(handle);
-                       e.into_mut()
-                   }
-                   Entry::Vacant(e) => e.insert(handle),
-               })
+                Entry::Occupied(mut e) => {
+                    e.insert(handle);
+                    e.into_mut()
+                }
+                Entry::Vacant(e) => e.insert(handle),
+            })
         }
     }
 
@@ -930,7 +928,8 @@ impl DB {
     pub fn get_and_reset_statistics_ticker_count(&self,
                                                  ticker_type: DBStatisticsTickerType)
                                                  -> u64 {
-        self.opts.get_and_reset_statistics_ticker_count(ticker_type)
+        self.opts
+            .get_and_reset_statistics_ticker_count(ticker_type)
     }
 
     pub fn get_statistics_histogram_string(&self,
@@ -1009,7 +1008,7 @@ impl DB {
             Ok(c) => c,
             Err(_) => {
                 return Err("Failed to convert restore_db_path to CString when restoring rocksdb"
-                               .to_owned())
+                    .to_owned())
             }
         };
 
@@ -1017,7 +1016,7 @@ impl DB {
             Ok(c) => c,
             Err(_) => {
                 return Err("Failed to convert restore_wal_path to CString when restoring rocksdb"
-                               .to_owned())
+                    .to_owned())
             }
         };
 
@@ -1320,7 +1319,7 @@ impl BackupEngine {
             Ok(c) => c,
             Err(_) => {
                 return Err("Failed to convert path to CString when opening rocksdb backup engine"
-                               .to_owned())
+                    .to_owned())
             }
         };
 
@@ -1617,7 +1616,8 @@ mod test {
 
         // Make a backup.
         let backup_dir = TempDir::new("_rust_rocksdb_backuptest_backup").unwrap();
-        let backup_engine = db.backup_at(backup_dir.path().to_str().unwrap()).unwrap();
+        let backup_engine = db.backup_at(backup_dir.path().to_str().unwrap())
+            .unwrap();
 
         // Restore it.
         let ropt1 = RestoreOptions::new();
@@ -1630,7 +1630,7 @@ mod test {
                                                restore_dir.path().to_str().unwrap(),
                                                restore_dir.path().to_str().unwrap(),
                                                &ropt)
-                    .unwrap();
+                .unwrap();
 
             let r = restored_db.get(key);
             assert!(r.unwrap().unwrap().to_utf8().unwrap() == str::from_utf8(value).unwrap());
@@ -1757,20 +1757,20 @@ mod test {
         let db = Arc::new(db);
         let db1 = db.clone();
         let builder = thread::Builder::new().name(String::from("put-thread"));
-        let h = builder
-            .spawn(move || {
-                       db1.put(b"k1", b"v1").unwrap();
-                       db1.put(b"k2", b"v2").unwrap();
-                       db1.flush(true).unwrap();
-                       db1.compact_range(None, None);
-                   })
+        let h = builder.spawn(move || {
+                db1.put(b"k1", b"v1").unwrap();
+                db1.put(b"k2", b"v2").unwrap();
+                db1.flush(true).unwrap();
+                db1.compact_range(None, None);
+            })
             .unwrap();
         // Wait until all currently running background processes finish.
         db.pause_bg_work();
         assert_eq!(db.get_property_int("rocksdb.num-running-compactions")
                        .unwrap(),
                    0);
-        assert_eq!(db.get_property_int("rocksdb.num-running-flushes").unwrap(),
+        assert_eq!(db.get_property_int("rocksdb.num-running-flushes")
+                       .unwrap(),
                    0);
         db.continue_bg_work();
         h.join().unwrap();
@@ -1835,8 +1835,7 @@ mod test {
         }
         db.flush_cf(cf_handle, true).unwrap();
 
-        let total_sst_files_size = db.get_property_int_cf(cf_handle,
-                                                          "rocksdb.total-sst-files-size")
+        let total_sst_files_size = db.get_property_int_cf(cf_handle, "rocksdb.total-sst-files-size")
             .unwrap();
         assert!(total_sst_files_size > 0);
     }

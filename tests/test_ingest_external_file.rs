@@ -20,9 +20,9 @@ fn gen_sst(opt: Options, cf: Option<&CFHandle>, path: &str, data: &[(&[u8], &[u8
     let _ = fs::remove_file(path);
     let env_opt = EnvOptions::new();
     let mut writer = if cf.is_some() {
-        SstFileWriter::new_cf(&env_opt, opt, cf.unwrap())
+        SstFileWriter::new_cf(env_opt, opt, cf.unwrap())
     } else {
-        SstFileWriter::new(&env_opt, opt)
+        SstFileWriter::new(env_opt, opt)
     };
     writer.open(path).unwrap();
     for &(k, v) in data {

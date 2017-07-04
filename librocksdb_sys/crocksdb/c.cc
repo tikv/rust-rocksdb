@@ -2589,7 +2589,7 @@ void crocksdb_sstfilewriter_open(crocksdb_sstfilewriter_t* writer,
 void crocksdb_sstfilewriter_add(crocksdb_sstfilewriter_t* writer, const char* key,
                                size_t keylen, const char* val, size_t vallen,
                                char** errptr) {
-  SaveError(errptr, writer->rep->Add(Slice(key, keylen), Slice(val, vallen)));
+  SaveError(errptr, writer->rep->Put(Slice(key, keylen), Slice(val, vallen)));
 }
 
 void crocksdb_sstfilewriter_finish(crocksdb_sstfilewriter_t* writer,

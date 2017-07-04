@@ -15,8 +15,7 @@ use rocksdb::{DB, Options, BlockBasedOptions, WriteOptions, SliceTransform, Writ
               CompactOptions};
 use rocksdb::crocksdb_ffi::{DBStatisticsHistogramType as HistogramType,
                             DBStatisticsTickerType as TickerType, DBInfoLogLevel as InfoLogLevel,
-                            CompactionPriority,
-                            DBCompressionType};
+                            CompactionPriority, DBCompressionType};
 use std::path::Path;
 use std::thread;
 use std::time::Duration;
@@ -359,8 +358,5 @@ fn test_get_compression() {
     let mut opts = Options::new();
     opts.create_if_missing(true);
     opts.compression(DBCompressionType::DBSnappy);
-    match opts.get_compression() {
-        DBCompressionType::DBSnappy => assert!(true),
-        _ => assert!(false),
-    };
+    assert_eq!(opts.get_compression(), DBCompressionType::DBSnappy);
 }

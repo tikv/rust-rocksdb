@@ -15,7 +15,7 @@ use rocksdb::{DB, Options, BlockBasedOptions, WriteOptions, SliceTransform, Writ
               CompactOptions};
 use rocksdb::crocksdb_ffi::{DBStatisticsHistogramType as HistogramType,
                             DBStatisticsTickerType as TickerType, DBInfoLogLevel as InfoLogLevel,
-                            CompactionPriority};
+                            CompactionPriority, DBCompressionType};
 use std::path::Path;
 use std::thread;
 use std::time::Duration;
@@ -363,4 +363,12 @@ fn test_enable_pipelined_write() {
     for i in 0..200 {
         db.put(format!("k_{}", i).as_bytes(), b"v").unwrap();
     }
+}
+
+#[test]
+fn test_get_compression() {
+    let mut opts = Options::new();
+    opts.create_if_missing(true);
+    opts.compression(DBCompressionType::DBSnappy);
+    assert_eq!(opts.get_compression(), DBCompressionType::DBSnappy);
 }

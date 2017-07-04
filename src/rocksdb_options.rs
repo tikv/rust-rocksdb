@@ -26,6 +26,8 @@ use merge_operator::MergeFn;
 use slice_transform::{SliceTransform, new_slice_transform};
 use std::ffi::{CStr, CString};
 use std::mem;
+use table_properties_collector_factory::{TablePropertiesCollectorFactory,
+                                         new_table_properties_collector_factory};
 
 #[derive(Default, Debug)]
 pub struct HistogramData {
@@ -378,6 +380,15 @@ impl Options {
         }
     }
 
+    pub fn add_table_properties_collector_factory(&mut self,
+                                                  fname: &str,
+                                                  factory: Box<TablePropertiesCollectorFactory>) {
+        unsafe {
+            let f = new_table_properties_collector_factory(fname, factory);
+            crocksdb_ffi::crocksdb_options_add_table_properties_collector_factory(self.inner, f);
+        }
+    }
+
     pub fn create_if_missing(&mut self, create_if_missing: bool) {
         unsafe {
             crocksdb_ffi::crocksdb_options_set_create_if_missing(self.inner, create_if_missing);
@@ -388,6 +399,10 @@ impl Options {
         unsafe {
             crocksdb_ffi::crocksdb_options_set_compression(self.inner, t);
         }
+    }
+
+    pub fn get_compression(&self) -> DBCompressionType {
+        unsafe { crocksdb_ffi::crocksdb_options_get_compression(self.inner) }
     }
 
     pub fn compression_per_level(&mut self, level_types: &[DBCompressionType]) {

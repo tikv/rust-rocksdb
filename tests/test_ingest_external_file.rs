@@ -26,7 +26,9 @@ fn gen_sst(opt: Options, cf: Option<&CFHandle>, path: &str, data: &[(&[u8], &[u8
     };
     writer.open(path).unwrap();
     for &(k, v) in data {
-        writer.add(k, v).unwrap();
+        writer.put(k, v).unwrap();
+        writer.merge(k, v).unwrap();
+        writer.delete(k).unwrap();
     }
     writer.finish().unwrap();
 }

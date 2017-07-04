@@ -2592,6 +2592,19 @@ void crocksdb_sstfilewriter_put(crocksdb_sstfilewriter_t *writer,
   SaveError(errptr, writer->rep->Put(Slice(key, keylen), Slice(val, vallen)));
 }
 
+void crocksdb_sstfilewriter_merge(crocksdb_sstfilewriter_t *writer,
+                                  const char *key, size_t keylen,
+                                  const char *val, size_t vallen,
+                                  char **errptr) {
+  SaveError(errptr, writer->rep->Merge(Slice(key, keylen), Slice(val, vallen)));
+}
+
+void crocksdb_sstfilewriter_delete(crocksdb_sstfilewriter_t *writer,
+                                   const char *key, size_t keylen,
+                                   char **errptr) {
+  SaveError(errptr, writer->rep->Delete(Slice(key, keylen)));
+}
+
 void crocksdb_sstfilewriter_finish(crocksdb_sstfilewriter_t* writer,
                                   char** errptr) {
   SaveError(errptr, writer->rep->Finish(NULL));

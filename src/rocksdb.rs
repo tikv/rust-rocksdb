@@ -1414,13 +1414,13 @@ impl Drop for SstFileWriter {
 
 #[cfg(test)]
 mod test {
-    use super::*;
     use std::fs;
     use std::path::Path;
     use std::str;
     use std::string::String;
     use std::sync::*;
     use std::thread;
+    use super::*;
     use tempdir::TempDir;
 
     #[test]

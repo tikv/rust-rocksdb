@@ -177,7 +177,7 @@ fn test_ingest_external_file_new() {
 
     assert_eq!(db.get(b"k1").unwrap().unwrap(), b"a");
     assert_eq!(db.get(b"k2").unwrap().unwrap(), b"b");
-    assert_eq!(db.get(b"k3").unwrap().unwrap(), b"c");
+    assert_eq!(db.get(b"k3").unwrap().unwrap(), b"cd");
 
     gen_sst_delete(default_options,
                    Some(db.cf_handle("default").unwrap()),
@@ -196,16 +196,16 @@ fn test_ingest_external_file_new() {
 
 #[test]
 fn test_ingest_external_file_new_cf() {
-    let path = TempDir::new("_rust_rocksdb_ingest_sst_new").expect("");
+    let path = TempDir::new("_rust_rocksdb_ingest_sst_new_cf").expect("");
     let path_str = path.path().to_str().unwrap();
     let mut opts = Options::new();
     opts.create_if_missing(true);
-    opts.add_merge_operator("merge operator", concat_merge);
     let mut db = DB::open(opts, path_str).unwrap();
-    let gen_path = TempDir::new("_rust_rocksdb_ingest_sst_gen_new").expect("");
-    let test_sstfile = gen_path.path().join("test_sst_file_new");
+    let gen_path = TempDir::new("_rust_rocksdb_ingest_sst_gen_new_cf").expect("");
+    let test_sstfile = gen_path.path().join("test_sst_file_new_cf");
     let test_sstfile_str = test_sstfile.to_str().unwrap();
-    let cf_opts = Options::new();
+    let mut cf_opts = Options::new();
+    cf_opts.add_merge_operator("merge operator", concat_merge);
     db.create_cf("cf1", &cf_opts).unwrap();
     let handle = db.cf_handle("cf1").unwrap();
 
@@ -227,6 +227,7 @@ fn test_ingest_external_file_new_cf() {
     assert_eq!(db.get_cf(handle, b"k1").unwrap().unwrap(), b"a");
     assert_eq!(db.get_cf(handle, b"k2").unwrap().unwrap(), b"b");
     assert_eq!(db.get_cf(handle, b"k3").unwrap().unwrap(), b"cd");
+
     gen_sst_delete(cf_opts, None, test_sstfile_str);
     db.ingest_external_file_cf(handle, &ingest_opt, &[test_sstfile_str])
         .unwrap();

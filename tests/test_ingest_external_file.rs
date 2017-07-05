@@ -105,10 +105,7 @@ fn test_ingest_external_file() {
     let test_sstfile = gen_path.path().join("test_sst_file");
     let test_sstfile_str = test_sstfile.to_str().unwrap();
     let default_options = db.get_options();
-<<<<<<< HEAD
-=======
 
->>>>>>> remove deprecated function Add
     gen_sst(default_options,
             Some(db.cf_handle("default").unwrap()),
             test_sstfile_str,
@@ -130,12 +127,8 @@ fn test_ingest_external_file() {
     assert_eq!(db.get_cf(handle, b"k2").unwrap().unwrap(), b"v4");
     let snap = db.snapshot();
 
-<<<<<<< HEAD
-    let opt = Options::new();
-    gen_sst(opt,
-=======
+    let default_options = db.get_options();
     gen_sst(default_options,
->>>>>>> remove deprecated function Add
             None,
             test_sstfile_str,
             &[(b"k2", b"v5"), (b"k3", b"v6")]);
@@ -177,6 +170,7 @@ fn test_ingest_external_file_new() {
     assert_eq!(db.get(b"k3").unwrap().unwrap(), b"c");
 
     let snap = db.snapshot();
+    let default_options = db.get_options();
     gen_sst_merge(default_options,
                   Some(db.cf_handle("default").unwrap()),
                   test_sstfile_str);
@@ -187,6 +181,7 @@ fn test_ingest_external_file_new() {
     assert_eq!(db.get(b"k2").unwrap().unwrap(), b"b");
     assert_eq!(db.get(b"k3").unwrap().unwrap(), b"cd");
 
+    let default_options = db.get_options();
     gen_sst_delete(default_options,
                    Some(db.cf_handle("default").unwrap()),
                    test_sstfile_str);
@@ -212,13 +207,12 @@ fn test_ingest_external_file_new_cf() {
     let gen_path = TempDir::new("_rust_rocksdb_ingest_sst_gen_new_cf").expect("");
     let test_sstfile = gen_path.path().join("test_sst_file_new_cf");
     let test_sstfile_str = test_sstfile.to_str().unwrap();
-    let mut cf_opts = Options::new();
-    cf_opts.add_merge_operator("merge operator", concat_merge);
-    db.create_cf("cf1", &cf_opts).unwrap();
+    let mut cf_opts_put = Options::new();
+    db.create_cf("cf1", &cf_opts_put).unwrap();
     let handle = db.cf_handle("cf1").unwrap();
 
     let mut ingest_opt = IngestExternalFileOptions::new();
-    gen_sst_put(cf_opts, None, test_sstfile_str);
+    gen_sst_put(cf_opts_put, None, test_sstfile_str);
 
     db.ingest_external_file_cf(handle, &ingest_opt, &[test_sstfile_str])
         .unwrap();
@@ -228,15 +222,20 @@ fn test_ingest_external_file_new_cf() {
     assert_eq!(db.get_cf(handle, b"k3").unwrap().unwrap(), b"c");
 
     let snap = db.snapshot();
+    let mut cf_opts_merge = Options::new();
+    cf_opts_merge.add_merge_operator("merge operator", concat_merge);
+    db.create_cf("cf1", &cf_opts_merge).unwrap();
     ingest_opt = ingest_opt.move_files(true);
-    gen_sst_merge(cf_opts, None, test_sstfile_str);
+    gen_sst_merge(cf_opts_merge, None, test_sstfile_str);
     db.ingest_external_file_cf(handle, &ingest_opt, &[test_sstfile_str])
         .unwrap();
     assert_eq!(db.get_cf(handle, b"k1").unwrap().unwrap(), b"a");
     assert_eq!(db.get_cf(handle, b"k2").unwrap().unwrap(), b"b");
     assert_eq!(db.get_cf(handle, b"k3").unwrap().unwrap(), b"cd");
 
-    gen_sst_delete(cf_opts, None, test_sstfile_str);
+    let mut cf_opts_delete = Options::new();
+    db.create_cf("cf1", &cf_opts_delete).unwrap();
+    gen_sst_delete(cf_opts_delete, None, test_sstfile_str);
     db.ingest_external_file_cf(handle, &ingest_opt, &[test_sstfile_str])
         .unwrap();
 

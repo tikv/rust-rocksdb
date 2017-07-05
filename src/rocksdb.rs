@@ -1460,11 +1460,13 @@ impl Drop for SstFileWriter {
     }
 }
 
-pub fn supported_compression() -> &'static [DBCompressionType] {
+pub fn supported_compression() -> Vec<DBCompressionType> {
     unsafe {
         let size = crocksdb_ffi::crocksdb_get_supported_compression_number() as usize;
-        let val = crocksdb_ffi::crocksdb_get_supported_compression();
-        slice::from_raw_parts(val, size)
+        let mut v: Vec<DBCompressionType> = Vec::with_capacity(size);
+        let pv = v.as_mut_ptr();
+        crocksdb_ffi::crocksdb_get_supported_compression(pv);
+        v
     }
 }
 
@@ -1903,7 +1905,7 @@ mod test {
     fn test_supported_compression() {
         let com = supported_compression();
         for c in com {
-            assert!(*c <= DBCompressionType::DBDisableCompressionOption);
+            assert!(c <= DBCompressionType::DBZstdNotFinal);
         }
     }
 }

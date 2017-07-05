@@ -2951,8 +2951,11 @@ size_t crocksdb_get_supported_compression_number() {
   return rocksdb::GetSupportedCompressions().size();
 }
 
-const unsigned char* crocksdb_get_supported_compression() {
-  return reinterpret_cast<const unsigned char*>(rocksdb::GetSupportedCompressions().data());
+void crocksdb_get_supported_compression(unsigned char* v) {
+  auto compressions = rocksdb::GetSupportedCompressions();
+  for (size_t i = 0; i < compressions.size(); i++) {
+    v[i] = compressions[i];
+  }
 }
 
 /* Table Properties */

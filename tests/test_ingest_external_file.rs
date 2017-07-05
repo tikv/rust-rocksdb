@@ -223,7 +223,6 @@ fn test_ingest_external_file_new_cf() {
     assert_eq!(db.get_cf(handle, b"k3").unwrap().unwrap(), b"c");
 
     let snap = db.snapshot();
-    // let mut cf_opts_merge = Options::new();
 
     ingest_opt = ingest_opt.move_files(true);
     gen_sst_merge(Options::new(), None, test_sstfile_str);
@@ -233,7 +232,6 @@ fn test_ingest_external_file_new_cf() {
     assert_eq!(db.get_cf(handle, b"k2").unwrap().unwrap(), b"b");
     assert_eq!(db.get_cf(handle, b"k3").unwrap().unwrap(), b"cd");
 
-    // let mut cf_opts_delete = Options::new();
     gen_sst_delete(Options::new(), None, test_sstfile_str);
     db.ingest_external_file_cf(handle, &ingest_opt, &[test_sstfile_str])
         .unwrap();

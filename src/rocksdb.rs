@@ -1907,7 +1907,7 @@ mod test {
         let com = supported_compression();
         assert!(com.len() != 0);
         for c in com {
-            assert!(c <= DBCompressionType::DBZstdNotFinal);
+            assert!(c <= DBCompressionType::DBZstd);
         }
     }
 }

@@ -1466,6 +1466,7 @@ pub fn supported_compression() -> Vec<DBCompressionType> {
         let mut v: Vec<DBCompressionType> = Vec::with_capacity(size);
         let pv = v.as_mut_ptr();
         crocksdb_ffi::crocksdb_get_supported_compression(pv, size as size_t);
+        v.set_len(size);
         v
     }
 }
@@ -1904,6 +1905,7 @@ mod test {
     #[test]
     fn test_supported_compression() {
         let com = supported_compression();
+        assert!(com.len() != 0);
         for c in com {
             assert!(c <= DBCompressionType::DBZstdNotFinal);
         }

@@ -72,7 +72,7 @@ pub enum DBEntryType {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, PartialOrd)]
-#[repr(u8)]
+#[repr(C)]
 pub enum DBCompressionType {
     DBNo = 0,
     DBSnappy = 1,
@@ -83,7 +83,6 @@ pub enum DBCompressionType {
     // DBXpress = 6, not support currently.
     DBZstd = 7,
 
-    // used for test
     DBZstdNotFinal = 0x40,
 }
 

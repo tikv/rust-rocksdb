@@ -105,6 +105,10 @@ fn test_ingest_external_file() {
     let test_sstfile = gen_path.path().join("test_sst_file");
     let test_sstfile_str = test_sstfile.to_str().unwrap();
     let default_options = db.get_options();
+<<<<<<< HEAD
+=======
+
+>>>>>>> remove deprecated function Add
     gen_sst(default_options,
             Some(db.cf_handle("default").unwrap()),
             test_sstfile_str,
@@ -126,8 +130,12 @@ fn test_ingest_external_file() {
     assert_eq!(db.get_cf(handle, b"k2").unwrap().unwrap(), b"v4");
     let snap = db.snapshot();
 
+<<<<<<< HEAD
     let opt = Options::new();
     gen_sst(opt,
+=======
+    gen_sst(default_options,
+>>>>>>> remove deprecated function Add
             None,
             test_sstfile_str,
             &[(b"k2", b"v5"), (b"k3", b"v6")]);

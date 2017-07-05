@@ -14,7 +14,8 @@
 //
 
 use crocksdb_ffi::{self, DBWriteBatch, DBCFHandle, DBInstance, DBBackupEngine,
-                   DBStatisticsTickerType, DBStatisticsHistogramType, DBPinnableSlice};
+                   DBStatisticsTickerType, DBStatisticsHistogramType, DBPinnableSlice,
+                   DBCompressionType};
 use libc::{self, c_int, c_void, size_t};
 use rocksdb_options::{Options, ReadOptions, UnsafeSnap, WriteOptions, FlushOptions, EnvOptions,
                       RestoreOptions, IngestExternalFileOptions, HistogramData, CompactOptions};
@@ -1459,6 +1460,14 @@ impl Drop for SstFileWriter {
     }
 }
 
+pub fn supported_compression() -> &'static [DBCompressionType] {
+    unsafe {
+        let size = crocksdb_ffi::crocksdb_get_supported_compression_number() as usize;
+        let val = crocksdb_ffi::crocksdb_get_supported_compression();
+        slice::from_raw_parts(val, size)
+    }
+}
+
 #[cfg(test)]
 mod test {
     use std::fs;
@@ -1888,5 +1897,13 @@ mod test {
         let total_sst_files_size = db.get_property_int_cf(cf_handle, "rocksdb.total-sst-files-size")
             .unwrap();
         assert!(total_sst_files_size > 0);
+    }
+
+    #[test]
+    fn test_supported_compression() {
+        let com = supported_compression();
+        for c in com {
+            assert!(*c <= DBCompressionType::DBDisableCompressionOption);
+        }
     }
 }

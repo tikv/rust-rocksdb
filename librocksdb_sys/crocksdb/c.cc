@@ -2947,6 +2947,14 @@ const char* crocksdb_pinnableslice_value(const crocksdb_pinnableslice_t* v,
   return v->rep.data();
 }
 
+size_t crocksdb_get_supported_compression_number() {
+  return rocksdb::GetSupportedCompressions().size();
+}
+
+const unsigned char* crocksdb_get_supported_compression() {
+  return reinterpret_cast<const unsigned char*>(rocksdb::GetSupportedCompressions().data());
+}
+
 /* Table Properties */
 
 struct crocksdb_user_collected_properties_t {

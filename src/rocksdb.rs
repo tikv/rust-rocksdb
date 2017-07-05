@@ -1465,7 +1465,7 @@ pub fn supported_compression() -> Vec<DBCompressionType> {
         let size = crocksdb_ffi::crocksdb_get_supported_compression_number() as usize;
         let mut v: Vec<DBCompressionType> = Vec::with_capacity(size);
         let pv = v.as_mut_ptr();
-        crocksdb_ffi::crocksdb_get_supported_compression(pv);
+        crocksdb_ffi::crocksdb_get_supported_compression(pv, size as size_t);
         v
     }
 }

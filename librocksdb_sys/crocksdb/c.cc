@@ -2951,8 +2951,9 @@ size_t crocksdb_get_supported_compression_number() {
   return rocksdb::GetSupportedCompressions().size();
 }
 
-void crocksdb_get_supported_compression(unsigned char* v) {
+void crocksdb_get_supported_compression(unsigned char* v, size_t l) {
   auto compressions = rocksdb::GetSupportedCompressions();
+  assert(compressions.size() == l);
   for (size_t i = 0; i < compressions.size(); i++) {
     v[i] = compressions[i];
   }

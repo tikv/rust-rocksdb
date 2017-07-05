@@ -856,7 +856,7 @@ extern "C" {
                                         -> *const u8;
     pub fn crocksdb_pinnableslice_destroy(v: *mut DBPinnableSlice);
     pub fn crocksdb_get_supported_compression_number() -> size_t;
-    pub fn crocksdb_get_supported_compression(v: *mut DBCompressionType);
+    pub fn crocksdb_get_supported_compression(v: *mut DBCompressionType, l: size_t);
 
     pub fn crocksdb_user_collected_properties_add(props: *mut DBUserCollectedProperties,
                                                   key: *const uint8_t,

@@ -1904,10 +1904,17 @@ mod test {
 
     #[test]
     fn test_supported_compression() {
-        let com = supported_compression();
+        let mut com = supported_compression();
+        let len_before = com.len();
         assert!(com.len() != 0);
+        com.dedup();
+        assert_eq!(len_before, com.len());
         for c in com {
-            assert!(c <= DBCompressionType::DBZstd);
+            match c as u32 {
+                0...5 => assert!(true),
+                7 => assert!(true),
+                _ => assert!(false),
+            }
         }
     }
 }

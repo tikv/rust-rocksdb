@@ -71,7 +71,7 @@ pub enum DBEntryType {
     Other = 4,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, PartialOrd)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 #[repr(C)]
 pub enum DBCompressionType {
     DBNo = 0,

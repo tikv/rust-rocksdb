@@ -1913,8 +1913,7 @@ mod test {
             println!("{:?}", c);
             println!("{}", c as u32);
             match c as u32 {
-                0...5 => assert!(true),
-                7 => assert!(true),
+                0...5 | 7 | 0x40 => assert!(true),
                 _ => assert!(false),
             }
         }

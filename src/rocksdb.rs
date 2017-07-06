@@ -1911,6 +1911,7 @@ mod test {
         assert_eq!(len_before, com.len());
         for c in com {
             println!("{:?}", c);
+            println!("{}", c as u32);
             match c as u32 {
                 0...5 => assert!(true),
                 7 => assert!(true),

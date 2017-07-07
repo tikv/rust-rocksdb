@@ -150,6 +150,13 @@ typedef enum crocksdb_table_property_t {
   kCompressionName = 17,
 } crocksdb_table_property_t;
 
+typedef enum crocksdb_key_version_content_t {
+  user_key = 1,
+  value = 2,
+  sequence = 3,
+  type = 4,
+} crocksdb_key_version_content_t;
+
 /* DB operations */
 
 extern C_ROCKSDB_LIBRARY_API crocksdb_t* crocksdb_open(
@@ -930,8 +937,8 @@ enum {
 };
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_compression(
     crocksdb_options_t*, int);
-extern C_ROCKSDB_LIBRARY_API int crocksdb_options_get_compression(
-    crocksdb_options_t*);
+extern C_ROCKSDB_LIBRARY_API int
+crocksdb_options_get_compression(crocksdb_options_t *);
 
 enum {
   crocksdb_level_compaction = 0,
@@ -1424,6 +1431,52 @@ crocksdb_get_propeties_of_tables_in_range(
     const char* const* start_keys, const size_t* start_keys_lens,
     const char* const* limit_keys, const size_t* limit_keys_lens,
     char** errptr);
+
+/* Get All Key Versions */
+extern C_ROCKSDB_LIBRARY_API uint64_t
+crocksdb_keyversion_get_seq(crocksdb_keyversion_t *);
+
+extern C_ROCKSDB_LIBRARY_API uint64_t
+crocksdb_keyversion_get_type(crocksdb_keyversion_t *);
+
+extern C_ROCKSDB_LIBRARY_API const char *
+crocksdb_keyversion_get_key(crocksdb_keyversion_t *, size_t *slen);
+
+extern C_ROCKSDB_LIBRARY_API const char *
+crocksdb_keyversion_get_value(crocksdb_keyversion_t *, size_t *slen);
+
+extern C_ROCKSDB_LIBRARY_API crocksdb_keyversions_t *
+crocksdb_keyversions_create();
+
+extern C_ROCKSDB_LIBRARY_API void
+crocksdb_keyversions_destroy(crocksdb_keyversions_t *kvs);
+
+extern C_ROCKSDB_LIBRARY_API crocksdb_keyversions_iterator_t *
+crocksdb_keyversions_iterator_create(crocksdb_keyversions_t *kvs);
+
+extern C_ROCKSDB_LIBRARY_API void
+crocksdb_keyversions_iterator_destroy(crocksdb_keyversions_iterator_t *it);
+
+extern C_ROCKSDB_LIBRARY_API unsigned char
+crocksdb_keyversions_iterator_valid(crocksdb_keyversions_iterator_t *it);
+
+extern C_ROCKSDB_LIBRARY_API void
+crocksdb_keyversions_iterator_next(crocksdb_keyversions_iterator_t *it);
+
+extern C_ROCKSDB_LIBRARY_API void
+crocksdb_keyversions_iterator_value(crocksdb_keyversions_iterator_t *it,
+                                    crocksdb_keyversion_t *kv);
+
+extern C_ROCKSDB_LIBRARY_API crocksdb_keyversion_t *
+crocksdb_keyversion_create();
+
+extern C_ROCKSDB_LIBRARY_API void
+crocksdb_keyversion_destroy(crocksdb_keyversion_t *kvs);
+
+extern C_ROCKSDB_LIBRARY_API void
+crocksdb_get_all_key_versions(crocksdb_t *db, const char *begin_key,
+                              size_t begin_keylen, const char *end_key,
+                              size_t end_keylen, crocksdb_keyversions_t *kvs);
 
 #ifdef __cplusplus
 }  /* end extern "C" */

@@ -16,6 +16,7 @@
 use crocksdb_ffi::{self, DBWriteBatch, DBCFHandle, DBInstance, DBBackupEngine,
                    DBStatisticsTickerType, DBStatisticsHistogramType, DBPinnableSlice,
                    DBCompressionType};
+use key_versions::{KeyVersion, new_key_versions};
 use libc::{self, c_int, c_void, size_t};
 use rocksdb_options::{Options, ReadOptions, UnsafeSnap, WriteOptions, FlushOptions, EnvOptions,
                       RestoreOptions, IngestExternalFileOptions, HistogramData, CompactOptions};
@@ -1079,6 +1080,22 @@ impl DB {
                                                                 limit_keys.as_ptr(),
                                                                 limit_keys_lens.as_ptr()));
             Ok(TablePropertiesCollection::from_raw(props))
+        }
+    }
+
+    pub fn get_all_key_versions(&self,
+                                start_key: &[u8],
+                                end_key: &[u8])
+                                -> Result<Vec<KeyVersion>, String> {
+        unsafe {
+            let kvs = new_key_versions();
+            crocksdb_ffi::crocksdb_get_all_key_versions(self.inner,
+                                                        start_key.as_ptr(),
+                                                        start_key.len() as size_t,
+                                                        end_key.as_ptr(),
+                                                        end_key.len() as size_t,
+                                                        kvs.inner);
+            Ok(kvs.get_vec())
         }
     }
 }

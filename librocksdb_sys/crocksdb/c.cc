@@ -9,7 +9,6 @@
 
 #include "crocksdb/c.h"
 
-#include <stdlib.h>
 #include "rocksdb/cache.h"
 #include "rocksdb/compaction_filter.h"
 #include "rocksdb/comparator.h"
@@ -30,7 +29,9 @@
 #include "rocksdb/table_properties.h"
 #include "rocksdb/universal_compaction.h"
 #include "rocksdb/utilities/backupable_db.h"
+#include "rocksdb/utilities/debug.h"
 #include "rocksdb/write_batch.h"
+#include <stdlib.h>
 
 using rocksdb::Cache;
 using rocksdb::ColumnFamilyDescriptor;
@@ -96,6 +97,7 @@ using rocksdb::TableProperties;
 using rocksdb::TablePropertiesCollection;
 using rocksdb::TablePropertiesCollector;
 using rocksdb::TablePropertiesCollectorFactory;
+using rocksdb::KeyVersion;
 
 using std::shared_ptr;
 
@@ -145,6 +147,19 @@ struct crocksdb_compactionjobinfo_t {
 };
 struct crocksdb_externalfileingestioninfo_t {
   ExternalFileIngestionInfo rep;
+};
+
+struct crocksdb_keyversions_t {
+  std::vector<KeyVersion> rep_;
+};
+
+struct crocksdb_keyversion_t {
+  KeyVersion *rep_;
+};
+
+struct crocksdb_keyversions_iterator_t {
+  std::vector<KeyVersion>::iterator cur_;
+  std::vector<KeyVersion>::iterator end_;
 };
 
 struct crocksdb_compactionfiltercontext_t {
@@ -1923,7 +1938,7 @@ void crocksdb_options_set_compression(crocksdb_options_t* opt, int t) {
   opt->rep.compression = static_cast<CompressionType>(t);
 }
 
-int crocksdb_options_get_compression(crocksdb_options_t* opt) {
+int crocksdb_options_get_compression(crocksdb_options_t *opt) {
   return static_cast<int>(opt->rep.compression);
 }
 
@@ -3487,6 +3502,77 @@ crocksdb_get_properties_of_tables_in_range(
 
 void crocksdb_set_bottommost_compression(crocksdb_options_t* opt, int c) {
   opt->rep.bottommost_compression = static_cast<CompressionType>(c);
+}
+ // Get All Key Versions
+crocksdb_keyversions_t *crocksdb_keyversions_create() {
+  return new crocksdb_keyversions_t;
+}
+
+void crocksdb_keyversions_destroy(crocksdb_keyversions_t *kvs) { delete kvs; }
+
+crocksdb_keyversions_iterator_t *
+crocksdb_keyversions_iterator_create(crocksdb_keyversions_t *kvs) {
+  auto it = new crocksdb_keyversions_iterator_t;
+  it->cur_ = kvs->rep_.begin();
+  it->end_ = kvs->rep_.end();
+  return it;
+}
+
+void crocksdb_keyversions_iterator_destroy(
+    crocksdb_keyversions_iterator_t *it) {
+  delete it;
+}
+
+unsigned char
+crocksdb_keyversions_iterator_valid(crocksdb_keyversions_iterator_t *it) {
+  return it->cur_ != it->end_;
+}
+
+void crocksdb_keyversions_iterator_next(crocksdb_keyversions_iterator_t *it) {
+  ++(it->cur_);
+}
+
+void crocksdb_keyversions_iterator_value(crocksdb_keyversions_iterator_t *it,
+                                         crocksdb_keyversion_t *kv) {
+  kv->rep_ = &*(it->cur_);
+}
+
+crocksdb_keyversion_t *crocksdb_keyversion_create() {
+  return new crocksdb_keyversion_t;
+}
+
+void crocksdb_keyversion_destroy(crocksdb_keyversion_t *kv) { delete kv; }
+
+void crocksdb_get_all_key_versions(crocksdb_t *db, const char *begin_key,
+                                   size_t begin_keylen, const char *end_key,
+                                   size_t end_keylen,
+                                   crocksdb_keyversions_t *k_versions) {
+  GetAllKeyVersions(db->rep, Slice(begin_key, begin_keylen),
+                    Slice(end_key, end_keylen), &k_versions->rep_);
+}
+
+uint64_t crocksdb_keyversion_get_seq(crocksdb_keyversion_t *kv) {
+  auto rep = kv->rep_;
+  return rep->sequence;
+}
+
+uint64_t crocksdb_keyversion_get_type(crocksdb_keyversion_t *kv) {
+  auto rep = kv->rep_;
+  return rep->type;
+}
+
+const char *crocksdb_keyversion_get_key(crocksdb_keyversion_t *kv,
+                                        size_t *slen) {
+  auto rep = kv->rep_;
+  *slen = rep->user_key.size();
+  return rep->user_key.data();
+}
+
+const char *crocksdb_keyversion_get_value(crocksdb_keyversion_t *kv,
+                                          size_t *slen) {
+  auto rep = kv->rep_;
+  *slen = rep->value.size();
+  return rep->value.data();
 }
 
 }  // end extern "C"

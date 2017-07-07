@@ -150,13 +150,6 @@ typedef enum crocksdb_table_property_t {
   kCompressionName = 17,
 } crocksdb_table_property_t;
 
-typedef enum crocksdb_key_version_content_t {
-  user_key = 1,
-  value = 2,
-  sequence = 3,
-  type = 4,
-} crocksdb_key_version_content_t;
-
 /* DB operations */
 
 extern C_ROCKSDB_LIBRARY_API crocksdb_t* crocksdb_open(

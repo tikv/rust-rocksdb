@@ -153,10 +153,6 @@ struct crocksdb_keyversions_t {
   std::vector<KeyVersion> rep;
 };
 
-struct crocksdb_keyversion_t {
-  KeyVersion *rep_;
-};
-
 struct crocksdb_compactionfiltercontext_t {
   CompactionFilter::Context rep;
 };

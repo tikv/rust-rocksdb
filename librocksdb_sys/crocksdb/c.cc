@@ -3500,10 +3500,10 @@ crocksdb_get_properties_of_tables_in_range(
   return props.release();
 }
 
-void crocksdb_set_bottommost_compression(crocksdb_options_t* opt, int c) {
+void crocksdb_set_bottommost_compression(crocksdb_options_t *opt, int c) {
   opt->rep.bottommost_compression = static_cast<CompressionType>(c);
 }
- // Get All Key Versions
+// Get All Key Versions
 crocksdb_keyversions_t *crocksdb_keyversions_create() {
   return new crocksdb_keyversions_t;
 }

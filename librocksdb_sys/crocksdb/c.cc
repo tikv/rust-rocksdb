@@ -2606,10 +2606,23 @@ void crocksdb_sstfilewriter_open(crocksdb_sstfilewriter_t* writer,
   SaveError(errptr, writer->rep->Open(std::string(name)));
 }
 
-void crocksdb_sstfilewriter_add(crocksdb_sstfilewriter_t* writer, const char* key,
-                               size_t keylen, const char* val, size_t vallen,
-                               char** errptr) {
-  SaveError(errptr, writer->rep->Add(Slice(key, keylen), Slice(val, vallen)));
+void crocksdb_sstfilewriter_put(crocksdb_sstfilewriter_t *writer,
+                                const char *key, size_t keylen, const char *val,
+                                size_t vallen, char **errptr) {
+  SaveError(errptr, writer->rep->Put(Slice(key, keylen), Slice(val, vallen)));
+}
+
+void crocksdb_sstfilewriter_merge(crocksdb_sstfilewriter_t *writer,
+                                  const char *key, size_t keylen,
+                                  const char *val, size_t vallen,
+                                  char **errptr) {
+  SaveError(errptr, writer->rep->Merge(Slice(key, keylen), Slice(val, vallen)));
+}
+
+void crocksdb_sstfilewriter_delete(crocksdb_sstfilewriter_t *writer,
+                                   const char *key, size_t keylen,
+                                   char **errptr) {
+  SaveError(errptr, writer->rep->Delete(Slice(key, keylen)));
 }
 
 void crocksdb_sstfilewriter_finish(crocksdb_sstfilewriter_t* writer,

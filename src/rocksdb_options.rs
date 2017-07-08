@@ -319,6 +319,20 @@ impl Default for Options {
     }
 }
 
+impl Clone for Options {
+    fn clone(&self) -> Self {
+        assert!(self.filter.is_none());
+        unsafe {
+            let opts = crocksdb_ffi::crocksdb_options_copy(self.inner);
+            assert!(!opts.is_null());
+            Options {
+                inner: opts,
+                filter: None,
+            }
+        }
+    }
+}
+
 impl Options {
     pub fn new() -> Options {
         Options::default()
@@ -411,6 +425,22 @@ impl Options {
                                                                      level_types.as_ptr(),
                                                                      level_types.len() as size_t)
         }
+    }
+
+    pub fn get_compression_per_level(&self) -> Vec<DBCompressionType> {
+        unsafe {
+            let size =
+                crocksdb_ffi::crocksdb_options_get_compression_level_number(self.inner) as usize;
+            let mut ret = Vec::with_capacity(size);
+            let pret = ret.as_mut_ptr();
+            crocksdb_ffi::crocksdb_options_get_compression_per_level(self.inner, pret);
+            ret.set_len(size);
+            ret
+        }
+    }
+
+    pub fn bottommost_compression(&self, c: DBCompressionType) {
+        unsafe { crocksdb_ffi::crocksdb_set_bottommost_compression(self.inner, c) }
     }
 
     pub fn add_merge_operator(&mut self, name: &str, merge_fn: MergeFn) {
@@ -894,6 +924,12 @@ impl Options {
 
     pub fn get_block_cache_usage(&self) -> u64 {
         unsafe { crocksdb_ffi::crocksdb_options_get_block_cache_usage(self.inner) as u64 }
+    }
+
+    pub fn enable_pipelined_write(&self, v: bool) {
+        unsafe {
+            crocksdb_ffi::crocksdb_options_set_enable_pipelined_write(self.inner, v);
+        }
     }
 
     pub fn allow_concurrent_memtable_write(&self, v: bool) {

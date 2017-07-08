@@ -372,3 +372,36 @@ fn test_get_compression() {
     opts.compression(DBCompressionType::DBSnappy);
     assert_eq!(opts.get_compression(), DBCompressionType::DBSnappy);
 }
+
+#[test]
+fn test_get_compression_per_level() {
+    let mut opts = Options::new();
+    let compressions = &[DBCompressionType::DBNo, DBCompressionType::DBSnappy];
+    opts.compression_per_level(compressions);
+    let v = opts.get_compression_per_level();
+    assert_eq!(v.len(), 2);
+    assert_eq!(v[0], DBCompressionType::DBNo);
+    assert_eq!(v[1], DBCompressionType::DBSnappy);
+    let mut opts2 = Options::new();
+    let empty: &[DBCompressionType] = &[];
+    opts2.compression_per_level(empty);
+    let v2 = opts2.get_compression_per_level();
+    assert_eq!(v2.len(), 0);
+}
+
+#[test]
+fn test_bottommost_compression() {
+    let path = TempDir::new("_rust_rocksdb_bottommost_compression").expect("");
+    let mut opts = Options::new();
+    opts.create_if_missing(true);
+    opts.bottommost_compression(DBCompressionType::DBNo);
+    DB::open(opts, path.path().to_str().unwrap()).unwrap();
+}
+
+#[test]
+fn test_clone_options() {
+    let mut opts = Options::new();
+    opts.compression(DBCompressionType::DBSnappy);
+    let opts2 = opts.clone();
+    assert_eq!(opts.get_compression(), opts2.get_compression());
+}

@@ -14,7 +14,8 @@
 //
 
 use crocksdb_ffi::{self, DBWriteBatch, DBCFHandle, DBInstance, DBBackupEngine,
-                   DBStatisticsTickerType, DBStatisticsHistogramType, DBPinnableSlice};
+                   DBStatisticsTickerType, DBStatisticsHistogramType, DBPinnableSlice,
+                   DBCompressionType};
 use libc::{self, c_int, c_void, size_t};
 use rocksdb_options::{Options, ReadOptions, UnsafeSnap, WriteOptions, FlushOptions, EnvOptions,
                       RestoreOptions, IngestExternalFileOptions, HistogramData, CompactOptions};
@@ -26,7 +27,7 @@ use std::fmt::{self, Debug, Formatter};
 use std::ops::Deref;
 use std::path::Path;
 use std::str::from_utf8;
-use table_properties::{TablePropertiesCollection, new_table_properties_collection};
+use table_properties::TablePropertiesCollection;
 
 const DEFAULT_COLUMN_FAMILY: &'static str = "default";
 
@@ -1047,9 +1048,8 @@ impl DB {
 
     pub fn get_properties_of_all_tables(&self) -> Result<TablePropertiesCollection, String> {
         unsafe {
-            let props = new_table_properties_collection();
-            ffi_try!(crocksdb_get_properties_of_all_tables(self.inner, props.inner));
-            Ok(props)
+            let props = ffi_try!(crocksdb_get_properties_of_all_tables(self.inner));
+            Ok(TablePropertiesCollection::from_raw(props))
         }
     }
 
@@ -1057,9 +1057,8 @@ impl DB {
                                            cf: &CFHandle)
                                            -> Result<TablePropertiesCollection, String> {
         unsafe {
-            let props = new_table_properties_collection();
-            ffi_try!(crocksdb_get_properties_of_all_tables_cf(self.inner, cf.inner, props.inner));
-            Ok(props)
+            let props = ffi_try!(crocksdb_get_properties_of_all_tables_cf(self.inner, cf.inner));
+            Ok(TablePropertiesCollection::from_raw(props))
         }
     }
 
@@ -1072,16 +1071,14 @@ impl DB {
         let limit_keys: Vec<*const u8> = ranges.iter().map(|x| x.end_key.as_ptr()).collect();
         let limit_keys_lens: Vec<_> = ranges.iter().map(|x| x.end_key.len()).collect();
         unsafe {
-            let props = new_table_properties_collection();
-            ffi_try!(crocksdb_get_properties_of_tables_in_range(self.inner,
+            let props = ffi_try!(crocksdb_get_properties_of_tables_in_range(self.inner,
                                                                 cf.inner,
                                                                 ranges.len() as i32,
                                                                 start_keys.as_ptr(),
                                                                 start_keys_lens.as_ptr(),
                                                                 limit_keys.as_ptr(),
-                                                                limit_keys_lens.as_ptr(),
-                                                                props.inner));
-            Ok(props)
+                                                                limit_keys_lens.as_ptr()));
+            Ok(TablePropertiesCollection::from_raw(props))
         }
     }
 }
@@ -1456,6 +1453,17 @@ impl SstFileWriter {
 impl Drop for SstFileWriter {
     fn drop(&mut self) {
         unsafe { crocksdb_ffi::crocksdb_sstfilewriter_destroy(self.inner) }
+    }
+}
+
+pub fn supported_compression() -> Vec<DBCompressionType> {
+    unsafe {
+        let size = crocksdb_ffi::crocksdb_get_supported_compression_number() as usize;
+        let mut v: Vec<DBCompressionType> = Vec::with_capacity(size);
+        let pv = v.as_mut_ptr();
+        crocksdb_ffi::crocksdb_get_supported_compression(pv, size as size_t);
+        v.set_len(size);
+        v
     }
 }
 
@@ -1888,5 +1896,22 @@ mod test {
         let total_sst_files_size = db.get_property_int_cf(cf_handle, "rocksdb.total-sst-files-size")
             .unwrap();
         assert!(total_sst_files_size > 0);
+    }
+
+    #[test]
+    fn test_supported_compression() {
+        let mut com = supported_compression();
+        let len_before = com.len();
+        assert!(com.len() != 0);
+        com.dedup();
+        assert_eq!(len_before, com.len());
+        for c in com {
+            println!("{:?}", c);
+            println!("{}", c as u32);
+            match c as u32 {
+                0...5 | 7 | 0x40 => assert!(true),
+                _ => assert!(false),
+            }
+        }
     }
 }

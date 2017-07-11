@@ -7,7 +7,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file. See the AUTHORS file for names of contributors.
 
-#include "rocksdb/c.h"
+#include "crocksdb/c.h"
 
 #include <stdlib.h>
 #include "rocksdb/cache.h"
@@ -2072,6 +2072,11 @@ void crocksdb_options_set_use_adaptive_mutex(
 void crocksdb_options_set_bytes_per_sync(
     crocksdb_options_t* opt, uint64_t v) {
   opt->rep.bytes_per_sync = v;
+}
+
+void crocksdb_options_set_enable_pipelined_write(crocksdb_options_t *opt,
+                                                 unsigned char v) {
+  opt->rep.enable_pipelined_write = v;
 }
 
 void crocksdb_options_set_allow_concurrent_memtable_write(crocksdb_options_t* opt,

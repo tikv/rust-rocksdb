@@ -16,7 +16,6 @@
 use crocksdb_ffi::{self, DBWriteBatch, DBCFHandle, DBInstance, DBBackupEngine,
                    DBStatisticsTickerType, DBStatisticsHistogramType, DBPinnableSlice,
                    DBCompressionType};
-use key_versions::{KeyVersion, new_key_versions};
 use libc::{self, c_int, c_void, size_t};
 use rocksdb_options::{Options, ReadOptions, UnsafeSnap, WriteOptions, FlushOptions, EnvOptions,
                       RestoreOptions, IngestExternalFileOptions, HistogramData, CompactOptions};

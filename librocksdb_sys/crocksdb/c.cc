@@ -150,16 +150,11 @@ struct crocksdb_externalfileingestioninfo_t {
 };
 
 struct crocksdb_keyversions_t {
-  std::vector<KeyVersion> rep_;
+  std::vector<KeyVersion> rep;
 };
 
 struct crocksdb_keyversion_t {
   KeyVersion *rep_;
-};
-
-struct crocksdb_keyversions_iterator_t {
-  std::vector<KeyVersion>::iterator cur_;
-  std::vector<KeyVersion>::iterator end_;
 };
 
 struct crocksdb_compactionfiltercontext_t {
@@ -3504,75 +3499,40 @@ void crocksdb_set_bottommost_compression(crocksdb_options_t *opt, int c) {
   opt->rep.bottommost_compression = static_cast<CompressionType>(c);
 }
 // Get All Key Versions
-crocksdb_keyversions_t *crocksdb_keyversions_create() {
-  return new crocksdb_keyversions_t;
-}
-
 void crocksdb_keyversions_destroy(crocksdb_keyversions_t *kvs) { delete kvs; }
 
-crocksdb_keyversions_iterator_t *
-crocksdb_keyversions_iterator_create(crocksdb_keyversions_t *kvs) {
-  auto it = new crocksdb_keyversions_iterator_t;
-  it->cur_ = kvs->rep_.begin();
-  it->end_ = kvs->rep_.end();
-  return it;
+crocksdb_keyversions_t *
+crocksdb_get_all_key_versions(crocksdb_t *db, const char *begin_key,
+                              size_t begin_keylen, const char *end_key,
+                              size_t end_keylen, char **errptr) {
+  crocksdb_keyversions_t *result = new crocksdb_keyversions_t;
+  SaveError(errptr,
+            GetAllKeyVersions(db->rep, Slice(begin_key, begin_keylen),
+                              Slice(end_key, end_keylen), &result->rep));
+  return result;
 }
 
-void crocksdb_keyversions_iterator_destroy(
-    crocksdb_keyversions_iterator_t *it) {
-  delete it;
+size_t crocksdb_keyversions_count(const crocksdb_keyversions_t *kvs) {
+  return kvs->rep.size();
 }
 
-unsigned char
-crocksdb_keyversions_iterator_valid(crocksdb_keyversions_iterator_t *it) {
-  return it->cur_ != it->end_;
+const char *crocksdb_keyversions_key(const crocksdb_keyversions_t *kvs,
+                                     int index) {
+  return kvs->rep[index].user_key.c_str();
 }
 
-void crocksdb_keyversions_iterator_next(crocksdb_keyversions_iterator_t *it) {
-  ++(it->cur_);
+const char *crocksdb_keyversions_value(const crocksdb_keyversions_t *kvs,
+                                       int index) {
+  return kvs->rep[index].value.c_str();
 }
 
-void crocksdb_keyversions_iterator_value(crocksdb_keyversions_iterator_t *it,
-                                         crocksdb_keyversion_t *kv) {
-  kv->rep_ = &*(it->cur_);
+uint64_t crocksdb_keyversions_seq(const crocksdb_keyversions_t *kvs,
+                                  int index) {
+  return kvs->rep[index].sequence;
 }
 
-crocksdb_keyversion_t *crocksdb_keyversion_create() {
-  return new crocksdb_keyversion_t;
-}
-
-void crocksdb_keyversion_destroy(crocksdb_keyversion_t *kv) { delete kv; }
-
-void crocksdb_get_all_key_versions(crocksdb_t *db, const char *begin_key,
-                                   size_t begin_keylen, const char *end_key,
-                                   size_t end_keylen,
-                                   crocksdb_keyversions_t *k_versions) {
-  GetAllKeyVersions(db->rep, Slice(begin_key, begin_keylen),
-                    Slice(end_key, end_keylen), &k_versions->rep_);
-}
-
-uint64_t crocksdb_keyversion_get_seq(crocksdb_keyversion_t *kv) {
-  auto rep = kv->rep_;
-  return rep->sequence;
-}
-
-uint64_t crocksdb_keyversion_get_type(crocksdb_keyversion_t *kv) {
-  auto rep = kv->rep_;
-  return rep->type;
-}
-
-const char *crocksdb_keyversion_get_key(crocksdb_keyversion_t *kv,
-                                        size_t *slen) {
-  auto rep = kv->rep_;
-  *slen = rep->user_key.size();
-  return rep->user_key.data();
-}
-
-const char *crocksdb_keyversion_get_value(crocksdb_keyversion_t *kv,
-                                          size_t *slen) {
-  auto rep = kv->rep_;
-  *slen = rep->value.size();
-  return rep->value.data();
+int crocksdb_keyversions_type(const crocksdb_keyversions_t *kvs, int index) {
+  return kvs->rep[index].type;
 }
 
 }  // end extern "C"

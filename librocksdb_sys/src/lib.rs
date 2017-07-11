@@ -56,10 +56,7 @@ pub enum DBFlushJobInfo {}
 pub enum DBCompactionJobInfo {}
 pub enum DBIngestionInfo {}
 pub enum DBEventListener {}
-
 pub enum DBKeyVersions {}
-pub enum DBKeyVersion {}
-pub enum DBKeyVersionsIterator {}
 
 pub fn new_bloom_filter(bits: c_int) -> *mut DBFilterPolicy {
     unsafe { crocksdb_filterpolicy_create_bloom(bits) }
@@ -991,7 +988,6 @@ extern "C" {
                                                       errptr: *mut *mut c_char)
                                                       -> *mut DBTablePropertiesCollection;
 
-<<<<<<< HEAD
     pub fn crocksdb_flushjobinfo_cf_name(info: *const DBFlushJobInfo,
                                          size: *mut size_t)
                                          -> *const c_char;
@@ -1042,48 +1038,27 @@ extern "C" {
                                          -> *mut DBEventListener;
     pub fn crocksdb_eventlistener_destroy(et: *mut DBEventListener);
     pub fn crocksdb_options_add_eventlistener(opt: *mut DBOptions, et: *mut DBEventListener);
-=======
     // Get All Key Versions
-    pub fn crocksdb_keyversions_create() -> *mut DBKeyVersions;
-
     pub fn crocksdb_keyversions_destroy(kvs: *mut DBKeyVersions);
-
-    pub fn crocksdb_keyversions_iterator_create(kv: *mut DBKeyVersions)
-                                                -> *mut DBKeyVersionsIterator;
-
-    pub fn crocksdb_keyversions_iterator_destroy(kv_iter: *mut DBKeyVersionsIterator);
-
-    pub fn crocksdb_keyversions_iterator_valid(kv_iter: *mut DBKeyVersionsIterator) -> bool;
-
-    pub fn crocksdb_keyversions_iterator_next(kv_iter: *mut DBKeyVersionsIterator);
-
-    pub fn crocksdb_keyversions_iterator_value(it: *mut DBKeyVersionsIterator,
-                                               value: *mut DBKeyVersion);
-    pub fn crocksdb_keyversion_create() -> *mut DBKeyVersion;
-
-    pub fn crocksdb_keyversion_destroy(kv: *mut DBKeyVersion);
 
     pub fn crocksdb_get_all_key_versions(db: *mut DBInstance,
                                          begin_key: *const u8,
                                          begin_keylen: size_t,
                                          end_key: *const u8,
                                          end_keylen: size_t,
-                                         key_versions: *mut DBKeyVersions)
-                                         -> size_t;
+                                         errptr: *mut *mut c_char)
+                                         -> *mut DBKeyVersions;
 
-    pub fn crocksdb_keyversion_get_seq(kv: *mut DBKeyVersion) -> uint64_t;
+    pub fn crocksdb_keyversions_count(kvs: *mut DBKeyVersions) -> size_t;
 
-    pub fn crocksdb_keyversion_get_type(kv: *mut DBKeyVersion) -> uint64_t;
+    pub fn crocksdb_keyversions_key(kvs: *mut DBKeyVersions, index: usize) -> *const c_char;
 
-    pub fn crocksdb_keyversion_get_key(kv: *mut DBKeyVersion, slen: *mut size_t) -> *const uint8_t;
+    pub fn crocksdb_keyversions_value(kvs: *mut DBKeyVersions, index: usize) -> *const c_char;
 
-    pub fn crocksdb_keyversion_get_value(kv: *mut DBKeyVersion,
-                                         slen: *mut size_t)
-                                         -> *const uint8_t;
+    pub fn crocksdb_keyversions_seq(kvs: *mut DBKeyVersions, index: usize) -> uint64_t;
 
+    pub fn crocksdb_keyversions_type(kvs: *mut DBKeyVersions, index: usize) -> c_int;
 
-
->>>>>>> add GetAllKeyVersions
 }
 
 #[cfg(test)]

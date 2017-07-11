@@ -1058,7 +1058,6 @@ extern "C" {
     pub fn crocksdb_keyversions_seq(kvs: *mut DBKeyVersions, index: usize) -> uint64_t;
 
     pub fn crocksdb_keyversions_type(kvs: *mut DBKeyVersions, index: usize) -> c_int;
-
 }
 
 #[cfg(test)]

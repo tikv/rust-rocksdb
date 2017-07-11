@@ -129,6 +129,7 @@ typedef struct crocksdb_compactionjobinfo_t crocksdb_compactionjobinfo_t;
 typedef struct crocksdb_externalfileingestioninfo_t
     crocksdb_externalfileingestioninfo_t;
 typedef struct crocksdb_eventlistener_t crocksdb_eventlistener_t;
+typedef struct crocksdb_keyversions_t crocksdb_keyversions_t;
 
 typedef enum crocksdb_table_property_t {
   kDataSize = 1,

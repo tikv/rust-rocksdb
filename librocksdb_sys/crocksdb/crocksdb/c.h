@@ -627,15 +627,19 @@ crocksdb_externalfileingestioninfo_table_properties(
 
 /* Event listener */
 
+typedef void (*on_flush_completed_cb)(void*, crocksdb_t*,
+                                      const crocksdb_flushjobinfo_t*);
+typedef void (*on_compaction_completed_cb)(void*, crocksdb_t*,
+                                           const crocksdb_compactionjobinfo_t*);
+typedef void (*on_external_file_ingested_cb)(
+    void*, crocksdb_t*, const crocksdb_externalfileingestioninfo_t*);
+
 extern C_ROCKSDB_LIBRARY_API crocksdb_eventlistener_t*
 crocksdb_eventlistener_create(
     void* state_, void (*destructor_)(void*),
-    void (*on_flush_completed)(void*, crocksdb_t*,
-                               const crocksdb_flushjobinfo_t*),
-    void (*on_compaction_completed)(void*, crocksdb_t*,
-                                    const crocksdb_compactionjobinfo_t*),
-    void (*on_external_file_ingested)(
-        void*, crocksdb_t*, const crocksdb_externalfileingestioninfo_t*));
+    on_flush_completed_cb on_flush_completed,
+    on_compaction_completed_cb on_compaction_completed,
+    on_external_file_ingested_cb on_external_file_ingested);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_eventlistener_destroy(
     crocksdb_eventlistener_t*);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_add_eventlistener(

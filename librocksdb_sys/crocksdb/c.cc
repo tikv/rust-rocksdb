@@ -1673,12 +1673,9 @@ struct crocksdb_eventlistener_t : public EventListener {
 
 crocksdb_eventlistener_t* crocksdb_eventlistener_create(
     void* state_, void (*destructor_)(void*),
-    void (*on_flush_completed)(void*, crocksdb_t*,
-                               const crocksdb_flushjobinfo_t*),
-    void (*on_compaction_completed)(void*, crocksdb_t*,
-                                    const crocksdb_compactionjobinfo_t*),
-    void (*on_external_file_ingested)(
-        void*, crocksdb_t*, const crocksdb_externalfileingestioninfo_t*)) {
+    on_flush_completed_cb on_flush_completed,
+    on_compaction_completed_cb on_compaction_completed,
+    on_external_file_ingested_cb on_external_file_ingested) {
   crocksdb_eventlistener_t* et = new crocksdb_eventlistener_t;
   et->state_ = state_;
   et->destructor_ = destructor_;

@@ -1680,7 +1680,8 @@ crocksdb_eventlistener_t* crocksdb_eventlistener_create(
     void (*on_external_file_ingested)(
         void*, crocksdb_t*, const crocksdb_externalfileingestioninfo_t*)) {
   crocksdb_eventlistener_t* et = new crocksdb_eventlistener_t;
-  et->state_ = state_, et->destructor_ = destructor_;
+  et->state_ = state_;
+  et->destructor_ = destructor_;
   et->on_flush_completed = on_flush_completed;
   et->on_compaction_completed = on_compaction_completed;
   et->on_external_file_ingested = on_external_file_ingested;

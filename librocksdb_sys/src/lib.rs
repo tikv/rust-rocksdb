@@ -1017,15 +1017,12 @@ extern "C" {
     pub fn crocksdb_externalfileingestioninfo_cf_name(info: *const DBIngestionInfo,
                                                       size: *mut size_t)
                                                       -> *const c_char;
-    #[cfg_attr(rustfmt, rustfmt_skip)]
     pub fn crocksdb_externalfileingestioninfo_internal_file_path(info: *const DBIngestionInfo,
                                                                  size: *mut size_t)
                                                                  -> *const c_char;
-    #[cfg_attr(rustfmt, rustfmt_skip)]
     pub fn crocksdb_externalfileingestioninfo_table_properties(info: *const DBIngestionInfo)
                                                                -> *const DBTableProperties;
 
-    #[cfg_attr(rustfmt, rustfmt_skip)]
     pub fn crocksdb_eventlistener_create(state: *mut c_void,
                                          destructor: extern "C" fn(*mut c_void),
                                          flush: extern "C" fn(*mut c_void,

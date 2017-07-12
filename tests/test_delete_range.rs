@@ -83,7 +83,12 @@ fn test_delete_range() {
     batch.delete_range_cf(cf_handle, b"a", b"c").unwrap();
     assert!(db.write(batch).is_ok());
     check_data();
+}
 
+#[test]
+fn test_delete_range_sst_files() {
+    let path = TempDir::new("_rust_rocksdb_test_delete_range_sst_files").expect("");
+    let db = DB::open_default(path.path().to_str().unwrap()).unwrap();
     let samples_a = vec![(b"key1".to_vec(), b"value1".to_vec()),
                          (b"key2".to_vec(), b"value2".to_vec()),
                          (b"key3".to_vec(), b"value3".to_vec()),
@@ -106,8 +111,10 @@ fn test_delete_range() {
 
     db.compact_range(None, None);
     assert_eq!(db.get(b"key3").unwrap().unwrap(), b"value5");
+
     db.delete_range(b"key1", b"key1").unwrap();
     assert_eq!(db.get(b"key1").unwrap().unwrap(), b"value1");
+
     db.delete_range(b"key2", b"key7").unwrap();
     assert!(db.get(b"key2").unwrap().is_none());
     assert!(db.get(b"key3").unwrap().is_none());
@@ -124,20 +131,40 @@ fn test_delete_range() {
 
 #[test]
 fn test_delete_range_ingest_file() {
-    let path = TempDir::new("_rust_rocksdb_delete_range_ingest_file").expect("");
+    let path = TempDir::new("_rust_rocksdb_test_delete_range_ingest_file").expect("");
     let path_str = path.path().to_str().unwrap();
     let mut opts = Options::new();
     opts.create_if_missing(true);
     let mut db = DB::open(opts, path_str).unwrap();
-    let gen_path = TempDir::new("_rust_rocksdb_ingest_sst_gen_new_cf").expect("");
-    let test_sstfile = gen_path.path().join("test_sst_file_new_cf");
+    let gen_path = TempDir::new("_rust_rocksdb_ingest_sst_gen").expect("");
+    let test_sstfile = gen_path.path().join("test_sst_file");
     let test_sstfile_str = test_sstfile.to_str().unwrap();
+    let ingest_opt = IngestExternalFileOptions::new();
+
+    let default_options = db.get_options();
+    gen_sst(default_options,
+            Some(db.cf_handle("default").unwrap()),
+            test_sstfile_str);
+
+    db.ingest_external_file(&ingest_opt, &[test_sstfile_str])
+        .unwrap();
+    assert!(test_sstfile.exists());
+    assert_eq!(db.get(b"key1").unwrap().unwrap(), b"value1");
+    assert_eq!(db.get(b"key2").unwrap().unwrap(), b"value2");
+    assert_eq!(db.get(b"key3").unwrap().unwrap(), b"value3");
+    assert_eq!(db.get(b"key4").unwrap().unwrap(), b"value4");
+
+    db.delete_range(b"key1", b"key4").unwrap();
+    assert!(db.get(b"key1").unwrap().is_none());
+    assert!(db.get(b"key2").unwrap().is_none());
+    assert!(db.get(b"key3").unwrap().is_none());
+    assert_eq!(db.get(b"key4").unwrap().unwrap(), b"value4");
+
     let cf_opts = Options::new();
     db.create_cf("cf1", &cf_opts).unwrap();
     let handle = db.cf_handle("cf1").unwrap();
-    let ingest_opt = IngestExternalFileOptions::new();
+    gen_sst(cf_opts, None, test_sstfile_str);
 
-    gen_sst(Options::new(), None, test_sstfile_str);
     db.ingest_external_file_cf(handle, &ingest_opt, &[test_sstfile_str])
         .unwrap();
     assert!(test_sstfile.exists());
@@ -149,7 +176,6 @@ fn test_delete_range_ingest_file() {
     let snap = db.snapshot();
 
     db.delete_range_cf(handle, b"key1", b"key3").unwrap();
-
     assert!(db.get_cf(handle, b"key1").unwrap().is_none());
     assert_eq!(db.get_cf(handle, b"key3").unwrap().unwrap(), b"value3");
     assert_eq!(db.get_cf(handle, b"key4").unwrap().unwrap(), b"value4");

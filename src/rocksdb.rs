@@ -310,7 +310,7 @@ pub struct KeyVersion {
     pub key: String,
     pub value: String,
     pub seq: u64,
-    pub key_type: c_int,
+    pub value_type: c_int,
 }
 
 impl DB {
@@ -1110,7 +1110,7 @@ impl DB {
                         .to_string_lossy()
                         .into_owned(),
                     seq: crocksdb_ffi::crocksdb_keyversions_seq(kvs, i),
-                    key_type: crocksdb_ffi::crocksdb_keyversions_type(kvs, i),
+                    value_type: crocksdb_ffi::crocksdb_keyversions_type(kvs, i),
                 })
             }
             crocksdb_ffi::crocksdb_keyversions_destroy(kvs);

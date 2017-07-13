@@ -1,17 +1,15 @@
-// Copyright 2014 Tyler Neely
+// Copyright 2017 PingCAP, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-// http://www.apache.org/licenses/LICENSE-2.0
+//     http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//
 
 use rocksdb::*;
 use std::fs;
@@ -31,6 +29,24 @@ fn gen_sst(opt: Options, cf: Option<&CFHandle>, path: &str) {
     writer.add(b"key3", b"value3").unwrap();
     writer.add(b"key4", b"value4").unwrap();
     writer.finish().unwrap();
+}
+
+fn check_kv(db: &DB, cf: Option<&CFHandle>, data: &[(&[u8], Option<&[u8]>)]) {
+    for &(k, v) in data {
+        if cf.is_some() {
+            if v.is_none() {
+                assert!(db.get_cf(cf.unwrap(), k).unwrap().is_none());
+            } else {
+                assert_eq!(db.get_cf(cf.unwrap(), k).unwrap().unwrap(), v.unwrap());
+            }
+        } else {
+            if v.is_none() {
+                assert!(db.get(k).unwrap().is_none());
+            } else {
+                assert_eq!(db.get(k).unwrap().unwrap(), v.unwrap());
+            }
+        }
+    }
 }
 
 #[test]
@@ -113,21 +129,31 @@ fn test_delete_range_sst_files() {
     assert_eq!(db.get(b"key3").unwrap().unwrap(), b"value5");
 
     db.delete_range(b"key1", b"key1").unwrap();
-    assert_eq!(db.get(b"key1").unwrap().unwrap(), b"value1");
-
     db.delete_range(b"key2", b"key7").unwrap();
-    assert!(db.get(b"key2").unwrap().is_none());
-    assert!(db.get(b"key3").unwrap().is_none());
-    assert!(db.get(b"key4").unwrap().is_none());
-    assert!(db.get(b"key5").unwrap().is_none());
-    assert_eq!(db.get(b"key7").unwrap().unwrap(), b"value7");
-    assert_eq!(db.get(b"key8").unwrap().unwrap(), b"value8");
+    check_kv(&db,
+             None,
+             &[(b"key1", Some(b"value1")),
+               (b"key2", None),
+               (b"key3", None),
+               (b"key4", None),
+               (b"key5", None),
+               (b"key6", None),
+               (b"key7", Some(b"value7")),
+               (b"key8", Some(b"value8"))]);
 
     db.delete_range(b"key1", b"key8").unwrap();
-    assert!(db.get(b"key1").unwrap().is_none());
-    assert!(db.get(b"key7").unwrap().is_none());
-    assert_eq!(db.get(b"key8").unwrap().unwrap(), b"value8");
+    check_kv(&db,
+             None,
+             &[(b"key1", None),
+               (b"key2", None),
+               (b"key3", None),
+               (b"key4", None),
+               (b"key5", None),
+               (b"key6", None),
+               (b"key7", None),
+               (b"key8", Some(b"value8"))]);
 }
+
 
 #[test]
 fn test_delete_range_ingest_file() {
@@ -142,23 +168,22 @@ fn test_delete_range_ingest_file() {
     let ingest_opt = IngestExternalFileOptions::new();
 
     let default_options = db.get_options();
-    gen_sst(default_options,
-            Some(db.cf_handle("default").unwrap()),
-            test_sstfile_str);
+    gen_sst(default_options, db.cf_handle("default"), test_sstfile_str);
 
     db.ingest_external_file(&ingest_opt, &[test_sstfile_str])
         .unwrap();
     assert!(test_sstfile.exists());
-    assert_eq!(db.get(b"key1").unwrap().unwrap(), b"value1");
-    assert_eq!(db.get(b"key2").unwrap().unwrap(), b"value2");
-    assert_eq!(db.get(b"key3").unwrap().unwrap(), b"value3");
-    assert_eq!(db.get(b"key4").unwrap().unwrap(), b"value4");
+    check_kv(&db,
+             db.cf_handle("default"),
+             &[(b"key1", Some(b"value1")),
+               (b"key2", Some(b"value2")),
+               (b"key3", Some(b"value3")),
+               (b"key4", Some(b"value4"))]);
 
     db.delete_range(b"key1", b"key4").unwrap();
-    assert!(db.get(b"key1").unwrap().is_none());
-    assert!(db.get(b"key2").unwrap().is_none());
-    assert!(db.get(b"key3").unwrap().is_none());
-    assert_eq!(db.get(b"key4").unwrap().unwrap(), b"value4");
+    check_kv(&db,
+             db.cf_handle("default"),
+             &[(b"key1", None), (b"key2", None), (b"key3", None), (b"key4", Some(b"value4"))]);
 
     let cf_opts = Options::new();
     db.create_cf("cf1", &cf_opts).unwrap();
@@ -168,18 +193,22 @@ fn test_delete_range_ingest_file() {
     db.ingest_external_file_cf(handle, &ingest_opt, &[test_sstfile_str])
         .unwrap();
     assert!(test_sstfile.exists());
-    assert_eq!(db.get_cf(handle, b"key1").unwrap().unwrap(), b"value1");
-    assert_eq!(db.get_cf(handle, b"key2").unwrap().unwrap(), b"value2");
-    assert_eq!(db.get_cf(handle, b"key3").unwrap().unwrap(), b"value3");
-    assert_eq!(db.get_cf(handle, b"key4").unwrap().unwrap(), b"value4");
+    check_kv(&db,
+             Some(handle),
+             &[(b"key1", Some(b"value1")),
+               (b"key2", Some(b"value2")),
+               (b"key3", Some(b"value3")),
+               (b"key4", Some(b"value4"))]);
 
     let snap = db.snapshot();
 
     db.delete_range_cf(handle, b"key1", b"key3").unwrap();
-    assert!(db.get_cf(handle, b"key1").unwrap().is_none());
-    assert_eq!(db.get_cf(handle, b"key3").unwrap().unwrap(), b"value3");
-    assert_eq!(db.get_cf(handle, b"key4").unwrap().unwrap(), b"value4");
-
+    check_kv(&db,
+             Some(handle),
+             &[(b"key1", None),
+               (b"key2", None),
+               (b"key3", Some(b"value3")),
+               (b"key4", Some(b"value4"))]);
     assert_eq!(snap.get_cf(handle, b"key1").unwrap().unwrap(), b"value1");
     assert_eq!(snap.get_cf(handle, b"key4").unwrap().unwrap(), b"value4");
 }

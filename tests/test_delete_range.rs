@@ -105,27 +105,25 @@ fn test_delete_range() {
 fn test_delete_range_sst_files() {
     let path = TempDir::new("_rust_rocksdb_test_delete_range_sst_files").expect("");
     let db = DB::open_default(path.path().to_str().unwrap()).unwrap();
-    let samples_a = vec![(b"key1".to_vec(), b"value1".to_vec()),
-                         (b"key2".to_vec(), b"value2".to_vec()),
-                         (b"key3".to_vec(), b"value3".to_vec()),
-                         (b"key4".to_vec(), b"value4".to_vec())];
-    for &(ref k, ref v) in &samples_a {
+    let samples_a = vec![(b"key1", b"value1"),
+                         (b"key2", b"value2"),
+                         (b"key3", b"value3"),
+                         (b"key4", b"value4")];
+    for &(k, v) in &samples_a {
         db.put(k, v).unwrap();
-        assert_eq!(v.as_slice(), &*db.get(k).unwrap().unwrap());
+        assert_eq!(v, &*db.get(k).unwrap().unwrap());
     }
     db.flush(true).unwrap();
 
-    let samples_b = vec![(b"key3".to_vec(), b"value5".to_vec()),
-                         (b"key6".to_vec(), b"value6".to_vec()),
-                         (b"key7".to_vec(), b"value7".to_vec()),
-                         (b"key8".to_vec(), b"value8".to_vec())];
-    for &(ref k, ref v) in &samples_b {
+    let samples_b = vec![(b"key3", b"value5"),
+                         (b"key6", b"value6"),
+                         (b"key7", b"value7"),
+                         (b"key8", b"value8")];
+    for &(k, v) in &samples_b {
         db.put(k, v).unwrap();
-        assert_eq!(v.as_slice(), &*db.get(k).unwrap().unwrap());
+        assert_eq!(v, &*db.get(k).unwrap().unwrap());
     }
     db.flush(true).unwrap();
-
-    db.compact_range(None, None);
     assert_eq!(db.get(b"key3").unwrap().unwrap(), b"value5");
 
     db.delete_range(b"key1", b"key1").unwrap();

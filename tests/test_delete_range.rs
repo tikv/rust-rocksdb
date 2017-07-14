@@ -109,7 +109,7 @@ fn test_delete_range_sst_files() {
                          (b"key2", b"value2"),
                          (b"key3", b"value3"),
                          (b"key4", b"value4")];
-    for &(k, v) in &samples_a {
+    for (k, v) in samples_a {
         db.put(k, v).unwrap();
         assert_eq!(v, &*db.get(k).unwrap().unwrap());
     }
@@ -119,7 +119,7 @@ fn test_delete_range_sst_files() {
                          (b"key6", b"value6"),
                          (b"key7", b"value7"),
                          (b"key8", b"value8")];
-    for &(k, v) in &samples_b {
+    for (k, v) in samples_b {
         db.put(k, v).unwrap();
         assert_eq!(v, &*db.get(k).unwrap().unwrap());
     }

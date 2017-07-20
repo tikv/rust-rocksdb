@@ -19,7 +19,7 @@ use comparator::{self, ComparatorCallback, compare_callback};
 use crocksdb_ffi::{self, DBOptions, DBWriteOptions, DBBlockBasedTableOptions, DBReadOptions,
                    DBRestoreOptions, DBCompressionType, DBRecoveryMode, DBSnapshot, DBInstance,
                    DBFlushOptions, DBStatisticsTickerType, DBStatisticsHistogramType,
-                   DBRateLimiter, DBInfoLogLevel, DBCompactOptions};
+                   DBRateLimiter, DBInfoLogLevel, DBCompactOptions, Priority};
 use event_listener::{EventListener, new_event_listener};
 use libc::{self, c_int, size_t, c_void};
 use merge_operator::{self, MergeOperatorCallback, full_merge_callback, partial_merge_callback};
@@ -290,6 +290,31 @@ impl Drop for CompactOptions {
     fn drop(&mut self) {
         unsafe {
             crocksdb_ffi::crocksdb_compactoptions_destroy(self.inner);
+        }
+    }
+}
+
+pub struct Env {
+    pub inner: *mut crocksdb_ffi::Env,
+}
+
+impl Env {
+    pub fn new() -> Env {
+        unsafe { Env { inner: crocksdb_ffi::crocksdb_create_default_env() } }
+    }
+
+    pub fn set_background_threads(&mut self, n: Priority) {
+        unsafe {
+            crocksdb_ffi::crocksdb_env_set_background_threads(self.inner, n);
+        }
+    }
+}
+
+impl Drop for Env {
+    fn drop(&mut self) {
+        unsafe {
+            crocksdb_ffi::crocksdb_env_join_all_threads(self.inner);
+            crocksdb_ffi::crocksdb_env_destroy(self.inner)
         }
     }
 }
@@ -948,6 +973,10 @@ impl Options {
         unsafe {
             crocksdb_ffi::crocksdb_options_set_allow_concurrent_memtable_write(self.inner, v);
         }
+    }
+
+    pub fn set_env(&mut self, env: &Env) {
+        unsafe { crocksdb_ffi::crocksdb_options_set_env(self.inner, env.inner) }
     }
 }
 

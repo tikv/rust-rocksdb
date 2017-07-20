@@ -35,6 +35,7 @@ pub enum DBWriteBatch {}
 pub enum DBComparator {}
 pub enum DBFlushOptions {}
 pub enum DBCompactionFilter {}
+pub enum Env {}
 pub enum EnvOptions {}
 pub enum SstFileWriter {}
 pub enum IngestExternalFileOptions {}
@@ -216,6 +217,13 @@ pub enum DBTableProperty {
     CompressionName = 17,
 }
 
+#[repr(C)]
+pub enum Priority {
+    LOW = 0,
+    HIGH = 1,
+    TOTAL = 2,
+}
+
 pub fn error_message(ptr: *mut c_char) -> String {
     let c_str = unsafe { CStr::from_ptr(ptr) };
     let s = format!("{}", c_str.to_string_lossy());
@@ -393,6 +401,7 @@ extern "C" {
                                                                     v: u64);
     pub fn crocksdb_options_set_compaction_priority(options: *mut DBOptions,
                                                     v: CompactionPriority);
+    pub fn crocksdb_options_set_env(options: *mut DBOptions, env: *const Env);
     pub fn crocksdb_filterpolicy_create_bloom_full(bits_per_key: c_int) -> *mut DBFilterPolicy;
     pub fn crocksdb_filterpolicy_create_bloom(bits_per_key: c_int) -> *mut DBFilterPolicy;
     pub fn crocksdb_open(options: *mut DBOptions,
@@ -750,6 +759,11 @@ extern "C" {
                                                           ignore_snapshot: bool);
     pub fn crocksdb_compactionfilter_destroy(filter: *mut DBCompactionFilter);
 
+    // Env
+    pub fn crocksdb_create_default_env() -> *mut Env;
+    pub fn crocksdb_env_set_background_threads(opt: *mut Env, pri: Priority);
+    pub fn crocksdb_env_destroy(opt: *mut Env);
+    pub fn crocksdb_env_join_all_threads(opt: *mut Env);
     // EnvOptions
     pub fn crocksdb_envoptions_create() -> *mut EnvOptions;
     pub fn crocksdb_envoptions_destroy(opt: *mut EnvOptions);

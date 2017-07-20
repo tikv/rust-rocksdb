@@ -11,11 +11,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use rocksdb::{DB, Options, BlockBasedOptions, WriteOptions, SliceTransform, Writable,
+use rocksdb::{DB, Env, Options, BlockBasedOptions, WriteOptions, SliceTransform, Writable,
               CompactOptions};
 use rocksdb::crocksdb_ffi::{DBStatisticsHistogramType as HistogramType,
                             DBStatisticsTickerType as TickerType, DBInfoLogLevel as InfoLogLevel,
-                            CompactionPriority, DBCompressionType};
+                            CompactionPriority, DBCompressionType, Priority};
 use std::path::Path;
 use std::thread;
 use std::time::Duration;
@@ -405,4 +405,30 @@ fn test_clone_options() {
     opts.compression(DBCompressionType::Snappy);
     let opts2 = opts.clone();
     assert_eq!(opts.get_compression(), opts2.get_compression());
+}
+
+#[test]
+fn test_set_background_threads() {
+    let path = TempDir::new("_rust_rocksdb_background_threads").expect("");
+    let mut env = Env::new();
+    env.set_background_threads(Priority::HIGH);
+    let mut opt = Options::new();
+    opt.create_if_missing(true);
+    opt.set_env(&env);
+    DB::open(opt, path.path().to_str().unwrap()).unwrap();
+}
+
+#[test]
+fn test_two_db_share_one_env() {
+    let path1 = TempDir::new("_rust_rocksdb_share_env1").expect("");
+    let path2 = TempDir::new("_rust_rocksdb_share_env2").expect("");
+    let env = Env::new();
+    let mut opt1 = Options::new();
+    opt1.create_if_missing(true);
+    opt1.set_env(&env);
+    let mut opt2 = Options::new();
+    opt2.create_if_missing(true);
+    opt2.set_env(&env);
+    DB::open(opt1, path1.path().to_str().unwrap()).unwrap();
+    DB::open(opt2, path2.path().to_str().unwrap()).unwrap();
 }

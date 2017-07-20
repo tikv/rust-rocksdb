@@ -960,6 +960,8 @@ crocksdb_options_set_compaction_priority(crocksdb_options_t *, unsigned char);
 
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_delayed_write_rate(
     crocksdb_options_t*, uint64_t);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_env(
+    crocksdb_options_t *, crocksdb_env_t *);
 
 /* RateLimiter */
 extern C_ROCKSDB_LIBRARY_API crocksdb_ratelimiter_t* crocksdb_ratelimiter_create(

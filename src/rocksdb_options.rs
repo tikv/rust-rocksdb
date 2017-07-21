@@ -294,6 +294,37 @@ impl Drop for CompactOptions {
     }
 }
 
+pub struct Env {
+    pub inner: *mut crocksdb_ffi::Env,
+}
+
+impl Env {
+    pub fn new() -> Env {
+        unsafe { Env { inner: crocksdb_ffi::crocksdb_create_default_env() } }
+    }
+
+    pub fn set_background_threads(&mut self, n: i32) {
+        unsafe {
+            crocksdb_ffi::crocksdb_env_set_background_threads(self.inner, n);
+        }
+    }
+
+    pub fn set_high_priority_background_threads(&mut self, n: i32) {
+        unsafe {
+            crocksdb_ffi::crocksdb_env_set_high_priority_background_threads(self.inner, n);
+        }
+    }
+}
+
+impl Drop for Env {
+    fn drop(&mut self) {
+        unsafe {
+            crocksdb_ffi::crocksdb_env_join_all_threads(self.inner);
+            crocksdb_ffi::crocksdb_env_destroy(self.inner)
+        }
+    }
+}
+
 pub struct Options {
     pub inner: *mut DBOptions,
     filter: Option<CompactionFilterHandle>,
@@ -948,6 +979,10 @@ impl Options {
         unsafe {
             crocksdb_ffi::crocksdb_options_set_allow_concurrent_memtable_write(self.inner, v);
         }
+    }
+
+    pub fn set_env(&mut self, env: &Env) {
+        unsafe { crocksdb_ffi::crocksdb_options_set_env(self.inner, env.inner) }
     }
 }
 

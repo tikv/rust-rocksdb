@@ -217,13 +217,6 @@ pub enum DBTableProperty {
     CompressionName = 17,
 }
 
-#[repr(C)]
-pub enum Priority {
-    LOW = 0,
-    HIGH = 1,
-    TOTAL = 2,
-}
-
 pub fn error_message(ptr: *mut c_char) -> String {
     let c_str = unsafe { CStr::from_ptr(ptr) };
     let s = format!("{}", c_str.to_string_lossy());
@@ -761,7 +754,8 @@ extern "C" {
 
     // Env
     pub fn crocksdb_create_default_env() -> *mut Env;
-    pub fn crocksdb_env_set_background_threads(opt: *mut Env, pri: Priority);
+    pub fn crocksdb_env_set_background_threads(opt: *mut Env, n: c_int);
+    pub fn crocksdb_env_set_high_priority_background_threads(opt: *mut Env, n: c_int);
     pub fn crocksdb_env_destroy(opt: *mut Env);
     pub fn crocksdb_env_join_all_threads(opt: *mut Env);
     // EnvOptions

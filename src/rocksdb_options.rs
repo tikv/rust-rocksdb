@@ -19,7 +19,7 @@ use comparator::{self, ComparatorCallback, compare_callback};
 use crocksdb_ffi::{self, DBOptions, DBWriteOptions, DBBlockBasedTableOptions, DBReadOptions,
                    DBRestoreOptions, DBCompressionType, DBRecoveryMode, DBSnapshot, DBInstance,
                    DBFlushOptions, DBStatisticsTickerType, DBStatisticsHistogramType,
-                   DBRateLimiter, DBInfoLogLevel, DBCompactOptions, Priority};
+                   DBRateLimiter, DBInfoLogLevel, DBCompactOptions};
 use event_listener::{EventListener, new_event_listener};
 use libc::{self, c_int, size_t, c_void};
 use merge_operator::{self, MergeOperatorCallback, full_merge_callback, partial_merge_callback};
@@ -303,9 +303,15 @@ impl Env {
         unsafe { Env { inner: crocksdb_ffi::crocksdb_create_default_env() } }
     }
 
-    pub fn set_background_threads(&mut self, n: Priority) {
+    pub fn set_background_threads(&mut self, n: i32) {
         unsafe {
             crocksdb_ffi::crocksdb_env_set_background_threads(self.inner, n);
+        }
+    }
+
+    pub fn set_high_priority_background_threads(&mut self, n: i32) {
+        unsafe {
+            crocksdb_ffi::crocksdb_env_set_high_priority_background_threads(self.inner, n);
         }
     }
 }

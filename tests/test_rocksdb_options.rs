@@ -15,7 +15,7 @@ use rocksdb::{DB, Env, Options, BlockBasedOptions, WriteOptions, SliceTransform,
               CompactOptions};
 use rocksdb::crocksdb_ffi::{DBStatisticsHistogramType as HistogramType,
                             DBStatisticsTickerType as TickerType, DBInfoLogLevel as InfoLogLevel,
-                            CompactionPriority, DBCompressionType, Priority};
+                            CompactionPriority, DBCompressionType};
 use std::path::Path;
 use std::thread;
 use std::time::Duration;
@@ -411,7 +411,8 @@ fn test_clone_options() {
 fn test_set_background_threads() {
     let path = TempDir::new("_rust_rocksdb_background_threads").expect("");
     let mut env = Env::new();
-    env.set_background_threads(Priority::HIGH);
+    env.set_background_threads(3);
+    env.set_high_priority_background_threads(3);
     let mut opt = Options::new();
     opt.create_if_missing(true);
     opt.set_env(&env);

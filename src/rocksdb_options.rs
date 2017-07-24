@@ -27,6 +27,8 @@ use merge_operator::MergeFn;
 use slice_transform::{SliceTransform, new_slice_transform};
 use std::ffi::{CStr, CString};
 use std::mem;
+use std::path::{PathBuf, Path};
+use std::ptr;
 use table_properties_collector_factory::{TablePropertiesCollectorFactory,
                                          new_table_properties_collector_factory};
 
@@ -155,6 +157,36 @@ impl UnsafeSnap {
 
     pub unsafe fn get_inner(&self) -> *const DBSnapshot {
         self.inner
+    }
+}
+
+pub struct DbPath {
+    pub path: PathBuf,
+    /// Target size of total files under the path, in byte.
+    pub target_size: u64,
+}
+
+impl DbPath {
+    pub fn new<P: AsRef<Path>>(p: P, t: u64) -> DbPath {
+        DbPath {
+            path: p.as_ref().to_path_buf(),
+            target_size: t,
+        }
+    }
+}
+
+impl Default for DbPath {
+    fn default() -> Self {
+        DbPath::new("", 0)
+    }
+}
+
+impl<P: Into<PathBuf>, S: Into<u64>> From<(P, S)> for DbPath {
+    fn from((path, size): (P, S)) -> DbPath {
+        DbPath {
+            path: path.into(),
+            target_size: size.into(),
+        }
     }
 }
 
@@ -625,6 +657,30 @@ impl DBOptions {
     pub fn allow_concurrent_memtable_write(&self, v: bool) {
         unsafe {
             crocksdb_ffi::crocksdb_options_set_allow_concurrent_memtable_write(self.inner, v);
+        }
+    }
+
+    pub fn set_db_paths<P: Into<DbPath>>(&self, val: Vec<P>) {
+        let num_paths = val.len();
+        let paths = val.into_iter().map(|p| p.into()).collect::<Vec<_>>();
+        let mut cpaths = Vec::with_capacity(num_paths);
+        let mut cpath_lens = Vec::with_capacity(num_paths);
+        let mut sizes = Vec::with_capacity(num_paths);
+        for dbpath in &paths {
+            cpaths.push(dbpath.path
+                .to_str()
+                .map(|s| s.as_ptr() as _)
+                .unwrap_or_else(ptr::null));
+            cpath_lens.push(dbpath.path.to_str().map(|s| s.len()).unwrap_or_default());
+            sizes.push(dbpath.target_size);
+        }
+
+        unsafe {
+            crocksdb_ffi::crocksdb_options_set_db_paths(self.inner,
+                                                        cpaths.as_ptr(),
+                                                        cpath_lens.as_ptr(),
+                                                        sizes.as_ptr(),
+                                                        num_paths as c_int);
         }
     }
 }

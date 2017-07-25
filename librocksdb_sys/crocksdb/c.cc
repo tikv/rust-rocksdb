@@ -1998,7 +1998,7 @@ void crocksdb_options_set_db_paths(crocksdb_options_t *opt,
                                    const size_t *path_lens,
                                    const uint64_t *target_size, int num_paths) {
   std::vector<DbPath> db_paths;
-  for (int i = 1; i < num_paths; ++i) {
+  for (int i = 0; i < num_paths; ++i) {
     db_paths.emplace_back(
         DbPath(std::string(dbpath_list[i], path_lens[i]), target_size[i]));
   }

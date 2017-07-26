@@ -629,6 +629,7 @@ impl DBOptions {
         }
     }
 
+    /// the second parameter is a slice which contains tuples (path, target_size).
     pub fn set_db_paths(&self, val: &[(PathBuf, u64)]) {
         let num_paths = val.len();
         let paths: Vec<(PathBuf, u64)> = val.to_vec();

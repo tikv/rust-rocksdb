@@ -16,7 +16,7 @@ use rocksdb::{DB, ColumnFamilyOptions, DBOptions, BlockBasedOptions, WriteOption
 use rocksdb::crocksdb_ffi::{DBStatisticsHistogramType as HistogramType,
                             DBStatisticsTickerType as TickerType, DBInfoLogLevel as InfoLogLevel,
                             CompactionPriority, DBCompressionType};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::thread;
 use std::time::Duration;
 use tempdir::TempDir;
@@ -458,6 +458,7 @@ fn test_db_paths() {
     let path = TempDir::new("_rust_rocksdb_db_paths").expect("");
     let mut opts = DBOptions::new();
     opts.create_if_missing(true);
-    opts.set_db_paths(&[(PathBuf::from("rust_rocksdb_test_db_path"), 1073741824 as u64)]);
+    let tmp_path = TempDir::new("_rust_rocksdb_test_db_path").expect("");
+    opts.set_db_paths(&[(tmp_path.path(), 1073741824 as u64)]);
     DB::open(opts, path.path().to_str().unwrap()).unwrap();
 }

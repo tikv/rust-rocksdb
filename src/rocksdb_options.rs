@@ -27,7 +27,7 @@ use merge_operator::MergeFn;
 use slice_transform::{SliceTransform, new_slice_transform};
 use std::ffi::{CStr, CString};
 use std::mem;
-use std::path::PathBuf;
+use std::path::Path;
 use table_properties_collector_factory::{TablePropertiesCollectorFactory,
                                          new_table_properties_collector_factory};
 
@@ -630,18 +630,15 @@ impl DBOptions {
     }
 
     /// the second parameter is a slice which contains tuples (path, target_size).
-    pub fn set_db_paths(&self, val: &[(PathBuf, u64)]) {
+    pub fn set_db_paths<T: AsRef<Path>>(&self, val: &[(T, u64)]) {
         let num_paths = val.len();
-        let paths: Vec<(PathBuf, u64)> = val.to_vec();
         let mut cpaths = Vec::with_capacity(num_paths);
         let mut cpath_lens = Vec::with_capacity(num_paths);
         let mut sizes = Vec::with_capacity(num_paths);
-        for dbpath in &paths {
-            cpaths.push(dbpath.0
-                .to_str()
-                .map(|s| s.as_ptr() as _)
-                .unwrap());
-            cpath_lens.push(dbpath.0.to_str().map(|s| s.len()).unwrap());
+        for dbpath in val {
+            let dbpath_str = dbpath.0.as_ref().to_str();
+            cpaths.push(dbpath_str.unwrap().as_ptr() as _);
+            cpath_lens.push(dbpath_str.unwrap().len());
             sizes.push(dbpath.1);
         }
 

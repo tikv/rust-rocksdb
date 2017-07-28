@@ -211,6 +211,36 @@ impl ReadOptions {
         }
     }
 
+    pub fn set_read_tier(&mut self, tier: c_int) {
+        unsafe {
+            crocksdb_ffi::crocksdb_readoptions_set_read_tier(self.inner, tier);
+        }
+    }
+
+    pub fn set_tailing(&mut self, v: bool) {
+        unsafe {
+            crocksdb_ffi::crocksdb_readoptions_set_tailing(self.inner, v);
+        }
+    }
+
+    pub fn set_managed(&mut self, v: bool) {
+        unsafe {
+            crocksdb_ffi::crocksdb_readoptions_set_managed(self.inner, v);
+        }
+    }
+
+    pub fn set_readahead_size(&mut self, size: size_t) {
+        unsafe {
+            crocksdb_ffi::crocksdb_readoptions_set_readahead_size(self.inner, size);
+        }
+    }
+
+    pub fn set_max_skippable_internal_keys(&mut self, n: u64) {
+        unsafe {
+            crocksdb_ffi::crocksdb_readoptions_set_max_skippable_internal_keys(self.inner, n);
+        }
+    }
+
     pub fn set_total_order_seek(&mut self, v: bool) {
         unsafe {
             crocksdb_ffi::crocksdb_readoptions_set_total_order_seek(self.inner, v);
@@ -220,6 +250,25 @@ impl ReadOptions {
     pub fn set_prefix_same_as_start(&mut self, v: bool) {
         unsafe {
             crocksdb_ffi::crocksdb_readoptions_set_prefix_same_as_start(self.inner, v);
+        }
+    }
+
+    pub fn set_pin_data(&mut self, v: bool) {
+        unsafe {
+            crocksdb_ffi::crocksdb_readoptions_set_pin_data(self.inner, v);
+        }
+    }
+
+    pub fn set_background_purge_on_iterator_cleanup(&mut self, v: bool) {
+        unsafe {
+            crocksdb_ffi::crocksdb_readoptions_set_background_purge_on_iterator_cleanup(self.inner,
+                                                                                        v);
+        }
+    }
+
+    pub fn set_ignore_range_deletions(&mut self, v: bool) {
+        unsafe {
+            crocksdb_ffi::crocksdb_readoptions_set_ignore_range_deletions(self.inner, v);
         }
     }
 
@@ -267,6 +316,24 @@ impl WriteOptions {
             } else {
                 crocksdb_ffi::crocksdb_writeoptions_disable_wal(self.inner, 0);
             }
+        }
+    }
+
+    pub fn set_ignore_missing_column_families(&mut self, v: bool) {
+        unsafe {
+            crocksdb_ffi::crocksdb_writeoptions_set_ignore_missing_column_families(self.inner, v);
+        }
+    }
+
+    pub fn set_no_slowdown(&mut self, v: bool) {
+        unsafe {
+            crocksdb_ffi::crocksdb_writeoptions_set_no_slowdown(self.inner, v);
+        }
+    }
+
+    pub fn set_low_pri(&mut self, v: bool) {
+        unsafe {
+            crocksdb_ffi::crocksdb_writeoptions_set_low_pri(self.inner, v);
         }
     }
 }

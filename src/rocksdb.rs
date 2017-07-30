@@ -1964,15 +1964,13 @@ mod test {
         let path = TempDir::new("_rust_rocksdb_get_approximate_memtable_stats").expect("");
         let db = DB::open(opts, path.path().to_str().unwrap()).unwrap();
 
-        let samples = vec![(b"key1".to_vec(), b"value1".to_vec()),
-                           (b"key2".to_vec(), b"value2".to_vec()),
-                           (b"key3".to_vec(), b"value3".to_vec()),
-                           (b"key4".to_vec(), b"value4".to_vec())];
+        let samples = [(b"key1", b"value1"),
+                       (b"key2", b"value2"),
+                       (b"key3", b"value3"),
+                       (b"key4", b"value4")];
 
-        // Put 4 keys.
-        for &(ref k, ref v) in &samples {
+        for &(k, v) in &samples {
             db.put(k, v).unwrap();
-            assert_eq!(v.as_slice(), &*db.get(k).unwrap().unwrap());
         }
 
         let range = Range::new(b"a", b"z");

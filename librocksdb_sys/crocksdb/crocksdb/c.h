@@ -371,13 +371,13 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_approximate_sizes_cf(
     const size_t* range_limit_key_len, uint64_t* sizes);
 
 extern C_ROCKSDB_LIBRARY_API void crocksdb_approximate_memtable_stats(
-    crocksdb_t* db,
+    const crocksdb_t* db,
     const char* range_start_key, size_t range_start_key_len,
     const char* range_limit_key, size_t range_limit_key_len,
     uint64_t* count, uint64_t* size);
 
 extern C_ROCKSDB_LIBRARY_API void crocksdb_approximate_memtable_stats_cf(
-    crocksdb_t* db, crocksdb_column_family_handle_t* column_family,
+    const crocksdb_t* db, const crocksdb_column_family_handle_t* cf,
     const char* range_start_key, size_t range_start_key_len,
     const char* range_limit_key, size_t range_limit_key_len,
     uint64_t* count, uint64_t* size);

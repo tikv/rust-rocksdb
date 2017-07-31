@@ -2739,7 +2739,7 @@ crocksdb_sstfilewriter_t* crocksdb_sstfilewriter_create(
     const crocksdb_envoptions_t* env, const crocksdb_options_t* io_options) {
   crocksdb_sstfilewriter_t* writer = new crocksdb_sstfilewriter_t;
   writer->rep =
-      new SstFileWriter(env->rep, io_options->rep, io_options->rep.comparator);
+      new SstFileWriter(env->rep, io_options->rep);
   return writer;
 }
 
@@ -2748,7 +2748,7 @@ crocksdb_sstfilewriter_t* crocksdb_sstfilewriter_create_cf(
     crocksdb_column_family_handle_t* column_family) {
   crocksdb_sstfilewriter_t* writer = new crocksdb_sstfilewriter_t;
   writer->rep =
-      new SstFileWriter(env->rep, io_options->rep, io_options->rep.comparator, column_family->rep);
+      new SstFileWriter(env->rep, io_options->rep, column_family->rep);
   return writer;
 }
 
@@ -2770,7 +2770,7 @@ void crocksdb_sstfilewriter_open(crocksdb_sstfilewriter_t* writer,
 void crocksdb_sstfilewriter_add(crocksdb_sstfilewriter_t* writer, const char* key,
                                size_t keylen, const char* val, size_t vallen,
                                char** errptr) {
-  SaveError(errptr, writer->rep->Add(Slice(key, keylen), Slice(val, vallen)));
+  SaveError(errptr, writer->rep->Put(Slice(key, keylen), Slice(val, vallen)));
 }
 
 void crocksdb_sstfilewriter_finish(crocksdb_sstfilewriter_t* writer,

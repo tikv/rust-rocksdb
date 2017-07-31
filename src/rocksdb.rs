@@ -820,6 +820,7 @@ impl DB {
         sizes
     }
 
+    // Return the approximate number of records and size in the range of memtables.
     pub fn get_approximate_memtable_stats(&self, range: &Range) -> (u64, u64) {
         let (mut count, mut size) = (0, 0);
         unsafe {
@@ -834,6 +835,7 @@ impl DB {
         (count, size)
     }
 
+    // Return the approximate number of records and size in the range of memtables of the cf.
     pub fn get_approximate_memtable_stats_cf(&self, cf: &CFHandle, range: &Range) -> (u64, u64) {
         let (mut count, mut size) = (0, 0);
         unsafe {

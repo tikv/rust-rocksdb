@@ -192,6 +192,13 @@ impl ReadOptions {
     // TODO add snapshot wrapper structs with proper destructors;
     // that struct needs an "iterator" impl too.
     #[allow(dead_code)]
+
+    pub fn set_verify_checksums(&mut self, v: bool) {
+        unsafe {
+            crocksdb_ffi::crocksdb_readoptions_set_verify_checksums(self.inner, v);
+        }
+    }
+
     pub fn fill_cache(&mut self, v: bool) {
         unsafe {
             crocksdb_ffi::crocksdb_readoptions_set_fill_cache(self.inner, v);

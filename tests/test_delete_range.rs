@@ -11,10 +11,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use crc::crc32::{self, Digest, Hasher32};
 use rocksdb::*;
 use std::fs;
 use tempdir::TempDir;
-use crc::crc32::{self, Digest, Hasher32};
 
 fn gen_sst(opt: ColumnFamilyOptions, cf: Option<&CFHandle>, path: &str) {
     let _ = fs::remove_file(path);
@@ -85,7 +85,10 @@ fn test_delete_range_case_1() {
     let ingest_opt = IngestExternalFileOptions::new();
 
     let default_options = db.get_options();
-    gen_sst_from_db(default_options, db.cf_handle("default"), test_sstfile_str, &db);
+    gen_sst_from_db(default_options,
+                    db.cf_handle("default"),
+                    test_sstfile_str,
+                    &db);
 
     db.delete_range(b"key1", b"key5").unwrap();
     check_kv(&db,
@@ -97,9 +100,9 @@ fn test_delete_range_case_1() {
     check_kv(&db,
              db.cf_handle("default"),
              &[(b"key1", Some(b"value1")),
-                 (b"key2", Some(b"value2")),
-                 (b"key3", Some(b"value3")),
-                 (b"key4", Some(b"value4"))]);
+               (b"key2", Some(b"value2")),
+               (b"key3", Some(b"value3")),
+               (b"key4", Some(b"value4"))]);
 
     let after = gen_crc32_from_db(&db);
     assert_eq!(before, after);
@@ -128,7 +131,10 @@ fn test_delete_range_case_2() {
     let ingest_opt = IngestExternalFileOptions::new();
 
     let default_options = db.get_options();
-    gen_sst_from_db(default_options, db.cf_handle("default"), test_sstfile_str, &db);
+    gen_sst_from_db(default_options,
+                    db.cf_handle("default"),
+                    test_sstfile_str,
+                    &db);
 
     db.delete_range(b"key1", b"key5").unwrap();
     check_kv(&db,
@@ -146,9 +152,9 @@ fn test_delete_range_case_2() {
     check_kv(&db2,
              db2.cf_handle("default"),
              &[(b"key1", Some(b"value1")),
-                 (b"key2", Some(b"value2")),
-                 (b"key3", Some(b"value3")),
-                 (b"key4", Some(b"value4"))]);
+               (b"key2", Some(b"value2")),
+               (b"key3", Some(b"value3")),
+               (b"key4", Some(b"value4"))]);
 
     let after = gen_crc32_from_db(&db2);
     assert_eq!(before, after);
@@ -176,7 +182,11 @@ fn test_delete_range_case_3() {
 
     check_kv(&db,
              db.cf_handle("default"),
-             &[(b"key1", Some(b"value1")), (b"key2", None), (b"key3", None), (b"key4", Some(b"value4")), (b"key5", Some(b"value5"))]);
+             &[(b"key1", Some(b"value1")),
+               (b"key2", None),
+               (b"key3", None),
+               (b"key4", Some(b"value4")),
+               (b"key5", Some(b"value5"))]);
 
     let path2 = TempDir::new("_rust_rocksdb_test_delete_range_case_3_2").expect("");
     let path_str2 = path2.path().to_str().unwrap();
@@ -184,8 +194,7 @@ fn test_delete_range_case_3() {
     opts2.create_if_missing(true);
     let db2 = DB::open(opts2, path_str2).unwrap();
 
-    let samples_b = vec![(b"key2", b"value2"),
-                         (b"key3", b"value3")];
+    let samples_b = vec![(b"key2", b"value2"), (b"key3", b"value3")];
     for (k, v) in samples_b {
         db2.put(k, v).unwrap();
         assert_eq!(v, &*db2.get(k).unwrap().unwrap());
@@ -197,17 +206,20 @@ fn test_delete_range_case_3() {
     let ingest_opt = IngestExternalFileOptions::new();
 
     let default_options = db2.get_options();
-    gen_sst_from_db(default_options, db2.cf_handle("default"), test_sstfile_str, &db2);
+    gen_sst_from_db(default_options,
+                    db2.cf_handle("default"),
+                    test_sstfile_str,
+                    &db2);
 
     db.ingest_external_file(&ingest_opt, &[test_sstfile_str])
         .unwrap();
     check_kv(&db,
              db.cf_handle("default"),
              &[(b"key1", Some(b"value1")),
-                 (b"key2", Some(b"value2")),
-                 (b"key3", Some(b"value3")),
-                 (b"key4", Some(b"value4")),
-                 (b"key5", Some(b"value5"))]);
+               (b"key2", Some(b"value2")),
+               (b"key3", Some(b"value3")),
+               (b"key4", Some(b"value4")),
+               (b"key5", Some(b"value5"))]);
 
     let after = gen_crc32_from_db(&db);
     assert_eq!(before, after);
@@ -235,7 +247,11 @@ fn test_delete_range_case_4() {
 
     check_kv(&db,
              db.cf_handle("default"),
-             &[(b"key1", Some(b"value1")), (b"key2", Some(b"value2")), (b"key3", Some(b"value3")), (b"key4", None), (b"key5", None)]);
+             &[(b"key1", Some(b"value1")),
+               (b"key2", Some(b"value2")),
+               (b"key3", Some(b"value3")),
+               (b"key4", None),
+               (b"key5", None)]);
 
     let path = TempDir::new("_rust_rocksdb_test_delete_range_case_4_2").expect("");
     let path_str = path.path().to_str().unwrap();
@@ -243,8 +259,7 @@ fn test_delete_range_case_4() {
     opts.create_if_missing(true);
     let db2 = DB::open(opts, path_str).unwrap();
 
-    let samples_b = vec![(b"key4", b"value4"),
-                         (b"key5", b"value5")];
+    let samples_b = vec![(b"key4", b"value4"), (b"key5", b"value5")];
     for (k, v) in samples_b {
         db2.put(k, v).unwrap();
         assert_eq!(v, &*db2.get(k).unwrap().unwrap());
@@ -256,17 +271,338 @@ fn test_delete_range_case_4() {
     let ingest_opt = IngestExternalFileOptions::new();
 
     let default_options = db2.get_options();
-    gen_sst_from_db(default_options, db2.cf_handle("default"), test_sstfile_str, &db2);
+    gen_sst_from_db(default_options,
+                    db2.cf_handle("default"),
+                    test_sstfile_str,
+                    &db2);
 
     db.ingest_external_file(&ingest_opt, &[test_sstfile_str])
         .unwrap();
     check_kv(&db,
              db.cf_handle("default"),
              &[(b"key1", Some(b"value1")),
-                 (b"key2", Some(b"value2")),
-                 (b"key3", Some(b"value3")),
-                 (b"key4", Some(b"value4")),
-                 (b"key5", Some(b"value5"))]);
+               (b"key2", Some(b"value2")),
+               (b"key3", Some(b"value3")),
+               (b"key4", Some(b"value4")),
+               (b"key5", Some(b"value5"))]);
+
+    let after = gen_crc32_from_db(&db);
+    assert_eq!(before, after);
+}
+
+pub struct FixedSuffixSliceTransform {
+    pub suffix_len: usize,
+}
+
+impl FixedSuffixSliceTransform {
+    pub fn new(suffix_len: usize) -> FixedSuffixSliceTransform {
+        FixedSuffixSliceTransform { suffix_len: suffix_len }
+    }
+}
+
+impl SliceTransform for FixedSuffixSliceTransform {
+    fn transform<'a>(&mut self, key: &'a [u8]) -> &'a [u8] {
+        let mid = key.len() - self.suffix_len;
+        let (left, _) = key.split_at(mid);
+        left
+    }
+
+    fn in_domain(&mut self, key: &[u8]) -> bool {
+        key.len() >= self.suffix_len
+    }
+
+    fn in_range(&mut self, _: &[u8]) -> bool {
+        true
+    }
+}
+
+pub fn get_cf_handle<'a>(db: &'a DB, cf: &str) -> Result<&'a CFHandle, String> {
+    db.cf_handle(cf)
+        .ok_or_else(|| format!("cf {} not found.", cf))
+}
+
+#[test]
+fn test_delete_range_prefix_bloom_case_1() {
+    let path = TempDir::new("_rust_rocksdb_test_delete_range_prefix_bloom_case_1").expect("");
+    let path_str = path.path().to_str().unwrap();
+    let mut opts = DBOptions::new();
+    opts.create_if_missing(true);
+    let mut cf_opts = ColumnFamilyOptions::new();
+    // Prefix extractor(trim the timestamp at tail) for write cf.
+    cf_opts.set_prefix_extractor("FixedSuffixSliceTransform",
+                              Box::new(FixedSuffixSliceTransform::new(3)))
+        .unwrap_or_else(|err| panic!(format!("{:?}", err)));
+    // Create prefix bloom filter for memtable.
+    cf_opts.set_memtable_prefix_bloom_size_ratio(0.1 as f64);
+    let cf = "default";
+    let db = DB::open_cf(opts, path_str, vec![cf], vec![cf_opts]).unwrap();
+
+    let samples_a = vec![(b"key1", b"value1"),
+                         (b"key2", b"value2"),
+                         (b"key3", b"value3"),
+                         (b"key4", b"value4")];
+    let handle = get_cf_handle(&db, cf).unwrap();
+    for (k, v) in samples_a {
+        db.put_cf(handle, k, v).unwrap();
+        assert_eq!(v, &*db.get(k).unwrap().unwrap());
+    }
+    let before = gen_crc32_from_db(&db);
+
+    let gen_path = TempDir::new("_rust_rocksdb_case_prefix_bloom_1_ingest_sst_gen").expect("");
+    let test_sstfile = gen_path.path().join("test_sst_file");
+    let test_sstfile_str = test_sstfile.to_str().unwrap();
+    let ingest_opt = IngestExternalFileOptions::new();
+
+    let default_options = db.get_options();
+    gen_sst_from_db(default_options,
+                    db.cf_handle("default"),
+                    test_sstfile_str,
+                    &db);
+
+    db.delete_range_cf(handle, b"key1", b"key5").unwrap();
+    check_kv(&db,
+             db.cf_handle(cf),
+             &[(b"key1", None), (b"key2", None), (b"key3", None), (b"key4", None)]);
+
+    db.ingest_external_file_cf(handle, &ingest_opt, &[test_sstfile_str])
+        .unwrap();
+    check_kv(&db,
+             db.cf_handle(cf),
+             &[(b"key1", Some(b"value1")),
+               (b"key2", Some(b"value2")),
+               (b"key3", Some(b"value3")),
+               (b"key4", Some(b"value4"))]);
+
+    let after = gen_crc32_from_db(&db);
+    assert_eq!(before, after);
+}
+
+#[test]
+fn test_delete_range_prefix_bloom_case_2() {
+    let path = TempDir::new("_rust_rocksdb_test_delete_range_prefix_bloom_case_2").expect("");
+    let path_str = path.path().to_str().unwrap();
+    let mut opts = DBOptions::new();
+    opts.create_if_missing(true);
+    let mut cf_opts = ColumnFamilyOptions::new();
+    // Prefix extractor(trim the timestamp at tail) for write cf.
+    cf_opts.set_prefix_extractor("FixedSuffixSliceTransform",
+                              Box::new(FixedSuffixSliceTransform::new(3)))
+        .unwrap_or_else(|err| panic!(format!("{:?}", err)));
+    // Create prefix bloom filter for memtable.
+    cf_opts.set_memtable_prefix_bloom_size_ratio(0.1 as f64);
+    let cf = "default";
+    let db = DB::open_cf(opts, path_str, vec![cf], vec![cf_opts]).unwrap();
+    let handle = get_cf_handle(&db, cf).unwrap();
+
+    let samples_a = vec![(b"key1", b"value1"),
+                         (b"key2", b"value2"),
+                         (b"key3", b"value3"),
+                         (b"key4", b"value4")];
+    for (k, v) in samples_a {
+        db.put_cf(handle, k, v).unwrap();
+        assert_eq!(v, &*db.get(k).unwrap().unwrap());
+    }
+    let before = gen_crc32_from_db(&db);
+
+    let gen_path = TempDir::new("_rust_rocksdb_case_prefix_bloom_1_ingest_sst_gen").expect("");
+    let test_sstfile = gen_path.path().join("test_sst_file");
+    let test_sstfile_str = test_sstfile.to_str().unwrap();
+    let ingest_opt = IngestExternalFileOptions::new();
+
+    let default_options = db.get_options();
+    gen_sst_from_db(default_options,
+                    db.cf_handle("default"),
+                    test_sstfile_str,
+                    &db);
+
+    db.delete_range_cf(handle, b"key1", b"key5").unwrap();
+    check_kv(&db,
+             db.cf_handle("default"),
+             &[(b"key1", None), (b"key2", None), (b"key3", None), (b"key4", None)]);
+
+    let path = TempDir::new("_rust_rocksdb_test_delete_range_prefix_bloom_case_2_2").expect("");
+    let path_str = path.path().to_str().unwrap();
+    let mut opts = DBOptions::new();
+    opts.create_if_missing(true);
+    let mut cf_opts = ColumnFamilyOptions::new();
+    // Prefix extractor(trim the timestamp at tail) for write cf.
+    cf_opts.set_prefix_extractor("FixedSuffixSliceTransform",
+                              Box::new(FixedSuffixSliceTransform::new(3)))
+        .unwrap_or_else(|err| panic!(format!("{:?}", err)));
+    // Create prefix bloom filter for memtable.
+    cf_opts.set_memtable_prefix_bloom_size_ratio(0.1 as f64);
+    let cf = "default";
+    let db2 = DB::open_cf(opts, path_str, vec![cf], vec![cf_opts]).unwrap();
+    let handle2 = get_cf_handle(&db2, cf).unwrap();
+
+    db2.ingest_external_file_cf(handle2, &ingest_opt, &[test_sstfile_str])
+        .unwrap();
+    check_kv(&db2,
+             db2.cf_handle(cf),
+             &[(b"key1", Some(b"value1")),
+               (b"key2", Some(b"value2")),
+               (b"key3", Some(b"value3")),
+               (b"key4", Some(b"value4"))]);
+
+    let after = gen_crc32_from_db(&db2);
+    assert_eq!(before, after);
+}
+
+#[test]
+fn test_delete_range_prefix_bloom_case_3() {
+    let path = TempDir::new("_rust_rocksdb_test_delete_range_prefix_bloom_case_3").expect("");
+    let path_str = path.path().to_str().unwrap();
+    let mut opts = DBOptions::new();
+    opts.create_if_missing(true);
+    let mut cf_opts = ColumnFamilyOptions::new();
+    // Prefix extractor(trim the timestamp at tail) for write cf.
+    cf_opts.set_prefix_extractor("FixedSuffixSliceTransform",
+                              Box::new(FixedSuffixSliceTransform::new(3)))
+        .unwrap_or_else(|err| panic!(format!("{:?}", err)));
+    // Create prefix bloom filter for memtable.
+    cf_opts.set_memtable_prefix_bloom_size_ratio(0.1 as f64);
+    let cf = "default";
+    let db = DB::open_cf(opts, path_str, vec![cf], vec![cf_opts]).unwrap();
+    let handle = get_cf_handle(&db, cf).unwrap();
+    let samples_a = vec![(b"key1", b"value1"),
+                         (b"key2", b"value2"),
+                         (b"key3", b"value3"),
+                         (b"key4", b"value4"),
+                         (b"key5", b"value5")];
+    for (k, v) in samples_a {
+        db.put_cf(handle, k, v).unwrap();
+        assert_eq!(v, &*db.get(k).unwrap().unwrap());
+    }
+    let before = gen_crc32_from_db(&db);
+
+    db.delete_range_cf(handle, b"key2", b"key4").unwrap();
+
+    check_kv(&db,
+             db.cf_handle(cf),
+             &[(b"key1", Some(b"value1")),
+               (b"key2", None),
+               (b"key3", None),
+               (b"key4", Some(b"value4")),
+               (b"key5", Some(b"value5"))]);
+
+    let path = TempDir::new("_rust_rocksdb_test_delete_range_prefix_bloom_case_3_2").expect("");
+    let path_str = path.path().to_str().unwrap();
+    let mut opts = DBOptions::new();
+    opts.create_if_missing(true);
+    let mut cf_opts = ColumnFamilyOptions::new();
+    // Prefix extractor(trim the timestamp at tail) for write cf.
+    cf_opts.set_prefix_extractor("FixedSuffixSliceTransform",
+                              Box::new(FixedSuffixSliceTransform::new(3)))
+        .unwrap_or_else(|err| panic!(format!("{:?}", err)));
+    // Create prefix bloom filter for memtable.
+    cf_opts.set_memtable_prefix_bloom_size_ratio(0.1 as f64);
+    let cf = "default";
+    let db2 = DB::open_cf(opts, path_str, vec![cf], vec![cf_opts]).unwrap();
+    let handle2 = get_cf_handle(&db2, cf).unwrap();
+    let samples_b = vec![(b"key2", b"value2"), (b"key3", b"value3")];
+    for (k, v) in samples_b {
+        db2.put_cf(handle2, k, v).unwrap();
+        assert_eq!(v, &*db2.get(k).unwrap().unwrap());
+    }
+
+    let gen_path = TempDir::new("_rust_rocksdb_prefix_bloom_case_3_ingest_sst_gen").expect("");
+    let test_sstfile = gen_path.path().join("test_sst_file");
+    let test_sstfile_str = test_sstfile.to_str().unwrap();
+    let ingest_opt = IngestExternalFileOptions::new();
+
+    let default_options = db2.get_options();
+    gen_sst_from_db(default_options, db2.cf_handle(cf), test_sstfile_str, &db2);
+
+    db.ingest_external_file_cf(handle, &ingest_opt, &[test_sstfile_str])
+        .unwrap();
+    check_kv(&db,
+             db.cf_handle(cf),
+             &[(b"key1", Some(b"value1")),
+               (b"key2", Some(b"value2")),
+               (b"key3", Some(b"value3")),
+               (b"key4", Some(b"value4")),
+               (b"key5", Some(b"value5"))]);
+
+    let after = gen_crc32_from_db(&db);
+    assert_eq!(before, after);
+}
+
+#[test]
+fn test_delete_range_prefix_bloom_case_4() {
+    let path = TempDir::new("_rust_rocksdb_test_delete_range_prefix_bloom_case_4").expect("");
+    let path_str = path.path().to_str().unwrap();
+    let mut opts = DBOptions::new();
+    opts.create_if_missing(true);
+    let mut cf_opts = ColumnFamilyOptions::new();
+    // Prefix extractor(trim the timestamp at tail) for write cf.
+    cf_opts.set_prefix_extractor("FixedSuffixSliceTransform",
+                              Box::new(FixedSuffixSliceTransform::new(3)))
+        .unwrap_or_else(|err| panic!(format!("{:?}", err)));
+    // Create prefix bloom filter for memtable.
+    cf_opts.set_memtable_prefix_bloom_size_ratio(0.1 as f64);
+    let cf = "default";
+    let db = DB::open_cf(opts, path_str, vec![cf], vec![cf_opts]).unwrap();
+    let handle = get_cf_handle(&db, cf).unwrap();
+    let samples_a = vec![(b"key1", b"value1"),
+                         (b"key2", b"value2"),
+                         (b"key3", b"value3"),
+                         (b"key4", b"value4"),
+                         (b"key5", b"value5")];
+    for (k, v) in samples_a {
+        db.put_cf(handle, k, v).unwrap();
+        assert_eq!(v, &*db.get(k).unwrap().unwrap());
+    }
+    let before = gen_crc32_from_db(&db);
+
+    db.delete_range_cf(handle, b"key4", b"key6").unwrap();
+
+    check_kv(&db,
+             db.cf_handle(cf),
+             &[(b"key1", Some(b"value1")),
+               (b"key2", Some(b"value2")),
+               (b"key3", Some(b"value3")),
+               (b"key4", None),
+               (b"key5", None)]);
+
+    let path = TempDir::new("_rust_rocksdb_test_delete_range_prefix_bloom_case_4_2").expect("");
+    let path_str = path.path().to_str().unwrap();
+    let mut opts = DBOptions::new();
+    opts.create_if_missing(true);
+    let mut cf_opts = ColumnFamilyOptions::new();
+    // Prefix extractor(trim the timestamp at tail) for write cf.
+    cf_opts.set_prefix_extractor("FixedSuffixSliceTransform",
+                              Box::new(FixedSuffixSliceTransform::new(3)))
+        .unwrap_or_else(|err| panic!(format!("{:?}", err)));
+    // Create prefix bloom filter for memtable.
+    cf_opts.set_memtable_prefix_bloom_size_ratio(0.1 as f64);
+    let cf = "default";
+    let db2 = DB::open_cf(opts, path_str, vec![cf], vec![cf_opts]).unwrap();
+    let handle2 = get_cf_handle(&db2, cf).unwrap();
+
+
+    let samples_b = vec![(b"key4", b"value4"), (b"key5", b"value5")];
+    for (k, v) in samples_b {
+        db2.put_cf(handle2, k, v).unwrap();
+        assert_eq!(v, &*db2.get(k).unwrap().unwrap());
+    }
+
+    let gen_path = TempDir::new("_rust_rocksdb_case_prefix_bloom_4_ingest_sst_gen").expect("");
+    let test_sstfile = gen_path.path().join("test_sst_file");
+    let test_sstfile_str = test_sstfile.to_str().unwrap();
+    let ingest_opt = IngestExternalFileOptions::new();
+
+    let default_options = db2.get_options();
+    gen_sst_from_db(default_options, db2.cf_handle(cf), test_sstfile_str, &db2);
+
+    db.ingest_external_file_cf(handle, &ingest_opt, &[test_sstfile_str])
+        .unwrap();
+    check_kv(&db,
+             db.cf_handle(cf),
+             &[(b"key1", Some(b"value1")),
+               (b"key2", Some(b"value2")),
+               (b"key3", Some(b"value3")),
+               (b"key4", Some(b"value4")),
+               (b"key5", Some(b"value5"))]);
 
     let after = gen_crc32_from_db(&db);
     assert_eq!(before, after);

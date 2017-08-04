@@ -885,7 +885,7 @@ impl DB {
                                                         s_len,
                                                         end,
                                                         e_len);
-         }
+        }
     }
 
     pub fn delete_file_in_range(&self, start_key: &[u8], end_key: &[u8]) -> Result<(), String> {

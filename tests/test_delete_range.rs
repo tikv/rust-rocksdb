@@ -547,10 +547,10 @@ fn test_delete_range_prefix_bloom_case_1() {
     let cf = "default";
     let db = DB::open_cf(opts, path_str, vec![cf], vec![cf_opts]).unwrap();
 
-    let samples_a = vec![(b"key1", b"value1"),
-                         (b"key2", b"value2"),
-                         (b"key3", b"value3"),
-                         (b"key4", b"value4")];
+    let samples_a = vec![(b"keya11111", b"value1"),
+                         (b"keyb22222", b"value2"),
+                         (b"keyc33333", b"value3"),
+                         (b"keyd44444", b"value4")];
     let handle = get_cf_handle(&db, cf).unwrap();
     for (k, v) in samples_a {
         db.put_cf(handle, k, v).unwrap();
@@ -569,19 +569,22 @@ fn test_delete_range_prefix_bloom_case_1() {
                     test_sstfile_str,
                     &db);
 
-    db.delete_range_cf(handle, b"key1", b"key5").unwrap();
+    db.delete_range_cf(handle, b"keya11111", b"keye55555").unwrap();
     check_kv(&db,
              db.cf_handle(cf),
-             &[(b"key1", None), (b"key2", None), (b"key3", None), (b"key4", None)]);
+             &[(b"keya11111", None),
+               (b"keyb22222", None),
+               (b"keyc33333", None),
+               (b"keyd44444", None)]);
 
     db.ingest_external_file_cf(handle, &ingest_opt, &[test_sstfile_str])
         .unwrap();
     check_kv(&db,
              db.cf_handle(cf),
-             &[(b"key1", Some(b"value1")),
-               (b"key2", Some(b"value2")),
-               (b"key3", Some(b"value3")),
-               (b"key4", Some(b"value4"))]);
+             &[(b"keya11111", Some(b"value1")),
+               (b"keyb22222", Some(b"value2")),
+               (b"keyc33333", Some(b"value3")),
+               (b"keyd44444", Some(b"value4"))]);
 
     let after = gen_crc32_from_db(&db);
     assert_eq!(before, after);
@@ -604,10 +607,10 @@ fn test_delete_range_prefix_bloom_case_2() {
     let db = DB::open_cf(opts, path_str, vec![cf], vec![cf_opts]).unwrap();
     let handle = get_cf_handle(&db, cf).unwrap();
 
-    let samples_a = vec![(b"key1", b"value1"),
-                         (b"key2", b"value2"),
-                         (b"key3", b"value3"),
-                         (b"key4", b"value4")];
+    let samples_a = vec![(b"keya11111", b"value1"),
+                         (b"keyb22222", b"value2"),
+                         (b"keyc33333", b"value3"),
+                         (b"keyd44444", b"value4")];
     for (k, v) in samples_a {
         db.put_cf(handle, k, v).unwrap();
         assert_eq!(v, &*db.get(k).unwrap().unwrap());
@@ -625,10 +628,13 @@ fn test_delete_range_prefix_bloom_case_2() {
                     test_sstfile_str,
                     &db);
 
-    db.delete_range_cf(handle, b"key1", b"key5").unwrap();
+    db.delete_range_cf(handle, b"keya11111", b"keye55555").unwrap();
     check_kv(&db,
              db.cf_handle("default"),
-             &[(b"key1", None), (b"key2", None), (b"key3", None), (b"key4", None)]);
+             &[(b"keya11111", None),
+               (b"keyb22222", None),
+               (b"keyc33333", None),
+               (b"keyd44444", None)]);
 
     let path = TempDir::new("_rust_rocksdb_test_delete_range_prefix_bloom_case_2_2").expect("");
     let path_str = path.path().to_str().unwrap();
@@ -649,10 +655,10 @@ fn test_delete_range_prefix_bloom_case_2() {
         .unwrap();
     check_kv(&db2,
              db2.cf_handle(cf),
-             &[(b"key1", Some(b"value1")),
-               (b"key2", Some(b"value2")),
-               (b"key3", Some(b"value3")),
-               (b"key4", Some(b"value4"))]);
+             &[(b"keya11111", Some(b"value1")),
+               (b"keyb22222", Some(b"value2")),
+               (b"keyc33333", Some(b"value3")),
+               (b"keyd44444", Some(b"value4"))]);
 
     let after = gen_crc32_from_db(&db2);
     assert_eq!(before, after);
@@ -674,26 +680,26 @@ fn test_delete_range_prefix_bloom_case_3() {
     let cf = "default";
     let db = DB::open_cf(opts, path_str, vec![cf], vec![cf_opts]).unwrap();
     let handle = get_cf_handle(&db, cf).unwrap();
-    let samples_a = vec![(b"key1", b"value1"),
-                         (b"key2", b"value2"),
-                         (b"key3", b"value3"),
-                         (b"key4", b"value4"),
-                         (b"key5", b"value5")];
+    let samples_a = vec![(b"keya11111", b"value1"),
+                         (b"keyb22222", b"value2"),
+                         (b"keyc33333", b"value3"),
+                         (b"keyd44444", b"value4"),
+                         (b"keye55555", b"value5")];
     for (k, v) in samples_a {
         db.put_cf(handle, k, v).unwrap();
         assert_eq!(v, &*db.get(k).unwrap().unwrap());
     }
     let before = gen_crc32_from_db(&db);
 
-    db.delete_range_cf(handle, b"key2", b"key4").unwrap();
+    db.delete_range_cf(handle, b"keyb22222", b"keyd44444").unwrap();
 
     check_kv(&db,
              db.cf_handle(cf),
-             &[(b"key1", Some(b"value1")),
-               (b"key2", None),
-               (b"key3", None),
-               (b"key4", Some(b"value4")),
-               (b"key5", Some(b"value5"))]);
+             &[(b"keya11111", Some(b"value1")),
+               (b"keyb22222", None),
+               (b"keyc33333", None),
+               (b"keyd44444", Some(b"value4")),
+               (b"keye55555", Some(b"value5"))]);
 
     let path = TempDir::new("_rust_rocksdb_test_delete_range_prefix_bloom_case_3_2").expect("");
     let path_str = path.path().to_str().unwrap();
@@ -709,7 +715,7 @@ fn test_delete_range_prefix_bloom_case_3() {
     let cf = "default";
     let db2 = DB::open_cf(opts, path_str, vec![cf], vec![cf_opts]).unwrap();
     let handle2 = get_cf_handle(&db2, cf).unwrap();
-    let samples_b = vec![(b"key2", b"value2"), (b"key3", b"value3")];
+    let samples_b = vec![(b"keyb22222", b"value2"), (b"keyc33333", b"value3")];
     for (k, v) in samples_b {
         db2.put_cf(handle2, k, v).unwrap();
         assert_eq!(v, &*db2.get(k).unwrap().unwrap());
@@ -727,11 +733,11 @@ fn test_delete_range_prefix_bloom_case_3() {
         .unwrap();
     check_kv(&db,
              db.cf_handle(cf),
-             &[(b"key1", Some(b"value1")),
-               (b"key2", Some(b"value2")),
-               (b"key3", Some(b"value3")),
-               (b"key4", Some(b"value4")),
-               (b"key5", Some(b"value5"))]);
+             &[(b"keya11111", Some(b"value1")),
+               (b"keyb22222", Some(b"value2")),
+               (b"keyc33333", Some(b"value3")),
+               (b"keyd44444", Some(b"value4")),
+               (b"keye55555", Some(b"value5"))]);
 
     let after = gen_crc32_from_db(&db);
     assert_eq!(before, after);
@@ -753,26 +759,26 @@ fn test_delete_range_prefix_bloom_case_4() {
     let cf = "default";
     let db = DB::open_cf(opts, path_str, vec![cf], vec![cf_opts]).unwrap();
     let handle = get_cf_handle(&db, cf).unwrap();
-    let samples_a = vec![(b"key1", b"value1"),
-                         (b"key2", b"value2"),
-                         (b"key3", b"value3"),
-                         (b"key4", b"value4"),
-                         (b"key5", b"value5")];
+    let samples_a = vec![(b"keya11111", b"value1"),
+                         (b"keyb22222", b"value2"),
+                         (b"keyc33333", b"value3"),
+                         (b"keyd44444", b"value4"),
+                         (b"keye55555", b"value5")];
     for (k, v) in samples_a {
         db.put_cf(handle, k, v).unwrap();
         assert_eq!(v, &*db.get(k).unwrap().unwrap());
     }
     let before = gen_crc32_from_db(&db);
 
-    db.delete_range_cf(handle, b"key4", b"key6").unwrap();
+    db.delete_range_cf(handle, b"keyd44444", b"keyf66666").unwrap();
 
     check_kv(&db,
              db.cf_handle(cf),
-             &[(b"key1", Some(b"value1")),
-               (b"key2", Some(b"value2")),
-               (b"key3", Some(b"value3")),
-               (b"key4", None),
-               (b"key5", None)]);
+             &[(b"keya11111", Some(b"value1")),
+               (b"keyb22222", Some(b"value2")),
+               (b"keyc33333", Some(b"value3")),
+               (b"keyd44444", None),
+               (b"keye55555", None)]);
 
     let path = TempDir::new("_rust_rocksdb_test_delete_range_prefix_bloom_case_4_2").expect("");
     let path_str = path.path().to_str().unwrap();
@@ -790,7 +796,7 @@ fn test_delete_range_prefix_bloom_case_4() {
     let handle2 = get_cf_handle(&db2, cf).unwrap();
 
 
-    let samples_b = vec![(b"key4", b"value4"), (b"key5", b"value5")];
+    let samples_b = vec![(b"keyd44444", b"value4"), (b"keye55555", b"value5")];
     for (k, v) in samples_b {
         db2.put_cf(handle2, k, v).unwrap();
         assert_eq!(v, &*db2.get(k).unwrap().unwrap());
@@ -808,11 +814,11 @@ fn test_delete_range_prefix_bloom_case_4() {
         .unwrap();
     check_kv(&db,
              db.cf_handle(cf),
-             &[(b"key1", Some(b"value1")),
-               (b"key2", Some(b"value2")),
-               (b"key3", Some(b"value3")),
-               (b"key4", Some(b"value4")),
-               (b"key5", Some(b"value5"))]);
+             &[(b"keya11111", Some(b"value1")),
+               (b"keyb22222", Some(b"value2")),
+               (b"keyc33333", Some(b"value3")),
+               (b"keyd44444", Some(b"value4")),
+               (b"keye55555", Some(b"value5"))]);
 
     let after = gen_crc32_from_db(&db);
     assert_eq!(before, after);
@@ -835,25 +841,25 @@ fn test_delete_range_prefix_bloom_case_5() {
     let cf = "default";
     let db = DB::open_cf(opts, path_str, vec![cf], vec![cf_opts]).unwrap();
     let handle = get_cf_handle(&db, cf).unwrap();
-    let samples_a = vec![(b"key1", b"value1"),
-                         (b"key2", b"value2"),
-                         (b"key3", b"value3"),
-                         (b"key4", b"value4"),
-                         (b"key5", b"value5")];
+    let samples_a = vec![(b"keya11111", b"value1"),
+                         (b"keyb22222", b"value2"),
+                         (b"keyc33333", b"value3"),
+                         (b"keyd44444", b"value4"),
+                         (b"keye55555", b"value5")];
     for (k, v) in samples_a {
         db.put_cf(handle, k, v).unwrap();
         assert_eq!(v, &*db.get(k).unwrap().unwrap());
     }
 
-    db.delete_range(b"key1", b"key6").unwrap();
+    db.delete_range(b"keya11111", b"keyf66666").unwrap();
 
     check_kv(&db,
              db.cf_handle(cf),
-             &[(b"key1", None),
-               (b"key2", None),
-               (b"key3", None),
-               (b"key4", None),
-               (b"key5", None)]);
+             &[(b"keya11111", None),
+               (b"keyb22222", None),
+               (b"keyc33333", None),
+               (b"keyd44444", None),
+               (b"keye55555", None)]);
 
     let path = TempDir::new("_rust_rocksdb_test_delete_range_prefix_bloom_case_5_2").expect("");
     let path_str = path.path().to_str().unwrap();
@@ -869,7 +875,7 @@ fn test_delete_range_prefix_bloom_case_5() {
     let db2 = DB::open_cf(opts, path_str, vec![cf], vec![cf_opts]).unwrap();
     let handle2 = get_cf_handle(&db2, cf).unwrap();
 
-    let samples_b = vec![(b"key4", b"value4"), (b"key5", b"value5")];
+    let samples_b = vec![(b"keyd44444", b"value4"), (b"keye55555", b"value5")];
     for (k, v) in samples_b {
         db2.put_cf(handle2, k, v).unwrap();
         assert_eq!(v, &*db2.get(k).unwrap().unwrap());
@@ -888,7 +894,7 @@ fn test_delete_range_prefix_bloom_case_5() {
         .unwrap();
     check_kv(&db,
              db.cf_handle(cf),
-             &[(b"key4", Some(b"value4")), (b"key5", Some(b"value5"))]);
+             &[(b"keyd44444", Some(b"value4")), (b"keye55555", Some(b"value5"))]);
 
     let after = gen_crc32_from_db(&db);
     assert_eq!(before, after);
@@ -910,11 +916,11 @@ fn test_delete_range_prefix_bloom_case_6() {
     let cf = "default";
     let db = DB::open_cf(opts, path_str, vec![cf], vec![cf_opts]).unwrap();
     let handle = get_cf_handle(&db, cf).unwrap();
-    let samples_a = vec![(b"key1", b"value1"),
-                         (b"key2", b"value2"),
-                         (b"key3", b"value3"),
-                         (b"key4", b"value4"),
-                         (b"key5", b"value5")];
+    let samples_a = vec![(b"keya11111", b"value1"),
+                         (b"keyb22222", b"value2"),
+                         (b"keyc33333", b"value3"),
+                         (b"keyd44444", b"value4"),
+                         (b"keye55555", b"value5")];
     for (k, v) in samples_a {
         db.put_cf(handle, k, v).unwrap();
         assert_eq!(v, &*db.get(k).unwrap().unwrap());
@@ -922,15 +928,15 @@ fn test_delete_range_prefix_bloom_case_6() {
 
     let before = gen_crc32_from_db_in_range(&db, b"key4", b"key6");
 
-    db.delete_range(b"key1", b"key4").unwrap();
+    db.delete_range(b"keya11111", b"keyd44444").unwrap();
 
     check_kv(&db,
              db.cf_handle("default"),
-             &[(b"key1", None),
-               (b"key2", None),
-               (b"key3", None),
-               (b"key4", Some(b"value4")),
-               (b"key5", Some(b"value5"))]);
+             &[(b"keya11111", None),
+               (b"keyb22222", None),
+               (b"keyc33333", None),
+               (b"keyd44444", Some(b"value4")),
+               (b"keye55555", Some(b"value5"))]);
 
     let path = TempDir::new("_rust_rocksdb_test_delete_range_prefix_bloom_case_6_2").expect("");
     let path_str = path.path().to_str().unwrap();
@@ -946,7 +952,8 @@ fn test_delete_range_prefix_bloom_case_6() {
     let db2 = DB::open_cf(opts, path_str, vec![cf], vec![cf_opts]).unwrap();
     let handle2 = get_cf_handle(&db2, cf).unwrap();
 
-    let samples_b = vec![(b"key1", b"value1"), (b"key2", b"value2"), (b"key3", b"value3")];
+    let samples_b =
+        vec![(b"keya11111", b"value1"), (b"keyb22222", b"value2"), (b"keyc33333", b"value3")];
     for (k, v) in samples_b {
         db2.put_cf(handle2, k, v).unwrap();
         assert_eq!(v, &*db2.get(k).unwrap().unwrap());
@@ -964,11 +971,11 @@ fn test_delete_range_prefix_bloom_case_6() {
         .unwrap();
     check_kv(&db,
              db.cf_handle(cf),
-             &[(b"key1", Some(b"value1")),
-               (b"key2", Some(b"value2")),
-               (b"key3", Some(b"value3")),
-               (b"key4", Some(b"value4")),
-               (b"key5", Some(b"value5"))]);
+             &[(b"keya11111", Some(b"value1")),
+               (b"keyb22222", Some(b"value2")),
+               (b"keyc33333", Some(b"value3")),
+               (b"keyd44444", Some(b"value4")),
+               (b"keye55555", Some(b"value5"))]);
 
     let after = gen_crc32_from_db_in_range(&db, b"key4", b"key6");
     assert_eq!(before, after);
@@ -1008,27 +1015,27 @@ fn test_delete_range_prefix_bloom_compact_case() {
     let cf = "default";
     let db = DB::open_cf(opts, path_str, vec![cf], vec![cf_opts]).unwrap();
     let handle = get_cf_handle(&db, cf).unwrap();
-    let samples_a = vec![(b"key1", b"value1"),
-                         (b"key2", b"value2"),
-                         (b"key3", b"value3"),
-                         (b"key4", b"value4"),
-                         (b"key5", b"value5")];
+    let samples_a = vec![(b"keya11111", b"value1"),
+                         (b"keyb22222", b"value2"),
+                         (b"keyc33333", b"value3"),
+                         (b"keyd44444", b"value4"),
+                         (b"keye55555", b"value5")];
     for (k, v) in samples_a {
         db.put_cf(handle, k, v).unwrap();
         assert_eq!(v, &*db.get(k).unwrap().unwrap());
     }
 
-    let before = gen_crc32_from_db_in_range(&db, b"key4", b"key6");
+    let before = gen_crc32_from_db_in_range(&db, b"keyd44444", b"keyf66666");
 
-    db.delete_range(b"key1", b"key4").unwrap();
+    db.delete_range(b"keya11111", b"keyd44444").unwrap();
 
     check_kv(&db,
              db.cf_handle("default"),
-             &[(b"key1", None),
-               (b"key2", None),
-               (b"key3", None),
-               (b"key4", Some(b"value4")),
-               (b"key5", Some(b"value5"))]);
+             &[(b"keya11111", None),
+               (b"keyb22222", None),
+               (b"keyc33333", None),
+               (b"keyd44444", Some(b"value4")),
+               (b"keye55555", Some(b"value5"))]);
 
     let path = TempDir::new("_rust_rocksdb_test_delete_range_prefix_bloom_case_6_2").expect("");
     let path_str = path.path().to_str().unwrap();
@@ -1044,7 +1051,8 @@ fn test_delete_range_prefix_bloom_compact_case() {
     let db2 = DB::open_cf(opts, path_str, vec![cf], vec![cf_opts]).unwrap();
     let handle2 = get_cf_handle(&db2, cf).unwrap();
 
-    let samples_b = vec![(b"key1", b"value1"), (b"key2", b"value2"), (b"key3", b"value3")];
+    let samples_b =
+        vec![(b"keya11111", b"value1"), (b"keyb22222", b"value2"), (b"keyc33333", b"value3")];
     for (k, v) in samples_b {
         db2.put_cf(handle2, k, v).unwrap();
         assert_eq!(v, &*db2.get(k).unwrap().unwrap());
@@ -1060,16 +1068,16 @@ fn test_delete_range_prefix_bloom_compact_case() {
 
     db.ingest_external_file_cf(handle, &ingest_opt, &[test_sstfile_str])
         .unwrap();
-    db.compact_range(None, None);
+    db.compact_range_cf(handle, None, None);
     check_kv(&db,
              db.cf_handle(cf),
-             &[(b"key1", Some(b"value1")),
-               (b"key2", Some(b"value2")),
-               (b"key3", Some(b"value3")),
-               (b"key4", Some(b"value4")),
-               (b"key5", Some(b"value5"))]);
+             &[(b"keya11111", Some(b"value1")),
+               (b"keyb22222", Some(b"value2")),
+               (b"keyc33333", Some(b"value3")),
+               (b"keyd44444", Some(b"value4")),
+               (b"keye55555", Some(b"value5"))]);
 
-    let after = gen_crc32_from_db_in_range(&db, b"key4", b"key6");
+    let after = gen_crc32_from_db_in_range(&db, b"keyd44444", b"keyf66666");
     assert_eq!(before, after);
 }
 

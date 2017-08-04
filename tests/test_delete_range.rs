@@ -62,6 +62,21 @@ fn gen_crc32_from_db(db: &DB) -> u32 {
     digest.sum32()
 }
 
+fn gen_crc32_from_db_in_range(db: &DB, start_key: &[u8], end_key: &[u8]) -> u32 {
+    let mut digest = Digest::new(crc32::IEEE);
+    let mut iter = db.iter();
+    iter.seek(SeekKey::Key(start_key));
+    while iter.valid() {
+        if iter.key() >= end_key {
+            break
+        }
+        digest.write(iter.key());
+        digest.write(iter.value());
+        iter.next();
+    }
+    digest.sum32()
+}
+
 #[test]
 fn test_delete_range_case_1() {
     let path = TempDir::new("_rust_rocksdb_test_delete_range_case_1").expect("");
@@ -287,6 +302,131 @@ fn test_delete_range_case_4() {
                (b"key5", Some(b"value5"))]);
 
     let after = gen_crc32_from_db(&db);
+    assert_eq!(before, after);
+}
+
+#[test]
+fn test_delete_range_case_5() {
+    let path = TempDir::new("_rust_rocksdb_test_delete_range_case_5").expect("");
+    let path_str = path.path().to_str().unwrap();
+    let mut opts = DBOptions::new();
+    opts.create_if_missing(true);
+    let db = DB::open(opts, path_str).unwrap();
+    let samples_a = vec![(b"key1", b"value1"),
+                         (b"key2", b"value2"),
+                         (b"key3", b"value3"),
+                         (b"key4", b"value4"),
+                         (b"key5", b"value5")];
+    for (k, v) in samples_a {
+        db.put(k, v).unwrap();
+        assert_eq!(v, &*db.get(k).unwrap().unwrap());
+    }
+
+    db.delete_range(b"key1", b"key6").unwrap();
+
+    check_kv(&db,
+             db.cf_handle("default"),
+             &[(b"key1", None),
+               (b"key2", None),
+               (b"key3", None),
+               (b"key4", None),
+               (b"key5", None)]);
+
+    let path = TempDir::new("_rust_rocksdb_test_delete_range_case_5_2").expect("");
+    let path_str = path.path().to_str().unwrap();
+    let mut opts = DBOptions::new();
+    opts.create_if_missing(true);
+    let db2 = DB::open(opts, path_str).unwrap();
+
+    let samples_b = vec![(b"key4", b"value4"), (b"key5", b"value5")];
+    for (k, v) in samples_b {
+        db2.put(k, v).unwrap();
+        assert_eq!(v, &*db2.get(k).unwrap().unwrap());
+    }
+    let before = gen_crc32_from_db(&db2);
+
+    let gen_path = TempDir::new("_rust_rocksdb_case_5_ingest_sst_gen").expect("");
+    let test_sstfile = gen_path.path().join("test_sst_file");
+    let test_sstfile_str = test_sstfile.to_str().unwrap();
+    let ingest_opt = IngestExternalFileOptions::new();
+
+    let default_options = db2.get_options();
+    gen_sst_from_db(default_options,
+                    db2.cf_handle("default"),
+                    test_sstfile_str,
+                    &db2);
+
+    db.ingest_external_file(&ingest_opt, &[test_sstfile_str])
+        .unwrap();
+    check_kv(&db,
+             db.cf_handle("default"),
+             &[(b"key4", Some(b"value4")),
+               (b"key5", Some(b"value5"))]);
+
+    let after = gen_crc32_from_db(&db);
+    assert_eq!(before, after);
+}
+
+#[test]
+fn test_delete_range_case_6() {
+    let path = TempDir::new("_rust_rocksdb_test_delete_range_case_6").expect("");
+    let path_str = path.path().to_str().unwrap();
+    let mut opts = DBOptions::new();
+    opts.create_if_missing(true);
+    let db = DB::open(opts, path_str).unwrap();
+    let samples_a = vec![(b"key1", b"value1"),
+                         (b"key2", b"value2"),
+                         (b"key3", b"value3"),
+                         (b"key4", b"value4"),
+                         (b"key5", b"value5")];
+    for (k, v) in samples_a {
+        db.put(k, v).unwrap();
+        assert_eq!(v, &*db.get(k).unwrap().unwrap());
+    }
+
+    let before = gen_crc32_from_db_in_range(&db, b"key4", b"key6");
+
+    db.delete_range(b"key1", b"key4").unwrap();
+
+    check_kv(&db,
+             db.cf_handle("default"),
+             &[(b"key1", None),
+               (b"key2", None),
+               (b"key3", None),
+               (b"key4", Some(b"value4")),
+               (b"key5", Some(b"value5"))]);
+
+    let path = TempDir::new("_rust_rocksdb_test_delete_range_case_5_2").expect("");
+    let path_str = path.path().to_str().unwrap();
+    let mut opts = DBOptions::new();
+    opts.create_if_missing(true);
+    let db2 = DB::open(opts, path_str).unwrap();
+
+    let samples_b = vec![(b"key1", b"value1"), (b"key2", b"value2"), (b"key3", b"value3")];
+    for (k, v) in samples_b {
+        db2.put(k, v).unwrap();
+        assert_eq!(v, &*db2.get(k).unwrap().unwrap());
+    }
+
+    let gen_path = TempDir::new("_rust_rocksdb_case_6_ingest_sst_gen").expect("");
+    let test_sstfile = gen_path.path().join("test_sst_file");
+    let test_sstfile_str = test_sstfile.to_str().unwrap();
+    let ingest_opt = IngestExternalFileOptions::new();
+
+    let default_options = db2.get_options();
+    gen_sst_from_db(default_options,
+                    db2.cf_handle("default"),
+                    test_sstfile_str,
+                    &db2);
+
+    db.ingest_external_file(&ingest_opt, &[test_sstfile_str])
+        .unwrap();
+    check_kv(&db,
+             db.cf_handle("default"),
+             &[(b"key1", Some(b"value1")), (b"key2", Some(b"value2")), (b"key3", Some(b"value3")), (b"key4", Some(b"value4")),
+               (b"key5", Some(b"value5"))]);
+
+    let after = gen_crc32_from_db_in_range(&db, b"key4", b"key6");
     assert_eq!(before, after);
 }
 

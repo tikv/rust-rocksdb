@@ -270,22 +270,8 @@ fn put_delete_and_generate_sst_cf(opt: ColumnFamilyOptions, db: &DB, cf: &CFHand
     db.put_cf(cf, b"k2", b"v2").unwrap();
     db.put_cf(cf, b"k3", b"v3").unwrap();
     db.put_cf(cf, b"k4", b"v4").unwrap();
-    // println!("put done");
-    // let mut iter = db.iter_cf(cf);
-    // iter.seek(SeekKey::Start);
-    // while iter.valid() {
-    //     println!("{:?} {:?}", iter.key(), iter.value());
-    //     iter.next();
-    // }
     db.delete_cf(cf, b"k1").unwrap();
     db.delete_cf(cf, b"k3").unwrap();
-    // println!("delete done");
-    // let mut iter = db.iter_cf(cf);
-    // iter.seek(SeekKey::Start);
-    // while iter.valid() {
-    //     println!("{:?} {:?}", iter.key(), iter.value());
-    //     iter.next();
-    // }
     gen_sst_from_cf(opt, db, cf, path);
 }
 
@@ -311,9 +297,6 @@ fn test_ingest_simulate_real_world() {
     opts.create_if_missing(true);
     let mut db = DB::open(opts, path_str).unwrap();
     let gen_path = TempDir::new("_rust_rocksdb_ingest_real_world_new_cf").expect("");
-    // for cf in &ALL_CFS {
-    //     fs::create_dir(gen_path.path().join(cf).to_str().unwrap()).unwrap();
-    // }
 
     for cf in &ALL_CFS {
         if *cf != "default" {

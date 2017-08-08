@@ -246,3 +246,122 @@ fn test_ingest_external_file_new_cf() {
     assert_eq!(snap.get_cf(handle, b"k2").unwrap().unwrap(), b"b");
     assert_eq!(snap.get_cf(handle, b"k3").unwrap().unwrap(), b"c");
 }
+
+fn check_kv(db: &DB, cf: Option<&CFHandle>, data: &[(&[u8], Option<&[u8]>)]) {
+    for &(k, v) in data {
+        if cf.is_some() {
+            if v.is_none() {
+                assert!(db.get_cf(cf.unwrap(), k).unwrap().is_none());
+            } else {
+                assert_eq!(db.get_cf(cf.unwrap(), k).unwrap().unwrap(), v.unwrap());
+            }
+        } else {
+            if v.is_none() {
+                assert!(db.get(k).unwrap().is_none());
+            } else {
+                assert_eq!(db.get(k).unwrap().unwrap(), v.unwrap());
+            }
+        }
+    }
+}
+
+fn put_delete_and_generate_sst_cf(opt: ColumnFamilyOptions, db: &DB, cf: &CFHandle, path: &str) {
+    db.put_cf(cf, b"k1", b"v1").unwrap();
+    db.put_cf(cf, b"k2", b"v2").unwrap();
+    db.put_cf(cf, b"k3", b"v3").unwrap();
+    db.put_cf(cf, b"k4", b"v4").unwrap();
+    // println!("put done");
+    // let mut iter = db.iter_cf(cf);
+    // iter.seek(SeekKey::Start);
+    // while iter.valid() {
+    //     println!("{:?} {:?}", iter.key(), iter.value());
+    //     iter.next();
+    // }
+    db.delete_cf(cf, b"k1").unwrap();
+    db.delete_cf(cf, b"k3").unwrap();
+    // println!("delete done");
+    // let mut iter = db.iter_cf(cf);
+    // iter.seek(SeekKey::Start);
+    // while iter.valid() {
+    //     println!("{:?} {:?}", iter.key(), iter.value());
+    //     iter.next();
+    // }
+    gen_sst_from_cf(opt, db, cf, path);
+}
+
+fn gen_sst_from_cf(opt: ColumnFamilyOptions, db: &DB, cf: &CFHandle, path: &str) {
+    let env_opt = EnvOptions::new();
+    let mut writer = SstFileWriter::new_cf(env_opt, opt, cf);
+    writer.open(path).unwrap();
+    let mut iter = db.iter_cf(cf);
+    iter.seek(SeekKey::Start);
+    while iter.valid() {
+        writer.add(iter.key(), iter.value()).unwrap();
+        iter.next();
+    }
+    writer.finish().unwrap();
+}
+
+#[test]
+fn test_ingest_simulate_real_world() {
+    const ALL_CFS: [&str; 3] = ["lock", "write", "default"];
+    let path = TempDir::new("_rust_rocksdb_ingest_real_world_1").expect("");
+    let path_str = path.path().to_str().unwrap();
+    let mut opts = DBOptions::new();
+    opts.create_if_missing(true);
+    let mut db = DB::open(opts, path_str).unwrap();
+    let gen_path = TempDir::new("_rust_rocksdb_ingest_real_world_new_cf").expect("");
+    // for cf in &ALL_CFS {
+    //     fs::create_dir(gen_path.path().join(cf).to_str().unwrap()).unwrap();
+    // }
+
+    for cf in &ALL_CFS {
+        if *cf != "default" {
+            let cf_opts = ColumnFamilyOptions::new();
+            db.create_cf(cf, cf_opts).unwrap();
+        }
+    }
+    for cf in &ALL_CFS {
+        let handle = db.cf_handle(cf).unwrap();
+        let cf_opts = ColumnFamilyOptions::new();
+        put_delete_and_generate_sst_cf(cf_opts, &db, &handle, gen_path.path().join(cf).to_str().unwrap());
+    }
+
+    let path2 = TempDir::new("_rust_rocksdb_ingest_real_world_2").expect("");
+    let path_str2 = path2.path().to_str().unwrap();
+    let mut opts2 = DBOptions::new();
+    opts2.create_if_missing(true);
+    let mut db2 = DB::open(opts2, path_str2).unwrap();
+    for cf in &ALL_CFS {
+        if *cf != "default" {
+            let cf_opts = ColumnFamilyOptions::new();
+            db2.create_cf(cf, cf_opts).unwrap();
+        }
+    }
+    for cf in &ALL_CFS {
+        let handle = db2.cf_handle(cf).unwrap();
+        let mut ingest_opt = IngestExternalFileOptions::new();
+        ingest_opt.move_files(true);
+        db2.ingest_external_file_cf(handle, &ingest_opt, &[gen_path.path().join(cf).to_str().unwrap()]).unwrap();
+        check_kv(&db,
+             db.cf_handle(cf),
+             &[(b"k1", None),
+               (b"k2", Some(b"v2")),
+               (b"k3", None),
+               (b"k4", Some(b"v4"))]);
+        let cf_opts = ColumnFamilyOptions::new();
+        gen_sst_from_cf(cf_opts, &db2, &handle, gen_path.path().join(cf).to_str().unwrap());
+    }
+
+    for cf in &ALL_CFS {
+        let handle = db.cf_handle(cf).unwrap();
+        let ingest_opt = IngestExternalFileOptions::new();
+        db.ingest_external_file_cf(handle, &ingest_opt, &[gen_path.path().join(cf).to_str().unwrap()]).unwrap();
+        check_kv(&db,
+             db.cf_handle(cf),
+             &[(b"k1", None),
+               (b"k2", Some(b"v2")),
+               (b"k3", None),
+               (b"k4", Some(b"v4"))]);
+    }
+}

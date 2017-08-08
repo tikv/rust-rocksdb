@@ -281,19 +281,22 @@ fn create_default_database(path: &TempDir) -> DB {
     DB::open(opts, path_str).unwrap()
 }
 
+fn create_cfs(db: &mut DB, cfs: &[&str]) {
+    for cf in cfs {
+        if *cf != "default" {
+            let cf_opts = ColumnFamilyOptions::new();
+            db.create_cf(cf, cf_opts).unwrap();
+        }
+    }
+}
+
 #[test]
 fn test_ingest_simulate_real_world() {
     const ALL_CFS: [&str; 3] = ["lock", "write", "default"];
     let path = TempDir::new("_rust_rocksdb_ingest_real_world_1").expect("");
     let mut db = create_default_database(&path);
     let gen_path = TempDir::new("_rust_rocksdb_ingest_real_world_new_cf").expect("");
-
-    for cf in &ALL_CFS {
-        if *cf != "default" {
-            let cf_opts = ColumnFamilyOptions::new();
-            db.create_cf(cf, cf_opts).unwrap();
-        }
-    }
+    create_cfs(&mut db, &ALL_CFS);
     for cf in &ALL_CFS {
         let handle = db.cf_handle(cf).unwrap();
         let cf_opts = ColumnFamilyOptions::new();

@@ -97,11 +97,7 @@ fn concat_merge(_: &[u8], existing_val: Option<&[u8]>, operands: &mut MergeOpera
 #[test]
 fn test_ingest_external_file() {
     let path = TempDir::new("_rust_rocksdb_ingest_sst").expect("");
-    let path_str = path.path().to_str().unwrap();
-
-    let mut opts = DBOptions::new();
-    opts.create_if_missing(true);
-    let mut db = DB::open(opts, path_str).unwrap();
+    let mut db = create_default_database(&path);
     let cf_opts = ColumnFamilyOptions::new();
     db.create_cf("cf1", cf_opts).unwrap();
     let handle = db.cf_handle("cf1").unwrap();
@@ -204,10 +200,7 @@ fn test_ingest_external_file_new() {
 #[test]
 fn test_ingest_external_file_new_cf() {
     let path = TempDir::new("_rust_rocksdb_ingest_sst_new_cf").expect("");
-    let path_str = path.path().to_str().unwrap();
-    let mut opts = DBOptions::new();
-    opts.create_if_missing(true);
-    let mut db = DB::open(opts, path_str).unwrap();
+    let mut db = create_default_database(&path);
     let gen_path = TempDir::new("_rust_rocksdb_ingest_sst_gen_new_cf").expect("");
     let test_sstfile = gen_path.path().join("test_sst_file_new_cf");
     let test_sstfile_str = test_sstfile.to_str().unwrap();
@@ -288,14 +281,18 @@ fn gen_sst_from_cf(opt: ColumnFamilyOptions, db: &DB, cf: &CFHandle, path: &str)
     writer.finish().unwrap();
 }
 
+fn create_default_database(path: &TempDir) -> DB {
+    let path_str = path.path().to_str().unwrap();
+    let mut opts = DBOptions::new();
+    opts.create_if_missing(true);
+    DB::open(opts, path_str).unwrap()
+}
+
 #[test]
 fn test_ingest_simulate_real_world() {
     const ALL_CFS: [&str; 3] = ["lock", "write", "default"];
     let path = TempDir::new("_rust_rocksdb_ingest_real_world_1").expect("");
-    let path_str = path.path().to_str().unwrap();
-    let mut opts = DBOptions::new();
-    opts.create_if_missing(true);
-    let mut db = DB::open(opts, path_str).unwrap();
+    let mut db = create_default_database(&path);
     let gen_path = TempDir::new("_rust_rocksdb_ingest_real_world_new_cf").expect("");
 
     for cf in &ALL_CFS {
@@ -311,10 +308,7 @@ fn test_ingest_simulate_real_world() {
     }
 
     let path2 = TempDir::new("_rust_rocksdb_ingest_real_world_2").expect("");
-    let path_str2 = path2.path().to_str().unwrap();
-    let mut opts2 = DBOptions::new();
-    opts2.create_if_missing(true);
-    let mut db2 = DB::open(opts2, path_str2).unwrap();
+    let mut db2 = create_default_database(&path2);
     for cf in &ALL_CFS {
         if *cf != "default" {
             let cf_opts = ColumnFamilyOptions::new();

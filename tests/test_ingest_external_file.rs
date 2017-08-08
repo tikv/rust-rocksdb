@@ -242,18 +242,11 @@ fn test_ingest_external_file_new_cf() {
 
 fn check_kv(db: &DB, cf: Option<&CFHandle>, data: &[(&[u8], Option<&[u8]>)]) {
     for &(k, v) in data {
-        if cf.is_some() {
-            if v.is_none() {
-                assert!(db.get_cf(cf.unwrap(), k).unwrap().is_none());
-            } else {
-                assert_eq!(db.get_cf(cf.unwrap(), k).unwrap().unwrap(), v.unwrap());
-            }
+        let handle = cf.unwrap_or(db.cf_handle("default").unwrap());
+        if v.is_none() {
+            assert!(db.get_cf(handle, k).unwrap().is_none());
         } else {
-            if v.is_none() {
-                assert!(db.get(k).unwrap().is_none());
-            } else {
-                assert_eq!(db.get(k).unwrap().unwrap(), v.unwrap());
-            }
+            assert_eq!(db.get_cf(handle, k).unwrap().unwrap(), v.unwrap());
         }
     }
 }
@@ -304,7 +297,10 @@ fn test_ingest_simulate_real_world() {
     for cf in &ALL_CFS {
         let handle = db.cf_handle(cf).unwrap();
         let cf_opts = ColumnFamilyOptions::new();
-        put_delete_and_generate_sst_cf(cf_opts, &db, &handle, gen_path.path().join(cf).to_str().unwrap());
+        put_delete_and_generate_sst_cf(cf_opts,
+                                       &db,
+                                       &handle,
+                                       gen_path.path().join(cf).to_str().unwrap());
     }
 
     let path2 = TempDir::new("_rust_rocksdb_ingest_real_world_2").expect("");
@@ -319,26 +315,29 @@ fn test_ingest_simulate_real_world() {
         let handle = db2.cf_handle(cf).unwrap();
         let mut ingest_opt = IngestExternalFileOptions::new();
         ingest_opt.move_files(true);
-        db2.ingest_external_file_cf(handle, &ingest_opt, &[gen_path.path().join(cf).to_str().unwrap()]).unwrap();
+        db2.ingest_external_file_cf(handle,
+                                     &ingest_opt,
+                                     &[gen_path.path().join(cf).to_str().unwrap()])
+            .unwrap();
         check_kv(&db,
-             db.cf_handle(cf),
-             &[(b"k1", None),
-               (b"k2", Some(b"v2")),
-               (b"k3", None),
-               (b"k4", Some(b"v4"))]);
+                 db.cf_handle(cf),
+                 &[(b"k1", None), (b"k2", Some(b"v2")), (b"k3", None), (b"k4", Some(b"v4"))]);
         let cf_opts = ColumnFamilyOptions::new();
-        gen_sst_from_cf(cf_opts, &db2, &handle, gen_path.path().join(cf).to_str().unwrap());
+        gen_sst_from_cf(cf_opts,
+                        &db2,
+                        &handle,
+                        gen_path.path().join(cf).to_str().unwrap());
     }
 
     for cf in &ALL_CFS {
         let handle = db.cf_handle(cf).unwrap();
         let ingest_opt = IngestExternalFileOptions::new();
-        db.ingest_external_file_cf(handle, &ingest_opt, &[gen_path.path().join(cf).to_str().unwrap()]).unwrap();
+        db.ingest_external_file_cf(handle,
+                                     &ingest_opt,
+                                     &[gen_path.path().join(cf).to_str().unwrap()])
+            .unwrap();
         check_kv(&db,
-             db.cf_handle(cf),
-             &[(b"k1", None),
-               (b"k2", Some(b"v2")),
-               (b"k3", None),
-               (b"k4", Some(b"v4"))]);
+                 db.cf_handle(cf),
+                 &[(b"k1", None), (b"k2", Some(b"v2")), (b"k3", None), (b"k4", Some(b"v4"))]);
     }
 }

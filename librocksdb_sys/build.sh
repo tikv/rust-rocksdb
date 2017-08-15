@@ -110,10 +110,11 @@ function compile_zstd() {
         return
     fi
 
-    rm -rf zstd-1.2.0
-    download https://github.com/facebook/zstd/archive/v1.2.0.tar.gz zstd-1.2.0.tar.gz d7777b0aafa7002a4dee1e2db42afe30
-    tar xvzf zstd-1.2.0.tar.gz
-    cd zstd-1.2.0/lib
+    rm -rf zstd-1.1.4
+    download https://github.com/facebook/zstd/archive/v1.1.4.tar.gz zstd-1.1.4.tar.gz 16f16d81ce8bed7d52e1e40b9c73677e
+    #download https://github.com/facebook/zstd/archive/v1.2.0.tar.gz zstd-1.2.0.tar.gz d7777b0aafa7002a4dee1e2db42afe30
+    tar xvzf zstd-1.1.4.tar.gz
+    cd zstd-1.1.4/lib
     make CPPFLAGS='-fPIC -I. -I./common' -j $con
     mv libzstd.a ../..
     cd ../..
@@ -124,16 +125,16 @@ function compile_rocksdb() {
         return
     fi
 
-    version=v5.6.2
-    vernum=5.6.2
+    version=v5.7.1
+    vernum=5.7.1
     echo building rocksdb-$version
     rm -rf rocksdb rocksdb-$vernum
-    download https://github.com/facebook/rocksdb/archive/$version.tar.gz rocksdb-$version.tar.gz c8c7af9f9f22b33f8762645d12ec1711
+    download https://github.com/facebook/rocksdb/archive/$version.tar.gz rocksdb-$version.tar.gz 66ffdbc0b67f1af7089e4cb0fe005056
     tar xf rocksdb-$version.tar.gz
     wd=`pwd`
     mv rocksdb-$vernum rocksdb
     cd rocksdb
-    export EXTRA_CFLAGS="-fPIC -I${wd}/zlib-1.2.11 -I${wd}/bzip2-1.0.6 -I${wd}/snappy-1.1.1 -I${wd}/lz4-r131/lib -I${wd}/zstd-1.2.0/lib"
+    export EXTRA_CFLAGS="-fPIC -I${wd}/zlib-1.2.11 -I${wd}/bzip2-1.0.6 -I${wd}/snappy-1.1.1 -I${wd}/lz4-r131/lib -I${wd}/zstd-1.1.4/lib"
     export EXTRA_CXXFLAGS="-DZLIB -DBZIP2 -DSNAPPY -DLZ4 -DZSTD $EXTRA_CFLAGS"
     DISABLE_JEMALLOC=1 make static_lib -j $con
     mv librocksdb.a ../

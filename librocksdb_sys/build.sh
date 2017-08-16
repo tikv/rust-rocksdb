@@ -110,11 +110,10 @@ function compile_zstd() {
         return
     fi
 
-    rm -rf zstd-1.1.4
-    download https://github.com/facebook/zstd/archive/v1.1.4.tar.gz zstd-1.1.4.tar.gz 16f16d81ce8bed7d52e1e40b9c73677e
-    #download https://github.com/facebook/zstd/archive/v1.2.0.tar.gz zstd-1.2.0.tar.gz d7777b0aafa7002a4dee1e2db42afe30
-    tar xvzf zstd-1.1.4.tar.gz
-    cd zstd-1.1.4/lib
+    rm -rf zstd-1.2.0
+    download https://github.com/facebook/zstd/archive/v1.2.0.tar.gz zstd-1.2.0.tar.gz d7777b0aafa7002a4dee1e2db42afe30
+    tar xvzf zstd-1.2.0.tar.gz
+    cd zstd-1.2.0/lib
     make CPPFLAGS='-fPIC -I. -I./common' -j $con
     mv libzstd.a ../..
     cd ../..
@@ -125,11 +124,11 @@ function compile_rocksdb() {
         return
     fi
 
-    version=v5.7.1
-    vernum=5.7.1
+    version=v5.7.2
+    vernum=5.7.2
     echo building rocksdb-$version
     rm -rf rocksdb rocksdb-$vernum
-    download https://github.com/facebook/rocksdb/archive/$version.tar.gz rocksdb-$version.tar.gz 66ffdbc0b67f1af7089e4cb0fe005056
+    download https://github.com/facebook/rocksdb/archive/$version.tar.gz rocksdb-$version.tar.gz 4398dfc4d951d9039ae24239c6efa0b4
     tar xf rocksdb-$version.tar.gz
     wd=`pwd`
     mv rocksdb-$vernum rocksdb

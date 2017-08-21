@@ -2,7 +2,7 @@
 extern crate gcc;
 
 
-use gcc::Config;
+use gcc::Build;
 use std::{env, fs, str};
 use std::path::PathBuf;
 use std::process::Command;
@@ -26,8 +26,8 @@ fn main() {
     println!("cargo:rustc-link-lib=static=crocksdb");
 }
 
-fn build_rocksdb() -> Config {
-    let mut cfg = Config::new();
+fn build_rocksdb() -> Build {
+    let mut cfg = Build::new();
 
     if !cfg!(feature = "static-link") {
         if cfg!(target_os = "windows") {

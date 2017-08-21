@@ -26,4 +26,3 @@ env:
   global:
   - RUST_TEST_THREADS=1
   - LD_LIBRARY_PATH: "/usr/local/lib"
-  - RUSTFMT_VERSION=v0.6.0

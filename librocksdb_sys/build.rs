@@ -1,11 +1,11 @@
 
 extern crate gcc;
 
+
+use gcc::Config;
 use std::{env, fs, str};
 use std::path::PathBuf;
 use std::process::Command;
-
-use gcc::Config;
 
 macro_rules! t {
     ($e:expr) => (match $e {
@@ -89,10 +89,12 @@ fn build_rocksdb() -> Config {
         }
 
         if let Err(e) = fs::rename(src.as_path(), dst.as_path()) {
-            panic!("failed to move {} to {}: {:?}",
-                   src.display(),
-                   dst.display(),
-                   e);
+            panic!(
+                "failed to move {} to {}: {:?}",
+                src.display(),
+                dst.display(),
+                e
+            );
         }
     }
 
@@ -124,23 +126,29 @@ fn build_rocksdb() -> Config {
         return cfg;
     }
 
-    let output =
-        Command::new(p.as_path()).args(&["find_library", std_lib_name]).output().unwrap();
+    let output = Command::new(p.as_path())
+        .args(&["find_library", std_lib_name])
+        .output()
+        .unwrap();
     if output.status.success() && !output.stdout.is_empty() {
         if let Ok(path_str) = str::from_utf8(&output.stdout) {
             let path = PathBuf::from(path_str);
             if path.is_absolute() {
                 println!("cargo:rustc-link-lib=static=stdc++");
-                println!("cargo:rustc-link-search=native={}",
-                            path.parent().unwrap().display());
+                println!(
+                    "cargo:rustc-link-search=native={}",
+                    path.parent().unwrap().display()
+                );
                 cfg.cpp_link_stdlib(None);
                 return cfg;
             }
         }
     }
-    println!("failed to detect {}: {:?}, fallback to dynamic",
-             std_lib_name,
-             output);
+    println!(
+        "failed to detect {}: {:?}, fallback to dynamic",
+        std_lib_name,
+        output
+    );
     cfg
 }
 

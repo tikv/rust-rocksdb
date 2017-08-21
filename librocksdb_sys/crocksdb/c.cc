@@ -1644,12 +1644,12 @@ crocksdb_compactionjobinfo_table_properties(
 }
 
 uint64_t crocksdb_compactionjobinfo_elapsed_micros(
-    const crocksdb_compactionjobinfo_t* info) {
+    const crocksdb_compactionjobinfo_t *info) {
   return info->rep.stats.elapsed_micros;
 }
 
 uint64_t crocksdb_compactionjobinfo_num_corrupt_keys(
-    const crocksdb_compactionjobinfo_t* info) {
+    const crocksdb_compactionjobinfo_t *info) {
   return info->rep.stats.num_corrupt_keys;
 }
 

@@ -1,33 +1,19 @@
 language: rust
 dist: trusty
 sudo: required
+rust:
+- beta
+- nightly
+- stable
 
 cache:
   directories:
   - target
 
-
-matrix:
-  include:
-    - os: linux
-      rust: nightly
-      env: SKIP_FORMAT_CHECK=false
-    - os: linux
-      rust: beta
-      env: SKIP_FORMAT_CHECK=true
-    - os: linux
-      rust: stable
-      env: SKIP_FORMAT_CHECK=true
-
-before_script:
-- 'if [ ${SKIP_FORMAT_CHECK} != "true" ]; then
-      make -f travis-build/Makefile prepare-rustfmt;
-  fi'
+os:
+  - linux
 
 script:
-- 'if [ ${SKIP_FORMAT_CHECK} != "true" ]; then
-      cargo fmt -- --write-mode diff || (echo please make format and run tests before creating a pr!; exit 1);
-  fi'
 - cargo build --features static-link
 - cargo test --all --features static-link
 

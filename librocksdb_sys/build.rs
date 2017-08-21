@@ -1,7 +1,6 @@
 
 extern crate gcc;
 
-
 use gcc::Build;
 use std::{env, fs, str};
 use std::path::PathBuf;

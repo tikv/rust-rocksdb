@@ -843,6 +843,7 @@ extern "C" {
         options: *const DBFlushOptions,
         err: *mut *mut c_char,
     );
+    pub fn crocksdb_flush_wal(db: *mut DBInstance, sync: bool, err: *mut *mut c_char);
     pub fn crocksdb_sync_wal(db: *mut DBInstance, err: *mut *mut c_char);
 
     pub fn crocksdb_approximate_sizes(

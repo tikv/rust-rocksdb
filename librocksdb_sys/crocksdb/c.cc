@@ -1109,6 +1109,13 @@ void crocksdb_flush_cf(
   SaveError(errptr, db->rep->Flush(options->rep, column_family->rep));
 }
 
+void crocksdb_flush_wal(
+    crocksdb_t* db,
+    bool sync,
+    char** errptr) {
+  SaveError(errptr, db->rep->FlushWAL(sync));
+}
+
 void crocksdb_sync_wal(
     crocksdb_t* db,
     char** errptr) {

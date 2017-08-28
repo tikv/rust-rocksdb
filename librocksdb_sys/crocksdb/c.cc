@@ -1111,7 +1111,7 @@ void crocksdb_flush_cf(
 
 void crocksdb_flush_wal(
     crocksdb_t* db,
-    bool sync,
+    unsigned char sync,
     char** errptr) {
   SaveError(errptr, db->rep->FlushWAL(sync));
 }

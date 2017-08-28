@@ -416,7 +416,7 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_flush_cf(
     const crocksdb_flushoptions_t* options, char** errptr);
 
 extern C_ROCKSDB_LIBRARY_API void crocksdb_flush_wal(
-    crocksdb_t* db, bool sync, char** errptr);
+    crocksdb_t* db, unsigned char sync, char** errptr);
 
 extern C_ROCKSDB_LIBRARY_API void crocksdb_sync_wal(
     crocksdb_t* db, char** errptr);

@@ -2133,6 +2133,10 @@ void crocksdb_options_set_allow_concurrent_memtable_write(crocksdb_options_t* op
   opt->rep.allow_concurrent_memtable_write = v;
 }
 
+void crocksdb_options_set_manual_wal_flush(crocksdb_options_t* opt, unsigned char v) {
+  opt->rep.manual_wal_flush = v;
+}
+
 void crocksdb_options_set_enable_write_thread_adaptive_yield(
     crocksdb_options_t* opt, unsigned char v) {
   opt->rep.enable_write_thread_adaptive_yield = v;

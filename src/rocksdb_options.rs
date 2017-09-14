@@ -1297,15 +1297,3 @@ impl Drop for RestoreOptions {
         }
     }
 }
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    #[test]
-    fn test_column_family_options() {
-        let mut opts = ColumnFamilyOptions::new();
-        opts.set_num_levels(1);
-        assert_eq!(1, opts.get_num_levels());
-    }
-}

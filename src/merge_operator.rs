@@ -30,7 +30,6 @@ pub struct MergeOperatorCallback {
 pub extern "C" fn destructor_callback(raw_cb: *mut c_void) {
     // turn this back into a local variable so rust will reclaim it
     let _: Box<MergeOperatorCallback> = unsafe { mem::transmute(raw_cb) };
-
 }
 
 pub extern "C" fn name_callback(raw_cb: *mut c_void) -> *const c_char {

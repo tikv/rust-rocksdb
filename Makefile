@@ -32,4 +32,4 @@ format:
 
 clean:
 	@cargo clean
-	@cd librocksdb_sys && cargo clean 
+	@cd librocksdb_sys && cargo clean

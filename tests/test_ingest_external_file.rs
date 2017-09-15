@@ -12,7 +12,6 @@
 // limitations under the License.
 
 use rocksdb::*;
-
 use std::fs;
 use tempdir::TempDir;
 

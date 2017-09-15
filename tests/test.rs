@@ -1,7 +1,7 @@
-extern crate rocksdb;
-extern crate tempdir;
 extern crate byteorder;
 extern crate crc;
+extern crate rocksdb;
+extern crate tempdir;
 
 mod test_iterator;
 mod test_multithreaded;
@@ -17,3 +17,4 @@ mod test_table_properties;
 mod test_event_listener;
 mod test_delete_range;
 mod test_delete_files_in_range;
+mod test_read_only;

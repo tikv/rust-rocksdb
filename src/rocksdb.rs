@@ -32,6 +32,10 @@ use table_properties::TablePropertiesCollection;
 
 const DEFAULT_COLUMN_FAMILY: &'static str = "default";
 
+const ERR_CONVERT_PATH: &str = "Failed to convert path to CString when opening rocksdb";
+const ERR_NULL_DB_ONINIT: &str = "Could not initialize database";
+const ERR_NULL_CF_HANDLE: &str = "Received null column family handle from DB";
+
 pub struct CFHandle {
     inner: *mut DBCFHandle,
 }
@@ -47,6 +51,34 @@ impl Drop for CFHandle {
         unsafe {
             crocksdb_ffi::crocksdb_column_family_handle_destroy(self.inner);
         }
+    }
+}
+
+fn create_rocksdb_dir(path: &str) -> Result<(), String> {
+    fs::create_dir_all(&Path::new(path)).map_err(|e| {
+        format!(
+            "Failed to create rocksdb directory: \
+             src/rocksdb.rs:                              \
+             {:?}",
+            e
+        )
+    })
+}
+
+fn split_props<T1, T2>(kvs: Vec<(T1, T2)>) -> (Vec<T1>, Vec<T2>) {
+    let mut v1 = Vec::with_capacity(kvs.len());
+    let mut v2 = Vec::with_capacity(kvs.len());
+    for (t1, t2) in kvs {
+        v1.push(t1);
+        v2.push(t2);
+    }
+    (v1, v2)
+}
+
+fn ensure_default_cf_exists(cfs: &mut Vec<(&str, ColumnFamilyOptions)>) {
+    let contains = cfs.iter().any(|&(cf, _)| DEFAULT_COLUMN_FAMILY == cf);
+    if !contains {
+        cfs.push((DEFAULT_COLUMN_FAMILY, ColumnFamilyOptions::new()));
     }
 }
 
@@ -336,22 +368,9 @@ impl DB {
         cfs: Vec<&str>,
         cf_opts: Vec<ColumnFamilyOptions>,
     ) -> Result<DB, String> {
-        let cpath = match CString::new(path.as_bytes()) {
-            Ok(c) => c,
-            Err(_) => {
-                return Err(
-                    "Failed to convert path to CString when opening rocksdb".to_owned(),
-                )
-            }
-        };
-        if let Err(e) = fs::create_dir_all(&Path::new(path)) {
-            return Err(format!(
-                "Failed to create rocksdb directory: \
-                 src/rocksdb.rs:                              \
-                 {:?}",
-                e
-            ));
-        }
+        let cpath = CString::new(path.as_bytes()).map_err(|_| ERR_CONVERT_PATH.to_owned())?;
+        create_rocksdb_dir(path)?;
+
         if cfs.len() != cf_opts.len() {
             return Err(format!("cfs.len() and cf_opts.len() not match."));
         }
@@ -372,7 +391,7 @@ impl DB {
             let cfnames: Vec<*const _> = c_cfs.iter().map(|cf| cf.as_ptr()).collect();
 
             // These handles will be populated by DB.
-            let cfhandles: Vec<_> = cfs_v.iter().map(|_| ptr::null_mut()).collect();
+            let cfhandles = vec![ptr::null_mut(); cfs_v.len()];
 
             let cfopts: Vec<_> = cf_opts_v
                 .iter()
@@ -414,6 +433,67 @@ impl DB {
             path: path.to_owned(),
             opts: opts,
             _cf_opts: cf_opts_v,
+        })
+    }
+
+    pub fn open_for_read_only(
+        opts: DBOptions,
+        path: &str,
+        error_if_log_file_exist: bool,
+    ) -> Result<DB, String> {
+        Self::open_cf_for_read_only(opts, path, vec![], error_if_log_file_exist)
+    }
+
+    pub fn open_cf_for_read_only(
+        opts: DBOptions,
+        path: &str,
+        props: Vec<(&str, ColumnFamilyOptions)>,
+        error_if_log_file_exist: bool,
+    ) -> Result<DB, String> {
+        let cpath = CString::new(path.as_bytes()).map_err(|_| ERR_CONVERT_PATH.to_owned())?;
+        create_rocksdb_dir(path)?;
+        let mut props = props;
+        ensure_default_cf_exists(&mut props);
+        let (names, options) = split_props(props);
+        let cstrings = build_cstring_list(&names);
+
+        let cf_names: Vec<*const _> = cstrings.iter().map(|cf| cf.as_ptr()).collect();
+        let cf_handles: Vec<_> = vec![ptr::null_mut(); names.len()];
+        let cf_options: Vec<_> = options
+            .iter()
+            .map(|x| x.inner as *const crocksdb_ffi::Options)
+            .collect();
+
+        let db = unsafe {
+            ffi_try!(crocksdb_open_for_read_only_column_families(
+                opts.inner,
+                cpath.as_ptr(),
+                names.len() as c_int,
+                cf_names.as_ptr(),
+                cf_options.as_ptr(),
+                cf_handles.as_ptr(),
+                error_if_log_file_exist
+            ))
+        };
+        if cf_handles.iter().any(|h| h.is_null()) {
+            return Err(ERR_NULL_CF_HANDLE.to_owned());
+        }
+        if db.is_null() {
+            return Err(ERR_NULL_DB_ONINIT.to_owned());
+        }
+
+        let cfs = names
+            .into_iter()
+            .zip(cf_handles)
+            .map(|(s, h)| (s.to_owned(), CFHandle { inner: h }))
+            .collect();
+
+        Ok(DB {
+            inner: db,
+            cfs: cfs,
+            path: path.to_owned(),
+            opts: opts,
+            _cf_opts: options,
         })
     }
 

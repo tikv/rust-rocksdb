@@ -124,11 +124,11 @@ function compile_rocksdb() {
         return
     fi
 
-    version=3cad586662d9dfa9523bda1c0301abe41bcecea8
-    vernum=3cad586662d9dfa9523bda1c0301abe41bcecea8
+    version=33efdde8316759f1efc6a2a228c5efcf01f09cbc
+    vernum=33efdde8316759f1efc6a2a228c5efcf01f09cbc
     echo building rocksdb-$version
     rm -rf rocksdb rocksdb-$vernum
-    download https://github.com/pingcap/rocksdb/archive/$version.tar.gz rocksdb-$version.tar.gz 461bf8e3d9de8be13ffbcd93156691ad
+    download https://github.com/pingcap/rocksdb/archive/$version.tar.gz rocksdb-$version.tar.gz d5cc6d3f981015dbdfd194a0e0bae68c
     tar xf rocksdb-$version.tar.gz
     wd=`pwd`
     mv rocksdb-$vernum rocksdb

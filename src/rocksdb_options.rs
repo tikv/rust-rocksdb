@@ -1149,6 +1149,46 @@ impl ColumnFamilyOptions {
     }
 }
 
+// ColumnFamilyDescriptor is a pair of column family's name and options.
+pub struct ColumnFamilyDescriptor<'a> {
+    pub name: &'a str,
+    pub options: ColumnFamilyOptions,
+}
+
+impl<'a> ColumnFamilyDescriptor<'a> {
+    const DEFAULT_COLUMN_FAMILY: &'static str = "default";
+
+    pub fn new(name: &'a str, options: ColumnFamilyOptions) -> Self {
+        ColumnFamilyDescriptor { name, options }
+    }
+
+    pub fn is_default(&self) -> bool {
+        self.name == Self::DEFAULT_COLUMN_FAMILY
+    }
+}
+
+impl Default for ColumnFamilyDescriptor<'static> {
+    fn default() -> Self {
+        let name = Self::DEFAULT_COLUMN_FAMILY;
+        let options = ColumnFamilyOptions::new();
+        ColumnFamilyDescriptor::new(name, options)
+    }
+}
+
+impl<'a> From<&'a str> for ColumnFamilyDescriptor<'a> {
+    fn from(name: &'a str) -> Self {
+        let options = ColumnFamilyOptions::new();
+        ColumnFamilyDescriptor::new(name, options)
+    }
+}
+
+impl<'a> From<(&'a str, ColumnFamilyOptions)> for ColumnFamilyDescriptor<'a> {
+    fn from(tuple: (&'a str, ColumnFamilyOptions)) -> Self {
+        let (name, options) = tuple;
+        ColumnFamilyDescriptor::new(name, options)
+    }
+}
+
 pub struct FlushOptions {
     pub inner: *mut DBFlushOptions,
 }

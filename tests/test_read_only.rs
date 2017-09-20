@@ -59,12 +59,7 @@ fn test_open_cf_for_read_only() {
     }
 
     {
-        let rw = DB::open_cf(
-            DBOptions::new(),
-            path,
-            vec!["cf1", "cf2"],
-            vec![ColumnFamilyOptions::new(), ColumnFamilyOptions::new()],
-        ).unwrap();
+        let rw = DB::open_cf(DBOptions::new(), path, vec!["cf1", "cf2"]).unwrap();
         let cf1 = rw.cf_handle("cf1").unwrap();
         rw.put_cf(cf1, b"cf1_k1", b"cf1_v1").unwrap();
         rw.put_cf(cf1, b"cf1_k2", b"cf1_v2").unwrap();
@@ -82,23 +77,13 @@ fn test_open_cf_for_read_only() {
     }
 
     {
-        let r1 = DB::open_cf_for_read_only(
-            DBOptions::new(),
-            path,
-            vec![("cf1", ColumnFamilyOptions::new())],
-            false,
-        ).unwrap();
+        let r1 = DB::open_cf_for_read_only(DBOptions::new(), path, vec!["cf1"], false).unwrap();
         let cf1 = r1.cf_handle("cf1").unwrap();
         check_kv!(r1, cf1, b"cf1_k1", b"cf1_v1");
         check_kv!(r1, cf1, b"cf1_k2", b"cf1_v2");
         check_kv!(r1, cf1, b"cf1_k3", b"cf1_v3");
 
-        let r2 = DB::open_cf_for_read_only(
-            DBOptions::new(),
-            path,
-            vec![("cf2", ColumnFamilyOptions::new())],
-            false,
-        ).unwrap();
+        let r2 = DB::open_cf_for_read_only(DBOptions::new(), path, vec!["cf2"], false).unwrap();
         let cf2 = r2.cf_handle("cf2").unwrap();
         check_kv!(r2, cf2, b"cf2_k1", b"cf2_v1");
         check_kv!(r2, cf2, b"cf2_k2", b"cf2_v2");

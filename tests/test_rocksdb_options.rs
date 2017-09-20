@@ -33,8 +33,7 @@ fn test_set_num_levels() {
     let db = DB::open_cf(
         opts,
         path.path().to_str().unwrap(),
-        vec!["default"],
-        vec![cf_opts],
+        vec![("default", cf_opts)],
     ).unwrap();
     drop(db);
 }
@@ -123,8 +122,7 @@ fn test_memtable_insert_hint_prefix_extractor() {
     let db = DB::open_cf(
         opts,
         path.path().to_str().unwrap(),
-        vec!["default"],
-        vec![cf_opts],
+        vec![("default", cf_opts)],
     ).unwrap();
     let wopts = WriteOptions::new();
 
@@ -257,8 +255,7 @@ fn test_set_pin_l0_filter_and_index_blocks_in_cache() {
     DB::open_cf(
         opts,
         path.path().to_str().unwrap(),
-        vec!["default"],
-        vec![cf_opts],
+        vec![("default", cf_opts)],
     ).unwrap();
 }
 #[test]
@@ -272,8 +269,7 @@ fn test_pending_compaction_bytes_limit() {
     DB::open_cf(
         opts,
         path.path().to_str().unwrap(),
-        vec!["default"],
-        vec![cf_opts],
+        vec![("default", cf_opts)],
     ).unwrap();
 }
 
@@ -306,8 +302,7 @@ fn test_set_optimize_filters_for_hits() {
     DB::open_cf(
         opts,
         path.path().to_str().unwrap(),
-        vec!["default"],
-        vec![cf_opts],
+        vec![("default", cf_opts)],
     ).unwrap();
 }
 
@@ -326,8 +321,7 @@ fn test_get_block_cache_usage() {
     let db = DB::open_cf(
         opts,
         path.path().to_str().unwrap(),
-        vec!["default"],
-        vec![cf_opts],
+        vec![("default", cf_opts)],
     ).unwrap();
 
     for i in 0..200 {
@@ -351,8 +345,7 @@ fn test_set_level_compaction_dynamic_level_bytes() {
     DB::open_cf(
         opts,
         path.path().to_str().unwrap(),
-        vec!["default"],
-        vec![cf_opts],
+        vec![("default", cf_opts)],
     ).unwrap();
 }
 
@@ -408,8 +401,7 @@ fn test_set_compaction_pri() {
     DB::open_cf(
         opts,
         path.path().to_str().unwrap(),
-        vec!["default"],
-        vec![cf_opts],
+        vec![("default", cf_opts)],
     ).unwrap();
 }
 
@@ -484,8 +476,7 @@ fn test_bottommost_compression() {
     DB::open_cf(
         opts,
         path.path().to_str().unwrap(),
-        vec!["default"],
-        vec![cf_opts],
+        vec![("default", cf_opts)],
     ).unwrap();
 }
 

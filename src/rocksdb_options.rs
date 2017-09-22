@@ -106,6 +106,15 @@ impl BlockBasedOptions {
         }
     }
 
+    pub fn set_cache_index_and_filter_blocks_with_high_priority(&mut self, v: bool) {
+        unsafe {
+            crocksdb_ffi::crocksdb_block_based_options_set_cache_index_and_filter_blocks_with_high_priority(
+                self.inner,
+                v as u8,
+            );
+        }
+    }
+
     pub fn set_whole_key_filtering(&mut self, v: bool) {
         unsafe {
             crocksdb_ffi::crocksdb_block_based_options_set_whole_key_filtering(self.inner, v);

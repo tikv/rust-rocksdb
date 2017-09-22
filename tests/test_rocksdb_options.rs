@@ -265,6 +265,24 @@ fn test_set_pin_l0_filter_and_index_blocks_in_cache() {
         vec![cf_opts],
     ).unwrap();
 }
+
+#[test]
+fn test_set_cache_index_and_filter_blocks_with_high_priority() {
+    let path = TempDir::new("_rust_rocksdb_set_cache_and_index_with_high_priority").expect("");
+    let mut opts = DBOptions::new();
+    let mut cf_opts = ColumnFamilyOptions::new();
+    opts.create_if_missing(true);
+    let mut block_opts = BlockBasedOptions::new();
+    block_opts.set_cache_index_and_filter_blocks_with_high_priority(true);
+    cf_opts.set_block_based_table_factory(&block_opts);
+    DB::open_cf(
+        opts,
+        path.path().to_str().unwrap(),
+        vec!["default"],
+        vec![cf_opts],
+    ).unwrap();
+}
+
 #[test]
 fn test_pending_compaction_bytes_limit() {
     let path = TempDir::new("_rust_rocksdb_pending_compaction_bytes_limit").expect("");

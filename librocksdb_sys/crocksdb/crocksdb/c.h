@@ -592,6 +592,9 @@ extern C_ROCKSDB_LIBRARY_API void
 crocksdb_block_based_options_set_cache_index_and_filter_blocks(
     crocksdb_block_based_table_options_t*, unsigned char);
 extern C_ROCKSDB_LIBRARY_API void
+crocksdb_block_based_options_set_cache_index_and_filter_blocks_with_high_priority(
+    crocksdb_block_based_table_options_t*, unsigned char);
+extern C_ROCKSDB_LIBRARY_API void
 crocksdb_block_based_options_set_pin_l0_filter_and_index_blocks_in_cache(
     crocksdb_block_based_table_options_t*, unsigned char);
 extern C_ROCKSDB_LIBRARY_API void

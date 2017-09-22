@@ -323,6 +323,10 @@ extern "C" {
         block_options: *mut DBBlockBasedTableOptions,
         v: c_uchar,
     );
+    pub fn crocksdb_block_based_options_set_cache_index_and_filter_blocks_with_high_priority(
+        block_options: *mut DBBlockBasedTableOptions,
+        v: c_uchar,
+    );
     pub fn crocksdb_block_based_options_set_filter_policy(
         block_options: *mut DBBlockBasedTableOptions,
         filter_policy: *mut DBFilterPolicy,

@@ -21,7 +21,7 @@ use crocksdb_ffi::{self, DBBlockBasedTableOptions, DBCompactOptions, DBCompressi
                    DBRecoveryMode, DBRestoreOptions, DBSnapshot, DBStatisticsHistogramType,
                    DBStatisticsTickerType, DBWriteOptions, Options};
 use event_listener::{new_event_listener, EventListener};
-use libc::{self, c_int, c_void, size_t, c_double};
+use libc::{self, c_int, c_void, size_t, c_uchar, c_double};
 use merge_operator::{self, full_merge_callback, partial_merge_callback, MergeOperatorCallback};
 use merge_operator::MergeFn;
 use slice_transform::{new_slice_transform, SliceTransform};
@@ -77,7 +77,7 @@ impl BlockBasedOptions {
         }
     }
 
-    pub fn set_lru_cache(&mut self, size: size_t, num_shard_bits: c_int, strict_capacity_limit: bool, high_pri_pool_ratio: c_double) {
+    pub fn set_lru_cache(&mut self, size: size_t, num_shard_bits: c_int, strict_capacity_limit: c_uchar, high_pri_pool_ratio: c_double) {
         let cache = crocksdb_ffi::new_cache(size, num_shard_bits, strict_capacity_limit, high_pri_pool_ratio);
         unsafe {
             crocksdb_ffi::crocksdb_block_based_options_set_block_cache(self.inner, cache);

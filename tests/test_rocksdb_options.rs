@@ -273,7 +273,7 @@ fn test_set_lru_cache() {
     let mut cf_opts = ColumnFamilyOptions::new();
     opts.create_if_missing(true);
     let mut block_opts = BlockBasedOptions::new();
-    block_opts.set_lru_cache(8388608, -1, false, 0.0);
+    block_opts.set_lru_cache(8388608, -1, 0, 0.0);
     cf_opts.set_block_based_table_factory(&block_opts);
     DB::open_cf(
         opts,
@@ -360,7 +360,7 @@ fn test_get_block_cache_usage() {
 
     opts.create_if_missing(true);
     let mut block_opts = BlockBasedOptions::new();
-    block_opts.set_lru_cache(16 * 1024 * 1024);
+    block_opts.set_lru_cache(16 * 1024 * 1024, -1, 0, 0.0);
     cf_opts.set_block_based_table_factory(&block_opts);
     let db = DB::open_cf(
         opts,

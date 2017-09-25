@@ -2782,9 +2782,10 @@ void crocksdb_flushoptions_set_wait(
   opt->rep.wait = v;
 }
 
-crocksdb_cache_t* crocksdb_cache_create_lru(size_t capacity) {
+crocksdb_cache_t* crocksdb_cache_create_lru(size_t capacity,
+  int num_shard_bits, unsigned char strict_capacity_limit, double high_pri_pool_ratio) {
   crocksdb_cache_t* c = new crocksdb_cache_t;
-  c->rep = NewLRUCache(capacity);
+  c->rep = NewLRUCache(capacity, num_shard_bits, strict_capacity_limit, high_pri_pool_ratio);
   return c;
 }
 

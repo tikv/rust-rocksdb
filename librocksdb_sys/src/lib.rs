@@ -62,8 +62,8 @@ pub fn new_bloom_filter(bits: c_int) -> *mut DBFilterPolicy {
     unsafe { crocksdb_filterpolicy_create_bloom(bits) }
 }
 
-pub fn new_cache(capacity: size_t) -> *mut DBCache {
-    unsafe { crocksdb_cache_create_lru(capacity) }
+pub fn new_cache(capacity: size_t, num_shard_bits: c_int, strict_capacity_limit: c_uchar, high_pri_pool_ratio: c_double) -> *mut DBCache {
+    unsafe { crocksdb_cache_create_lru(capacity, num_shard_bits, strict_capacity_limit, high_pri_pool_ratio) }
 }
 
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
@@ -303,7 +303,7 @@ extern "C" {
     pub fn crocksdb_options_create() -> *mut Options;
     pub fn crocksdb_options_copy(opts: *const Options) -> *mut Options;
     pub fn crocksdb_options_destroy(opts: *mut Options);
-    pub fn crocksdb_cache_create_lru(capacity: size_t) -> *mut DBCache;
+    pub fn crocksdb_cache_create_lru(capacity: size_t, num_shard_bits: c_int, strict_capacity_limit: c_uchar, high_pri_pool_ratio: c_double) -> *mut DBCache;
     pub fn crocksdb_cache_destroy(cache: *mut DBCache);
     pub fn crocksdb_block_based_options_create() -> *mut DBBlockBasedTableOptions;
     pub fn crocksdb_block_based_options_destroy(opts: *mut DBBlockBasedTableOptions);

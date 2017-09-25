@@ -1164,7 +1164,7 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_flushoptions_set_wait(
 /* Cache */
 
 extern C_ROCKSDB_LIBRARY_API crocksdb_cache_t* crocksdb_cache_create_lru(
-    size_t capacity);
+    size_t capacity, int num_shard_bits, unsigned char strict_capacity_limit, double high_pri_pool_ratio);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_cache_destroy(crocksdb_cache_t* cache);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_cache_set_capacity(
     crocksdb_cache_t* cache, size_t capacity);

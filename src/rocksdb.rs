@@ -389,7 +389,7 @@ impl DB {
         let db = {
             let db_options = opts.inner;
             let db_path = cpath.as_ptr();
-            let db_cf_size = cf_names.len() as c_int;
+            let db_cfs_count = cf_names.len() as c_int;
             let db_cf_ptrs = cf_names.as_ptr();
             let db_cf_opts = cf_options.as_ptr();
             let db_cf_handles = cf_handles.as_ptr();
@@ -397,7 +397,7 @@ impl DB {
                 ffi_try!(crocksdb_open_column_families(
                     db_options,
                     db_path,
-                    db_cf_size,
+                    db_cfs_count,
                     db_cf_ptrs,
                     db_cf_opts,
                     db_cf_handles

@@ -20,7 +20,7 @@ use crocksdb_ffi::{self, DBBlockBasedTableOptions, DBCompactOptions, DBCompressi
                    DBRecoveryMode, DBRestoreOptions, DBSnapshot, DBStatisticsHistogramType,
                    DBStatisticsTickerType, DBWriteOptions, Options};
 use event_listener::{new_event_listener, EventListener};
-use libc::{self, c_int, c_void, size_t};
+use libc::{self, c_int, c_void, size_t, c_uchar, c_double};
 use merge_operator::{self, full_merge_callback, partial_merge_callback, MergeOperatorCallback};
 use merge_operator::MergeFn;
 use slice_transform::{new_slice_transform, SliceTransform};
@@ -82,7 +82,7 @@ impl BlockBasedOptions {
     // also you can set num_shard_bits to -1, RocksDB will choose a value for you
     // the recommanded strict_capacity_limit is false if your memory is sufficient
     // the recommanded high_pri_pool_ratio should be 0.05 or 0.1
-    pub fn set_lru_cache(&mut self, size: size_t, num_shard_bits: c_int, strict_capacity_limit: bool, high_pri_pool_ratio: f64) {
+    pub fn set_lru_cache(&mut self, size: size_t, num_shard_bits: c_int, strict_capacity_limit: c_uchar, high_pri_pool_ratio: c_double) {
         let cache = crocksdb_ffi::new_cache(size, num_shard_bits, strict_capacity_limit, high_pri_pool_ratio);
         unsafe {
             crocksdb_ffi::crocksdb_block_based_options_set_block_cache(self.inner, cache);

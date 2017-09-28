@@ -276,7 +276,6 @@ fn test_set_lru_cache() {
         opts,
         path.path().to_str().unwrap(),
         vec!["default"],
-        vec![cf_opts],
     ).unwrap();
 }
 
@@ -292,8 +291,7 @@ fn test_set_cache_index_and_filter_blocks_with_high_priority() {
     DB::open_cf(
         opts,
         path.path().to_str().unwrap(),
-        vec!["default"],
-        vec![cf_opts],
+        vec![("default", cf_opts)],
     ).unwrap();
 }
 

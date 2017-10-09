@@ -78,7 +78,7 @@ impl BlockBasedOptions {
 
     /// the recommanded shard_bits is 6, also you can set a larger value as long as it is
     /// smaller than 20, also you can set shard_bits to -1, RocksDB will choose a value for you
-    /// the recommanded capacity_limit is false(0) if your memory is sufficient
+    /// the recommanded capacity_limit is 0(false) if your memory is sufficient
     /// the recommanded pri_ratio should be 0.05 or 0.1
     pub fn set_lru_cache(&mut self,
                          size: size_t,

@@ -76,10 +76,8 @@ impl BlockBasedOptions {
         }
     }
 
-    // the recommanded num_shard_bits should be calculated like this:
-    //     num_shard_bits = (size + 4194303) / 4194304 (4MB)
-    // for example, if your size is 4GB, num_shard_bits = (4 * 1024^3 + 4194303) / 4194304 = 10
-    // also you can set num_shard_bits to -1, RocksDB will choose a value for you
+    // the recommanded num_shard_bits is 6, also you can set a larger value as long it is
+    // smaller than 20, also you can set num_shard_bits to -1, RocksDB will choose a value for you
     // the recommanded strict_capacity_limit is false(0) if your memory is sufficient
     // the recommanded high_pri_pool_ratio should be 0.05 or 0.1
     pub fn set_lru_cache(&mut self, size: size_t, num_shard_bits: c_int, strict_capacity_limit: c_uchar, high_pri_pool_ratio: c_double) {

@@ -76,7 +76,7 @@ impl BlockBasedOptions {
         }
     }
 
-    // the recommanded num_shard_bits is 6, also you can set a larger value as long it is
+    // the recommanded num_shard_bits is 6, also you can set a larger value as long as it is
     // smaller than 20, also you can set num_shard_bits to -1, RocksDB will choose a value for you
     // the recommanded strict_capacity_limit is false(0) if your memory is sufficient
     // the recommanded high_pri_pool_ratio should be 0.05 or 0.1

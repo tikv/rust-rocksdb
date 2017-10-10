@@ -606,7 +606,9 @@ impl DB {
         let cname = match CString::new(name.as_bytes()) {
             Ok(c) => c,
             Err(_) => {
-                return Err("Failed to convert path to CString when opening rocksdb".to_owned())
+                return Err(
+                    "Failed to convert path to CString when opening rocksdb".to_owned(),
+                )
             }
         };
         let cname_ptr = cname.as_ptr();

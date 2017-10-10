@@ -272,11 +272,7 @@ fn test_set_lru_cache() {
     let mut block_opts = BlockBasedOptions::new();
     block_opts.set_lru_cache(8388608, -1, 0, 0.0);
     cf_opts.set_block_based_table_factory(&block_opts);
-    DB::open_cf(
-        opts,
-        path.path().to_str().unwrap(),
-        vec!["default"],
-    ).unwrap();
+    DB::open_cf(opts, path.path().to_str().unwrap(), vec!["default"]).unwrap();
 }
 
 #[test]

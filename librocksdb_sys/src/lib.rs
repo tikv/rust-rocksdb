@@ -517,7 +517,7 @@ extern "C" {
         bytes_per_sec: i64,
     );
     pub fn crocksdb_ratelimiter_get_singleburst_bytes(limiter: *mut DBRateLimiter) -> i64;
-    pub fn crocksdb_ratelimiter_request(limiter: *mut DBRateLimiter, bytes: i64, pri: c_int);
+    pub fn crocksdb_ratelimiter_request(limiter: *mut DBRateLimiter, bytes: i64, high_pri: c_uchar);
     pub fn crocksdb_options_set_soft_pending_compaction_bytes_limit(options: *mut Options, v: u64);
     pub fn crocksdb_options_set_hard_pending_compaction_bytes_limit(options: *mut Options, v: u64);
     pub fn crocksdb_options_set_compaction_priority(options: *mut Options, v: CompactionPriority);

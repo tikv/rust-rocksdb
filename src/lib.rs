@@ -41,8 +41,8 @@ pub use rocksdb::{BackupEngine, CFHandle, DBIterator, DBVector, Kv, Range, SeekK
                   Writable, WriteBatch, DB};
 pub use rocksdb_options::{BlockBasedOptions, ColumnFamilyOptions, CompactOptions, DBOptions,
                           EnvOptions, FifoCompactionOptions, HistogramData,
-                          IngestExternalFileOptions, ReadOptions, RestoreOptions, WriteOptions,
-                          RateLimiter};
+                          IngestExternalFileOptions, RateLimiter, ReadOptions, RestoreOptions,
+                          WriteOptions};
 pub use slice_transform::SliceTransform;
 pub use table_properties::{TableProperties, TablePropertiesCollection,
                            TablePropertiesCollectionView, UserCollectedProperties};

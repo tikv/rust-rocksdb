@@ -2433,8 +2433,8 @@ int64_t crocksdb_ratelimiter_get_singleburst_bytes(crocksdb_ratelimiter_t *limit
 }
 
 void crocksdb_ratelimiter_request(crocksdb_ratelimiter_t *limiter,
-    int64_t bytes, int pri) {
-  limiter->rep->Request(bytes, static_cast<Env::IOPriority>(pri), nullptr);
+    int64_t bytes, unsigned char high_pri) {
+  limiter->rep->Request(bytes, static_cast<Env::IOPriority>(static_cast<bool>(high_pri)), nullptr);
 }
 
 /*

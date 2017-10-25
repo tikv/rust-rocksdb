@@ -175,9 +175,9 @@ impl RateLimiter {
         unsafe { crocksdb_ffi::crocksdb_ratelimiter_get_singleburst_bytes(self.inner) }
     }
 
-    pub fn request(&mut self, bytes: i64, pri: c_int) {
+    pub fn request(&mut self, bytes: i64, high_pri: c_uchar) {
         unsafe {
-            crocksdb_ffi::crocksdb_ratelimiter_request(self.inner, bytes, pri);
+            crocksdb_ffi::crocksdb_ratelimiter_request(self.inner, bytes, high_pri);
         }
     }
 }

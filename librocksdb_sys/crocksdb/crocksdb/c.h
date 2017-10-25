@@ -988,6 +988,16 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_delayed_write_rate(
 extern C_ROCKSDB_LIBRARY_API crocksdb_ratelimiter_t* crocksdb_ratelimiter_create(
     int64_t rate_bytes_per_sec, int64_t refill_period_us, int32_t fairness);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_ratelimiter_destroy(crocksdb_ratelimiter_t*);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_ratelimiter_set_bytes_per_second(
+    crocksdb_ratelimiter_t *limiter, int64_t rate_bytes_per_sec);
+extern C_ROCKSDB_LIBRARY_API int64_t crocksdb_ratelimiter_get_singleburst_bytes(
+    crocksdb_ratelimiter_t *limiter);
+enum {
+  env_iopriority_low = 0,
+  env_iopriority_high = 1,
+};
+extern C_ROCKSDB_LIBRARY_API void crocksdb_ratelimiter_request(crocksdb_ratelimiter_t *limiter,
+    int64_t bytes, int pri);
 
 /* Compaction Filter */
 

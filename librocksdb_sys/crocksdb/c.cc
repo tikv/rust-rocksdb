@@ -2433,8 +2433,23 @@ int64_t crocksdb_ratelimiter_get_singleburst_bytes(crocksdb_ratelimiter_t *limit
 }
 
 void crocksdb_ratelimiter_request(crocksdb_ratelimiter_t *limiter,
-    int64_t bytes, unsigned char high_pri) {
-  limiter->rep->Request(bytes, static_cast<Env::IOPriority>(static_cast<bool>(high_pri)), nullptr);
+    int64_t bytes, unsigned char pri) {
+  limiter->rep->Request(bytes, static_cast<Env::IOPriority>(pri), nullptr);
+}
+
+int64_t crocksdb_ratelimiter_get_total_bytes_through(
+    crocksdb_ratelimiter_t *limiter, unsigned char pri) {
+  return limiter->rep->GetTotalBytesThrough(static_cast<Env::IOPriority>(pri));
+}
+
+int64_t crocksdb_ratelimiter_get_bytes_per_second(
+    crocksdb_ratelimiter_t *limiter) {
+  return limiter->rep->GetBytesPerSecond();
+}
+
+int64_t crocksdb_ratelimiter_get_total_requests(
+    crocksdb_ratelimiter_t *limiter, unsigned char pri) {
+  return limiter->rep->GetTotalRequests(static_cast<Env::IOPriority>(pri));
 }
 
 /*

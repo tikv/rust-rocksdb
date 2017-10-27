@@ -171,14 +171,26 @@ impl RateLimiter {
         }
     }
 
-    pub fn get_singleburst_bytes(&mut self) -> i64 {
+    pub fn get_singleburst_bytes(&self) -> i64 {
         unsafe { crocksdb_ffi::crocksdb_ratelimiter_get_singleburst_bytes(self.inner) }
     }
 
-    pub fn request(&mut self, bytes: i64, high_pri: c_uchar) {
+    pub fn request(&mut self, bytes: i64, pri: c_uchar) {
         unsafe {
-            crocksdb_ffi::crocksdb_ratelimiter_request(self.inner, bytes, high_pri);
+            crocksdb_ffi::crocksdb_ratelimiter_request(self.inner, bytes, pri);
         }
+    }
+
+    pub fn get_total_bytes_through(&self, pri: c_uchar) -> i64 {
+        unsafe { crocksdb_ffi::crocksdb_ratelimiter_get_total_bytes_through(self.inner, pri) }
+    }
+
+    pub fn get_bytes_per_second(&self) -> i64 {
+        unsafe { crocksdb_ffi::crocksdb_ratelimiter_get_bytes_per_second(self.inner) }
+    }
+
+    pub fn get_total_requests(&self, pri: c_uchar) -> i64 {
+        unsafe { crocksdb_ffi::crocksdb_ratelimiter_get_total_requests(self.inner, pri) }
     }
 }
 

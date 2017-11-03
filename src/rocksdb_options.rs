@@ -27,6 +27,7 @@ use slice_transform::{new_slice_transform, SliceTransform};
 use std::ffi::{CStr, CString};
 use std::mem;
 use std::path::Path;
+use std::marker::Send;
 use table_properties_collector_factory::{new_table_properties_collector_factory,
                                          TablePropertiesCollectorFactory};
 
@@ -152,6 +153,8 @@ impl BlockBasedOptions {
 pub struct RateLimiter {
     inner: *mut DBRateLimiter,
 }
+
+unsafe impl Send for RateLimiter { }
 
 impl RateLimiter {
     pub fn new(rate_bytes_per_sec: i64, refill_period_us: i64, fairness: i32) -> RateLimiter {

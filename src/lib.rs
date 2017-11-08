@@ -30,6 +30,7 @@ mod table_properties;
 mod table_properties_collector;
 mod table_properties_collector_factory;
 mod event_listener;
+mod table_filter;
 
 pub use compaction_filter::CompactionFilter;
 pub use event_listener::{CompactionJobInfo, EventListener, FlushJobInfo, IngestionInfo};

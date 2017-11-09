@@ -45,6 +45,7 @@ pub use rocksdb_options::{BlockBasedOptions, ColumnFamilyOptions, CompactOptions
                           IngestExternalFileOptions, RateLimiter, ReadOptions, RestoreOptions,
                           WriteOptions};
 pub use slice_transform::SliceTransform;
+pub use table_filter::TableFilter;
 pub use table_properties::{TableProperties, TablePropertiesCollection,
                            TablePropertiesCollectionView, UserCollectedProperties};
 pub use table_properties_collector::TablePropertiesCollector;

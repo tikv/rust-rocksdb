@@ -16,7 +16,9 @@ macro_rules! t {
 fn main() {
     let mut cfg = build_rocksdb();
 
-    cfg.cpp(true).file("crocksdb/c.cc");
+    cfg.cpp(true)
+        .flag_if_supported("-fno-rtti")
+        .file("crocksdb/c.cc");
     if !cfg!(target_os = "windows") {
         cfg.flag("-std=c++11");
     }

@@ -3,10 +3,13 @@ name = "librocksdb_sys"
 version = "0.1.0"
 authors = ["Jay Lee <busyjaylee@gmail.com>"]
 build = "build.rs"
+links = "rocksdb"
 
 [dependencies]
 libc = "0.2.11"
 tempdir = "0.3"
+libz-sys = ">= 0"
+snappy-sys = ">= 0"
 
 [features]
 default = []
@@ -18,3 +21,17 @@ sse = []
 
 [build-dependencies]
 cc = "1.0"
+cmake = "0.1"
+
+[dependencies.bzip2-sys]
+git = "https://github.com/busyjay/bzip2-rs.git"
+branch = "test-build"
+features = ["with-stdio"]
+
+[dependencies.lz4-sys]
+git = "https://github.com/busyjay/lz4-rs.git"
+branch = "adjust-build"
+
+[dependencies.zstd-sys]
+git = "https://github.com/busyjay/zstd-rs.git"
+branch = "adjust-build"

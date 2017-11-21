@@ -33,6 +33,14 @@
 #include "rocksdb/write_batch.h"
 #include <stdlib.h>
 
+#if !defined(ROCKSDB_MAJOR) || !defined(ROCKSDB_MINOR) || !defined(ROCKSDB_PATCH)
+#error Only rocksdb 5.7.3+ is supported.
+#endif
+
+#if ROCKSDB_MAJOR * 10000 + ROCKSDB_MINOR * 100 + ROCKSDB_PATCH < 50703
+#error Only rocksdb 5.7.3+ is supported.
+#endif
+
 using rocksdb::Cache;
 using rocksdb::ColumnFamilyDescriptor;
 using rocksdb::ColumnFamilyHandle;
@@ -74,6 +82,7 @@ using rocksdb::SliceParts;
 using rocksdb::SliceTransform;
 using rocksdb::Snapshot;
 using rocksdb::SstFileWriter;
+using rocksdb::ExternalSstFileInfo;
 using rocksdb::Status;
 using rocksdb::WritableFile;
 using rocksdb::WriteBatch;
@@ -137,6 +146,7 @@ struct crocksdb_column_family_handle_t  { ColumnFamilyHandle* rep; };
 struct crocksdb_envoptions_t      { EnvOptions        rep; };
 struct crocksdb_ingestexternalfileoptions_t  { IngestExternalFileOptions rep; };
 struct crocksdb_sstfilewriter_t   { SstFileWriter*    rep; };
+struct crocksdb_externalsstfileinfo_t   { ExternalSstFileInfo rep; };
 struct crocksdb_ratelimiter_t     { RateLimiter*      rep; };
 struct crocksdb_histogramdata_t   { HistogramData     rep; };
 struct crocksdb_pinnableslice_t   { PinnableSlice     rep; };
@@ -1949,6 +1959,10 @@ void crocksdb_options_enable_statistics(crocksdb_options_t* opt) {
   opt->rep.statistics = rocksdb::CreateDBStatistics();
 }
 
+void crocksdb_options_reset_statistics(crocksdb_options_t* opt) {
+  opt->rep.statistics->Reset();
+}
+
 void crocksdb_options_set_num_levels(crocksdb_options_t* opt, int n) {
   opt->rep.num_levels = n;
 }
@@ -2423,6 +2437,35 @@ void crocksdb_ratelimiter_destroy(crocksdb_ratelimiter_t *limiter) {
   delete limiter;
 }
 
+void crocksdb_ratelimiter_set_bytes_per_second(crocksdb_ratelimiter_t *limiter,
+    int64_t rate_bytes_per_sec) {
+  limiter->rep->SetBytesPerSecond(rate_bytes_per_sec);
+}
+
+int64_t crocksdb_ratelimiter_get_singleburst_bytes(crocksdb_ratelimiter_t *limiter) {
+  return limiter->rep->GetSingleBurstBytes();
+}
+
+void crocksdb_ratelimiter_request(crocksdb_ratelimiter_t *limiter,
+    int64_t bytes, unsigned char pri) {
+  limiter->rep->Request(bytes, static_cast<Env::IOPriority>(pri), nullptr);
+}
+
+int64_t crocksdb_ratelimiter_get_total_bytes_through(
+    crocksdb_ratelimiter_t *limiter, unsigned char pri) {
+  return limiter->rep->GetTotalBytesThrough(static_cast<Env::IOPriority>(pri));
+}
+
+int64_t crocksdb_ratelimiter_get_bytes_per_second(
+    crocksdb_ratelimiter_t *limiter) {
+  return limiter->rep->GetBytesPerSecond();
+}
+
+int64_t crocksdb_ratelimiter_get_total_requests(
+    crocksdb_ratelimiter_t *limiter, unsigned char pri) {
+  return limiter->rep->GetTotalRequests(static_cast<Env::IOPriority>(pri));
+}
+
 /*
 TODO:
 DB::OpenForReadOnly
@@ -2864,13 +2907,59 @@ void crocksdb_sstfilewriter_delete(crocksdb_sstfilewriter_t *writer,
 }
 
 void crocksdb_sstfilewriter_finish(crocksdb_sstfilewriter_t* writer,
-                                  char** errptr) {
-  SaveError(errptr, writer->rep->Finish(NULL));
+                                   crocksdb_externalsstfileinfo_t* info,
+                                   char** errptr) {
+  SaveError(errptr, writer->rep->Finish(&info->rep));
+}
+
+uint64_t crocksdb_sstfilewriter_file_size(crocksdb_sstfilewriter_t* writer) {
+    return writer->rep->FileSize();
 }
 
 void crocksdb_sstfilewriter_destroy(crocksdb_sstfilewriter_t* writer) {
   delete writer->rep;
   delete writer;
+}
+
+crocksdb_externalsstfileinfo_t* crocksdb_externalsstfileinfo_create() {
+  return new crocksdb_externalsstfileinfo_t;
+};
+
+void crocksdb_externalsstfileinfo_destroy(crocksdb_externalsstfileinfo_t* info) {
+  delete info;
+}
+
+const char* crocksdb_externalsstfileinfo_file_path(
+    crocksdb_externalsstfileinfo_t* info, size_t* size) {
+  *size = info->rep.file_path.size();
+  return info->rep.file_path.c_str();
+}
+
+const char* crocksdb_externalsstfileinfo_smallest_key(
+    crocksdb_externalsstfileinfo_t* info, size_t* size) {
+  *size = info->rep.smallest_key.size();
+  return info->rep.smallest_key.c_str();
+}
+
+const char* crocksdb_externalsstfileinfo_largest_key(
+    crocksdb_externalsstfileinfo_t* info, size_t* size) {
+  *size = info->rep.largest_key.size();
+  return info->rep.largest_key.c_str();
+}
+
+uint64_t crocksdb_externalsstfileinfo_sequence_number(
+    crocksdb_externalsstfileinfo_t* info) {
+  return info->rep.sequence_number;
+}
+
+uint64_t crocksdb_externalsstfileinfo_file_size(
+    crocksdb_externalsstfileinfo_t* info) {
+  return info->rep.file_size;
+}
+
+uint64_t crocksdb_externalsstfileinfo_num_entries(
+    crocksdb_externalsstfileinfo_t* info) {
+  return info->rep.num_entries;
 }
 
 crocksdb_ingestexternalfileoptions_t*
@@ -3050,6 +3139,16 @@ crocksdb_fifo_compaction_options_t* crocksdb_fifo_compaction_options_create() {
 void crocksdb_fifo_compaction_options_set_max_table_files_size(
     crocksdb_fifo_compaction_options_t* fifo_opts, uint64_t size) {
   fifo_opts->rep.max_table_files_size = size;
+}
+
+void crocksdb_fifo_compaction_options_set_ttl(
+    crocksdb_fifo_compaction_options_t* fifo_opts, uint64_t ttl) {
+  fifo_opts->rep.ttl = ttl;
+}
+
+void crocksdb_fifo_compaction_options_set_allow_compaction(
+    crocksdb_fifo_compaction_options_t* fifo_opts, bool allow_compaction) {
+  fifo_opts->rep.allow_compaction = allow_compaction;
 }
 
 void crocksdb_fifo_compaction_options_destroy(

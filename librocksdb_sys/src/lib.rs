@@ -37,6 +37,7 @@ pub enum DBFlushOptions {}
 pub enum DBCompactionFilter {}
 pub enum EnvOptions {}
 pub enum SstFileWriter {}
+pub enum ExternalSstFileInfo {}
 pub enum IngestExternalFileOptions {}
 pub enum DBBackupEngine {}
 pub enum DBRestoreOptions {}
@@ -44,6 +45,7 @@ pub enum DBSliceTransform {}
 pub enum DBRateLimiter {}
 pub enum DBLogger {}
 pub enum DBCompactOptions {}
+pub enum DBFifoCompactionOptions {}
 pub enum DBPinnableSlice {}
 pub enum DBUserCollectedProperties {}
 pub enum DBUserCollectedPropertiesIterator {}
@@ -421,6 +423,10 @@ extern "C" {
         a2: i32,
     );
     pub fn crocksdb_options_set_compaction_style(options: *mut Options, cs: DBCompactionStyle);
+    pub fn crocksdb_options_set_fifo_compaction_options(
+        options: *mut Options,
+        fifo_opts: *mut DBFifoCompactionOptions,
+    );
     pub fn crocksdb_options_set_compression(
         options: *mut Options,
         compression_style_no: DBCompressionType,
@@ -445,6 +451,7 @@ extern "C" {
     pub fn crocksdb_options_set_max_subcompactions(options: *mut Options, v: u32);
     pub fn crocksdb_options_set_wal_bytes_per_sync(options: *mut Options, v: u64);
     pub fn crocksdb_options_enable_statistics(options: *mut Options);
+    pub fn crocksdb_options_reset_statistics(options: *mut Options);
     pub fn crocksdb_options_statistics_get_string(options: *mut Options) -> *const c_char;
     pub fn crocksdb_options_statistics_get_ticker_count(
         options: *mut Options,
@@ -507,6 +514,21 @@ extern "C" {
         fairness: i32,
     ) -> *mut DBRateLimiter;
     pub fn crocksdb_ratelimiter_destroy(limiter: *mut DBRateLimiter);
+    pub fn crocksdb_ratelimiter_set_bytes_per_second(
+        limiter: *mut DBRateLimiter,
+        bytes_per_sec: i64,
+    );
+    pub fn crocksdb_ratelimiter_get_singleburst_bytes(limiter: *mut DBRateLimiter) -> i64;
+    pub fn crocksdb_ratelimiter_request(limiter: *mut DBRateLimiter, bytes: i64, pri: c_uchar);
+    pub fn crocksdb_ratelimiter_get_total_bytes_through(
+        limiter: *mut DBRateLimiter,
+        pri: c_uchar,
+    ) -> i64;
+    pub fn crocksdb_ratelimiter_get_bytes_per_second(limiter: *mut DBRateLimiter) -> i64;
+    pub fn crocksdb_ratelimiter_get_total_requests(
+        limiter: *mut DBRateLimiter,
+        pri: c_uchar,
+    ) -> i64;
     pub fn crocksdb_options_set_soft_pending_compaction_bytes_limit(options: *mut Options, v: u64);
     pub fn crocksdb_options_set_hard_pending_compaction_bytes_limit(options: *mut Options, v: u64);
     pub fn crocksdb_options_set_compaction_priority(options: *mut Options, v: CompactionPriority);
@@ -942,6 +964,22 @@ extern "C" {
         opt: *mut DBCompactOptions,
         v: bool,
     );
+
+    pub fn crocksdb_fifo_compaction_options_create() -> *mut DBFifoCompactionOptions;
+    pub fn crocksdb_fifo_compaction_options_set_max_table_files_size(
+        fifo_opts: *mut DBFifoCompactionOptions,
+        size: uint64_t,
+    );
+    pub fn crocksdb_fifo_compaction_options_set_ttl(
+        fifo_opts: *mut DBFifoCompactionOptions,
+        ttl: uint64_t,
+    );
+    pub fn crocksdb_fifo_compaction_options_set_allow_compaction(
+        fifo_opts: *mut DBFifoCompactionOptions,
+        allow_compaction: bool,
+    );
+    pub fn crocksdb_fifo_compaction_options_destroy(fifo_opts: *mut DBFifoCompactionOptions);
+
     pub fn crocksdb_compact_range(
         db: *mut DBInstance,
         start_key: *const u8,
@@ -1081,8 +1119,33 @@ extern "C" {
         key_len: size_t,
         err: *mut *mut c_char,
     );
-    pub fn crocksdb_sstfilewriter_finish(writer: *mut SstFileWriter, err: *mut *mut c_char);
+    pub fn crocksdb_sstfilewriter_finish(
+        writer: *mut SstFileWriter,
+        info: *mut ExternalSstFileInfo,
+        err: *mut *mut c_char,
+    );
+    pub fn crocksdb_sstfilewriter_file_size(writer: *mut SstFileWriter) -> uint64_t;
     pub fn crocksdb_sstfilewriter_destroy(writer: *mut SstFileWriter);
+
+    // ExternalSstFileInfo
+    pub fn crocksdb_externalsstfileinfo_create() -> *mut ExternalSstFileInfo;
+    pub fn crocksdb_externalsstfileinfo_destroy(info: *mut ExternalSstFileInfo);
+    pub fn crocksdb_externalsstfileinfo_file_path(
+        info: *mut ExternalSstFileInfo,
+        size: *mut size_t,
+    ) -> *const uint8_t;
+    pub fn crocksdb_externalsstfileinfo_smallest_key(
+        info: *mut ExternalSstFileInfo,
+        size: *mut size_t,
+    ) -> *const uint8_t;
+    pub fn crocksdb_externalsstfileinfo_largest_key(
+        info: *mut ExternalSstFileInfo,
+        size: *mut size_t,
+    ) -> *const uint8_t;
+    pub fn crocksdb_externalsstfileinfo_sequence_number(info: *mut ExternalSstFileInfo)
+        -> uint64_t;
+    pub fn crocksdb_externalsstfileinfo_file_size(info: *mut ExternalSstFileInfo) -> uint64_t;
+    pub fn crocksdb_externalsstfileinfo_num_entries(info: *mut ExternalSstFileInfo) -> uint64_t;
 
     pub fn crocksdb_ingest_external_file(
         db: *mut DBInstance,
@@ -1546,6 +1609,7 @@ mod test {
             assert!(err.is_null(), error_message(err));
             crocksdb_sstfilewriter_finish(writer, &mut err);
             assert!(err.is_null(), error_message(err));
+            assert!(crocksdb_sstfilewriter_file_size(writer) > 0);
 
             let ing_opt = crocksdb_ingestexternalfileoptions_create();
             let file_list = &[c_sst_path_ptr];
@@ -1569,6 +1633,7 @@ mod test {
             assert!(err.is_null(), error_message(err));
             crocksdb_sstfilewriter_finish(writer, &mut err);
             assert!(err.is_null(), error_message(err));
+            assert!(crocksdb_sstfilewriter_file_size(writer) > 0);
 
             crocksdb_ingest_external_file(db, file_list.as_ptr(), 1, ing_opt, &mut err);
             assert!(err.is_null(), error_message(err));

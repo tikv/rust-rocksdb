@@ -9,7 +9,6 @@ links = "rocksdb"
 libc = "0.2.11"
 tempdir = "0.3"
 libz-sys = ">= 0"
-snappy-sys = ">= 0"
 
 [features]
 default = []
@@ -34,4 +33,8 @@ branch = "adjust-build"
 
 [dependencies.zstd-sys]
 git = "https://github.com/busyjay/zstd-rs.git"
+branch = "adjust-build"
+
+[dependencies.snappy-sys]
+git = "https://github.com/busyjay/rust-snappy.git"
 branch = "adjust-build"

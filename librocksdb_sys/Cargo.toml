@@ -25,7 +25,6 @@ cmake = "0.1"
 [dependencies.bzip2-sys]
 git = "https://github.com/busyjay/bzip2-rs.git"
 branch = "test-build"
-features = ["with-stdio"]
 
 [dependencies.lz4-sys]
 git = "https://github.com/busyjay/lz4-rs.git"

@@ -19,7 +19,7 @@ fn main() {
 }
 
 fn cmake_rocksdb() -> Build {
-    let build = Build::new();
+    let mut build = Build::new();
     for e in env::vars() {
         println!("{:?}", e);
     }
@@ -47,6 +47,10 @@ fn cmake_rocksdb() -> Build {
     } else {
         println!("cargo:rustc-link-search=native={}", build_dir);
     }
+
+    let cur_dir = env::current_dir().unwrap();
+    build.include(cur_dir.join("rocksdb").join("include"));
+
     println!("cargo:rustc-link-lib=static=rocksdb");
     println!("cargo:rustc-link-lib=static=z");
     println!("cargo:rustc-link-lib=static=bz2");

@@ -106,6 +106,7 @@ pub enum DBCompactionStyle {
     Level = 0,
     Universal = 1,
     Fifo = 2,
+    None = 3,
 }
 
 #[derive(Debug)]

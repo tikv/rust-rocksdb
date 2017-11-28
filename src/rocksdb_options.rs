@@ -27,6 +27,7 @@ use slice_transform::{new_slice_transform, SliceTransform};
 use std::ffi::{CStr, CString};
 use std::mem;
 use std::path::Path;
+use table_filter::{destroy_table_filter, table_filter, TableFilter};
 use table_properties_collector_factory::{new_table_properties_collector_factory,
                                          TablePropertiesCollectorFactory};
 
@@ -353,6 +354,18 @@ impl ReadOptions {
 
     pub unsafe fn get_inner(&self) -> *const DBReadOptions {
         self.inner
+    }
+
+    pub fn set_table_filter(&mut self, filter: Box<TableFilter>) {
+        unsafe {
+            let f = Box::into_raw(Box::new(filter));
+            crocksdb_ffi::crocksdb_readoptions_set_table_filter(
+                self.inner,
+                mem::transmute(f),
+                table_filter,
+                destroy_table_filter,
+            );
+        }
     }
 }
 

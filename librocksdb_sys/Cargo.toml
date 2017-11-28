@@ -23,8 +23,7 @@ cc = "1.0"
 cmake = "0.1"
 
 [dependencies.bzip2-sys]
-git = "https://github.com/busyjay/bzip2-rs.git"
-branch = "test-build"
+git = "https://github.com/alexcrichton/bzip2-rs.git"
 
 [dependencies.lz4-sys]
 git = "https://github.com/busyjay/lz4-rs.git"

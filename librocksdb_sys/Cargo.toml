@@ -8,11 +8,9 @@ links = "rocksdb"
 [dependencies]
 libc = "0.2.11"
 tempdir = "0.3"
-libz-sys = ">= 0"
 
 [features]
 default = []
-static-link = []
 # portable doesn't require static link, though it's meaningless
 # when not using with static-link right now in this crate.
 portable = []
@@ -22,6 +20,10 @@ sse = []
 cc = "1.0.3"
 cmake = "0.1"
 
+[dependencies.libz-sys]
+git = "https://github.com/busyjay/libz-sys.git"
+branch = "static-link"
+
 [dependencies.bzip2-sys]
 git = "https://github.com/alexcrichton/bzip2-rs.git"
 
@@ -30,9 +32,8 @@ git = "https://github.com/busyjay/lz4-rs.git"
 branch = "adjust-build"
 
 [dependencies.zstd-sys]
-git = "https://github.com/busyjay/zstd-rs.git"
-branch = "adjust-build"
+git = "https://github.com/gyscos/zstd-rs.git"
 
 [dependencies.snappy-sys]
 git = "https://github.com/busyjay/rust-snappy.git"
-branch = "adjust-build"
+branch = "static-link"

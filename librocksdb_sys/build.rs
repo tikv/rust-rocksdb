@@ -15,20 +15,48 @@
 extern crate cc;
 extern crate cmake;
 
+use std::path::PathBuf;
 use cc::Build;
 use std::{env, str};
 use cmake::Config;
 
 fn main() {
-    let mut cfg = build_rocksdb();
+    let mut build = build_rocksdb();
 
-    cfg.cpp(true).file("crocksdb/c.cc");
+    build.cpp(true).file("crocksdb/c.cc");
     if !cfg!(target_os = "windows") {
-        cfg.flag("-std=c++11");
+        build.flag("-std=c++11");
     }
-    cfg.compile("libcrocksdb.a");
+    link_cpp(&mut build);
+    build.warnings(false).compile("libcrocksdb.a");
+}
 
-    println!("cargo:rustc-link-lib=static=crocksdb");
+fn link_cpp(build: &mut Build) {
+    let tool = build.get_compiler();
+    let stdlib = if tool.is_like_gnu() {
+        "libstdc++.a"
+    } else if tool.is_like_clang() {
+        "libc++.a"
+    } else {
+        // Don't link to c++ statically on windows.
+        return;
+    };
+    let output = tool.to_command().arg("--print-file-name").arg(stdlib).output().unwrap();
+    if !output.status.success() || output.stdout.is_empty() {
+        // fallback to dynamically
+        return;
+    }
+    let path = match str::from_utf8(&output.stdout) {
+        Ok(path) => PathBuf::from(path),
+        Err(_) => return,
+    };
+    if !path.is_absolute() {
+        return;
+    }
+    // remove lib prefix and .a postfix.
+    println!("cargo:rustc-link-lib=static={}", &stdlib[3..stdlib.len() - 2]);
+    println!("cargo:rustc-link-search=native={}", path.parent().unwrap().display());
+    build.cpp_link_stdlib(None);
 }
 
 fn build_rocksdb() -> Build {
@@ -70,6 +98,5 @@ fn build_rocksdb() -> Build {
     println!("cargo:rustc-link-lib=static=lz4");
     println!("cargo:rustc-link-lib=static=zstd");
     println!("cargo:rustc-link-lib=static=snappy");
-    // TODO: link stdc++ statically
     build
 }

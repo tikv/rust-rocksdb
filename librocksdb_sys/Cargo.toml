@@ -19,7 +19,7 @@ portable = []
 sse = []
 
 [build-dependencies]
-cc = "1.0"
+cc = "1.0.3"
 cmake = "0.1"
 
 [dependencies.bzip2-sys]

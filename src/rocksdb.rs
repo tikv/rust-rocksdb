@@ -1914,23 +1914,26 @@ impl SequentialFile {
             Ok(())
         }
     }
-
-    fn ffi_read(&mut self, buf: &mut [u8]) -> Result<usize, String> {
-        unsafe {
-            let size = ffi_try!(crocksdb_sequential_file_read(
-                self.inner,
-                buf.len() as size_t,
-                buf.as_mut_ptr()
-            ));
-            Ok(size as usize)
-        }
-    }
 }
 
 impl io::Read for SequentialFile {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        self.ffi_read(buf)
-            .map_err(|e| io::Error::new(io::ErrorKind::Other, e))
+        unsafe {
+            let mut err = ptr::null_mut();
+            let size = crocksdb_ffi::crocksdb_sequential_file_read(
+                self.inner,
+                buf.len() as size_t,
+                buf.as_mut_ptr(),
+                &mut err,
+            );
+            if !err.is_null() {
+                return Err(io::Error::new(
+                    io::ErrorKind::Other,
+                    crocksdb_ffi::error_message(err),
+                ));
+            }
+            Ok(size as usize)
+        }
     }
 }
 

@@ -16,6 +16,7 @@
 extern crate libc;
 #[cfg(test)]
 extern crate tempdir;
+extern crate bzip2_sys;
 
 use libc::{c_char, c_double, c_int, c_uchar, c_void, size_t, uint32_t, uint64_t, uint8_t};
 use std::ffi::CStr;
@@ -59,6 +60,8 @@ pub enum DBCompactionJobInfo {}
 pub enum DBIngestionInfo {}
 pub enum DBEventListener {}
 pub enum DBKeyVersions {}
+pub enum DBEnv {}
+pub enum DBSequentialFile {}
 
 pub fn new_bloom_filter(bits: c_int) -> *mut DBFilterPolicy {
     unsafe { crocksdb_filterpolicy_create_bloom(bits) }
@@ -104,6 +107,7 @@ pub enum DBCompactionStyle {
     Level = 0,
     Universal = 1,
     Fifo = 2,
+    None = 3,
 }
 
 #[derive(Debug)]
@@ -376,6 +380,7 @@ extern "C" {
         options: *mut Options,
         memtable_memory_budget: c_int,
     );
+    pub fn crocksdb_options_set_env(options: *mut Options, env: *mut DBEnv);
     pub fn crocksdb_options_set_compaction_filter(
         options: *mut Options,
         filter: *mut DBCompactionFilter,
@@ -1055,9 +1060,34 @@ extern "C" {
     );
     pub fn crocksdb_compactionfilter_destroy(filter: *mut DBCompactionFilter);
 
+    // Env
+    pub fn crocksdb_create_default_env() -> *mut DBEnv;
+    pub fn crocksdb_create_mem_env() -> *mut DBEnv;
+    pub fn crocksdb_env_destroy(env: *mut DBEnv);
+
     // EnvOptions
     pub fn crocksdb_envoptions_create() -> *mut EnvOptions;
     pub fn crocksdb_envoptions_destroy(opt: *mut EnvOptions);
+
+    // SequentialFile
+    pub fn crocksdb_sequential_file_create(
+        env: *mut DBEnv,
+        path: *const c_char,
+        opts: *mut EnvOptions,
+        err: *mut *mut c_char,
+    ) -> *mut DBSequentialFile;
+    pub fn crocksdb_sequential_file_read(
+        file: *mut DBSequentialFile,
+        n: size_t,
+        buf: *mut u8,
+        err: *mut *mut c_char,
+    ) -> size_t;
+    pub fn crocksdb_sequential_file_skip(
+        file: *mut DBSequentialFile,
+        n: size_t,
+        err: *mut *mut c_char,
+    );
+    pub fn crocksdb_sequential_file_destroy(file: *mut DBSequentialFile);
 
     // IngestExternalFileOptions
     pub fn crocksdb_ingestexternalfileoptions_create() -> *mut IngestExternalFileOptions;

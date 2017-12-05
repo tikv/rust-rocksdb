@@ -1966,7 +1966,10 @@ void crocksdb_options_enable_statistics(crocksdb_options_t* opt, unsigned char v
 }
 
 void crocksdb_options_reset_statistics(crocksdb_options_t* opt) {
-  opt->rep.statistics->Reset();
+  auto statistics = opt->rep.statistics.get();
+  if (statistics) {
+    statistics->Reset();
+  }
 }
 
 void crocksdb_options_set_num_levels(crocksdb_options_t* opt, int n) {

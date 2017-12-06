@@ -97,6 +97,12 @@ impl BlockBasedOptions {
         }
     }
 
+    pub fn set_no_block_cache(&mut self, v: bool) {
+        unsafe {
+            crocksdb_ffi::crocksdb_block_based_options_set_no_block_cache(self.inner, v);
+        }
+    }
+
     pub fn set_bloom_filter(&mut self, bits_per_key: c_int, block_based: bool) {
         unsafe {
             let bloom = if block_based {
@@ -620,9 +626,9 @@ impl DBOptions {
         }
     }
 
-    pub fn enable_statistics(&mut self) {
+    pub fn enable_statistics(&mut self, v: bool) {
         unsafe {
-            crocksdb_ffi::crocksdb_options_enable_statistics(self.inner);
+            crocksdb_ffi::crocksdb_options_enable_statistics(self.inner, v);
         }
     }
 

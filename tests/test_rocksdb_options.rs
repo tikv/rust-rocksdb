@@ -70,7 +70,7 @@ fn test_set_max_manifest_file_size() {
 #[test]
 fn test_enable_statistics() {
     let mut opts = DBOptions::new();
-    opts.enable_statistics();
+    opts.enable_statistics(true);
     opts.set_stats_dump_period_sec(60);
     assert!(opts.get_statistics().is_some());
     assert!(
@@ -370,6 +370,16 @@ fn test_get_block_cache_usage() {
 }
 
 #[test]
+fn test_disable_block_cache() {
+    let mut cf_opts = ColumnFamilyOptions::new();
+    assert_eq!(cf_opts.get_block_cache_usage(), 0);
+    let mut block_opts = BlockBasedOptions::new();
+    block_opts.set_no_block_cache(true);
+    cf_opts.set_block_based_table_factory(&block_opts);
+    assert_eq!(cf_opts.get_block_cache_usage(), 0);
+}
+
+#[test]
 fn test_set_level_compaction_dynamic_level_bytes() {
     let path = TempDir::new("_rust_rocksdb_level_compaction_dynamic_level_bytes").expect("");
     let mut opts = DBOptions::new();
@@ -613,7 +623,7 @@ fn test_block_based_options() {
 
     let mut opts = DBOptions::new();
     opts.create_if_missing(true);
-    opts.enable_statistics();
+    opts.enable_statistics(true);
     opts.set_stats_dump_period_sec(60);
     let mut bopts = BlockBasedOptions::new();
     bopts.set_read_amp_bytes_per_bit(4);

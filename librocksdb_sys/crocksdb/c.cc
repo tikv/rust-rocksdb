@@ -2770,8 +2770,8 @@ void crocksdb_readoptions_set_ignore_range_deletions(
 
 struct TableFilter {
   TableFilter(void* ctx,
-    int(*table_filter)(void*, const crocksdb_table_properties_t*),
-    void(*destroy)(void*))
+    int (*table_filter)(void*, const crocksdb_table_properties_t*),
+    void (*destroy)(void*))
     : ctx_(ctx), table_filter_(table_filter), destroy_(destroy)  {}
   ~TableFilter() {
     destroy_(ctx_);
@@ -2782,15 +2782,15 @@ struct TableFilter {
   }
 
   void* ctx_;
-  int(*table_filter_)(void*, const crocksdb_table_properties_t*);
-  void(*destroy_)(void*);
+  int (*table_filter_)(void*, const crocksdb_table_properties_t*);
+  void (*destroy_)(void*);
 };
 
 void crocksdb_readoptions_set_table_filter(
   crocksdb_readoptions_t *opt,
   void* ctx,
-  int(*table_filter)(void*, const crocksdb_table_properties_t*),
-  void(*destroy)(void*)) {
+  int (*table_filter)(void*, const crocksdb_table_properties_t*),
+  void (*destroy)(void*)) {
   opt->rep.table_filter = TableFilter(ctx, table_filter, destroy);
 }
 

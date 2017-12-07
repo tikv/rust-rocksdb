@@ -92,6 +92,11 @@ fn build_rocksdb() -> Build {
     let cur_dir = env::current_dir().unwrap();
     build.include(cur_dir.join("rocksdb").join("include"));
 
+    build.include(cur_dir.join("rocksdb").join("db"));
+    build.include(cur_dir.join("rocksdb").join("options"));
+    build.include(cur_dir.join("rocksdb").join("table"));
+    build.include(cur_dir.join("rocksdb").join("util"));
+
     println!("cargo:rustc-link-lib=static=rocksdb");
     println!("cargo:rustc-link-lib=static=z");
     println!("cargo:rustc-link-lib=static=bz2");

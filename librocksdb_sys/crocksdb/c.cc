@@ -31,6 +31,14 @@
 #include "rocksdb/utilities/backupable_db.h"
 #include "rocksdb/utilities/debug.h"
 #include "rocksdb/write_batch.h"
+
+#include "db/column_family.h"
+#include "options/db_options.h"
+#include "table/sst_file_writer_collectors.h"
+#include "table/table_reader.h"
+#include "util/file_reader_writer.h"
+#include "util/coding.h"
+
 #include <stdlib.h>
 
 #if !defined(ROCKSDB_MAJOR) || !defined(ROCKSDB_MINOR) || !defined(ROCKSDB_PATCH)
@@ -3777,6 +3785,99 @@ uint64_t crocksdb_keyversions_seq(const crocksdb_keyversions_t *kvs,
 
 int crocksdb_keyversions_type(const crocksdb_keyversions_t *kvs, int index) {
   return kvs->rep[index].type;
+}
+
+struct SstFileSeqNoModifier {
+  SstFileSeqNoModifier(const Env *env,
+                       ColumnFamilyData *cfd,
+                       const ImmutableDBOptions &db_options)
+  :env_(env), cfd_(cfd), db_options_(db_options) { }
+
+  Status ModifySeqNo(std::string file) {
+    // Get external file size
+    uint64_t file_size;
+    Status status = env_->GetFileSize(file, &file_size);
+    if (!status.ok()) {
+      return status;
+    }
+
+    // Create TableReader for external file
+    std::unique_ptr<TableReader> table_reader;
+    std::unique_ptr<RandomAccessFile> sst_file;
+    std::unique_ptr<RandomAccessFileReader> sst_file_reader;
+
+    status = env_->NewRandomAccessFile(file, &sst_file, env_options_);
+    if (!status.ok()) {
+      return status;
+    }
+    sst_file_reader.reset(new RandomAccessFileReader(std::move(sst_file), file));
+
+    status = cfd_->ioptions()->table_factory->NewTableReader(
+        TableReaderOptions(*cfd_->ioptions(), env_options_,
+                           cfd_->internal_comparator()),
+        std::move(sst_file_reader), file_size, &table_reader);
+    if (!status.ok()) {
+      return status;
+    }
+
+    // Get the external file properties
+    auto props = table_reader->GetTableProperties();
+    const auto& uprops = props->user_collected_properties;
+    // Validate version and seqno offset
+    auto version_iter = uprops.find(ExternalSstFilePropertyNames::kVersion);
+    if (version_iter == uprops.end()) {
+      return Status::Corruption("External file version not found");
+    }
+    uint32_t version = DecodeFixed32(version_iter->second.c_str());
+    if (version != 2) {
+      return Status::NotSupported("External file version should be 2");
+    }
+    auto seqno_iter = uprops.find(ExternalSstFilePropertyNames::kGlobalSeqno);
+    uint64_t original_seqno = DecodeFixed64(seqno_iter->second.c_str());
+    uint64_t offset = props->properties_offsets.at(ExternalSstFilePropertyNames::kGlobalSeqno);
+    if (offset == 0) {
+      return Status::Corruption("Was not able to find file global seqno field");
+    }
+
+    if (original_seqno == 0) {
+      // This file already have the correct global seqno
+      return Status::OK();
+    }
+
+    std::unique_ptr<RandomRWFile> rwfile;
+    status = env_->NewRandomRWFile(file, &rwfile, env_options_);
+    if (!status.ok()) {
+      return status;
+    }
+
+    // Write the new seqno in the global sequence number field in the file
+    std::string seqno_val;
+    PutFixed64(&seqno_val, 0);
+    status = rwfile->Write(offset, seqno_val);
+    return status;
+  }
+
+  private:
+    const Env                *env_;
+    EnvOptions                env_options_;
+    ColumnFamilyData         *cfd_;
+    const ImmutableDBOptions &db_options_;
+};
+
+// !!! this function is dangerous since it uses rocksdb's non-public API !!!
+// use ExternalSstFileIngestionJob to find the offset of sst file's
+// `global seq no` and then to modify `global seq no` with 0
+void crocksdb_modify_sst_file_seq_no(crocksdb_t *db,
+                                     crocksdb_column_family_handle_t *column_family,
+                                     const char *file,
+                                     size_t len,
+                                     char **errptr) {
+  auto cfh = reinterpret_cast<ColumnFamilyHandleImpl*>(column_family);
+  SstFileSeqNoModifier modifier(db->rep->GetEnv(), cfh->cfd(), db->rep->immutable_db_options());
+  auto s = modifier.ModifySeqNo(std::string(file, len));
+  if (!s.ok()) {
+    SaveError(errptr, s);
+  }
 }
 
 }  // end extern "C"

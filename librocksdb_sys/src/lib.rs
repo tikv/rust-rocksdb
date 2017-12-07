@@ -1494,6 +1494,15 @@ extern "C" {
     pub fn crocksdb_keyversions_seq(kvs: *mut DBKeyVersions, index: usize) -> uint64_t;
 
     pub fn crocksdb_keyversions_type(kvs: *mut DBKeyVersions, index: usize) -> c_int;
+
+    pub fn crocksdb_modify_sst_file_seq_no(
+        db: *mut DBInstance,
+        handle: *mut DBCFHandle,
+        file: *const c_char,
+        len: size_t,
+        err: *mut *mut c_char,
+    ) -> c_uchar;
+)
 }
 
 #[cfg(test)]

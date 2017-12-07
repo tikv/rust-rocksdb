@@ -1948,6 +1948,16 @@ impl Drop for SequentialFile {
     }
 }
 
+pub fn modify_sst_file_seq_no(db: Arc<DB>, cf: &CFHandle, file: &str) -> Result<(), String> {
+    ffi_try!(crocksdb_modify_sst_file_seq_no(
+        db.get_mut().unwrap().inner,
+        cf.inner,
+        file.as_ptr(),
+        file.len(),
+    ));
+    Ok();
+}
+
 #[cfg(test)]
 mod test {
     use super::*;

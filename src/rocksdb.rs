@@ -11,7 +11,6 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//
 
 use crocksdb_ffi::{self, DBBackupEngine, DBCFHandle, DBCompressionType, DBEnv, DBInstance,
                    DBPinnableSlice, DBSequentialFile, DBStatisticsHistogramType,
@@ -1948,14 +1947,16 @@ impl Drop for SequentialFile {
     }
 }
 
-pub fn modify_sst_file_seq_no(db: Arc<DB>, cf: &CFHandle, file: &str) -> Result<(), String> {
-    ffi_try!(crocksdb_modify_sst_file_seq_no(
-        db.get_mut().unwrap().inner,
-        cf.inner,
-        file.as_ptr(),
-        file.len(),
-    ));
-    Ok();
+pub fn modify_sst_file_seq_no(db: &DB, cf: &CFHandle, file: &str) -> Result<(), String> {
+    unsafe {
+        ffi_try!(crocksdb_modify_sst_file_seq_no(
+            db.inner,
+            cf.inner,
+            file.as_ptr(),
+            file.len()
+        ));
+        Ok(())
+    }
 }
 
 #[cfg(test)]

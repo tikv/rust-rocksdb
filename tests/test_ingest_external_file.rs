@@ -428,3 +428,34 @@ fn test_mem_sst_file_writer() {
         ],
     );
 }
+
+#[test]
+fn test_modify_sst_file_seqno() {
+    let db_path = TempDir::new("_rust_rocksdb_modify_sst_file_seqno_db").expect("");
+    let db = create_default_database(&db_path);
+    let path = TempDir::new("_rust_rocksdb_modify_sst_file_seqno").expect("");
+    let file = path.path().join("sst_file");
+    let sstfile_str = file.to_str().unwrap();
+    gen_sst(
+        ColumnFamilyOptions::new(),
+        Some(db.cf_handle("default").unwrap()),
+        sstfile_str,
+        &[(b"k1", b"v1"), (b"k2", b"v2")],
+    );
+
+    let handle = db.cf_handle("default").unwrap();
+    // assert!(modify_sst_file_seq_no(&db, &handle, sstfile_str).is_ok());
+    let r = modify_sst_file_seq_no(&db, &handle, sstfile_str);
+    println!("{}", r.unwrap_err());
+
+    // db.ingest_external_file(&IngestExternalFileOptions::new(), &[sstfile_str])
+    //     .unwrap();
+    // check_kv(
+    //     &db,
+    //     None,
+    //     &[
+    //         (b"k1", Some(b"v1")),
+    //         (b"k2", Some(b"v2")),
+    //     ],
+    // );
+}

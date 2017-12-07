@@ -1502,7 +1502,6 @@ extern "C" {
         len: size_t,
         err: *mut *mut c_char,
     ) -> c_uchar;
-)
 }
 
 #[cfg(test)]

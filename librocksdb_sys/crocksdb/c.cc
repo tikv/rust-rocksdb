@@ -33,13 +33,13 @@
 #include "rocksdb/write_batch.h"
 
 #include "db/column_family.h"
-#include "options/db_options.h"
 #include "table/sst_file_writer_collectors.h"
 #include "table/table_reader.h"
 #include "util/file_reader_writer.h"
 #include "util/coding.h"
 
 #include <stdlib.h>
+#include <stdio.h>
 
 #if !defined(ROCKSDB_MAJOR) || !defined(ROCKSDB_MINOR) || !defined(ROCKSDB_PATCH)
 #error Only rocksdb 5.7.3+ is supported.
@@ -116,6 +116,18 @@ using rocksdb::TablePropertiesCollector;
 using rocksdb::TablePropertiesCollectorFactory;
 using rocksdb::KeyVersion;
 using rocksdb::DbPath;
+
+using rocksdb::ColumnFamilyData;
+using rocksdb::ColumnFamilyHandleImpl;
+using rocksdb::TableReaderOptions;
+using rocksdb::TableReader;
+using rocksdb::RandomAccessFile;
+using rocksdb::RandomAccessFileReader;
+using rocksdb::RandomRWFile;
+using rocksdb::ExternalSstFilePropertyNames;
+using rocksdb::DecodeFixed32;
+using rocksdb::DecodeFixed64;
+using rocksdb::PutFixed64;
 
 using std::shared_ptr;
 
@@ -2452,7 +2464,7 @@ crocksdb_ratelimiter_t* crocksdb_ratelimiter_create(
 
 void crocksdb_ratelimiter_destroy(crocksdb_ratelimiter_t *limiter) {
   if (limiter->rep) {
-	delete limiter->rep;
+      delete limiter->rep;
   }
   delete limiter;
 }
@@ -3788,10 +3800,7 @@ int crocksdb_keyversions_type(const crocksdb_keyversions_t *kvs, int index) {
 }
 
 struct SstFileSeqNoModifier {
-  SstFileSeqNoModifier(const Env *env,
-                       ColumnFamilyData *cfd,
-                       const ImmutableDBOptions &db_options)
-  :env_(env), cfd_(cfd), db_options_(db_options) { }
+  SstFileSeqNoModifier(Env *env, ColumnFamilyData *cfd):env_(env), cfd_(cfd) { }
 
   Status ModifySeqNo(std::string file) {
     // Get external file size
@@ -3832,6 +3841,7 @@ struct SstFileSeqNoModifier {
     if (version != 2) {
       return Status::NotSupported("External file version should be 2");
     }
+
     auto seqno_iter = uprops.find(ExternalSstFilePropertyNames::kGlobalSeqno);
     uint64_t original_seqno = DecodeFixed64(seqno_iter->second.c_str());
     uint64_t offset = props->properties_offsets.at(ExternalSstFilePropertyNames::kGlobalSeqno);
@@ -3858,10 +3868,9 @@ struct SstFileSeqNoModifier {
   }
 
   private:
-    const Env                *env_;
-    EnvOptions                env_options_;
-    ColumnFamilyData         *cfd_;
-    const ImmutableDBOptions &db_options_;
+    Env              *env_;
+    EnvOptions        env_options_;
+    ColumnFamilyData *cfd_;
 };
 
 // !!! this function is dangerous since it uses rocksdb's non-public API !!!
@@ -3872,8 +3881,8 @@ void crocksdb_modify_sst_file_seq_no(crocksdb_t *db,
                                      const char *file,
                                      size_t len,
                                      char **errptr) {
-  auto cfh = reinterpret_cast<ColumnFamilyHandleImpl*>(column_family);
-  SstFileSeqNoModifier modifier(db->rep->GetEnv(), cfh->cfd(), db->rep->immutable_db_options());
+  auto cfh = reinterpret_cast<ColumnFamilyHandleImpl*>(column_family->rep);
+  SstFileSeqNoModifier modifier(db->rep->GetEnv(), cfh->cfd());
   auto s = modifier.ModifySeqNo(std::string(file, len));
   if (!s.ok()) {
     SaveError(errptr, s);

@@ -39,7 +39,6 @@
 #include "util/coding.h"
 
 #include <stdlib.h>
-#include <stdio.h>
 
 #if !defined(ROCKSDB_MAJOR) || !defined(ROCKSDB_MINOR) || !defined(ROCKSDB_PATCH)
 #error Only rocksdb 5.7.3+ is supported.

@@ -444,18 +444,16 @@ fn test_modify_sst_file_seqno() {
     );
 
     let handle = db.cf_handle("default").unwrap();
-    // assert!(modify_sst_file_seq_no(&db, &handle, sstfile_str).is_ok());
-    let r = modify_sst_file_seq_no(&db, &handle, sstfile_str);
-    println!("{}", r.unwrap_err());
+    assert!(modify_sst_file_seq_no(&db, &handle, sstfile_str).is_ok());
 
-    // db.ingest_external_file(&IngestExternalFileOptions::new(), &[sstfile_str])
-    //     .unwrap();
-    // check_kv(
-    //     &db,
-    //     None,
-    //     &[
-    //         (b"k1", Some(b"v1")),
-    //         (b"k2", Some(b"v2")),
-    //     ],
-    // );
+    db.ingest_external_file(&IngestExternalFileOptions::new(), &[sstfile_str])
+        .unwrap();
+    check_kv(
+        &db,
+        None,
+        &[
+            (b"k1", Some(b"v1")),
+            (b"k2", Some(b"v2")),
+        ],
+    );
 }

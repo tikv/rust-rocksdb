@@ -1948,13 +1948,13 @@ impl Drop for SequentialFile {
 }
 
 pub fn modify_sst_file_seq_no(db: &DB, cf: &CFHandle, file: &str) -> Result<(), String> {
+    let cfile = CString::new(file.as_bytes()).unwrap();
     unsafe {
         ffi_try!(crocksdb_modify_sst_file_seq_no(
             db.inner,
             cf.inner,
-            file.as_ptr(),
-            file.len()
-        ));
+            cfile.as_ptr(),
+            file.len()));
         Ok(())
     }
 }

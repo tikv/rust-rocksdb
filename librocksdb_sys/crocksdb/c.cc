@@ -35,6 +35,7 @@
 #include "db/column_family.h"
 #include "table/sst_file_writer_collectors.h"
 #include "table/table_reader.h"
+#include "table/block_based_table_factory.h"
 #include "util/file_reader_writer.h"
 #include "util/coding.h"
 
@@ -120,6 +121,7 @@ using rocksdb::ColumnFamilyData;
 using rocksdb::ColumnFamilyHandleImpl;
 using rocksdb::TableReaderOptions;
 using rocksdb::TableReader;
+using rocksdb::BlockBasedTableFactory;
 using rocksdb::RandomAccessFile;
 using rocksdb::RandomAccessFileReader;
 using rocksdb::RandomRWFile;
@@ -3803,6 +3805,9 @@ struct ExternalSstFileModifier {
   :env_(env), cfd_(cfd), table_reader_(nullptr) { }
 
   Status Open(std::string file) {
+    if (cfd_->ioptions()->table_factory->Name() != BlockBasedTableFactory::kName) {
+      return Status::InvalidArgument("Only support block based table format");
+    }
     file_ = file;
     // Get External Sst File Size
     uint64_t file_size;

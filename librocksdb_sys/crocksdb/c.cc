@@ -3798,8 +3798,8 @@ int crocksdb_keyversions_type(const crocksdb_keyversions_t *kvs, int index) {
   return kvs->rep[index].type;
 }
 
-struct SstFileSeqNoModifier {
-  SstFileSeqNoModifier(Env *env, ColumnFamilyData *cfd)
+struct ExternalSstFileModifier {
+  ExternalSstFileModifier(Env *env, ColumnFamilyData *cfd)
   :env_(env), cfd_(cfd), table_reader_(nullptr) { }
 
   Status Open(std::string file) {
@@ -3882,8 +3882,7 @@ struct SstFileSeqNoModifier {
 };
 
 // !!! this function is dangerous since it uses rocksdb's non-public API !!!
-// use ExternalSstFileIngestionJob to find the offset of sst file's
-// `global seq no` and then to modify `global seq no` with 0
+// find the offset of external sst file's `global seq no` and modify it.
 void crocksdb_modify_sst_file_seq_no(crocksdb_t *db,
                                      crocksdb_column_family_handle_t *column_family,
                                      const char *file,
@@ -3891,7 +3890,7 @@ void crocksdb_modify_sst_file_seq_no(crocksdb_t *db,
                                      uint64_t seq_no,
                                      char **errptr) {
   auto cfh = reinterpret_cast<ColumnFamilyHandleImpl*>(column_family->rep);
-  SstFileSeqNoModifier modifier(db->rep->GetEnv(), cfh->cfd());
+  ExternalSstFileModifier modifier(db->rep->GetEnv(), cfh->cfd());
   auto s = modifier.Open(std::string(file, len));
   if (!s.ok()) {
     SaveError(errptr, s);

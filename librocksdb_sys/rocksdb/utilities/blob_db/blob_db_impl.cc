@@ -722,10 +722,10 @@ class BlobDBImpl::BlobInserter : public WriteBatch::Handler {
 
   virtual Status DeleteCF(uint32_t column_family_id,
                           const Slice& key) override {
-    if (column_family_id != default_cf_id_) {
-      return Status::NotSupported(
-          "Blob DB doesn't support non-default column family.");
-    }
+    // if (column_family_id != default_cf_id_) {
+    //   return Status::NotSupported(
+    //       "Blob DB doesn't support non-default column family.");
+    // }
     Status s = WriteBatchInternal::Delete(&batch_, column_family_id, key);
     sequence_++;
     return s;
@@ -733,10 +733,10 @@ class BlobDBImpl::BlobInserter : public WriteBatch::Handler {
 
   virtual Status DeleteRange(uint32_t column_family_id, const Slice& begin_key,
                              const Slice& end_key) {
-    if (column_family_id != default_cf_id_) {
-      return Status::NotSupported(
-          "Blob DB doesn't support non-default column family.");
-    }
+    // if (column_family_id != default_cf_id_) {
+    //   return Status::NotSupported(
+    //       "Blob DB doesn't support non-default column family.");
+    // }
     Status s = WriteBatchInternal::DeleteRange(&batch_, column_family_id,
                                                begin_key, end_key);
     sequence_++;

@@ -3828,7 +3828,7 @@ struct ExternalSstFileModifier {
     return status;
   }
 
-  Status ModifySeqNo(uint64_t seq_no) {
+  Status SetGlobalSeqNo(uint64_t seq_no) {
     if (table_reader_ == nullptr) {
       return Status::InvalidArgument("File is not open or seq-no has been modified");
     }
@@ -3896,7 +3896,7 @@ void crocksdb_modify_sst_file_seq_no(crocksdb_t *db,
     SaveError(errptr, s);
     return ;
   }
-  s = modifier.ModifySeqNo(seq_no);
+  s = modifier.SetGlobalSeqNo(seq_no);
   if (!s.ok()) {
     SaveError(errptr, s);
   }

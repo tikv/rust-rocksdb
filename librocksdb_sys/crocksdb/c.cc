@@ -3874,21 +3874,22 @@ struct ExternalSstFileModifier {
   }
 
   private:
-    EnvOptions        env_options_;
     Env              *env_;
     ColumnFamilyData *cfd_;
+    EnvOptions        env_options_;
     std::string       file_;
     std::unique_ptr<TableReader> table_reader_;
 };
 
-// !!! this function is dangerous since it uses rocksdb's non-public API !!!
+// !!! this function is dangerous because it uses rocksdb's non-public API !!!
 // find the offset of external sst file's `global seq no` and modify it.
-void crocksdb_modify_sst_file_seq_no(crocksdb_t *db,
-                                     crocksdb_column_family_handle_t *column_family,
-                                     const char *file,
-                                     size_t len,
-                                     uint64_t seq_no,
-                                     char **errptr) {
+void crocksdb_set_external_sst_file_global_seq_no(
+    crocksdb_t *db,
+    crocksdb_column_family_handle_t *column_family,
+    const char *file,
+    size_t len,
+    uint64_t seq_no,
+    char **errptr) {
   auto cfh = reinterpret_cast<ColumnFamilyHandleImpl*>(column_family->rep);
   ExternalSstFileModifier modifier(db->rep->GetEnv(), cfh->cfd());
   auto s = modifier.Open(std::string(file, len));

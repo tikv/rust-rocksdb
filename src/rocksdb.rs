@@ -1947,7 +1947,7 @@ impl Drop for SequentialFile {
     }
 }
 
-pub fn modify_sst_file_seq_no(
+pub fn set_external_sst_file_global_seq_no(
     db: &DB,
     cf: &CFHandle,
     file: &str,
@@ -1955,7 +1955,7 @@ pub fn modify_sst_file_seq_no(
 ) -> Result<(), String> {
     let cfile = CString::new(file.as_bytes()).unwrap();
     unsafe {
-        ffi_try!(crocksdb_modify_sst_file_seq_no(
+        ffi_try!(crocksdb_set_external_sst_file_global_seq_no(
             db.inner,
             cf.inner,
             cfile.as_ptr(),

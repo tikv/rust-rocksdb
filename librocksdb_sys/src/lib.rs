@@ -1495,7 +1495,7 @@ extern "C" {
 
     pub fn crocksdb_keyversions_type(kvs: *mut DBKeyVersions, index: usize) -> c_int;
 
-    pub fn crocksdb_modify_sst_file_seq_no(
+    pub fn crocksdb_set_external_sst_file_global_seq_no(
         db: *mut DBInstance,
         handle: *mut DBCFHandle,
         file: *const c_char,

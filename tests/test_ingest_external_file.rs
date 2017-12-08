@@ -430,10 +430,10 @@ fn test_mem_sst_file_writer() {
 }
 
 #[test]
-fn test_modify_sst_file_seqno() {
-    let db_path = TempDir::new("_rust_rocksdb_modify_sst_file_seqno_db").expect("");
+fn test_set_external_sst_file_global_seq_no() {
+    let db_path = TempDir::new("_rust_rocksdb_set_external_sst_file_global_seq_no_db").expect("");
     let db = create_default_database(&db_path);
-    let path = TempDir::new("_rust_rocksdb_modify_sst_file_seqno").expect("");
+    let path = TempDir::new("_rust_rocksdb_set_external_sst_file_global_seq_no").expect("");
     let file = path.path().join("sst_file");
     let sstfile_str = file.to_str().unwrap();
     gen_sst(
@@ -445,7 +445,7 @@ fn test_modify_sst_file_seqno() {
 
     let handle = db.cf_handle("default").unwrap();
     let seq_no = 0;
-    assert!(modify_sst_file_seq_no(&db, &handle, sstfile_str, seq_no).is_ok());
+    assert!(set_external_sst_file_global_seq_no(&db, &handle, sstfile_str, seq_no).is_ok());
 
     db.ingest_external_file(&IngestExternalFileOptions::new(), &[sstfile_str])
         .unwrap();

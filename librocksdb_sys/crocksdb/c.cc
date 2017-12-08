@@ -3799,12 +3799,14 @@ int crocksdb_keyversions_type(const crocksdb_keyversions_t *kvs, int index) {
 }
 
 struct SstFileSeqNoModifier {
-  SstFileSeqNoModifier(Env *env, ColumnFamilyData *cfd):env_(env), cfd_(cfd) { }
+  SstFileSeqNoModifier(Env *env, ColumnFamilyData *cfd)
+  :env_(env), cfd_(cfd), table_reader_(nullptr) { }
 
-  Status GetTableReader(std::string file, std::unique_ptr<TableReader> *table_reader) {
+  Status Open(std::string file) {
+    file_ = file;
     // Get External Sst File Size
     uint64_t file_size;
-    auto status = env_->GetFileSize(file, &file_size);
+    auto status = env_->GetFileSize(file_, &file_size);
     if (!status.ok()) {
       return status;
     }
@@ -3812,23 +3814,26 @@ struct SstFileSeqNoModifier {
     // Open External Sst File
     std::unique_ptr<RandomAccessFile> sst_file;
     std::unique_ptr<RandomAccessFileReader> sst_file_reader;
-    status = env_->NewRandomAccessFile(file, &sst_file, env_options_);
+    status = env_->NewRandomAccessFile(file_, &sst_file, env_options_);
     if (!status.ok()) {
       return status;
     }
-    sst_file_reader.reset(new RandomAccessFileReader(std::move(sst_file), file));
+    sst_file_reader.reset(new RandomAccessFileReader(std::move(sst_file), file_));
 
     // Get Table Reader
     status = cfd_->ioptions()->table_factory->NewTableReader(
         TableReaderOptions(*cfd_->ioptions(), env_options_,
                            cfd_->internal_comparator()),
-        std::move(sst_file_reader), file_size, table_reader);
+        std::move(sst_file_reader), file_size, &table_reader_);
     return status;
   }
 
-  Status FindSeqNoInfo(TableReader *table_reader, uint64_t *ori_seq_no, uint64_t *offset) {
+  Status ModifySeqNo(uint64_t seq_no) {
+    if (table_reader_ == nullptr) {
+      return Status::InvalidArgument("File is not open or seq-no has been modified");
+    }
     // Get the external file properties
-    auto props = table_reader->GetTableProperties();
+    auto props = table_reader_->GetTableProperties();
     const auto& uprops = props->user_collected_properties;
     // Validate version and seqno offset
     auto version_iter = uprops.find(ExternalSstFilePropertyNames::kVersion);
@@ -3841,22 +3846,19 @@ struct SstFileSeqNoModifier {
     }
 
     auto seqno_iter = uprops.find(ExternalSstFilePropertyNames::kGlobalSeqno);
-    *ori_seq_no = DecodeFixed64(seqno_iter->second.c_str());
-    *offset = props->properties_offsets.at(ExternalSstFilePropertyNames::kGlobalSeqno);
-    if (*offset == 0) {
+    uint64_t ori_seq_no = DecodeFixed64(seqno_iter->second.c_str());
+    uint64_t offset = props->properties_offsets.at(ExternalSstFilePropertyNames::kGlobalSeqno);
+    if (offset == 0) {
       return Status::Corruption("Was not able to find file global seqno field");
     }
-    return Status::OK();
-  }
 
-  Status ModifySeqNo(std::string file, uint64_t ori_seq_no, uint64_t offset, uint64_t seq_no) {
     if (ori_seq_no == seq_no) {
       // This file already have the correct global seqno
       return Status::OK();
     }
 
     std::unique_ptr<RandomRWFile> rwfile;
-    auto status = env_->NewRandomRWFile(file, &rwfile, env_options_);
+    auto status = env_->NewRandomRWFile(file_, &rwfile, env_options_);
     if (!status.ok()) {
       return status;
     }
@@ -3864,13 +3866,19 @@ struct SstFileSeqNoModifier {
     // Write the new seqno in the global sequence number field in the file
     std::string seqno_val;
     PutFixed64(&seqno_val, seq_no);
-    return rwfile->Write(offset, seqno_val);
+    status = rwfile->Write(offset, seqno_val);
+    if (status.ok()) {
+      table_reader_ = nullptr;
+    }
+    return status;
   }
 
   private:
-    Env              *env_;
     EnvOptions        env_options_;
+    Env              *env_;
     ColumnFamilyData *cfd_;
+    std::string       file_;
+    std::unique_ptr<TableReader> table_reader_;
 };
 
 // !!! this function is dangerous since it uses rocksdb's non-public API !!!
@@ -3884,20 +3892,12 @@ void crocksdb_modify_sst_file_seq_no(crocksdb_t *db,
                                      char **errptr) {
   auto cfh = reinterpret_cast<ColumnFamilyHandleImpl*>(column_family->rep);
   SstFileSeqNoModifier modifier(db->rep->GetEnv(), cfh->cfd());
-  std::unique_ptr<TableReader> table_reader;
-  std::string sst_file(file, len);
-  auto s = modifier.GetTableReader(sst_file, &table_reader);
+  auto s = modifier.Open(std::string(file, len));
   if (!s.ok()) {
     SaveError(errptr, s);
     return ;
   }
-  uint64_t ori_seq_no, offset;
-  s = modifier.FindSeqNoInfo(table_reader.get(), &ori_seq_no, &offset);
-  if (!s.ok()) {
-    SaveError(errptr, s);
-    return ;
-  }
-  s = modifier.ModifySeqNo(sst_file, ori_seq_no, offset, seq_no);
+  s = modifier.ModifySeqNo(seq_no);
   if (!s.ok()) {
     SaveError(errptr, s);
   }

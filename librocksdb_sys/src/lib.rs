@@ -1500,6 +1500,7 @@ extern "C" {
         handle: *mut DBCFHandle,
         file: *const c_char,
         len: size_t,
+        seq_no: u64,
         err: *mut *mut c_char,
     );
 }

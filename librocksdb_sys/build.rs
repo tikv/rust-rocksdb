@@ -84,11 +84,11 @@ fn build_rocksdb() -> Build {
             _ => "Debug",
         };
         println!("cargo:rustc-link-search=native={}/{}", build_dir, profile);
+        build.define("OS_WIN", None);
     } else {
         println!("cargo:rustc-link-search=native={}", build_dir);
+        build.define("ROCKSDB_PLATFORM_POSIX", None);
     }
-
-    build.define("ROCKSDB_PLATFORM_POSIX", None);
 
     let cur_dir = env::current_dir().unwrap();
     build.include(cur_dir.join("rocksdb").join("include"));

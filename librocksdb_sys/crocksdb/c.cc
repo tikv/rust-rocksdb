@@ -3801,13 +3801,10 @@ int crocksdb_keyversions_type(const crocksdb_keyversions_t *kvs, int index) {
 }
 
 struct ExternalSstFileModifier {
-  ExternalSstFileModifier(Env *env, ColumnFamilyData *cfd)
-  :env_(env), cfd_(cfd), table_reader_(nullptr) { }
+  ExternalSstFileModifier(Env *env, ColumnFamilyData *cfd, DBOptions &db_options)
+  :env_(env), cfd_(cfd), env_options_(db_options), table_reader_(nullptr) { }
 
   Status Open(std::string file) {
-    if (cfd_->ioptions()->table_factory->Name() != BlockBasedTableFactory::kName) {
-      return Status::InvalidArgument("Only support block based table format");
-    }
     file_ = file;
     // Get External Sst File Size
     uint64_t file_size;
@@ -3896,7 +3893,8 @@ void crocksdb_set_external_sst_file_global_seq_no(
     uint64_t seq_no,
     char **errptr) {
   auto cfh = reinterpret_cast<ColumnFamilyHandleImpl*>(column_family->rep);
-  ExternalSstFileModifier modifier(db->rep->GetEnv(), cfh->cfd());
+  auto db_options = db->rep->GetDBOptions();
+  ExternalSstFileModifier modifier(db->rep->GetEnv(), cfh->cfd(), db_options);
   auto s = modifier.Open(std::string(file, len));
   if (!s.ok()) {
     SaveError(errptr, s);

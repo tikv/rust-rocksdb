@@ -3904,13 +3904,14 @@ uint64_t crocksdb_set_external_sst_file_global_seq_no(
   ExternalSstFileModifier modifier(db->rep->GetEnv(), cfh->cfd(), db_options);
   auto s = modifier.Open(std::string(file));
   uint64_t pre_seq_no = 0;
-  if (s.ok()) {
-    s = modifier.SetGlobalSeqNo(seq_no, &pre_seq_no);
-    if (s.ok()) {
-      return pre_seq_no;
-    }
+  if (!s.ok()) {
+    SaveError(errptr, s);
+    return pre_seq_no;
   }
-  SaveError(errptr, s);
+  s = modifier.SetGlobalSeqNo(seq_no, &pre_seq_no);
+  if (!s.ok()) {
+    SaveError(errptr, s);
+  }
   return pre_seq_no;
 }
 

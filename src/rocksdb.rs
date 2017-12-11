@@ -1969,7 +1969,7 @@ pub fn set_external_sst_file_global_seq_no(
     file: &str,
     seq_no: u64,
 ) -> Result<u64, String> {
-    let cfile = CString::new(file.as_bytes()).unwrap();
+    let cfile = CString::new(file).unwrap();
     unsafe {
         let pre_seq_no = ffi_try!(crocksdb_set_external_sst_file_global_seq_no(
             db.inner,

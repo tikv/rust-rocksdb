@@ -3830,7 +3830,7 @@ struct ExternalSstFileModifier {
     return status;
   }
 
-  Status SetGlobalSeqNo(uint64_t seq_no) {
+  Status SetGlobalSeqNo(uint64_t seq_no, uint64_t *pre_seq_no) {
     if (table_reader_ == nullptr) {
       return Status::InvalidArgument("File is not open or seq-no has been modified");
     }
@@ -3848,13 +3848,16 @@ struct ExternalSstFileModifier {
     }
 
     auto seqno_iter = uprops.find(ExternalSstFilePropertyNames::kGlobalSeqno);
-    uint64_t ori_seq_no = DecodeFixed64(seqno_iter->second.c_str());
+    if (seqno_iter == uprops.end()) {
+      return Status::Corruption("External file global sequence number not found");
+    }
+    *pre_seq_no = DecodeFixed64(seqno_iter->second.c_str());
     uint64_t offset = props->properties_offsets.at(ExternalSstFilePropertyNames::kGlobalSeqno);
     if (offset == 0) {
       return Status::Corruption("Was not able to find file global seqno field");
     }
 
-    if (ori_seq_no == seq_no) {
+    if (*pre_seq_no == seq_no) {
       // This file already have the correct global seqno
       return Status::OK();
     }
@@ -3869,9 +3872,6 @@ struct ExternalSstFileModifier {
     std::string seqno_val;
     PutFixed64(&seqno_val, seq_no);
     status = rwfile->Write(offset, seqno_val);
-    if (status.ok()) {
-      table_reader_ = nullptr;
-    }
     return status;
   }
 
@@ -3885,25 +3885,25 @@ struct ExternalSstFileModifier {
 
 // !!! this function is dangerous because it uses rocksdb's non-public API !!!
 // find the offset of external sst file's `global seq no` and modify it.
-void crocksdb_set_external_sst_file_global_seq_no(
+uint64_t crocksdb_set_external_sst_file_global_seq_no(
     crocksdb_t *db,
     crocksdb_column_family_handle_t *column_family,
     const char *file,
-    size_t len,
     uint64_t seq_no,
     char **errptr) {
   auto cfh = reinterpret_cast<ColumnFamilyHandleImpl*>(column_family->rep);
   auto db_options = db->rep->GetDBOptions();
   ExternalSstFileModifier modifier(db->rep->GetEnv(), cfh->cfd(), db_options);
-  auto s = modifier.Open(std::string(file, len));
-  if (!s.ok()) {
-    SaveError(errptr, s);
-    return ;
+  auto s = modifier.Open(std::string(file));
+  uint64_t pre_seq_no = 0;
+  if (s.ok()) {
+    s = modifier.SetGlobalSeqNo(seq_no, &pre_seq_no);
+    if (s.ok()) {
+      return pre_seq_no;
+    }
   }
-  s = modifier.SetGlobalSeqNo(seq_no);
-  if (!s.ok()) {
-    SaveError(errptr, s);
-  }
+  SaveError(errptr, s);
+  return pre_seq_no;
 }
 
 }  // end extern "C"

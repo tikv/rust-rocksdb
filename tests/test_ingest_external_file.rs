@@ -444,8 +444,16 @@ fn test_set_external_sst_file_global_seq_no() {
     );
 
     let handle = db.cf_handle("default").unwrap();
-    let seq_no = 0;
-    assert!(set_external_sst_file_global_seq_no(&db, &handle, sstfile_str, seq_no).is_ok());
+    let seq_no = 1;
+    // varify change seq_no
+    let r1 = set_external_sst_file_global_seq_no(&db, &handle, sstfile_str, seq_no);
+    assert!(r1.is_ok() && r1.unwrap() != seq_no);
+    // varify that seq_no are equal
+    let r2 = set_external_sst_file_global_seq_no(&db, &handle, sstfile_str, seq_no);
+    assert!(r2.is_ok() && r2.unwrap() == seq_no);
+
+    // change seq_no back to 0 so that it can be ingested
+    assert!(set_external_sst_file_global_seq_no(&db, &handle, sstfile_str, 0).is_ok());
 
     db.ingest_external_file(&IngestExternalFileOptions::new(), &[sstfile_str])
         .unwrap();

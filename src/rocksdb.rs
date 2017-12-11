@@ -1952,17 +1952,16 @@ pub fn set_external_sst_file_global_seq_no(
     cf: &CFHandle,
     file: &str,
     seq_no: u64,
-) -> Result<(), String> {
+) -> Result<u64, String> {
     let cfile = CString::new(file.as_bytes()).unwrap();
     unsafe {
-        ffi_try!(crocksdb_set_external_sst_file_global_seq_no(
+        let pre_seq_no = ffi_try!(crocksdb_set_external_sst_file_global_seq_no(
             db.inner,
             cf.inner,
             cfile.as_ptr(),
-            file.len(),
             seq_no
         ));
-        Ok(())
+        Ok(pre_seq_no)
     }
 }
 

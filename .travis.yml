@@ -12,7 +12,11 @@ cache:
 
 os:
   - linux
-  - osx
+
+matrix:
+  include:
+    - os: osx
+      rust: stable
 
 script:
 - cargo build

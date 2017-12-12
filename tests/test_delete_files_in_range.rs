@@ -11,6 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use rand::{self, Rng};
 use rocksdb::*;
 use tempdir::TempDir;
 
@@ -104,9 +105,8 @@ fn test_delete_files_in_range_with_snap() {
 #[test]
 fn test_delete_files_in_range_with_delete_range() {
     // Regression test for https://github.com/facebook/rocksdb/issues/2833.
-    // let path = TempDir::new("_rust_rocksdb_test_delete_files_in_range_with_snap").expect("");
-    // let path_str = path.path().to_str().unwrap();
-    let path_str = "/tmp/rocksdb";
+    let path = TempDir::new("_rocksdb_test_delete_files_in_range_with_delete_range").expect("");
+    let path_str = path.path().to_str().unwrap();
 
     let sst_size = 1 << 10;
     let value_size = 8 << 10;
@@ -116,7 +116,7 @@ fn test_delete_files_in_range_with_delete_range() {
     cf_opts.set_target_file_size_base(sst_size);
     cf_opts.set_level_zero_file_num_compaction_trigger(10);
 
-    let db = DB::open_cf(opts, path_str, vec!["default"], vec![cf_opts]).unwrap();
+    let db = DB::open_cf(opts, path_str, vec![("default", cf_opts)]).unwrap();
 
     // Flush 5 files in level 0.
     // File i will contain keys i and i+1.

@@ -139,10 +139,9 @@ fn test_delete_files_in_range_with_delete_range() {
     db.compact_range(None, None);
     drop(snapshot);
 
-    // Delete the middle file with keys 2 and 3, and the delete range [0, 6).
-    // After this, we will have 2 files in level 1.
-    // File 0 will contain keys 0 and 1, and the delete range [0, 6).
-    // File 1 will contain keys 4 and 5, and the delete range [0, 6).
+    // Before the fix, the file in the middle with keys 2 and 3 will be deleted,
+    // which can be a problem when we compact later. After the fix, no file will
+    // be deleted since they have an overlapped delete range [0, 6).
     db.delete_file_in_range(b"1", b"4").unwrap();
 
     // Flush a file with keys 4 and 5 to level 0.
@@ -156,8 +155,8 @@ fn test_delete_files_in_range_with_delete_range() {
         db.flush(true).unwrap();
     }
 
-    // After this, the delete range [0, 6) will drop all entries
-    // before it, so we should have only keys 4 and 5.
+    // After this, the delete range [0, 6) will drop all entries before it, so
+    // we should have only keys 4 and 5.
     db.compact_range(None, None);
 
     let mut it = db.iter();

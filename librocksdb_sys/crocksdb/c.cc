@@ -2793,9 +2793,27 @@ struct TableFilter {
   TableFilter(void* ctx,
     int (*table_filter)(void*, const crocksdb_table_properties_t*),
     void (*destroy)(void*))
-    : ctx_(ctx), table_filter_(table_filter), destroy_(destroy)  {}
+    : ctx_(ctx),
+      table_filter_(table_filter),
+      destroy_(destroy),
+      ref_(std::make_shared<std::atomic<int32_t>>(1)) {}
+
+  // After passing TableFilter to ReadOptions, ReadOptions will be copyed
+  // several times, so we need use a reference count to protect the ctx_
+  // resource, destroy ctx_ only when the last ReadOptions out of its
+  // life time.
+  TableFilter(const TableFilter& f)
+    : ctx_(f.ctx_),
+      table_filter_(f.table_filter_),
+      destroy_(f.destroy_) {
+    f.ref_->fetch_add(1);
+    ref_ = f.ref_;
+  }
+
   ~TableFilter() {
-    destroy_(ctx_);
+    if (ref_->fetch_sub(1) == 1) {
+      destroy_(ctx_);
+    }
   }
 
   bool operator()(const TableProperties& prop) {
@@ -2805,6 +2823,10 @@ struct TableFilter {
   void* ctx_;
   int (*table_filter_)(void*, const crocksdb_table_properties_t*);
   void (*destroy_)(void*);
+  std::shared_ptr<std::atomic<int32_t>> ref_;
+
+private:
+  TableFilter() {}
 };
 
 void crocksdb_readoptions_set_table_filter(

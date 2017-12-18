@@ -27,7 +27,7 @@ pub trait TableFilter {
 
 pub extern "C" fn table_filter(ctx: *mut c_void, props: *const DBTableProperties) -> c_int {
     unsafe {
-        let filter = &*(ctx as *mut Box<Box<TableFilter>>);
+        let filter = &*(ctx as *mut Box<TableFilter>);
         filter.table_filter(mem::transmute(&*props)) as c_int
     }
 }

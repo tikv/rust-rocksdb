@@ -1074,7 +1074,7 @@ impl ColumnFamilyOptions {
 
     pub fn set_max_bytes_for_level_multiplier(&mut self, mul: i32) {
         unsafe {
-            crocksdb_ffi::crocksdb_options_set_max_bytes_for_level_multiplier(self.inner, mul);
+            crocksdb_ffi::crocksdb_options_set_max_bytes_for_level_multiplier(self.inner, mul as f64);
         }
     }
 

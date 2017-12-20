@@ -161,9 +161,6 @@ pub struct RateLimiter {
     inner: *mut DBRateLimiter,
 }
 
-unsafe impl Send for DBRateLimiter {}
-unsafe impl Sync for DBRateLimiter {}
-
 unsafe impl Send for RateLimiter {}
 unsafe impl Sync for RateLimiter {}
 

@@ -63,6 +63,9 @@ pub enum DBKeyVersions {}
 pub enum DBEnv {}
 pub enum DBSequentialFile {}
 
+unsafe impl Send for DBRateLimiter {}
+unsafe impl Sync for DBRateLimiter {}
+
 pub fn new_bloom_filter(bits: c_int) -> *mut DBFilterPolicy {
     unsafe { crocksdb_filterpolicy_create_bloom(bits) }
 }

@@ -1078,6 +1078,12 @@ impl ColumnFamilyOptions {
         }
     }
 
+    pub fn get_max_bytes_for_level_multiplier(&mut self) -> i32 {
+        unsafe {
+            crocksdb_ffi::crocksdb_options_get_max_bytes_for_level_multiplier(self.inner) as i32
+        }
+    }
+
     pub fn set_max_compaction_bytes(&mut self, bytes: u64) {
         unsafe {
             crocksdb_ffi::crocksdb_options_set_max_compaction_bytes(self.inner, bytes);

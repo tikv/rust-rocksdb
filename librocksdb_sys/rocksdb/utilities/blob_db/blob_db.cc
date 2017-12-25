@@ -120,11 +120,11 @@ Status BlobDB::Open(const DBOptions& db_options_input,
                     const std::vector<ColumnFamilyDescriptor>& column_families_,
                     std::vector<ColumnFamilyHandle*>* handles, BlobDB** blob_db,
                     bool no_base_db) {
-  // if (column_families.size() != 1 ||
-  //     column_families[0].name != kDefaultColumnFamilyName) {
-  //   return Status::NotSupported(
-  //       "Blob DB doesn't support non-default column family.");
-  // }
+  if (column_families.size() != 1 ||
+      column_families[0].name != kDefaultColumnFamilyName) {
+    return Status::NotSupported(
+        "Blob DB doesn't support non-default column family.");
+  }
   *blob_db = nullptr;
   Status s;
 
@@ -157,24 +157,14 @@ Status BlobDB::Open(const DBOptions& db_options_input,
     all_wal_filters.push_back(rw_filter);
   }
 
-  // ColumnFamilyOptions cf_options(column_families[0].options);
-  // if (cf_options.compaction_filter != nullptr ||
-  //     cf_options.compaction_filter_factory != nullptr) {
-  //   return Status::NotSupported("Blob DB doesn't support compaction filter.");
-  // }
-  // cf_options.compaction_filter_factory.reset(
-  //     new BlobIndexCompactionFilterFactory(db_options.env));
-  // ColumnFamilyDescriptor cf_descriptor(kDefaultColumnFamilyName, cf_options);
-  std::vector<ColumnFamilyDescriptor> column_families = column_families_;
-  for (auto &e : column_families) {
-    auto &cf_options = e.options;
-    if (cf_options.compaction_filter != nullptr ||
-        cf_options.compaction_filter_factory != nullptr) {
-      return Status::NotSupported("Blob DB doesn't support compaction filter.");
-    }
-    cf_options.compaction_filter_factory.reset(
-        new BlobIndexCompactionFilterFactory(db_options.env));
+  ColumnFamilyOptions cf_options(column_families[0].options);
+  if (cf_options.compaction_filter != nullptr ||
+      cf_options.compaction_filter_factory != nullptr) {
+    return Status::NotSupported("Blob DB doesn't support compaction filter.");
   }
+  cf_options.compaction_filter_factory.reset(
+      new BlobIndexCompactionFilterFactory(db_options.env));
+  ColumnFamilyDescriptor cf_descriptor(kDefaultColumnFamilyName, cf_options);
 
   // we need to open blob db first so that recovery can happen
   BlobDBImpl* bdb = new BlobDBImpl(dbname, bdb_options, db_options);
@@ -196,7 +186,7 @@ Status BlobDB::Open(const DBOptions& db_options_input,
   }
 
   DB* db = nullptr;
-  s = DB::Open(db_options, dbname, column_families, handles, &db);
+  s = DB::Open(db_options, dbname, cf_descriptor, handles, &db);
   if (!s.ok()) {
     delete bdb;
     return s;

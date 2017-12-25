@@ -117,7 +117,7 @@ Status BlobDB::Open(const Options& options, const BlobDBOptions& bdb_options,
 
 Status BlobDB::Open(const DBOptions& db_options_input,
                     const BlobDBOptions& bdb_options, const std::string& dbname,
-                    const std::vector<ColumnFamilyDescriptor>& column_families_,
+                    const std::vector<ColumnFamilyDescriptor>& column_families,
                     std::vector<ColumnFamilyHandle*>* handles, BlobDB** blob_db,
                     bool no_base_db) {
   if (column_families.size() != 1 ||
@@ -186,7 +186,7 @@ Status BlobDB::Open(const DBOptions& db_options_input,
   }
 
   DB* db = nullptr;
-  s = DB::Open(db_options, dbname, cf_descriptor, handles, &db);
+  s = DB::Open(db_options, dbname, {cf_descriptor}, handles, &db);
   if (!s.ok()) {
     delete bdb;
     return s;

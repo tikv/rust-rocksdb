@@ -102,13 +102,7 @@ class BlobDB : public StackableDB {
                             const Slice& value, uint64_t ttl) = 0;
   virtual Status PutWithTTL(const WriteOptions& options,
                             ColumnFamilyHandle* column_family, const Slice& key,
-                            const Slice& value, uint64_t ttl) {
-    if (column_family != DefaultColumnFamily()) {
-      return Status::NotSupported(
-          "Blob DB doesn't support non-default column family.");
-    }
-    return PutWithTTL(options, key, value, ttl);
-  }
+                            const Slice& value, uint64_t ttl) = 0;
 
   // Put with expiration. Key with expiration time equal to
   // std::numeric_limits<uint64_t>::max() means the key don't expire.

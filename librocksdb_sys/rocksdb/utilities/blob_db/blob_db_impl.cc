@@ -874,6 +874,14 @@ Status BlobDBImpl::PutWithTTL(const WriteOptions& options,
   return PutUntil(options, key, value, expiration);
 }
 
+Status BlobDBImpl::PutWithTTL(const WriteOptions& options, ColumnFamilyHandle* column_family,
+                              const Slice& key, const Slice& value,
+                              uint64_t ttl) {
+  uint64_t now = EpochNow();
+  uint64_t expiration = kNoExpiration - now > ttl ? now + ttl : kNoExpiration;
+  return PutUntil(options, column_family, key, value, expiration);
+}
+
 Status BlobDBImpl::PutUntil(const WriteOptions& options, const Slice& key,
                             const Slice& value, uint64_t expiration) {
   TEST_SYNC_POINT("BlobDBImpl::PutUntil:Start");

@@ -147,6 +147,7 @@ class VersionStorageInfo {
   }
 
   int MaxInputLevel() const;
+  int MaxOutputLevel(bool allow_ingest_behind) const;
 
   // Return level number that has idx'th highest score
   int CompactionScoreLevel(int idx) const { return compaction_level_[idx]; }
@@ -461,10 +462,6 @@ class Version {
                             MergeIteratorBuilder* merger_iter_builder,
                             int level, RangeDelAggregator* range_del_agg);
 
-  void AddRangeDelIteratorsForLevel(
-      const ReadOptions& read_options, const EnvOptions& soptions, int level,
-      std::vector<InternalIterator*>* range_del_iters);
-
   // Lookup the value for key.  If found, store it in *val and
   // return OK.  Else return a non-OK status.
   // Uses *operands to store merge_operator operations to apply later.
@@ -484,7 +481,8 @@ class Version {
   void Get(const ReadOptions&, const LookupKey& key, PinnableSlice* value,
            Status* status, MergeContext* merge_context,
            RangeDelAggregator* range_del_agg, bool* value_found = nullptr,
-           bool* key_exists = nullptr, SequenceNumber* seq = nullptr);
+           bool* key_exists = nullptr, SequenceNumber* seq = nullptr,
+           bool* is_blob = nullptr);
 
   // Loads some stats information from files. Call without mutex held. It needs
   // to be called before applying the version to the version set.

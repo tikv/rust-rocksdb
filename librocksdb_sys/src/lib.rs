@@ -1024,7 +1024,7 @@ extern "C" {
         limit_key: *const u8,
         limit_key_len: size_t,
     );
-    pub fn crocksdb_delete_file_in_range(
+    pub fn crocksdb_delete_files_in_range(
         db: *mut DBInstance,
         range_start_key: *const u8,
         range_start_key_len: size_t,
@@ -1033,7 +1033,7 @@ extern "C" {
         include_end: bool,
         err: *mut *mut c_char,
     );
-    pub fn crocksdb_delete_file_in_range_cf(
+    pub fn crocksdb_delete_files_in_range_cf(
         db: *mut DBInstance,
         cf: *mut DBCFHandle,
         range_start_key: *const u8,

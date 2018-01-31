@@ -3382,10 +3382,11 @@ void crocksdb_get_options_from_string(const crocksdb_options_t* base_options,
                                  &new_options->rep));
 }
 
-void crocksdb_delete_file_in_range(crocksdb_t* db,
-                                   const char* start_key, size_t start_key_len,
-                                   const char* limit_key, size_t limit_key_len,
-                                   bool include_end, char** errptr) {
+void crocksdb_delete_files_in_range(
+    crocksdb_t* db,
+    const char* start_key, size_t start_key_len,
+    const char* limit_key, size_t limit_key_len,
+    bool include_end, char** errptr) {
   Slice a, b;
   SaveError(
       errptr,
@@ -3396,7 +3397,7 @@ void crocksdb_delete_file_in_range(crocksdb_t* db,
           include_end));
 }
 
-void crocksdb_delete_file_in_range_cf(
+void crocksdb_delete_files_in_range_cf(
     crocksdb_t* db, crocksdb_column_family_handle_t* column_family,
     const char* start_key, size_t start_key_len,
     const char* limit_key, size_t limit_key_len,

@@ -1396,13 +1396,13 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_get_options_from_string(
     const crocksdb_options_t* base_options, const char* opts_str,
     crocksdb_options_t* new_options, char** errptr);
 
-extern C_ROCKSDB_LIBRARY_API void crocksdb_delete_file_in_range(
+extern C_ROCKSDB_LIBRARY_API void crocksdb_delete_files_in_range(
     crocksdb_t* db,
     const char* start_key, size_t start_key_len,
     const char* limit_key, size_t limit_key_len,
     bool include_end, char** errptr);
 
-extern C_ROCKSDB_LIBRARY_API void crocksdb_delete_file_in_range_cf(
+extern C_ROCKSDB_LIBRARY_API void crocksdb_delete_files_in_range_cf(
     crocksdb_t* db, crocksdb_column_family_handle_t* column_family,
     const char* start_key, size_t start_key_len,
     const char* limit_key, size_t limit_key_len,

@@ -1034,14 +1034,14 @@ impl DB {
         }
     }
 
-    pub fn delete_file_in_range(
+    pub fn delete_files_in_range(
         &self,
         start_key: &[u8],
         end_key: &[u8],
         include_end: bool,
     ) -> Result<(), String> {
         unsafe {
-            ffi_try!(crocksdb_delete_file_in_range(
+            ffi_try!(crocksdb_delete_files_in_range(
                 self.inner,
                 start_key.as_ptr(),
                 start_key.len() as size_t,
@@ -1053,7 +1053,7 @@ impl DB {
         }
     }
 
-    pub fn delete_file_in_range_cf(
+    pub fn delete_files_in_range_cf(
         &self,
         cf: &CFHandle,
         start_key: &[u8],
@@ -1061,7 +1061,7 @@ impl DB {
         include_end: bool,
     ) -> Result<(), String> {
         unsafe {
-            ffi_try!(crocksdb_delete_file_in_range_cf(
+            ffi_try!(crocksdb_delete_files_in_range_cf(
                 self.inner,
                 cf.inner,
                 start_key.as_ptr(),

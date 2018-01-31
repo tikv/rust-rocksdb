@@ -64,7 +64,7 @@ fn test_delete_files_in_range_with_iter() {
     let mut iter = db.iter();
 
     // delete sst2
-    db.delete_file_in_range(b"key2", b"key7", false).unwrap();
+    db.delete_files_in_range(b"key2", b"key7", false).unwrap();
 
     let mut count = 0;
     assert!(iter.seek(SeekKey::Start));
@@ -87,7 +87,7 @@ fn test_delete_files_in_range_with_snap() {
     let snap = db.snapshot();
 
     // delete sst2
-    db.delete_file_in_range(b"key2", b"key7", false).unwrap();
+    db.delete_files_in_range(b"key2", b"key7", false).unwrap();
 
     let mut iter = snap.iter();
     assert!(iter.seek(SeekKey::Start));
@@ -142,7 +142,7 @@ fn test_delete_files_in_range_with_delete_range() {
     // Before the fix, the file in the middle with keys 2 and 3 will be deleted,
     // which can be a problem when we compact later. After the fix, no file will
     // be deleted since they have an overlapped delete range [0, 6).
-    db.delete_file_in_range(b"1", b"4", false).unwrap();
+    db.delete_files_in_range(b"1", b"4", false).unwrap();
 
     // Flush a file with keys 4 and 5 to level 0.
     for i in 4..5 {

@@ -471,6 +471,9 @@ Status DBImpl::CompactFilesImpl(
     input_set.insert(TableFileNameToNumber(file_name));
   }
 
+  ROCKS_LOG_INFO(immutable_db_options_.info_log, "input_set size %d",
+                 (int) input_set.size());
+
   ColumnFamilyMetaData cf_meta;
   // TODO(yhchiang): can directly use version here if none of the
   // following functions call is pluggable to external developers.
@@ -492,6 +495,9 @@ Status DBImpl::CompactFilesImpl(
     return s;
   }
 
+  ROCKS_LOG_INFO(immutable_db_options_.info_log, "input_set size %d",
+                 (int) input_set.size());
+
   std::vector<CompactionInputFiles> input_files;
   s = cfd->compaction_picker()->GetCompactionInputsFromFileNumbers(
       &input_files, &input_set, version->storage_info(), compact_options);
@@ -500,6 +506,8 @@ Status DBImpl::CompactFilesImpl(
   }
 
   for (auto inputs : input_files) {
+    ROCKS_LOG_INFO(immutable_db_options_.info_log, "input_files level %d size %d",
+                   (int) inputs.level, (int) inputs.size());
     if (cfd->compaction_picker()->AreFilesInCompaction(inputs.files)) {
       return Status::Aborted(
           "Some of the necessary compaction input "

@@ -93,11 +93,9 @@ fn test_compact_files() {
         db.put(b, b).unwrap();
         db.flush(true).unwrap();
     }
-    let output_level = cf_opts.get_num_levels() - 1;
-    let input_files = get_files_cf(&db, cf_handle, output_level);
+    let input_files = get_files_cf(&db, cf_handle, 0);
     assert_eq!(input_files.len(), num_files);
-    db.compact_files_cf(cf_handle, &opts, &input_files, output_level as i32)
+    db.compact_files_cf(cf_handle, &opts, &input_files, 0)
         .unwrap();
-    assert_eq!(get_files_cf(&db, cf_handle, output_level).len(), 1);
-    assert_eq!(get_files_cf(&db, cf_handle, output_level - 1).len(), 0);
+    assert_eq!(get_files_cf(&db, cf_handle, 0).len(), 1);
 }

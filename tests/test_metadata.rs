@@ -13,6 +13,8 @@
 
 use rocksdb::{CFHandle, ColumnFamilyOptions, CompactionOptions, DBCompressionType, DBOptions,
               Writable, DB};
+use std::fs::File;
+use std::io::Read;
 use tempdir::TempDir;
 
 #[test]
@@ -100,5 +102,13 @@ fn test_compact_files() {
         .unwrap();
     let output_files = get_files_cf(&db, cf_handle, 0);
     println!("{:?}", output_files);
+
+    println!("------------------------ LOG ------------------------------");
+    let logfile = path.path().join("LOG");
+    let mut s = String::new();
+    File::open(logfile).unwrap().read_to_string(&mut s).unwrap();
+    println!("{}", s);
+    println!("------------------------ LOG ------------------------------");
+
     assert_eq!(output_files.len(), 1);
 }

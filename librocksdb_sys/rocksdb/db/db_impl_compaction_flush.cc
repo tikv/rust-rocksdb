@@ -414,6 +414,8 @@ Status DBImpl::CompactFiles(
     // IngestExternalFile() calls to finish.
     WaitForIngestFile();
 
+    ROCKS_LOG_INFO(immutable_db_options_.info_log, "input_file_names size %d",
+                   (int) input_file_names.size());
     s = CompactFilesImpl(compact_options, cfd, sv->current,
                          input_file_names, output_level,
                          output_path_id, &job_context, &log_buffer);
@@ -468,6 +470,8 @@ Status DBImpl::CompactFilesImpl(
 
   std::unordered_set<uint64_t> input_set;
   for (auto file_name : input_file_names) {
+    ROCKS_LOG_INFO(immutable_db_options_.info_log, "input_file %s",
+                   file_name.data());
     input_set.insert(TableFileNameToNumber(file_name));
   }
 

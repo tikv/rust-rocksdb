@@ -11,7 +11,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use rocksdb::{ColumnFamilyOptions, DBOptions, Writable, DB};
+use rocksdb::{CFHandle, ColumnFamilyOptions, CompactionOptions, DBCompressionType, DBOptions,
+              Writable, DB};
 use tempdir::TempDir;
 
 #[test]
@@ -48,5 +49,53 @@ fn test_metadata() {
             assert!(f.get_size() > 0);
             assert!(f.get_name().len() > 0);
         }
+    }
+}
+
+fn get_files_cf(db: &DB, cf: &CFHandle, max_level: usize) -> Vec<String> {
+    let mut files = Vec::new();
+    let cf_meta = db.get_column_family_meta_data(cf);
+    let cf_levels = cf_meta.get_levels();
+    for (i, level) in cf_levels.iter().enumerate() {
+        if i > max_level {
+            break;
+        }
+        let cf_files = level.get_files();
+        for f in cf_files {
+            files.push(f.get_name());
+        }
+    }
+    files
+}
+
+#[test]
+fn test_compact_files() {
+    let path = TempDir::new("_rust_rocksdb_test_metadata").unwrap();
+    let mut opts = DBOptions::new();
+    opts.create_if_missing(true);
+    let mut cf_opts = ColumnFamilyOptions::new();
+    cf_opts.set_disable_auto_compactions(true);
+    let db = DB::open_cf(
+        opts,
+        path.path().to_str().unwrap(),
+        vec![("default", cf_opts)],
+    ).unwrap();
+    let cf_handle = db.cf_handle("default").unwrap();
+
+    let mut opts = CompactionOptions::new();
+    opts.set_compression(DBCompressionType::Zstd);
+    opts.set_output_file_size_limit(128);
+
+    // Compaction files in level 0~(i-1) to level i.
+    let num_levels = 7;
+    for i in 1..num_levels {
+        db.put(&[i], &[i]).unwrap();
+        db.flush(true).unwrap();
+        let level = i as usize;
+        let input_files = get_files_cf(&db, cf_handle, level - 1);
+        db.compact_files_cf(cf_handle, &opts, &input_files, level as i32)
+            .unwrap();
+        assert_eq!(get_files_cf(&db, cf_handle, level).len(), 1);
+        assert_eq!(get_files_cf(&db, cf_handle, level - 1).len(), 0);
     }
 }

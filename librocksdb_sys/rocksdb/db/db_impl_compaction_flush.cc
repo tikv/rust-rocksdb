@@ -414,6 +414,8 @@ Status DBImpl::CompactFiles(
     // IngestExternalFile() calls to finish.
     WaitForIngestFile();
 
+    ROCKS_LOG_INFO(immutable_db_options_.info_log, "input_file_names size %d",
+                   (int) input_file_names.size());
     s = CompactFilesImpl(compact_options, cfd, sv->current,
                          input_file_names, output_level,
                          output_path_id, &job_context, &log_buffer);
@@ -468,8 +470,13 @@ Status DBImpl::CompactFilesImpl(
 
   std::unordered_set<uint64_t> input_set;
   for (auto file_name : input_file_names) {
+    ROCKS_LOG_INFO(immutable_db_options_.info_log, "input_file %s",
+                   file_name.data());
     input_set.insert(TableFileNameToNumber(file_name));
   }
+
+  ROCKS_LOG_INFO(immutable_db_options_.info_log, "input_set size %d",
+                 (int) input_set.size());
 
   ColumnFamilyMetaData cf_meta;
   // TODO(yhchiang): can directly use version here if none of the
@@ -492,6 +499,9 @@ Status DBImpl::CompactFilesImpl(
     return s;
   }
 
+  ROCKS_LOG_INFO(immutable_db_options_.info_log, "input_set size %d",
+                 (int) input_set.size());
+
   std::vector<CompactionInputFiles> input_files;
   s = cfd->compaction_picker()->GetCompactionInputsFromFileNumbers(
       &input_files, &input_set, version->storage_info(), compact_options);
@@ -500,6 +510,8 @@ Status DBImpl::CompactFilesImpl(
   }
 
   for (auto inputs : input_files) {
+    ROCKS_LOG_INFO(immutable_db_options_.info_log, "input_files level %d size %d",
+                   (int) inputs.level, (int) inputs.size());
     if (cfd->compaction_picker()->AreFilesInCompaction(inputs.files)) {
       return Status::Aborted(
           "Some of the necessary compaction input "

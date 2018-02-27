@@ -20,7 +20,7 @@ matrix:
 
 script:
 - cargo build
-- cargo test --all
+- cargo test --all -- --nocapture
 
 env:
   global:

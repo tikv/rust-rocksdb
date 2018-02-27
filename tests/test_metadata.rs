@@ -82,20 +82,23 @@ fn test_compact_files() {
     ).unwrap();
     let cf_handle = db.cf_handle("default").unwrap();
 
+    let cf_opts = db.get_options_cf(cf_handle);
+    let output_file_size = cf_opts.get_target_file_size_base();
+
     let mut opts = CompactionOptions::new();
     opts.set_compression(DBCompressionType::Zstd);
-    opts.set_output_file_size_limit(128);
+    opts.set_output_file_size_limit(output_file_size as usize);
 
     // Compaction files in level 0~(i-1) to level i.
-    let num_levels = 7;
+    let num_levels = cf_opts.get_num_levels();
     for i in 1..num_levels {
-        db.put(&[i], &[i]).unwrap();
+        let b = &[i as u8];
+        db.put(b, b).unwrap();
         db.flush(true).unwrap();
-        let level = i as usize;
-        let input_files = get_files_cf(&db, cf_handle, level - 1);
-        db.compact_files_cf(cf_handle, &opts, &input_files, level as i32)
+        let input_files = get_files_cf(&db, cf_handle, i - 1);
+        db.compact_files_cf(cf_handle, &opts, &input_files, i as i32)
             .unwrap();
-        assert_eq!(get_files_cf(&db, cf_handle, level).len(), 1);
-        assert_eq!(get_files_cf(&db, cf_handle, level - 1).len(), 0);
+        assert_eq!(get_files_cf(&db, cf_handle, i).len(), 1);
+        assert_eq!(get_files_cf(&db, cf_handle, i - 1).len(), 0);
     }
 }

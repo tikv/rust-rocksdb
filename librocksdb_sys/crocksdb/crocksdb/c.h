@@ -792,6 +792,8 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_level0_stop_writes_trigge
     crocksdb_options_t*, int);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_target_file_size_base(
     crocksdb_options_t*, uint64_t);
+extern C_ROCKSDB_LIBRARY_API uint64_t crocksdb_options_get_target_file_size_base(
+    const crocksdb_options_t*);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_target_file_size_multiplier(
     crocksdb_options_t*, int);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_max_bytes_for_level_base(

@@ -1180,6 +1180,10 @@ impl ColumnFamilyOptions {
         }
     }
 
+    pub fn get_target_file_size_base(&self) -> u64 {
+        unsafe { crocksdb_ffi::crocksdb_options_get_target_file_size_base(self.inner) }
+    }
+
     pub fn set_min_write_buffer_number_to_merge(&mut self, to_merge: c_int) {
         unsafe {
             crocksdb_ffi::crocksdb_options_set_min_write_buffer_number_to_merge(

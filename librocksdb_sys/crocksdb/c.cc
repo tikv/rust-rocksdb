@@ -1992,6 +1992,11 @@ void crocksdb_options_set_target_file_size_base(
   opt->rep.target_file_size_base = n;
 }
 
+uint64_t crocksdb_options_get_target_file_size_base(
+    const crocksdb_options_t* opt) {
+  return opt->rep.target_file_size_base;
+}
+
 void crocksdb_options_set_target_file_size_multiplier(
     crocksdb_options_t* opt, int n) {
   opt->rep.target_file_size_multiplier = n;

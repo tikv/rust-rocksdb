@@ -55,13 +55,11 @@ fn test_metadata() {
 fn get_files_cf(db: &DB, cf: &CFHandle, max_level: usize) -> Vec<String> {
     let mut files = Vec::new();
     let cf_meta = db.get_column_family_meta_data(cf);
-    let cf_levels = cf_meta.get_levels();
-    for (i, level) in cf_levels.iter().enumerate() {
+    for (i, level) in cf_meta.get_levels().iter().enumerate() {
         if i > max_level {
             break;
         }
-        let cf_files = level.get_files();
-        for f in cf_files {
+        for f in level.get_files() {
             files.push(f.get_name());
         }
     }
@@ -89,16 +87,17 @@ fn test_compact_files() {
     opts.set_compression(DBCompressionType::Zstd);
     opts.set_output_file_size_limit(output_file_size as usize);
 
-    // Compaction files in level 0~(i-1) to level i.
-    let num_levels = cf_opts.get_num_levels();
-    for i in 1..num_levels {
+    let num_files = 5;
+    for i in 0..num_files {
         let b = &[i as u8];
         db.put(b, b).unwrap();
         db.flush(true).unwrap();
-        let input_files = get_files_cf(&db, cf_handle, i - 1);
-        db.compact_files_cf(cf_handle, &opts, &input_files, i as i32)
-            .unwrap();
-        assert_eq!(get_files_cf(&db, cf_handle, i).len(), 1);
-        assert_eq!(get_files_cf(&db, cf_handle, i - 1).len(), 0);
     }
+    let input_files = get_files_cf(&db, cf_handle, 0);
+    assert_eq!(input_files.len(), num_files);
+    let bottomost_level = cf_opts.get_num_levels() - 1;
+    db.compact_files_cf(cf_handle, &opts, &input_files, bottomost_level as i32)
+        .unwrap();
+    assert_eq!(get_files_cf(&db, cf_handle, bottomost_level).len(), 1);
+    assert_eq!(get_files_cf(&db, cf_handle, bottomost_level - 1).len(), 0);
 }

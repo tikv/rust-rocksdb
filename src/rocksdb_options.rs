@@ -15,10 +15,11 @@
 
 use compaction_filter::{new_compaction_filter, CompactionFilter, CompactionFilterHandle};
 use comparator::{self, compare_callback, ComparatorCallback};
-use crocksdb_ffi::{self, DBBlockBasedTableOptions, DBCompactOptions, DBCompressionType,
-                   DBFifoCompactionOptions, DBFlushOptions, DBInfoLogLevel, DBInstance,
-                   DBRateLimiter, DBReadOptions, DBRecoveryMode, DBRestoreOptions, DBSnapshot,
-                   DBStatisticsHistogramType, DBStatisticsTickerType, DBWriteOptions, Options};
+use crocksdb_ffi::{self, DBBlockBasedTableOptions, DBCompactOptions, DBCompactionOptions,
+                   DBCompressionType, DBFifoCompactionOptions, DBFlushOptions, DBInfoLogLevel,
+                   DBInstance, DBRateLimiter, DBReadOptions, DBRecoveryMode, DBRestoreOptions,
+                   DBSnapshot, DBStatisticsHistogramType, DBStatisticsTickerType, DBWriteOptions,
+                   Options};
 use event_listener::{new_event_listener, EventListener};
 use libc::{self, c_double, c_int, c_uchar, c_void, size_t};
 use merge_operator::{self, full_merge_callback, partial_merge_callback, MergeOperatorCallback};
@@ -493,6 +494,40 @@ impl Drop for CompactOptions {
     }
 }
 
+pub struct CompactionOptions {
+    pub inner: *mut DBCompactionOptions,
+}
+
+impl CompactionOptions {
+    pub fn new() -> CompactionOptions {
+        unsafe {
+            CompactionOptions {
+                inner: crocksdb_ffi::crocksdb_compaction_options_create(),
+            }
+        }
+    }
+
+    pub fn set_compression(&mut self, compression: DBCompressionType) {
+        unsafe {
+            crocksdb_ffi::crocksdb_compaction_options_set_compression(self.inner, compression);
+        }
+    }
+
+    pub fn set_output_file_size_limit(&mut self, size: usize) {
+        unsafe {
+            crocksdb_ffi::crocksdb_compaction_options_set_output_file_size_limit(self.inner, size);
+        }
+    }
+}
+
+impl Drop for CompactionOptions {
+    fn drop(&mut self) {
+        unsafe {
+            crocksdb_ffi::crocksdb_compaction_options_destroy(self.inner);
+        }
+    }
+}
+
 pub struct DBOptions {
     pub inner: *mut Options,
 }
@@ -528,6 +563,10 @@ impl Clone for DBOptions {
 impl DBOptions {
     pub fn new() -> DBOptions {
         DBOptions::default()
+    }
+
+    pub unsafe fn from_raw(inner: *mut Options) -> DBOptions {
+        DBOptions { inner: inner }
     }
 
     pub fn increase_parallelism(&mut self, parallelism: i32) {
@@ -612,6 +651,10 @@ impl DBOptions {
         unsafe {
             crocksdb_ffi::crocksdb_options_set_max_background_jobs(self.inner, n);
         }
+    }
+
+    pub fn get_max_background_jobs(&self) -> i32 {
+        unsafe { crocksdb_ffi::crocksdb_options_get_max_background_jobs(self.inner) as i32 }
     }
 
     pub fn set_max_subcompactions(&mut self, n: u32) {
@@ -708,7 +751,6 @@ impl DBOptions {
     pub fn get_statistics(&self) -> Option<String> {
         unsafe {
             let value = crocksdb_ffi::crocksdb_options_statistics_get_string(self.inner);
-
 
             if value.is_null() {
                 return None;
@@ -993,7 +1035,6 @@ impl ColumnFamilyOptions {
         }
     }
 
-
     pub fn compression(&mut self, t: DBCompressionType) {
         unsafe {
             crocksdb_ffi::crocksdb_options_set_compression(self.inner, t);
@@ -1065,7 +1106,6 @@ impl ColumnFamilyOptions {
             crocksdb_ffi::crocksdb_options_set_comparator(self.inner, cmp);
         }
     }
-
 
     pub fn set_block_cache_size_mb(&mut self, cache_size: u64) {
         unsafe {
@@ -1145,6 +1185,10 @@ impl ColumnFamilyOptions {
         }
     }
 
+    pub fn get_target_file_size_base(&self) -> u64 {
+        unsafe { crocksdb_ffi::crocksdb_options_get_target_file_size_base(self.inner) }
+    }
+
     pub fn set_min_write_buffer_number_to_merge(&mut self, to_merge: c_int) {
         unsafe {
             crocksdb_ffi::crocksdb_options_set_min_write_buffer_number_to_merge(
@@ -1192,6 +1236,10 @@ impl ColumnFamilyOptions {
                 crocksdb_ffi::crocksdb_options_set_disable_auto_compactions(self.inner, 0)
             }
         }
+    }
+
+    pub fn get_disable_auto_compactions(&self) -> bool {
+        unsafe { crocksdb_ffi::crocksdb_options_get_disable_auto_compactions(self.inner) == 1 }
     }
 
     pub fn set_block_based_table_factory(&mut self, factory: &BlockBasedOptions) {

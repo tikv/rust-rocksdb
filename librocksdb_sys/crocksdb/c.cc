@@ -131,6 +131,10 @@ using rocksdb::DecodeFixed32;
 using rocksdb::DecodeFixed64;
 using rocksdb::PutFixed64;
 using rocksdb::VectorRepFactory;
+using rocksdb::ColumnFamilyMetaData;
+using rocksdb::LevelMetaData;
+using rocksdb::SstFileMetaData;
+using rocksdb::CompactionOptions;
 
 using std::shared_ptr;
 
@@ -191,6 +195,19 @@ struct crocksdb_keyversions_t {
 
 struct crocksdb_compactionfiltercontext_t {
   CompactionFilter::Context rep;
+};
+
+struct crocksdb_column_family_meta_data_t {
+  ColumnFamilyMetaData rep;
+};
+struct crocksdb_level_meta_data_t {
+  LevelMetaData rep;
+};
+struct crocksdb_sst_file_meta_data_t {
+  SstFileMetaData rep;
+};
+struct crocksdb_compaction_options_t {
+  CompactionOptions rep;
 };
 
 struct crocksdb_compactionfilter_t : public CompactionFilter {
@@ -1170,12 +1187,43 @@ void crocksdb_enable_file_deletions(
   SaveError(errptr, db->rep->EnableFileDeletions(force));
 }
 
+crocksdb_options_t* crocksdb_get_db_options(crocksdb_t* db) {
+  auto opts = new crocksdb_options_t;
+  opts->rep = Options(db->rep->GetDBOptions(), ColumnFamilyOptions());
+  return opts;
+}
+
+void crocksdb_set_db_options(crocksdb_t* db,
+                             const char** names,
+                             const char** values,
+                             size_t num_options,
+                             char** errptr) {
+  std::unordered_map<std::string, std::string> options;
+  for (size_t i = 0; i < num_options; i++) {
+    options.emplace(names[i], values[i]);
+  }
+  SaveError(errptr, db->rep->SetDBOptions(options));
+}
+
 crocksdb_options_t* crocksdb_get_options_cf(
     const crocksdb_t* db,
     crocksdb_column_family_handle_t* column_family) {
   crocksdb_options_t* options = new crocksdb_options_t;
   options->rep = db->rep->GetOptions(column_family->rep);
   return options;
+}
+
+void crocksdb_set_options_cf(crocksdb_t* db,
+                             crocksdb_column_family_handle_t* cf,
+                             const char** names,
+                             const char** values,
+                             size_t num_options,
+                             char** errptr) {
+  std::unordered_map<std::string, std::string> options;
+  for (size_t i = 0; i < num_options; i++) {
+    options.emplace(names[i], values[i]);
+  }
+  SaveError(errptr, db->rep->SetOptions(cf->rep, options));
 }
 
 void crocksdb_destroy_db(
@@ -1975,6 +2023,11 @@ void crocksdb_options_set_target_file_size_base(
   opt->rep.target_file_size_base = n;
 }
 
+uint64_t crocksdb_options_get_target_file_size_base(
+    const crocksdb_options_t* opt) {
+  return opt->rep.target_file_size_base;
+}
+
 void crocksdb_options_set_target_file_size_multiplier(
     crocksdb_options_t* opt, int n) {
   opt->rep.target_file_size_multiplier = n;
@@ -2256,6 +2309,10 @@ void crocksdb_options_set_max_background_jobs(crocksdb_options_t* opt, int n) {
   opt->rep.max_background_jobs = n;
 }
 
+int crocksdb_options_get_max_background_jobs(const crocksdb_options_t* opt) {
+  return opt->rep.max_background_jobs;
+}
+
 void crocksdb_options_set_max_log_file_size(crocksdb_options_t* opt, size_t v) {
   opt->rep.max_log_file_size = v;
 }
@@ -2316,6 +2373,10 @@ void crocksdb_options_set_arena_block_size(
 
 void crocksdb_options_set_disable_auto_compactions(crocksdb_options_t* opt, int disable) {
   opt->rep.disable_auto_compactions = disable;
+}
+
+int crocksdb_options_get_disable_auto_compactions(const crocksdb_options_t* opt) {
+  return opt->rep.disable_auto_compactions;
 }
 
 void crocksdb_options_set_delete_obsolete_files_period_micros(
@@ -4022,6 +4083,85 @@ uint64_t crocksdb_set_external_sst_file_global_seq_no(
     SaveError(errptr, s);
   }
   return pre_seq_no;
+}
+
+void crocksdb_get_column_family_meta_data(
+    crocksdb_t* db,
+    crocksdb_column_family_handle_t* cf,
+    crocksdb_column_family_meta_data_t* meta) {
+  db->rep->GetColumnFamilyMetaData(cf->rep, &meta->rep);
+}
+
+crocksdb_column_family_meta_data_t* crocksdb_column_family_meta_data_create() {
+  return new crocksdb_column_family_meta_data_t();
+}
+
+void crocksdb_column_family_meta_data_destroy(
+    crocksdb_column_family_meta_data_t* meta) {
+  delete meta;
+}
+
+size_t crocksdb_column_family_meta_data_level_count(
+    const crocksdb_column_family_meta_data_t* meta) {
+  return meta->rep.levels.size();
+}
+
+const crocksdb_level_meta_data_t* crocksdb_column_family_meta_data_level_data(
+    const crocksdb_column_family_meta_data_t* meta, size_t n) {
+  return reinterpret_cast<const crocksdb_level_meta_data_t*>(&meta->rep.levels[n]);
+}
+
+size_t crocksdb_level_meta_data_file_count(
+    const crocksdb_level_meta_data_t* meta) {
+  return meta->rep.files.size();
+}
+
+const crocksdb_sst_file_meta_data_t* crocksdb_level_meta_data_file_data(
+    const crocksdb_level_meta_data_t* meta, size_t n) {
+  return reinterpret_cast<const crocksdb_sst_file_meta_data_t*>(&meta->rep.files[n]);
+}
+
+size_t crocksdb_sst_file_meta_data_size(const crocksdb_sst_file_meta_data_t* meta) {
+  return meta->rep.size;
+}
+
+const char* crocksdb_sst_file_meta_data_name(const crocksdb_sst_file_meta_data_t* meta) {
+  return meta->rep.name.data();
+}
+
+crocksdb_compaction_options_t* crocksdb_compaction_options_create() {
+  return new crocksdb_compaction_options_t();
+}
+
+void crocksdb_compaction_options_destroy(crocksdb_compaction_options_t* opts) {
+  delete opts;
+}
+
+void crocksdb_compaction_options_set_compression(
+    crocksdb_compaction_options_t* opts,
+    int compression) {
+  opts->rep.compression = static_cast<CompressionType>(compression);
+}
+
+void crocksdb_compaction_options_set_output_file_size_limit(
+    crocksdb_compaction_options_t* opts,
+    size_t size) {
+  opts->rep.output_file_size_limit = size;
+}
+
+void crocksdb_compact_files_cf(
+   crocksdb_t* db, crocksdb_column_family_handle_t* cf,
+   crocksdb_compaction_options_t* opts,
+   const char** input_file_names,
+   size_t input_file_count,
+   int output_level,
+   char** errptr) {
+  std::vector<std::string> input_files;
+  for (size_t i = 0; i < input_file_count; i++) {
+    input_files.push_back(input_file_names[i]);
+  }
+  auto s = db->rep->CompactFiles(opts->rep, cf->rep, input_files, output_level);
+  SaveError(errptr, s);
 }
 
 }  // end extern "C"

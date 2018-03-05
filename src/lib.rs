@@ -31,6 +31,7 @@ mod table_properties_collector;
 mod table_properties_collector_factory;
 mod event_listener;
 mod table_filter;
+mod metadata;
 
 pub use compaction_filter::CompactionFilter;
 pub use event_listener::{CompactionJobInfo, EventListener, FlushJobInfo, IngestionInfo};
@@ -38,13 +39,14 @@ pub use librocksdb_sys::{self as crocksdb_ffi, new_bloom_filter, CompactionPrior
                          DBCompactionStyle, DBCompressionType, DBEntryType, DBInfoLogLevel,
                          DBRecoveryMode, DBStatisticsHistogramType, DBStatisticsTickerType};
 pub use merge_operator::MergeOperands;
+pub use metadata::{ColumnFamilyMetaData, LevelMetaData, SstFileMetaData};
 pub use rocksdb::{set_external_sst_file_global_seq_no, BackupEngine, CFHandle, DBIterator,
                   DBVector, Env, ExternalSstFileInfo, Kv, Range, SeekKey, SequentialFile,
                   SstFileWriter, Writable, WriteBatch, DB};
-pub use rocksdb_options::{BlockBasedOptions, ColumnFamilyOptions, CompactOptions, DBOptions,
-                          EnvOptions, FifoCompactionOptions, HistogramData,
-                          IngestExternalFileOptions, RateLimiter, ReadOptions, RestoreOptions,
-                          WriteOptions};
+pub use rocksdb_options::{BlockBasedOptions, ColumnFamilyOptions, CompactOptions,
+                          CompactionOptions, DBOptions, EnvOptions, FifoCompactionOptions,
+                          HistogramData, IngestExternalFileOptions, RateLimiter, ReadOptions,
+                          RestoreOptions, WriteOptions};
 pub use slice_transform::SliceTransform;
 pub use table_filter::TableFilter;
 pub use table_properties::{TableProperties, TablePropertiesCollection,

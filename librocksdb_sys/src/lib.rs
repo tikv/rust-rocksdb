@@ -62,6 +62,10 @@ pub enum DBEventListener {}
 pub enum DBKeyVersions {}
 pub enum DBEnv {}
 pub enum DBSequentialFile {}
+pub enum DBColumnFamilyMetaData {}
+pub enum DBLevelMetaData {}
+pub enum DBSstFileMetaData {}
+pub enum DBCompactionOptions {}
 
 pub fn new_bloom_filter(bits: c_int) -> *mut DBFilterPolicy {
     unsafe { crocksdb_filterpolicy_create_bloom(bits) }
@@ -312,7 +316,23 @@ macro_rules! ffi_try {
 // TODO audit the use of boolean arguments, b/c I think they need to be u8
 // instead...
 extern "C" {
+    pub fn crocksdb_get_db_options(db: *mut DBInstance) -> *mut Options;
+    pub fn crocksdb_set_db_options(
+        db: *mut DBInstance,
+        names: *const *const c_char,
+        values: *const *const c_char,
+        num_options: size_t,
+        errptr: *mut *mut c_char,
+    );
     pub fn crocksdb_get_options_cf(db: *mut DBInstance, cf: *mut DBCFHandle) -> *mut Options;
+    pub fn crocksdb_set_options_cf(
+        db: *mut DBInstance,
+        cf: *mut DBCFHandle,
+        names: *const *const c_char,
+        values: *const *const c_char,
+        num_options: size_t,
+        errptr: *mut *mut c_char,
+    );
     pub fn crocksdb_options_create() -> *mut Options;
     pub fn crocksdb_options_copy(opts: *const Options) -> *mut Options;
     pub fn crocksdb_options_destroy(opts: *mut Options);
@@ -414,6 +434,7 @@ extern "C" {
     pub fn crocksdb_options_set_level0_stop_writes_trigger(options: *mut Options, no: c_int);
     pub fn crocksdb_options_set_write_buffer_size(options: *mut Options, bytes: u64);
     pub fn crocksdb_options_set_target_file_size_base(options: *mut Options, bytes: u64);
+    pub fn crocksdb_options_get_target_file_size_base(options: *const Options) -> u64;
     pub fn crocksdb_options_set_target_file_size_multiplier(options: *mut Options, mul: c_int);
     pub fn crocksdb_options_set_max_bytes_for_level_base(options: *mut Options, bytes: u64);
     pub fn crocksdb_options_set_max_bytes_for_level_multiplier(options: *mut Options, mul: f64);
@@ -452,7 +473,9 @@ extern "C" {
     );
     pub fn crocksdb_set_bottommost_compression(options: *mut Options, c: DBCompressionType);
     pub fn crocksdb_options_set_max_background_jobs(options: *mut Options, max_bg_jobs: c_int);
+    pub fn crocksdb_options_get_max_background_jobs(options: *const Options) -> c_int;
     pub fn crocksdb_options_set_disable_auto_compactions(options: *mut Options, v: c_int);
+    pub fn crocksdb_options_get_disable_auto_compactions(options: *const Options) -> c_int;
     pub fn crocksdb_options_set_report_bg_io_stats(options: *mut Options, v: c_int);
     pub fn crocksdb_options_set_compaction_readahead_size(options: *mut Options, v: size_t);
     pub fn crocksdb_options_set_wal_recovery_mode(options: *mut Options, mode: DBRecoveryMode);
@@ -1538,6 +1561,52 @@ extern "C" {
         seq_no: u64,
         err: *mut *mut c_char,
     ) -> u64;
+
+    pub fn crocksdb_get_column_family_meta_data(
+        db: *mut DBInstance,
+        cf: *mut DBCFHandle,
+        meta: *mut DBColumnFamilyMetaData,
+    );
+
+    pub fn crocksdb_column_family_meta_data_create() -> *mut DBColumnFamilyMetaData;
+    pub fn crocksdb_column_family_meta_data_destroy(meta: *mut DBColumnFamilyMetaData);
+    pub fn crocksdb_column_family_meta_data_level_count(
+        meta: *const DBColumnFamilyMetaData,
+    ) -> size_t;
+    pub fn crocksdb_column_family_meta_data_level_data(
+        meta: *const DBColumnFamilyMetaData,
+        n: size_t,
+    ) -> *const DBLevelMetaData;
+
+    pub fn crocksdb_level_meta_data_file_count(meta: *const DBLevelMetaData) -> size_t;
+    pub fn crocksdb_level_meta_data_file_data(
+        meta: *const DBLevelMetaData,
+        n: size_t,
+    ) -> *const DBSstFileMetaData;
+
+    pub fn crocksdb_sst_file_meta_data_size(meta: *const DBSstFileMetaData) -> size_t;
+    pub fn crocksdb_sst_file_meta_data_name(meta: *const DBSstFileMetaData) -> *const c_char;
+
+    pub fn crocksdb_compaction_options_create() -> *mut DBCompactionOptions;
+    pub fn crocksdb_compaction_options_destroy(opts: *mut DBCompactionOptions);
+    pub fn crocksdb_compaction_options_set_compression(
+        opts: *mut DBCompactionOptions,
+        compression: DBCompressionType,
+    );
+    pub fn crocksdb_compaction_options_set_output_file_size_limit(
+        opts: *mut DBCompactionOptions,
+        size: size_t,
+    );
+
+    pub fn crocksdb_compact_files_cf(
+        db: *mut DBInstance,
+        cf: *mut DBCFHandle,
+        opts: *const DBCompactionOptions,
+        input_file_names: *const *const c_char,
+        input_file_count: size_t,
+        output_level: c_int,
+        errptr: *mut *mut c_char,
+    );
 }
 
 #[cfg(test)]

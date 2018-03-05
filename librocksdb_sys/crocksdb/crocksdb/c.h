@@ -1659,17 +1659,19 @@ extern C_ROCKSDB_LIBRARY_API crocksdb_options_t*
 crocksdb_get_db_options(crocksdb_t* db);
 
 extern C_ROCKSDB_LIBRARY_API void
-crocksdb_set_db_option(crocksdb_t* db,
-                       const char* name,
-                       const char* value,
-                       char** errptr);
+crocksdb_set_db_options(crocksdb_t* db,
+                        const char** names,
+                        const char** values,
+                        size_t num_options,
+                        char** errptr);
 
 extern C_ROCKSDB_LIBRARY_API void
-crocksdb_set_cf_option(crocksdb_t* db,
-                       crocksdb_column_family_handle_t* cf,
-                       const char* name,
-                       const char* value,
-                       char** errptr);
+crocksdb_set_cf_options(crocksdb_t* db,
+                        crocksdb_column_family_handle_t* cf,
+                        const char** names,
+                        const char** values,
+                        size_t num_options,
+                        char** errptr);
 
 #ifdef __cplusplus
 }  /* end extern "C" */

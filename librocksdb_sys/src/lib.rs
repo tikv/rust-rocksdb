@@ -1594,18 +1594,20 @@ extern "C" {
 
     pub fn crocksdb_get_db_options(db: *mut DBInstance) -> *mut Options;
 
-    pub fn crocksdb_set_db_option(
+    pub fn crocksdb_set_db_options(
         db: *mut DBInstance,
-        name: *const c_char,
-        value: *const c_char,
+        names: *const *const c_char,
+        values: *const *const c_char,
+        num_options: size_t,
         errptr: *mut *mut c_char,
     );
 
-    pub fn crocksdb_set_cf_option(
+    pub fn crocksdb_set_cf_options(
         db: *mut DBInstance,
         cf: *mut DBCFHandle,
-        name: *const c_char,
-        value: *const c_char,
+        names: *const *const c_char,
+        values: *const *const c_char,
+        num_options: size_t,
         errptr: *mut *mut c_char,
     );
 }

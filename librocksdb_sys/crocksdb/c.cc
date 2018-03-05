@@ -1187,12 +1187,43 @@ void crocksdb_enable_file_deletions(
   SaveError(errptr, db->rep->EnableFileDeletions(force));
 }
 
+crocksdb_options_t* crocksdb_get_db_options(crocksdb_t* db) {
+  auto opts = new crocksdb_options_t;
+  opts->rep = Options(db->rep->GetDBOptions(), ColumnFamilyOptions());
+  return opts;
+}
+
+void crocksdb_set_db_options(crocksdb_t* db,
+                             const char** names,
+                             const char** values,
+                             size_t num_options,
+                             char** errptr) {
+  std::unordered_map<std::string, std::string> options;
+  for (size_t i = 0; i < num_options; i++) {
+    options.emplace(names[i], values[i]);
+  }
+  SaveError(errptr, db->rep->SetDBOptions(options));
+}
+
 crocksdb_options_t* crocksdb_get_options_cf(
     const crocksdb_t* db,
     crocksdb_column_family_handle_t* column_family) {
   crocksdb_options_t* options = new crocksdb_options_t;
   options->rep = db->rep->GetOptions(column_family->rep);
   return options;
+}
+
+void crocksdb_set_options_cf(crocksdb_t* db,
+                             crocksdb_column_family_handle_t* cf,
+                             const char** names,
+                             const char** values,
+                             size_t num_options,
+                             char** errptr) {
+  std::unordered_map<std::string, std::string> options;
+  for (size_t i = 0; i < num_options; i++) {
+    options.emplace(names[i], values[i]);
+  }
+  SaveError(errptr, db->rep->SetOptions(cf->rep, options));
 }
 
 void crocksdb_destroy_db(
@@ -4131,37 +4162,6 @@ void crocksdb_compact_files_cf(
   }
   auto s = db->rep->CompactFiles(opts->rep, cf->rep, input_files, output_level);
   SaveError(errptr, s);
-}
-
-crocksdb_options_t* crocksdb_get_db_options(crocksdb_t* db) {
-  auto opts = new crocksdb_options_t;
-  opts->rep = Options(db->rep->GetDBOptions(), ColumnFamilyOptions());
-  return opts;
-}
-
-void crocksdb_set_db_options(crocksdb_t* db,
-                             const char** names,
-                             const char** values,
-                             size_t num_options,
-                             char** errptr) {
-  std::unordered_map<std::string, std::string> options;
-  for (size_t i = 0; i < num_options; i++) {
-    options.emplace(names[i], values[i]);
-  }
-  SaveError(errptr, db->rep->SetDBOptions(options));
-}
-
-void crocksdb_set_cf_options(crocksdb_t* db,
-                             crocksdb_column_family_handle_t* cf,
-                             const char** names,
-                             const char** values,
-                             size_t num_options,
-                             char** errptr) {
-  std::unordered_map<std::string, std::string> options;
-  for (size_t i = 0; i < num_options; i++) {
-    options.emplace(names[i], values[i]);
-  }
-  SaveError(errptr, db->rep->SetOptions(cf->rep, options));
 }
 
 }  // end extern "C"

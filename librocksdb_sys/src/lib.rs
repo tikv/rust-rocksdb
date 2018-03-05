@@ -316,7 +316,23 @@ macro_rules! ffi_try {
 // TODO audit the use of boolean arguments, b/c I think they need to be u8
 // instead...
 extern "C" {
+    pub fn crocksdb_get_db_options(db: *mut DBInstance) -> *mut Options;
+    pub fn crocksdb_set_db_options(
+        db: *mut DBInstance,
+        names: *const *const c_char,
+        values: *const *const c_char,
+        num_options: size_t,
+        errptr: *mut *mut c_char,
+    );
     pub fn crocksdb_get_options_cf(db: *mut DBInstance, cf: *mut DBCFHandle) -> *mut Options;
+    pub fn crocksdb_set_options_cf(
+        db: *mut DBInstance,
+        cf: *mut DBCFHandle,
+        names: *const *const c_char,
+        values: *const *const c_char,
+        num_options: size_t,
+        errptr: *mut *mut c_char,
+    );
     pub fn crocksdb_options_create() -> *mut Options;
     pub fn crocksdb_options_copy(opts: *const Options) -> *mut Options;
     pub fn crocksdb_options_destroy(opts: *mut Options);
@@ -1589,25 +1605,6 @@ extern "C" {
         input_file_names: *const *const c_char,
         input_file_count: size_t,
         output_level: c_int,
-        errptr: *mut *mut c_char,
-    );
-
-    pub fn crocksdb_get_db_options(db: *mut DBInstance) -> *mut Options;
-
-    pub fn crocksdb_set_db_options(
-        db: *mut DBInstance,
-        names: *const *const c_char,
-        values: *const *const c_char,
-        num_options: size_t,
-        errptr: *mut *mut c_char,
-    );
-
-    pub fn crocksdb_set_cf_options(
-        db: *mut DBInstance,
-        cf: *mut DBCFHandle,
-        names: *const *const c_char,
-        values: *const *const c_char,
-        num_options: size_t,
         errptr: *mut *mut c_char,
     );
 }

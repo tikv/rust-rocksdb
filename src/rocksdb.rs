@@ -494,7 +494,6 @@ impl DB {
         })
     }
 
-
     pub fn destroy(opts: &DBOptions, path: &str) -> Result<(), String> {
         let cpath = CString::new(path.as_bytes()).unwrap();
         unsafe {
@@ -1408,6 +1407,40 @@ impl DB {
                 input_file_names.as_ptr() as *const *const c_char,
                 input_file_names.len(),
                 output_level
+            ));
+            Ok(())
+        }
+    }
+
+    pub fn get_db_options(&self) -> DBOptions {
+        unsafe {
+            let inner = crocksdb_ffi::crocksdb_get_db_options(self.inner);
+            DBOptions::from_raw(inner)
+        }
+    }
+
+    pub fn set_db_option(&self, name: &str, value: &str) -> Result<(), String> {
+        unsafe {
+            let name = CString::new(name.as_bytes()).unwrap();
+            let value = CString::new(value.as_bytes()).unwrap();
+            ffi_try!(crocksdb_set_db_option(
+                self.inner,
+                name.as_ptr() as *const c_char,
+                value.as_ptr() as *const c_char
+            ));
+            Ok(())
+        }
+    }
+
+    pub fn set_cf_option(&self, cf: &CFHandle, name: &str, value: &str) -> Result<(), String> {
+        unsafe {
+            let name = CString::new(name.as_bytes()).unwrap();
+            let value = CString::new(value.as_bytes()).unwrap();
+            ffi_try!(crocksdb_set_cf_option(
+                self.inner,
+                cf.inner,
+                name.as_ptr() as *const c_char,
+                value.as_ptr() as *const c_char
             ));
             Ok(())
         }
@@ -2520,5 +2553,28 @@ mod test {
         let (count, size) = db.get_approximate_memtable_stats_cf(cf, &range);
         assert!(count > 0);
         assert!(size > 0);
+    }
+
+    #[test]
+    fn test_set_option() {
+        let mut opts = DBOptions::new();
+        opts.create_if_missing(true);
+        let path = TempDir::new("_rust_rocksdb_set_option").expect("");
+
+        let db = DB::open(opts, path.path().to_str().unwrap()).unwrap();
+        let cf = db.cf_handle("default").unwrap();
+
+        let db_opts = db.get_db_options();
+        assert_eq!(db_opts.get_max_background_jobs(), 2);
+        db.set_db_option("max_background_jobs", "8").unwrap();
+        let db_opts = db.get_db_options();
+        assert_eq!(db_opts.get_max_background_jobs(), 8);
+
+        let cf_opts = db.get_options_cf(cf);
+        assert_eq!(cf_opts.get_disable_auto_compactions(), false);
+        db.set_cf_option(cf, "disable_auto_compactions", "true")
+            .unwrap();
+        let cf_opts = db.get_options_cf(cf);
+        assert_eq!(cf_opts.get_disable_auto_compactions(), true);
     }
 }

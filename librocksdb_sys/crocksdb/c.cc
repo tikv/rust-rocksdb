@@ -2278,6 +2278,10 @@ void crocksdb_options_set_max_background_jobs(crocksdb_options_t* opt, int n) {
   opt->rep.max_background_jobs = n;
 }
 
+int crocksdb_options_get_max_background_jobs(const crocksdb_options_t* opt) {
+  return opt->rep.max_background_jobs;
+}
+
 void crocksdb_options_set_max_log_file_size(crocksdb_options_t* opt, size_t v) {
   opt->rep.max_log_file_size = v;
 }
@@ -2338,6 +2342,10 @@ void crocksdb_options_set_arena_block_size(
 
 void crocksdb_options_set_disable_auto_compactions(crocksdb_options_t* opt, int disable) {
   opt->rep.disable_auto_compactions = disable;
+}
+
+int crocksdb_options_get_disable_auto_compactions(const crocksdb_options_t* opt) {
+  return opt->rep.disable_auto_compactions;
 }
 
 void crocksdb_options_set_delete_obsolete_files_period_micros(
@@ -4123,6 +4131,31 @@ void crocksdb_compact_files_cf(
   }
   auto s = db->rep->CompactFiles(opts->rep, cf->rep, input_files, output_level);
   SaveError(errptr, s);
+}
+
+crocksdb_options_t* crocksdb_get_db_options(crocksdb_t* db) {
+  auto opts = new crocksdb_options_t;
+  opts->rep = Options(db->rep->GetDBOptions(), ColumnFamilyOptions());
+  return opts;
+}
+
+void crocksdb_set_db_option(crocksdb_t* db,
+                            const char* name,
+                            const char* value,
+                            char** errptr) {
+  std::unordered_map<std::string, std::string> options;
+  options.emplace(name, value);
+  SaveError(errptr, db->rep->SetDBOptions(options));
+}
+
+void crocksdb_set_cf_option(crocksdb_t* db,
+                            crocksdb_column_family_handle_t* cf,
+                            const char* name,
+                            const char* value,
+                            char** errptr) {
+  std::unordered_map<std::string, std::string> options;
+  options.emplace(name, value);
+  SaveError(errptr, db->rep->SetOptions(cf->rep, options));
 }
 
 }  // end extern "C"

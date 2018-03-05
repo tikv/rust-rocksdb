@@ -457,7 +457,9 @@ extern "C" {
     );
     pub fn crocksdb_set_bottommost_compression(options: *mut Options, c: DBCompressionType);
     pub fn crocksdb_options_set_max_background_jobs(options: *mut Options, max_bg_jobs: c_int);
+    pub fn crocksdb_options_get_max_background_jobs(options: *const Options) -> c_int;
     pub fn crocksdb_options_set_disable_auto_compactions(options: *mut Options, v: c_int);
+    pub fn crocksdb_options_get_disable_auto_compactions(options: *const Options) -> c_int;
     pub fn crocksdb_options_set_report_bg_io_stats(options: *mut Options, v: c_int);
     pub fn crocksdb_options_set_compaction_readahead_size(options: *mut Options, v: size_t);
     pub fn crocksdb_options_set_wal_recovery_mode(options: *mut Options, mode: DBRecoveryMode);
@@ -1587,6 +1589,23 @@ extern "C" {
         input_file_names: *const *const c_char,
         input_file_count: size_t,
         output_level: c_int,
+        errptr: *mut *mut c_char,
+    );
+
+    pub fn crocksdb_get_db_options(db: *mut DBInstance) -> *mut Options;
+
+    pub fn crocksdb_set_db_option(
+        db: *mut DBInstance,
+        name: *const c_char,
+        value: *const c_char,
+        errptr: *mut *mut c_char,
+    );
+
+    pub fn crocksdb_set_cf_option(
+        db: *mut DBInstance,
+        cf: *mut DBCFHandle,
+        name: *const c_char,
+        value: *const c_char,
         errptr: *mut *mut c_char,
     );
 }

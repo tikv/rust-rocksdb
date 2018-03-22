@@ -1439,6 +1439,176 @@ TEST_F(DBCompactionTest, DeleteFileRange) {
   ASSERT_GT(old_num_files, new_num_files);
 }
 
+TEST_F(DBCompactionTest, DeleteFilesInRanges) {
+  Options options = CurrentOptions();
+  options.write_buffer_size = 10 * 1024 * 1024;
+  options.max_bytes_for_level_multiplier = 2;
+  options.num_levels = 4;
+  options.max_background_compactions = 3;
+  options.disable_auto_compactions = true;
+
+  DestroyAndReopen(options);
+  int32_t value_size = 10 * 1024;  // 10 KB
+
+  Random rnd(301);
+  std::map<int32_t, std::string> values;
+
+  // file [0 => 100), [100 => 200), ... [900, 1000)
+  for (auto i = 0; i < 10; i++) {
+    for (auto j = 0; j < 100; j++) {
+      auto k = i * 100 + j;
+      values[k] = RandomString(&rnd, value_size);
+      ASSERT_OK(Put(Key(k), values[k]));
+    }
+    ASSERT_OK(Flush());
+  }
+  ASSERT_EQ("10", FilesPerLevel(0));
+  CompactRangeOptions compact_options;
+  compact_options.change_level = true;
+  compact_options.target_level = 2;
+  ASSERT_OK(db_->CompactRange(compact_options, nullptr, nullptr));
+  ASSERT_EQ("0,0,10", FilesPerLevel(0));
+
+  // file [0 => 100), [200 => 300), ... [800, 900)
+  for (auto i = 0; i < 10; i+=2) {
+    for (auto j = 0; j < 100; j++) {
+      auto k = i * 100 + j;
+      ASSERT_OK(Put(Key(k), values[k]));
+    }
+    ASSERT_OK(Flush());
+  }
+  ASSERT_EQ("5,0,10", FilesPerLevel(0));
+  ASSERT_OK(dbfull()->TEST_CompactRange(0, nullptr, nullptr));
+  ASSERT_EQ("0,5,10", FilesPerLevel(0));
+
+  // Delete files in range [0, 299] (inclusive)
+  {
+    auto begin_str1 = Key(0), end_str1 = Key(100);
+    auto begin_str2 = Key(100), end_str2 = Key(200);
+    auto begin_str3 = Key(200), end_str3 = Key(299);
+    Slice begin1(begin_str1), end1(end_str1);
+    Slice begin2(begin_str2), end2(end_str2);
+    Slice begin3(begin_str3), end3(end_str3);
+    std::vector<RangePtr> ranges;
+    ranges.push_back(RangePtr(&begin1, &end1));
+    ranges.push_back(RangePtr(&begin2, &end2));
+    ranges.push_back(RangePtr(&begin3, &end3));
+    ASSERT_OK(DeleteFilesInRanges(db_, db_->DefaultColumnFamily(),
+                                  ranges.data(), ranges.size()));
+    ASSERT_EQ("0,3,7", FilesPerLevel(0));
+
+    // Keys [0, 300) should not exist.
+    for (auto i = 0; i < 300; i++) {
+      ReadOptions ropts;
+      std::string result;
+      auto s = db_->Get(ropts, Key(i), &result);
+      ASSERT_TRUE(s.IsNotFound());
+    }
+    for (auto i = 300; i < 1000; i++) {
+      ASSERT_EQ(Get(Key(i)), values[i]);
+    }
+  }
+
+  // Delete files in range [600, 999) (exclusive)
+  {
+    auto begin_str1 = Key(600), end_str1 = Key(800);
+    auto begin_str2 = Key(700), end_str2 = Key(900);
+    auto begin_str3 = Key(800), end_str3 = Key(999);
+    Slice begin1(begin_str1), end1(end_str1);
+    Slice begin2(begin_str2), end2(end_str2);
+    Slice begin3(begin_str3), end3(end_str3);
+    std::vector<RangePtr> ranges;
+    ranges.push_back(RangePtr(&begin1, &end1));
+    ranges.push_back(RangePtr(&begin2, &end2));
+    ranges.push_back(RangePtr(&begin3, &end3));
+    ASSERT_OK(DeleteFilesInRanges(db_, db_->DefaultColumnFamily(),
+                                  ranges.data(), ranges.size(), false));
+    ASSERT_EQ("0,1,4", FilesPerLevel(0));
+
+    // Keys [600, 900) should not exist.
+    for (auto i = 600; i < 900; i++) {
+      ReadOptions ropts;
+      std::string result;
+      auto s = db_->Get(ropts, Key(i), &result);
+      ASSERT_TRUE(s.IsNotFound());
+    }
+    for (auto i = 300; i < 600; i++) {
+      ASSERT_EQ(Get(Key(i)), values[i]);
+    }
+    for (auto i = 900; i < 1000; i++) {
+      ASSERT_EQ(Get(Key(i)), values[i]);
+    }
+  }
+
+  // Delete all files.
+  {
+    RangePtr range;
+    ASSERT_OK(DeleteFilesInRanges(db_, db_->DefaultColumnFamily(), &range, 1));
+    ASSERT_EQ("", FilesPerLevel(0));
+
+    for (auto i = 0; i < 1000; i++) {
+      ReadOptions ropts;
+      std::string result;
+      auto s = db_->Get(ropts, Key(i), &result);
+      ASSERT_TRUE(s.IsNotFound());
+    }
+  }
+}
+
+TEST_F(DBCompactionTest, DeleteFileRangeFileEndpointsOverlapBug) {
+  // regression test for #2833: groups of files whose user-keys overlap at the
+  // endpoints could be split by `DeleteFilesInRange`. This caused old data to
+  // reappear, either because a new version of the key was removed, or a range
+  // deletion was partially dropped. It could also cause non-overlapping
+  // invariant to be violated if the files dropped by DeleteFilesInRange were
+  // a subset of files that a range deletion spans.
+  const int kNumL0Files = 2;
+  const int kValSize = 8 << 10;  // 8KB
+  Options options = CurrentOptions();
+  options.level0_file_num_compaction_trigger = kNumL0Files;
+  options.target_file_size_base = 1 << 10;  // 1KB
+  DestroyAndReopen(options);
+
+  // The snapshot prevents key 1 from having its old version dropped. The low
+  // `target_file_size_base` ensures two keys will be in each output file.
+  const Snapshot* snapshot = nullptr;
+  Random rnd(301);
+  // The value indicates which flush the key belonged to, which is enough
+  // for us to determine the keys' relative ages. After L0 flushes finish,
+  // files look like:
+  //
+  // File 0: 0 -> vals[0], 1 -> vals[0]
+  // File 1:               1 -> vals[1], 2 -> vals[1]
+  //
+  // Then L0->L1 compaction happens, which outputs keys as follows:
+  //
+  // File 0: 0 -> vals[0], 1 -> vals[1]
+  // File 1:               1 -> vals[0], 2 -> vals[1]
+  //
+  // DeleteFilesInRange shouldn't be allowed to drop just file 0, as that
+  // would cause `1 -> vals[0]` (an older key) to reappear.
+  std::string vals[kNumL0Files];
+  for (int i = 0; i < kNumL0Files; ++i) {
+    vals[i] = RandomString(&rnd, kValSize);
+    Put(Key(i), vals[i]);
+    Put(Key(i + 1), vals[i]);
+    Flush();
+    if (i == 0) {
+      snapshot = db_->GetSnapshot();
+    }
+  }
+  dbfull()->TEST_WaitForCompact();
+
+  // Verify `DeleteFilesInRange` can't drop only file 0 which would cause
+  // "1 -> vals[0]" to reappear.
+  Slice begin = Key(0);
+  Slice end = Key(1);
+  ASSERT_OK(DeleteFilesInRange(db_, db_->DefaultColumnFamily(), &begin, &end));
+  ASSERT_EQ(vals[1], Get(Key(1)));
+
+  db_->ReleaseSnapshot(snapshot);
+}
+
 TEST_P(DBCompactionTestWithParam, TrivialMoveToLastLevelWithFiles) {
   int32_t trivial_move = 0;
   int32_t non_trivial_move = 0;
@@ -2682,6 +2852,46 @@ TEST_P(DBCompactionTestWithParam, IntraL0CompactionDoesNotObsoleteDeletions) {
   ReadOptions roptions;
   std::string result;
   ASSERT_TRUE(db_->Get(roptions, Key(0), &result).IsNotFound());
+}
+
+TEST_F(DBCompactionTest, OptimizedDeletionObsoleting) {
+  // Deletions can be dropped when compacted to non-last level if they fall
+  // outside the lower-level files' key-ranges.
+  const int kNumL0Files = 4;
+  Options options = CurrentOptions();
+  options.level0_file_num_compaction_trigger = kNumL0Files;
+  options.statistics = rocksdb::CreateDBStatistics();
+  DestroyAndReopen(options);
+
+  // put key 1 and 3 in separate L1, L2 files.
+  // So key 0, 2, and 4+ fall outside these levels' key-ranges.
+  for (int level = 2; level >= 1; --level) {
+    for (int i = 0; i < 2; ++i) {
+      Put(Key(2 * i + 1), "val");
+      Flush();
+    }
+    MoveFilesToLevel(level);
+    ASSERT_EQ(2, NumTableFilesAtLevel(level));
+  }
+
+  // Delete keys in range [1, 4]. These L0 files will be compacted with L1:
+  // - Tombstones for keys 2 and 4 can be dropped early.
+  // - Tombstones for keys 1 and 3 must be kept due to L2 files' key-ranges.
+  for (int i = 0; i < kNumL0Files; ++i) {
+    Put(Key(0), "val");  // sentinel to prevent trivial move
+    Delete(Key(i + 1));
+    Flush();
+  }
+  dbfull()->TEST_WaitForCompact();
+
+  for (int i = 0; i < kNumL0Files; ++i) {
+    std::string value;
+    ASSERT_TRUE(db_->Get(ReadOptions(), Key(i + 1), &value).IsNotFound());
+  }
+  ASSERT_EQ(2, options.statistics->getTickerCount(
+                   COMPACTION_OPTIMIZED_DEL_DROP_OBSOLETE));
+  ASSERT_EQ(2,
+            options.statistics->getTickerCount(COMPACTION_KEY_DROP_OBSOLETE));
 }
 
 INSTANTIATE_TEST_CASE_P(DBCompactionTestWithParam, DBCompactionTestWithParam,

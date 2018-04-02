@@ -1687,6 +1687,39 @@ size_t crocksdb_options_get_block_cache_usage(crocksdb_options_t *opt) {
   return 0;
 }
 
+void crocksdb_options_set_block_cache_capacity(crocksdb_options_t* opt, size_t capacity, char **errptr) {
+  Status s;
+  if (opt && opt->rep.table_factory != nullptr) {
+    void* table_opt = opt->rep.table_factory->GetOptions();
+    if (table_opt && strcmp(opt->rep.table_factory->Name(), block_base_table_str) == 0) {
+      auto opts = static_cast<BlockBasedTableOptions*>(table_opt);
+      if (opts->block_cache) {
+        opts->block_cache->SetCapacity(capacity);
+      } else {
+        s = Status::InvalidArgument("block cache is not initialized");
+      }
+    } else {
+      s = Status::InvalidArgument("only support setting block based table cache capacity");
+    }
+  } else {
+    s = Status::InvalidArgument("table factory is not initialized");
+  }
+  SaveError(errptr, s);
+}
+
+size_t crocksdb_options_get_block_cache_capacity(crocksdb_options_t* opt) {
+  if (opt && opt->rep.table_factory != nullptr) {
+    void* table_opt = opt->rep.table_factory->GetOptions();
+    if (table_opt && strcmp(opt->rep.table_factory->Name(), block_base_table_str) == 0) {
+      auto opts = static_cast<BlockBasedTableOptions*>(table_opt);
+      if (opts->block_cache) {
+        return opts->block_cache->GetCapacity();
+      }
+    }
+  }
+  return 0;
+}
+
 /* FlushJobInfo */
 
 const char* crocksdb_flushjobinfo_cf_name(const crocksdb_flushjobinfo_t* info,

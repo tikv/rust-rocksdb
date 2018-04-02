@@ -99,6 +99,14 @@ struct Range {
   Range(const Slice& s, const Slice& l) : start(s), limit(l) { }
 };
 
+struct RangePtr {
+  const Slice* start;
+  const Slice* limit;
+
+  RangePtr() : start(nullptr), limit(nullptr) { }
+  RangePtr(const Slice* s, const Slice* l) : start(s), limit(l) { }
+};
+
 // A collections of table properties objects, where
 //  key: is the table's file name.
 //  value: the table properties object of the given table.
@@ -582,6 +590,12 @@ class DB {
 
     //  "rocksdb.is-write-stopped" - Return 1 if write has been stopped.
     static const std::string kIsWriteStopped;
+
+    //  "rocksdb.estimate-oldest-key-time" - returns an estimation of
+    //      oldest key timestamp in the DB. Currently only available for
+    //      FIFO compaction with
+    //      compaction_options_fifo.allow_compaction = false.
+    static const std::string kEstimateOldestKeyTime;
   };
 #endif /* ROCKSDB_LITE */
 
@@ -632,6 +646,7 @@ class DB {
   //  "rocksdb.num-running-flushes"
   //  "rocksdb.actual-delayed-write-rate"
   //  "rocksdb.is-write-stopped"
+  //  "rocksdb.estimate-oldest-key-time"
   virtual bool GetIntProperty(ColumnFamilyHandle* column_family,
                               const Slice& property, uint64_t* value) = 0;
   virtual bool GetIntProperty(const Slice& property, uint64_t* value) {
@@ -976,6 +991,8 @@ class DB {
     return IngestExternalFile(DefaultColumnFamily(), external_files, options);
   }
 
+  virtual Status VerifyChecksum() = 0;
+
   // AddFile() is deprecated, please use IngestExternalFile()
   ROCKSDB_DEPRECATED_FUNC virtual Status AddFile(
       ColumnFamilyHandle* column_family,
@@ -1097,6 +1114,17 @@ class DB {
   virtual Status GetPropertiesOfTablesInRange(
       ColumnFamilyHandle* column_family, const Range* range, std::size_t n,
       TablePropertiesCollection* props) = 0;
+
+  virtual Status SuggestCompactRange(ColumnFamilyHandle* column_family,
+                                     const Slice* begin, const Slice* end) {
+    return Status::NotSupported("SuggestCompactRange() is not implemented.");
+  }
+
+  virtual Status PromoteL0(ColumnFamilyHandle* column_family,
+                           int target_level) {
+    return Status::NotSupported("PromoteL0() is not implemented.");
+  }
+
 #endif  // ROCKSDB_LITE
 
   // Needed for StackableDB

@@ -79,6 +79,33 @@ int FindFileInRange(const InternalKeyComparator& icmp,
   return right;
 }
 
+Status OverlapWithIterator(const Comparator* ucmp,
+    const Slice& smallest_user_key,
+    const Slice& largest_user_key,
+    InternalIterator* iter,
+    bool* overlap) {
+  InternalKey range_start(smallest_user_key, kMaxSequenceNumber,
+                          kValueTypeForSeek);
+  iter->Seek(range_start.Encode());
+  if (!iter->status().ok()) {
+    return iter->status();
+  }
+
+  *overlap = false;
+  if (iter->Valid()) {
+    ParsedInternalKey seek_result;
+    if (!ParseInternalKey(iter->key(), &seek_result)) {
+      return Status::Corruption("DB have corrupted keys");
+    }
+
+    if (ucmp->Compare(seek_result.user_key, largest_user_key) <= 0) {
+      *overlap = true;
+    }
+  }
+
+  return iter->status();
+}
+
 // Class to help choose the next file to search for the particular key.
 // Searches and returns files level by level.
 // We can search level-by-level since entries never hop across
@@ -328,10 +355,6 @@ Version::~Version() {
       assert(f->refs > 0);
       f->refs--;
       if (f->refs <= 0) {
-        if (f->table_reader_handle) {
-          cfd_->table_cache()->EraseHandle(f->fd, f->table_reader_handle);
-          f->table_reader_handle = nullptr;
-        }
         vset_->obsolete_files_.push_back(f);
       }
     }
@@ -879,20 +902,63 @@ void Version::AddIteratorsForLevel(const ReadOptions& read_options,
   }
 }
 
-void Version::AddRangeDelIteratorsForLevel(
-    const ReadOptions& read_options, const EnvOptions& soptions, int level,
-    std::vector<InternalIterator*>* range_del_iters) {
-  range_del_iters->clear();
-  for (size_t i = 0; i < storage_info_.LevelFilesBrief(level).num_files; i++) {
-    const auto& file = storage_info_.LevelFilesBrief(level).files[i];
-    auto* range_del_iter = cfd_->table_cache()->NewRangeTombstoneIterator(
-        read_options, soptions, cfd_->internal_comparator(), file.fd,
-        cfd_->internal_stats()->GetFileReadHist(level),
-        false /* skip_filters */, level);
-    if (range_del_iter != nullptr) {
-      range_del_iters->push_back(range_del_iter);
+Status Version::OverlapWithLevelIterator(const ReadOptions& read_options,
+                                         const EnvOptions& env_options,
+                                         const Slice& smallest_user_key,
+                                         const Slice& largest_user_key,
+                                         int level, bool* overlap) {
+  assert(storage_info_.finalized_);
+
+  auto icmp = cfd_->internal_comparator();
+  auto ucmp = icmp.user_comparator();
+
+  Arena arena;
+  Status status;
+  RangeDelAggregator range_del_agg(icmp, {}, false);
+
+  *overlap = false;
+
+  if (level == 0) {
+    for (size_t i = 0; i < storage_info_.LevelFilesBrief(0).num_files; i++) {
+      const auto file = &storage_info_.LevelFilesBrief(0).files[i];
+      if (AfterFile(ucmp, &smallest_user_key, file) ||
+          BeforeFile(ucmp, &largest_user_key, file)) {
+        continue;
+      }
+      ScopedArenaIterator iter(cfd_->table_cache()->NewIterator(
+          read_options, env_options, cfd_->internal_comparator(), file->fd,
+          &range_del_agg, nullptr, cfd_->internal_stats()->GetFileReadHist(0),
+          false, &arena, false /* skip_filters */, 0 /* level */));
+      status = OverlapWithIterator(
+          ucmp, smallest_user_key, largest_user_key, iter.get(), overlap);
+      if (!status.ok() || *overlap) {
+        break;
+      }
     }
+  } else if (storage_info_.LevelFilesBrief(level).num_files > 0) {
+    auto mem = arena.AllocateAligned(sizeof(LevelFileIteratorState));
+    auto state = new (mem)
+        LevelFileIteratorState(cfd_->table_cache(), read_options, env_options,
+                               cfd_->internal_comparator(),
+                               cfd_->internal_stats()->GetFileReadHist(level),
+                               false /* for_compaction */,
+                               cfd_->ioptions()->prefix_extractor != nullptr,
+                               IsFilterSkipped(level), level, &range_del_agg);
+    mem = arena.AllocateAligned(sizeof(LevelFileNumIterator));
+    auto first_level_iter = new (mem) LevelFileNumIterator(
+        cfd_->internal_comparator(), &storage_info_.LevelFilesBrief(level),
+        should_sample_file_read());
+    ScopedArenaIterator iter(
+        NewTwoLevelIterator(state, first_level_iter, &arena, false));
+    status = OverlapWithIterator(
+        ucmp, smallest_user_key, largest_user_key, iter.get(), overlap);
   }
+
+  if (status.ok() && *overlap == false &&
+      range_del_agg.IsRangeOverlapped(smallest_user_key, largest_user_key)) {
+    *overlap = true;
+  }
+  return status;
 }
 
 VersionStorageInfo::VersionStorageInfo(
@@ -969,7 +1035,7 @@ void Version::Get(const ReadOptions& read_options, const LookupKey& k,
                   PinnableSlice* value, Status* status,
                   MergeContext* merge_context,
                   RangeDelAggregator* range_del_agg, bool* value_found,
-                  bool* key_exists, SequenceNumber* seq) {
+                  bool* key_exists, SequenceNumber* seq, bool* is_blob) {
   Slice ikey = k.internal_key();
   Slice user_key = k.user_key();
 
@@ -985,7 +1051,7 @@ void Version::Get(const ReadOptions& read_options, const LookupKey& k,
       user_comparator(), merge_operator_, info_log_, db_statistics_,
       status->ok() ? GetContext::kNotFound : GetContext::kMerge, user_key,
       value, value_found, merge_context, range_del_agg, this->env_, seq,
-      merge_operator_ ? &pinned_iters_mgr : nullptr);
+      merge_operator_ ? &pinned_iters_mgr : nullptr, is_blob);
 
   // Pin blocks that we read to hold merge operands
   if (merge_operator_) {
@@ -1034,6 +1100,12 @@ void Version::Get(const ReadOptions& read_options, const LookupKey& k,
         return;
       case GetContext::kMerge:
         break;
+      case GetContext::kBlobIndex:
+        ROCKS_LOG_ERROR(info_log_, "Encounter unexpected blob index.");
+        *status = Status::NotSupported(
+            "Encounter unexpected blob index. Please open DB with "
+            "rocksdb::blob_db::BlobDB instead.");
+        return;
     }
     f = fp.GetNextFile();
   }
@@ -1229,6 +1301,14 @@ int VersionStorageInfo::MaxInputLevel() const {
     return num_levels() - 2;
   }
   return 0;
+}
+
+int VersionStorageInfo::MaxOutputLevel(bool allow_ingest_behind) const {
+  if (allow_ingest_behind) {
+    assert(num_levels() > 1);
+    return num_levels() - 2;
+  }
+  return num_levels() - 1;
 }
 
 void VersionStorageInfo::EstimateCompactionBytesNeeded(
@@ -1783,27 +1863,33 @@ void VersionStorageInfo::GetOverlappingInputs(
 void VersionStorageInfo::GetCleanInputsWithinInterval(
     int level, const InternalKey* begin, const InternalKey* end,
     std::vector<FileMetaData*>* inputs, int hint_index, int* file_index) const {
-  if (level >= num_non_empty_levels_) {
-    // this level is empty, no inputs within range
-    return;
-  }
-
   inputs->clear();
-  Slice user_begin, user_end;
-  if (begin != nullptr) {
-    user_begin = begin->user_key();
-  }
-  if (end != nullptr) {
-    user_end = end->user_key();
-  }
   if (file_index) {
     *file_index = -1;
   }
-  if (begin != nullptr && end != nullptr && level > 0) {
-    GetOverlappingInputsRangeBinarySearch(level, user_begin, user_end, inputs,
-                                          hint_index, file_index,
-                                          true /* within_interval */);
+  if (level >= num_non_empty_levels_ || level == 0 ||
+      level_files_brief_[level].num_files == 0) {
+    // this level is empty, no inputs within range
+    // also don't support clean input interval within L0
+    return;
   }
+
+  Slice user_begin, user_end;
+  const auto& level_files = level_files_brief_[level];
+  if (begin == nullptr) {
+    user_begin = ExtractUserKey(level_files.files[0].smallest_key);
+  } else {
+    user_begin = begin->user_key();
+  }
+  if (end == nullptr) {
+    user_end = ExtractUserKey(
+        level_files.files[level_files.num_files - 1].largest_key);
+  } else {
+    user_end = end->user_key();
+  }
+  GetOverlappingInputsRangeBinarySearch(level, user_begin, user_end, inputs,
+                                        hint_index, file_index,
+                                        true /* within_interval */);
 }
 
 // Store in "*inputs" all files in "level" that overlap [begin,end]
@@ -1866,8 +1952,8 @@ void VersionStorageInfo::GetOverlappingInputsRangeBinarySearch(
   } else {
     ExtendFileRangeOverlappingInterval(level, user_begin, user_end, mid,
                                        &start_index, &end_index);
+    assert(end_index >= start_index);
   }
-  assert(end_index >= start_index);
   // insert overlapping files into vector
   for (int i = start_index; i <= end_index; i++) {
     inputs->push_back(files_[level][i]);
@@ -2331,10 +2417,14 @@ void CloseTables(void* ptr, size_t) {
 VersionSet::~VersionSet() {
   // we need to delete column_family_set_ because its destructor depends on
   // VersionSet
-  column_family_set_->get_table_cache()->ApplyToAllCacheEntries(&CloseTables,
-                                                                false);
+  Cache* table_cache = column_family_set_->get_table_cache();
+  table_cache->ApplyToAllCacheEntries(&CloseTables, false /* thread_safe */);
   column_family_set_.reset();
   for (auto file : obsolete_files_) {
+    if (file->table_reader_handle) {
+      table_cache->Release(file->table_reader_handle);
+      TableCache::Evict(table_cache, file->fd.GetNumber());
+    }
     delete file;
   }
   obsolete_files_.clear();
@@ -2834,11 +2924,6 @@ Status VersionSet::Recover(
         cfd = column_family_set_->GetColumnFamily(edit.column_family_);
         // this should never happen since cf_in_builders is true
         assert(cfd != nullptr);
-        if (edit.max_level_ >= cfd->current()->storage_info()->num_levels()) {
-          s = Status::InvalidArgument(
-              "db has more levels than options.num_levels");
-          break;
-        }
 
         // if it is not column family add or column family drop,
         // then it's a file add/delete, which should be forwarded
@@ -2920,6 +3005,18 @@ Status VersionSet::Recover(
     s = Status::InvalidArgument(
         "You have to open all column families. Column families not opened: " +
         list_of_not_found);
+  }
+
+  if (s.ok()) {
+    for (auto cfd : *column_family_set_) {
+      assert(builders.count(cfd->GetID()) > 0);
+      auto* builder = builders[cfd->GetID()]->version_builder();
+      if (!builder->CheckConsistencyForNumLevels()) {
+        s = Status::InvalidArgument(
+            "db has more levels than options.num_levels");
+        break;
+      }
+    }
   }
 
   if (s.ok()) {

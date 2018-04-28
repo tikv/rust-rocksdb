@@ -1063,6 +1063,14 @@ struct ReadOptions {
   // Default: false
   bool ignore_range_deletions;
 
+  // A callback to determine whether relevant keys for this scan exist in a
+  // given table based on the table's properties. The callback is passed the
+  // properties of each table during iteration. If the callback returns false,
+  // the table will not be scanned. This option only affects Iterators and has
+  // no impact on point lookups.
+  // Default: empty (every table will be scanned)
+  std::function<bool(const TableProperties&)> table_filter;
+
   ReadOptions();
   ReadOptions(bool cksum, bool cache);
 };
@@ -1140,10 +1148,13 @@ struct CompactionOptions {
   // Compaction will create files of size `output_file_size_limit`.
   // Default: MAX, which means that compaction will create a single file
   uint64_t output_file_size_limit;
+  // If > 0, it will replace the option in the DBOptions for this compaction.
+  uint32_t max_subcompactions;
 
   CompactionOptions()
       : compression(kSnappyCompression),
-        output_file_size_limit(std::numeric_limits<uint64_t>::max()) {}
+        output_file_size_limit(std::numeric_limits<uint64_t>::max()),
+        max_subcompactions(0) {}
 };
 
 // For level based compaction, we can configure if we want to skip/force
@@ -1176,6 +1187,8 @@ struct CompactRangeOptions {
   // if there is a compaction filter
   BottommostLevelCompaction bottommost_level_compaction =
       BottommostLevelCompaction::kIfHaveCompactionFilter;
+  // If > 0, it will replace the option in the DBOptions for this compaction.
+  uint32_t max_subcompactions = 0;
 };
 
 // IngestExternalFileOptions is used by IngestExternalFile()

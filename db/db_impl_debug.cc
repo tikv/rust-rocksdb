@@ -76,8 +76,17 @@ Status DBImpl::TEST_CompactRange(int level, const Slice* begin,
        cfd->ioptions()->compaction_style == kCompactionStyleFIFO)
           ? level
           : level + 1;
-  return RunManualCompaction(cfd, level, output_level, 0, begin, end, true,
+  return RunManualCompaction(cfd, level, output_level, 0, 0, begin, end, true,
                              disallow_trivial_move);
+}
+
+Status DBImpl::TEST_SwitchMemtable(ColumnFamilyData* cfd) {
+  WriteContext write_context;
+  InstrumentedMutexLock l(&mutex_);
+  if (cfd == nullptr) {
+    cfd = default_cf_handle_->cfd();
+  }
+  return SwitchMemtable(cfd, &write_context);
 }
 
 Status DBImpl::TEST_FlushMemTable(bool wait, ColumnFamilyHandle* cfh) {
@@ -112,7 +121,9 @@ Status DBImpl::TEST_WaitForCompact() {
   // OR flush to finish.
 
   InstrumentedMutexLock l(&mutex_);
-  while ((bg_compaction_scheduled_ || bg_flush_scheduled_) && bg_error_.ok()) {
+  while ((bg_bottom_compaction_scheduled_ || bg_compaction_scheduled_ ||
+          bg_flush_scheduled_) &&
+         bg_error_.ok()) {
     bg_cv_.Wait();
   }
   return bg_error_;

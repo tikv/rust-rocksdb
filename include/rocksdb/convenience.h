@@ -325,10 +325,24 @@ void CancelAllBackgroundWork(DB* db, bool wait = false);
 
 // Delete files which are entirely in the given range
 // Could leave some keys in the range which are in files which are not
-// entirely in the range.
+// entirely in the range. Also leaves L0 files regardless of whether they're
+// in the range.
 // Snapshots before the delete might not see the data in the given range.
 Status DeleteFilesInRange(DB* db, ColumnFamilyHandle* column_family,
-                          const Slice* begin, const Slice* end);
+                          const Slice* begin, const Slice* end,
+                          bool include_end = true);
+
+// Delete files in multiple ranges at once
+// Delete files in a lot of ranges one at a time can be slow, use this API for
+// better performance in that case.
+Status DeleteFilesInRanges(DB* db, ColumnFamilyHandle* column_family,
+                           const RangePtr* ranges, size_t n,
+                           bool include_end = true);
+
+// Verify the checksum of file
+Status VerifySstFileChecksum(const Options& options,
+                             const EnvOptions& env_options,
+                             const std::string& file_path);
 #endif  // ROCKSDB_LITE
 
 }  // namespace rocksdb

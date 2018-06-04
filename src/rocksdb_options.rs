@@ -22,8 +22,8 @@ use crocksdb_ffi::{self, DBBlockBasedTableOptions, DBCompactOptions, DBCompactio
                    Options};
 use event_listener::{new_event_listener, EventListener};
 use libc::{self, c_double, c_int, c_uchar, c_void, size_t};
-use merge_operator::{self, full_merge_callback, partial_merge_callback, MergeOperatorCallback};
 use merge_operator::MergeFn;
+use merge_operator::{self, full_merge_callback, partial_merge_callback, MergeOperatorCallback};
 use rocksdb::Env;
 use slice_transform::{new_slice_transform, SliceTransform};
 use std::ffi::{CStr, CString};
@@ -145,7 +145,8 @@ impl BlockBasedOptions {
         unsafe {
             crocksdb_ffi::crocksdb_block_based_options_set_pin_l0_filter_and_index_blocks_in_cache(
                 self.inner,
-                v as u8);
+                v as u8,
+            );
         }
     }
 
@@ -1151,7 +1152,10 @@ impl ColumnFamilyOptions {
 
     pub fn set_max_bytes_for_level_multiplier(&mut self, mul: i32) {
         unsafe {
-            crocksdb_ffi::crocksdb_options_set_max_bytes_for_level_multiplier(self.inner, mul as f64);
+            crocksdb_ffi::crocksdb_options_set_max_bytes_for_level_multiplier(
+                self.inner,
+                mul as f64,
+            );
         }
     }
 
@@ -1361,7 +1365,7 @@ impl ColumnFamilyOptions {
 
     pub fn set_block_cache_capacity(&self, capacity: u64) -> Result<(), String> {
         unsafe {
-           ffi_try!(crocksdb_options_set_block_cache_capacity(
+            ffi_try!(crocksdb_options_set_block_cache_capacity(
                 self.inner,
                 capacity as usize
             ));

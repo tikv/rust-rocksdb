@@ -11,8 +11,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
-
 use rocksdb::*;
 use std::sync::Arc;
 use std::sync::atomic::*;
@@ -122,8 +120,8 @@ fn test_event_listener_basic() {
     drop(db);
     assert_eq!(counter.drop_count.load(Ordering::SeqCst), 1);
     assert!(
-        counter.input_records.load(Ordering::SeqCst) >
-            counter.output_records.load(Ordering::SeqCst)
+        counter.input_records.load(Ordering::SeqCst)
+            > counter.output_records.load(Ordering::SeqCst)
     );
     assert!(
         counter.input_bytes.load(Ordering::SeqCst) > counter.output_bytes.load(Ordering::SeqCst)

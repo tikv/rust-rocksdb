@@ -17,7 +17,7 @@ matrix:
   include:
   - os: osx
     rust: stable
-  - rust: stable
+  - rust: nightly-2018-04-06
     install:
       - rustup component add rustfmt-preview
     before_script:

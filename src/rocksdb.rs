@@ -21,8 +21,8 @@ use rocksdb_options::{ColumnFamilyDescriptor, ColumnFamilyOptions, CompactOption
                       CompactionOptions, DBOptions, EnvOptions, FlushOptions, HistogramData,
                       IngestExternalFileOptions, ReadOptions, RestoreOptions, UnsafeSnap,
                       WriteOptions};
-use std::collections::BTreeMap;
 use std::collections::btree_map::Entry;
+use std::collections::BTreeMap;
 use std::ffi::{CStr, CString};
 use std::fmt::{self, Debug, Formatter};
 use std::io;
@@ -1364,8 +1364,7 @@ impl DB {
     ) -> Result<TablePropertiesCollection, String> {
         unsafe {
             let props = ffi_try!(crocksdb_get_properties_of_all_tables_cf(
-                self.inner,
-                cf.inner
+                self.inner, cf.inner
             ));
             Ok(TablePropertiesCollection::from_raw(props))
         }

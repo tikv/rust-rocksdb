@@ -119,8 +119,7 @@ impl BlockBasedOptions {
     pub fn set_cache_index_and_filter_blocks(&mut self, v: bool) {
         unsafe {
             crocksdb_ffi::crocksdb_block_based_options_set_cache_index_and_filter_blocks(
-                self.inner,
-                v as u8,
+                self.inner, v as u8,
             );
         }
     }
@@ -144,8 +143,7 @@ impl BlockBasedOptions {
     pub fn set_pin_l0_filter_and_index_blocks_in_cache(&mut self, v: bool) {
         unsafe {
             crocksdb_ffi::crocksdb_block_based_options_set_pin_l0_filter_and_index_blocks_in_cache(
-                self.inner,
-                v as u8,
+                self.inner, v as u8,
             );
         }
     }
@@ -153,8 +151,7 @@ impl BlockBasedOptions {
     pub fn set_read_amp_bytes_per_bit(&mut self, v: u32) {
         unsafe {
             crocksdb_ffi::crocksdb_block_based_options_set_read_amp_bytes_per_bit(
-                self.inner,
-                v as c_int,
+                self.inner, v as c_int,
             )
         }
     }
@@ -363,8 +360,7 @@ impl ReadOptions {
     pub fn set_background_purge_on_iterator_cleanup(&mut self, v: bool) {
         unsafe {
             crocksdb_ffi::crocksdb_readoptions_set_background_purge_on_iterator_cleanup(
-                self.inner,
-                v,
+                self.inner, v,
             );
         }
     }
@@ -648,8 +644,7 @@ impl DBOptions {
     pub fn set_use_direct_io_for_flush_and_compaction(&mut self, v: bool) {
         unsafe {
             crocksdb_ffi::crocksdb_options_set_use_direct_io_for_flush_and_compaction(
-                self.inner,
-                v,
+                self.inner, v,
             );
         }
     }
@@ -747,8 +742,7 @@ impl DBOptions {
     ) -> Option<String> {
         unsafe {
             let value = crocksdb_ffi::crocksdb_options_statistics_get_histogram_string(
-                self.inner,
-                hist_type,
+                self.inner, hist_type,
             );
 
             if value.is_null() {
@@ -1153,8 +1147,7 @@ impl ColumnFamilyOptions {
     pub fn set_max_bytes_for_level_multiplier(&mut self, mul: i32) {
         unsafe {
             crocksdb_ffi::crocksdb_options_set_max_bytes_for_level_multiplier(
-                self.inner,
-                mul as f64,
+                self.inner, mul as f64,
             );
         }
     }
@@ -1180,8 +1173,7 @@ impl ColumnFamilyOptions {
     pub fn set_soft_pending_compaction_bytes_limit(&mut self, size: u64) {
         unsafe {
             crocksdb_ffi::crocksdb_options_set_soft_pending_compaction_bytes_limit(
-                self.inner,
-                size,
+                self.inner, size,
             );
         }
     }
@@ -1195,8 +1187,7 @@ impl ColumnFamilyOptions {
     pub fn set_hard_pending_compaction_bytes_limit(&mut self, size: u64) {
         unsafe {
             crocksdb_ffi::crocksdb_options_set_hard_pending_compaction_bytes_limit(
-                self.inner,
-                size,
+                self.inner, size,
             );
         }
     }
@@ -1220,8 +1211,7 @@ impl ColumnFamilyOptions {
     pub fn set_min_write_buffer_number_to_merge(&mut self, to_merge: c_int) {
         unsafe {
             crocksdb_ffi::crocksdb_options_set_min_write_buffer_number_to_merge(
-                self.inner,
-                to_merge,
+                self.inner, to_merge,
             );
         }
     }
@@ -1346,8 +1336,7 @@ impl ColumnFamilyOptions {
             };
             let transform = new_slice_transform(c_name, transform)?;
             crocksdb_ffi::crocksdb_options_set_memtable_insert_with_hint_prefix_extractor(
-                self.inner,
-                transform,
+                self.inner, transform,
             );
             Ok(())
         }

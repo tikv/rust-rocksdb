@@ -306,7 +306,7 @@ fn test_total_order_seek() {
     cf_opts.set_memtable_prefix_bloom_size_ratio(0.1 as f64);
 
     let keys = vec![
-        b"k1-1", b"k1-2", b"k1-3", b"k2-1", b"k2-2", b"k2-3", b"k3-1", b"k3-2", b"k3-3"
+        b"k1-1", b"k1-2", b"k1-3", b"k2-1", b"k2-2", b"k2-3", b"k3-1", b"k3-2", b"k3-3",
     ];
     let db = DB::open_cf(
         opts,

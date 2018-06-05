@@ -12,8 +12,8 @@
 // limitations under the License.
 
 use rocksdb::*;
-use std::sync::Arc;
 use std::sync::atomic::*;
+use std::sync::Arc;
 use tempdir::TempDir;
 use test_ingest_external_file::gen_sst;
 

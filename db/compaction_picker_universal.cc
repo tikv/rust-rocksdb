@@ -373,6 +373,7 @@ Compaction* UniversalCompactionPicker::PickCompaction(
               c->inputs(0)->size());
 
   RegisterCompaction(c);
+  vstorage->ComputeCompactionScore(ioptions_, mutable_cf_options);
 
   TEST_SYNC_POINT_CALLBACK("UniversalCompactionPicker::PickCompaction:Return",
                            c);
@@ -605,8 +606,8 @@ Compaction* UniversalCompactionPicker::PickCompactionToReduceSortedRuns(
       mutable_cf_options.MaxFileSizeForLevel(output_level), LLONG_MAX, path_id,
       GetCompressionType(ioptions_, vstorage, mutable_cf_options, start_level,
                          1, enable_compression),
-      /* grandparents */ {}, /* is manual */ false, score,
-      false /* deletion_compaction */, compaction_reason);
+      /* max_subcompactions */ 0, /* grandparents */ {}, /* is manual */ false,
+      score, false /* deletion_compaction */, compaction_reason);
 }
 
 // Look at overall size amplification. If size amplification
@@ -738,8 +739,8 @@ Compaction* UniversalCompactionPicker::PickCompactionToReduceSizeAmp(
       /* max_grandparent_overlap_bytes */ LLONG_MAX, path_id,
       GetCompressionType(ioptions_, vstorage, mutable_cf_options,
                          output_level, 1),
-      /* grandparents */ {}, /* is manual */ false, score,
-      false /* deletion_compaction */,
+      /* max_subcompactions */ 0, /* grandparents */ {}, /* is manual */ false,
+      score, false /* deletion_compaction */,
       CompactionReason::kUniversalSizeAmplification);
 }
 }  // namespace rocksdb

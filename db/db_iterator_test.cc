@@ -1719,12 +1719,15 @@ TEST_F(DBIteratorTest, IteratorWithLocalStatistics) {
 
   std::vector<port::Thread> threads;
   std::function<void()> reader_func_next = [&]() {
+    SetPerfLevel(kEnableCount);
+    get_perf_context()->Reset();
     Iterator* iter = db_->NewIterator(ReadOptions());
 
     iter->SeekToFirst();
     // Seek will bump ITER_BYTES_READ
-    total_bytes += iter->key().size();
-    total_bytes += iter->value().size();
+    uint64_t bytes = 0;
+    bytes += iter->key().size();
+    bytes += iter->value().size();
     while (true) {
       iter->Next();
       total_next++;
@@ -1733,20 +1736,25 @@ TEST_F(DBIteratorTest, IteratorWithLocalStatistics) {
         break;
       }
       total_next_found++;
-      total_bytes += iter->key().size();
-      total_bytes += iter->value().size();
+      bytes += iter->key().size();
+      bytes += iter->value().size();
     }
 
     delete iter;
+    ASSERT_EQ(bytes, get_perf_context()->iter_read_bytes);
+    SetPerfLevel(kDisable);
+    total_bytes += bytes;
   };
 
   std::function<void()> reader_func_prev = [&]() {
+    SetPerfLevel(kEnableCount);
     Iterator* iter = db_->NewIterator(ReadOptions());
 
     iter->SeekToLast();
     // Seek will bump ITER_BYTES_READ
-    total_bytes += iter->key().size();
-    total_bytes += iter->value().size();
+    uint64_t bytes = 0;
+    bytes += iter->key().size();
+    bytes += iter->value().size();
     while (true) {
       iter->Prev();
       total_prev++;
@@ -1755,11 +1763,14 @@ TEST_F(DBIteratorTest, IteratorWithLocalStatistics) {
         break;
       }
       total_prev_found++;
-      total_bytes += iter->key().size();
-      total_bytes += iter->value().size();
+      bytes += iter->key().size();
+      bytes += iter->value().size();
     }
 
     delete iter;
+    ASSERT_EQ(bytes, get_perf_context()->iter_read_bytes);
+    SetPerfLevel(kDisable);
+    total_bytes += bytes;
   };
 
   for (int i = 0; i < 10; i++) {
@@ -1907,6 +1918,130 @@ TEST_F(DBIteratorTest, DBIteratorSkipRecentDuplicatesTest) {
   EXPECT_GE(get_perf_context()->seek_on_memtable_count, 2);
   EXPECT_EQ(1, options.statistics->getTickerCount(
                  NUMBER_OF_RESEEKS_IN_ITERATION));
+}
+
+TEST_F(DBIteratorTest, Refresh) {
+  ASSERT_OK(Put("x", "y"));
+
+  std::unique_ptr<Iterator> iter(db_->NewIterator(ReadOptions()));
+  iter->Seek(Slice("a"));
+  ASSERT_TRUE(iter->Valid());
+  ASSERT_EQ(iter->key().compare(Slice("x")), 0);
+  iter->Next();
+  ASSERT_FALSE(iter->Valid());
+
+  ASSERT_OK(Put("c", "d"));
+
+  iter->Seek(Slice("a"));
+  ASSERT_TRUE(iter->Valid());
+  ASSERT_EQ(iter->key().compare(Slice("x")), 0);
+  iter->Next();
+  ASSERT_FALSE(iter->Valid());
+
+  iter->Refresh();
+
+  iter->Seek(Slice("a"));
+  ASSERT_TRUE(iter->Valid());
+  ASSERT_EQ(iter->key().compare(Slice("c")), 0);
+  iter->Next();
+  ASSERT_TRUE(iter->Valid());
+  ASSERT_EQ(iter->key().compare(Slice("x")), 0);
+  iter->Next();
+  ASSERT_FALSE(iter->Valid());
+
+  dbfull()->Flush(FlushOptions());
+
+  ASSERT_OK(Put("m", "n"));
+
+  iter->Seek(Slice("a"));
+  ASSERT_TRUE(iter->Valid());
+  ASSERT_EQ(iter->key().compare(Slice("c")), 0);
+  iter->Next();
+  ASSERT_TRUE(iter->Valid());
+  ASSERT_EQ(iter->key().compare(Slice("x")), 0);
+  iter->Next();
+  ASSERT_FALSE(iter->Valid());
+
+  iter->Refresh();
+
+  iter->Seek(Slice("a"));
+  ASSERT_TRUE(iter->Valid());
+  ASSERT_EQ(iter->key().compare(Slice("c")), 0);
+  iter->Next();
+  ASSERT_TRUE(iter->Valid());
+  ASSERT_EQ(iter->key().compare(Slice("m")), 0);
+  iter->Next();
+  ASSERT_TRUE(iter->Valid());
+  ASSERT_EQ(iter->key().compare(Slice("x")), 0);
+  iter->Next();
+  ASSERT_FALSE(iter->Valid());
+
+  iter.reset();
+}
+
+TEST_F(DBIteratorTest, TableFilter) {
+  ASSERT_OK(Put("a", "1"));
+  dbfull()->Flush(FlushOptions());
+  ASSERT_OK(Put("b", "2"));
+  ASSERT_OK(Put("c", "3"));
+  dbfull()->Flush(FlushOptions());
+  ASSERT_OK(Put("d", "4"));
+  ASSERT_OK(Put("e", "5"));
+  ASSERT_OK(Put("f", "6"));
+  dbfull()->Flush(FlushOptions());
+
+  // Ensure the table_filter callback is called once for each table.
+  {
+    std::set<uint64_t> unseen {1, 2, 3};
+    ReadOptions opts;
+    opts.table_filter = [&](const TableProperties& props) {
+      auto it = unseen.find(props.num_entries);
+      if (it == unseen.end()) {
+        ADD_FAILURE() << "saw table properties with an unexpected " << props.num_entries << " entries";
+      } else {
+        unseen.erase(it);
+      }
+      return true;
+    };
+    auto iter = db_->NewIterator(opts);
+    iter->SeekToFirst();
+    ASSERT_EQ(IterStatus(iter), "a->1");
+    iter->Next();
+    ASSERT_EQ(IterStatus(iter), "b->2");
+    iter->Next();
+    ASSERT_EQ(IterStatus(iter), "c->3");
+    iter->Next();
+    ASSERT_EQ(IterStatus(iter), "d->4");
+    iter->Next();
+    ASSERT_EQ(IterStatus(iter), "e->5");
+    iter->Next();
+    ASSERT_EQ(IterStatus(iter), "f->6");
+    iter->Next();
+    ASSERT_FALSE(iter->Valid());
+    ASSERT_TRUE(unseen.empty());
+    delete iter;
+  }
+
+  // Ensure returning false in the table_filter hides the keys from that table
+  // during iteration.
+  {
+    ReadOptions opts;
+    opts.table_filter = [](const TableProperties& props) {
+      return props.num_entries != 2;
+    };
+    auto iter = db_->NewIterator(opts);
+    iter->SeekToFirst();
+    ASSERT_EQ(IterStatus(iter), "a->1");
+    iter->Next();
+    ASSERT_EQ(IterStatus(iter), "d->4");
+    iter->Next();
+    ASSERT_EQ(IterStatus(iter), "e->5");
+    iter->Next();
+    ASSERT_EQ(IterStatus(iter), "f->6");
+    iter->Next();
+    ASSERT_FALSE(iter->Valid());
+    delete iter;
+  }
 }
 
 }  // namespace rocksdb

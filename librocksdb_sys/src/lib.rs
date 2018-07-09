@@ -295,8 +295,12 @@ pub enum DBTableProperty {
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 #[repr(C)]
 pub enum DBBottommostLevelCompaction {
+    // Skip bottommost level compaction
     Skip = 0,
+    // Compact bottommost level if there is a compaction filter
+    // This is the default option
     IfHaveCompactionFilter = 1,
+    // Force bottommost level compaction
     Force = 2,
 }
 

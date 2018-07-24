@@ -19,6 +19,7 @@ extern crate libc;
 extern crate tempdir;
 #[macro_use]
 pub extern crate librocksdb_sys;
+extern crate core;
 
 mod compaction_filter;
 pub mod comparator;
@@ -36,23 +37,29 @@ mod table_properties_collector_factory;
 
 pub use compaction_filter::CompactionFilter;
 pub use event_listener::{CompactionJobInfo, EventListener, FlushJobInfo, IngestionInfo};
-pub use librocksdb_sys::{self as crocksdb_ffi, new_bloom_filter, CompactionPriority,
-                         DBBottommostLevelCompaction, DBCompactionStyle, DBCompressionType,
-                         DBEntryType, DBInfoLogLevel, DBRecoveryMode, DBStatisticsHistogramType,
-                         DBStatisticsTickerType};
+pub use librocksdb_sys::{
+    self as crocksdb_ffi, new_bloom_filter, CompactionPriority, DBBottommostLevelCompaction,
+    DBCompactionStyle, DBCompressionType, DBEntryType, DBInfoLogLevel, DBRecoveryMode,
+    DBStatisticsHistogramType, DBStatisticsTickerType,
+};
 pub use merge_operator::MergeOperands;
 pub use metadata::{ColumnFamilyMetaData, LevelMetaData, SstFileMetaData};
 pub use perf_context::{get_perf_level, set_perf_level, PerfContext, PerfLevel};
-pub use rocksdb::{set_external_sst_file_global_seq_no, BackupEngine, CFHandle, DBIterator,
-                  DBVector, Env, ExternalSstFileInfo, Kv, Range, SeekKey, SequentialFile,
-                  SstFileWriter, Writable, WriteBatch, DB};
-pub use rocksdb_options::{BlockBasedOptions, ColumnFamilyOptions, CompactOptions,
-                          CompactionOptions, DBOptions, EnvOptions, FifoCompactionOptions,
-                          HistogramData, IngestExternalFileOptions, RateLimiter, ReadOptions,
-                          RestoreOptions, WriteOptions};
+pub use rocksdb::{
+    set_external_sst_file_global_seq_no, BackupEngine, CFHandle, DBIterator, DBVector, Env,
+    ExternalSstFileInfo, Kv, Range, SeekKey, SequentialFile, SstFileWriter, Writable, WriteBatch,
+    DB,
+};
+pub use rocksdb_options::{
+    BlockBasedOptions, ColumnFamilyOptions, CompactOptions, CompactionOptions, DBOptions,
+    EnvOptions, FifoCompactionOptions, HistogramData, IngestExternalFileOptions, RateLimiter,
+    ReadOptions, RestoreOptions, WriteOptions,
+};
 pub use slice_transform::SliceTransform;
 pub use table_filter::TableFilter;
-pub use table_properties::{TableProperties, TablePropertiesCollection,
-                           TablePropertiesCollectionView, UserCollectedProperties};
+pub use table_properties::{
+    TableProperties, TablePropertiesCollection, TablePropertiesCollectionView,
+    UserCollectedProperties,
+};
 pub use table_properties_collector::TablePropertiesCollector;
 pub use table_properties_collector_factory::TablePropertiesCollectorFactory;

@@ -15,11 +15,12 @@
 
 use compaction_filter::{new_compaction_filter, CompactionFilter, CompactionFilterHandle};
 use comparator::{self, compare_callback, ComparatorCallback};
-use crocksdb_ffi::{self, DBBlockBasedTableOptions, DBBottommostLevelCompaction, DBCompactOptions,
-                   DBCompactionOptions, DBCompressionType, DBFifoCompactionOptions,
-                   DBFlushOptions, DBInfoLogLevel, DBInstance, DBRateLimiter, DBReadOptions,
-                   DBRecoveryMode, DBRestoreOptions, DBSnapshot, DBStatisticsHistogramType,
-                   DBStatisticsTickerType, DBWriteOptions, Options};
+use crocksdb_ffi::{
+    self, DBBlockBasedTableOptions, DBBottommostLevelCompaction, DBCompactOptions,
+    DBCompactionOptions, DBCompressionType, DBFifoCompactionOptions, DBFlushOptions,
+    DBInfoLogLevel, DBInstance, DBRateLimiter, DBReadOptions, DBRecoveryMode, DBRestoreOptions,
+    DBSnapshot, DBStatisticsHistogramType, DBStatisticsTickerType, DBWriteOptions, Options,
+};
 use event_listener::{new_event_listener, EventListener};
 use libc::{self, c_double, c_int, c_uchar, c_void, size_t};
 use merge_operator::MergeFn;
@@ -31,8 +32,9 @@ use std::mem;
 use std::path::Path;
 use std::sync::Arc;
 use table_filter::{destroy_table_filter, table_filter, TableFilter};
-use table_properties_collector_factory::{new_table_properties_collector_factory,
-                                         TablePropertiesCollectorFactory};
+use table_properties_collector_factory::{
+    new_table_properties_collector_factory, TablePropertiesCollectorFactory,
+};
 
 #[derive(Default, Debug)]
 pub struct HistogramData {
@@ -1173,6 +1175,12 @@ impl ColumnFamilyOptions {
     pub fn set_level_compaction_dynamic_level_bytes(&mut self, v: bool) {
         unsafe {
             crocksdb_ffi::crocksdb_options_set_level_compaction_dynamic_level_bytes(self.inner, v);
+        }
+    }
+
+    pub fn get_level_compaction_dynamic_level_bytes(&mut self) -> bool {
+        unsafe {
+            crocksdb_ffi::crocksdb_options_get_level_compaction_dynamic_level_bytes(self.inner)
         }
     }
 

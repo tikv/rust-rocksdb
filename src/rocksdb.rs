@@ -2646,7 +2646,7 @@ mod test {
         cf_opts.set_level_compaction_dynamic_level_bytes(true);
         db.create_cf((cf_name.clone(), cf_opts)).unwrap();
         let cf_handle = db.cf_handle(cf_name.clone()).unwrap();
-        let mut cf_opts = db.get_options_cf(cf_handle);
+        let cf_opts = db.get_options_cf(cf_handle);
         assert!(cf_opts.get_level_compaction_dynamic_level_bytes());
 
         let (_, cf_decs) =

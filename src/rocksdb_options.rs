@@ -13,18 +13,18 @@
 // limitations under the License.
 //
 
-use compaction_filter::{new_compaction_filter, CompactionFilter, CompactionFilterHandle};
-use comparator::{self, compare_callback, ComparatorCallback};
+use compaction_filter::{CompactionFilter, CompactionFilterHandle, new_compaction_filter};
+use comparator::{self, ComparatorCallback, compare_callback};
 use crocksdb_ffi::{
-    self, DBBlockBasedTableOptions, DBBottommostLevelCompaction, DBCompactOptions,
-    DBCompactionOptions, DBCompressionType, DBFifoCompactionOptions, DBFlushOptions,
+    self, DBBlockBasedTableOptions, DBBottommostLevelCompaction, DBCompactionOptions,
+    DBCompactOptions, DBCompressionType, DBFifoCompactionOptions, DBFlushOptions,
     DBInfoLogLevel, DBInstance, DBRateLimiter, DBReadOptions, DBRecoveryMode, DBRestoreOptions,
     DBSnapshot, DBStatisticsHistogramType, DBStatisticsTickerType, DBWriteOptions, Options,
 };
-use event_listener::{new_event_listener, EventListener};
+use event_listener::{EventListener, new_event_listener};
 use libc::{self, c_double, c_int, c_uchar, c_void, size_t};
+use merge_operator::{self, full_merge_callback, MergeOperatorCallback, partial_merge_callback};
 use merge_operator::MergeFn;
-use merge_operator::{self, full_merge_callback, partial_merge_callback, MergeOperatorCallback};
 use rocksdb::Env;
 use slice_transform::{new_slice_transform, SliceTransform};
 use std::ffi::{CStr, CString};
@@ -1178,7 +1178,7 @@ impl ColumnFamilyOptions {
         }
     }
 
-    pub fn get_level_compaction_dynamic_level_bytes(&mut self) -> bool {
+    pub fn get_level_compaction_dynamic_level_bytes(&self) -> bool {
         unsafe {
             crocksdb_ffi::crocksdb_options_get_level_compaction_dynamic_level_bytes(self.inner)
         }

@@ -19,10 +19,11 @@ use crocksdb_ffi::{
 use libc::{self, c_char, c_int, c_void, size_t};
 use metadata::ColumnFamilyMetaData;
 use rocksdb_options::{
-    ColumnFamilyDescriptor, ColumnFamilyOptions, CompactOptions, CompactionOptions, DBOptions,
+    ColumnFamilyDescriptor, ColumnFamilyOptions, CompactionOptions, CompactOptions, DBOptions,
     EnvOptions, FlushOptions, HistogramData, IngestExternalFileOptions, ReadOptions,
     RestoreOptions, UnsafeSnap, WriteOptions,
 };
+use std::{fs, ptr, slice};
 use std::collections::btree_map::Entry;
 use std::collections::BTreeMap;
 use std::ffi::{CStr, CString};
@@ -31,7 +32,6 @@ use std::io;
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::str::from_utf8;
-use std::{fs, ptr, slice};
 use table_properties::TablePropertiesCollection;
 
 pub struct CFHandle {
@@ -2111,16 +2111,15 @@ pub fn set_external_sst_file_global_seq_no(
 pub fn load_latest_options(
     dbpath: &str,
     env: &Env,
-    db_options: &mut DBOptions,
-    cf_decs: &mut Vec<(String, ColumnFamilyOptions)>,
     ignore_unknown_options: bool,
-) -> Result<(), String> {
+) -> Result<(DBOptions, Vec<(String, ColumnFamilyOptions)>), String> {
     const ERR_CONVERT_PATH: &str = "Failed to convert path to CString when load latest options";
 
     let mut raw_cf_decs: *mut *mut crocksdb_ffi::ColumnFamilyDescriptor = ptr::null_mut();
     let mut cf_decs_len: size_t = 0;
 
     let dbpath = CString::new(dbpath.as_bytes()).map_err(|_| ERR_CONVERT_PATH.to_owned())?;
+    let db_options = DBOptions::new();
     unsafe {
         ffi_try!(crocksdb_load_latest_options(
             dbpath.as_ptr(),
@@ -2130,33 +2129,33 @@ pub fn load_latest_options(
             &mut cf_decs_len,
             ignore_unknown_options
         ));
-        let cf_decs_slice = slice::from_raw_parts(raw_cf_decs, cf_decs_len);
-        for &raw_cf_dec in cf_decs_slice {
+        let cf_decs_list = slice::from_raw_parts(raw_cf_decs, cf_decs_len);
+        let cf_decs = cf_decs_list.into_iter().map(|raw_cf_dec| {
             let mut raw_cf_name = ptr::null_mut();
             let mut raw_cf_options = ptr::null_mut();
             crocksdb_ffi::crocksdb_extract_column_family_descriptor(
-                raw_cf_dec,
+                *raw_cf_dec,
                 &mut raw_cf_name,
                 &mut raw_cf_options,
             );
             let s = format!("{}", CStr::from_ptr(raw_cf_name).to_string_lossy());
             libc::free(raw_cf_name as *mut c_void);
-            cf_decs.push((s, ColumnFamilyOptions::from_raw(raw_cf_options)));
-        }
+            (s, ColumnFamilyOptions::from_raw(raw_cf_options))
+        }).collect();
         crocksdb_ffi::crocksdb_list_column_family_descriptors_destroy(raw_cf_decs, cf_decs_len);
-        Ok(())
+        Ok((db_options, cf_decs))
     }
 }
 
 #[cfg(test)]
 mod test {
-    use super::*;
     use std::fs;
     use std::path::Path;
     use std::str;
     use std::string::String;
     use std::sync::*;
     use std::thread;
+    use super::*;
     use tempdir::TempDir;
 
     #[test]
@@ -2650,9 +2649,8 @@ mod test {
         let mut cf_opts = db.get_options_cf(cf_handle);
         assert!(cf_opts.get_level_compaction_dynamic_level_bytes());
 
-        let mut cf_decs = vec![];
-        let mut opts = DBOptions::new();
-        load_latest_options(dbpath, &Env::default(), &mut opts, &mut cf_decs, false).unwrap();
+        let (_, cf_decs) =
+            load_latest_options(dbpath, &Env::default(), false).unwrap();
 
         for (mut tmp_cf_name, mut tmp_cf_opts) in cf_decs {
             if tmp_cf_name == cf_name {

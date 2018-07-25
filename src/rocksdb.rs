@@ -2655,6 +2655,8 @@ mod test {
         for (mut tmp_cf_name, mut tmp_cf_opts) in cf_decs {
             if tmp_cf_name == cf_name {
                 assert!(tmp_cf_opts.get_level_compaction_dynamic_level_bytes());
+            } else {
+                assert!(!tmp_cf_opts.get_level_compaction_dynamic_level_bytes());
             }
         }
     }

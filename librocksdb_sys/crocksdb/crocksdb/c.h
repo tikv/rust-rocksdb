@@ -745,7 +745,8 @@ extern C_ROCKSDB_LIBRARY_API crocksdb_options_t* crocksdb_options_copy(const cro
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_destroy(crocksdb_options_t*);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_column_family_descriptor_destroy(
     crocksdb_column_family_descriptor* cf_dec);
-extern C_ROCKSDB_LIBRARY_API void crocksdb_list_column_family_descriptors_destroy(
+extern C_ROCKSDB_LIBRARY_API void
+crocksdb_list_column_family_descriptors_destroy(
     crocksdb_column_family_descriptor** cf_decs, size_t cf_decs_len);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_extract_column_family_descriptor(
     const crocksdb_column_family_descriptor* const cf_dec, char** cf_name,

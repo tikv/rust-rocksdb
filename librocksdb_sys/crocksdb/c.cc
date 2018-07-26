@@ -21,6 +21,7 @@
 #include "rocksdb/memtablerep.h"
 #include "rocksdb/merge_operator.h"
 #include "rocksdb/options.h"
+#include "rocksdb/perf_context.h"
 #include "rocksdb/rate_limiter.h"
 #include "rocksdb/slice_transform.h"
 #include "rocksdb/statistics.h"
@@ -32,7 +33,6 @@
 #include "rocksdb/utilities/debug.h"
 #include "rocksdb/utilities/options_util.h"
 #include "rocksdb/write_batch.h"
-#include "rocksdb/perf_context.h"
 
 #include "db/column_family.h"
 #include "table/sst_file_writer_collectors.h"
@@ -1949,24 +1949,24 @@ void crocksdb_options_destroy(crocksdb_options_t* options) {
 }
 
 void crocksdb_column_family_descriptor_destroy(
-    crocksdb_column_family_descriptor* cf_dec) {
-    delete cf_dec;
+    crocksdb_column_family_descriptor* cf_desc) {
+  delete cf_desc;
 }
 
 void crocksdb_list_column_family_descriptors_destroy(
-    crocksdb_column_family_descriptor** cf_decs, size_t cf_decs_len) {
-  for (size_t i = 0; i < cf_decs_len; ++i) {
-      crocksdb_column_family_descriptor_destroy(cf_decs[i]);
+    crocksdb_column_family_descriptor** cf_descs, size_t cf_descs_len) {
+  for (size_t i = 0; i < cf_descs_len; ++i) {
+    crocksdb_column_family_descriptor_destroy(cf_descs[i]);
   }
-  delete[] cf_decs;
+  delete[] cf_descs;
 }
 
 void crocksdb_extract_column_family_descriptor(
-    const crocksdb_column_family_descriptor* const cf_dec, char** cf_name,
+    const crocksdb_column_family_descriptor* cf_desc, char** cf_name,
     crocksdb_options_t** options) {
-    *cf_name = strdup(cf_dec->rep.name.c_str());
-    *options = new crocksdb_options_t;
-    *static_cast<ColumnFamilyOptions*>(&(*options)->rep) = cf_dec->rep.options;
+  *cf_name = strdup(cf_desc->rep.name.c_str());
+  *options = new crocksdb_options_t;
+  *static_cast<ColumnFamilyOptions*>(&(*options)->rep) = cf_desc->rep.options;
 }
 
 void crocksdb_options_increase_parallelism(
@@ -2097,7 +2097,7 @@ void crocksdb_options_set_level_compaction_dynamic_level_bytes(
 }
 
 unsigned char crocksdb_options_get_level_compaction_dynamic_level_bytes(
-    const crocksdb_options_t* const options) {
+    const crocksdb_options_t* options) {
   return options->rep.level_compaction_dynamic_level_bytes;
 }
 
@@ -2625,27 +2625,22 @@ void crocksdb_options_set_vector_memtable_factory(crocksdb_options_t* opt, uint6
   opt->rep.memtable_factory.reset(new VectorRepFactory(reserved_bytes));
 }
 
-void crocksdb_load_latest_options(const char* dbpath,
-                                  crocksdb_env_t* env,
+void crocksdb_load_latest_options(const char* dbpath, crocksdb_env_t* env,
                                   crocksdb_options_t* db_options,
-                                  crocksdb_column_family_descriptor*** cf_decs,
-                                  size_t* cf_decs_len,
-                                  bool ignore_unknown_options,
-                                  char** errptr) {
-  std::vector<ColumnFamilyDescriptor> tmp_cf_decs;
-  if (SaveError(errptr,
-                rocksdb::LoadLatestOptions(dbpath,
-                                           env->rep,
-                                           &db_options->rep,
-                                           &tmp_cf_decs,
-                                           ignore_unknown_options))) {
+                                  crocksdb_column_family_descriptor*** cf_descs,
+                                  size_t* cf_descs_len,
+                                  bool ignore_unknown_options, char** errptr) {
+  std::vector<ColumnFamilyDescriptor> tmp_cf_descs;
+  if (SaveError(errptr, rocksdb::LoadLatestOptions(
+                            dbpath, env->rep, &db_options->rep, &tmp_cf_descs,
+                            ignore_unknown_options))) {
     return;
   }
-  *cf_decs_len = tmp_cf_decs.size();
-  (*cf_decs) = new crocksdb_column_family_descriptor* [*cf_decs_len];
-  for (std::size_t i = 0; i < tmp_cf_decs.size(); ++i) {
-    (*cf_decs)[i] =
-        new crocksdb_column_family_descriptor{std::move(tmp_cf_decs[i])};
+  *cf_descs_len = tmp_cf_descs.size();
+  (*cf_descs) = new crocksdb_column_family_descriptor*[*cf_descs_len];
+  for (std::size_t i = 0; i < tmp_cf_descs.size(); ++i) {
+    (*cf_descs)[i] =
+        new crocksdb_column_family_descriptor{std::move(tmp_cf_descs[i])};
   }
 }
 

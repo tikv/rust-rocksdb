@@ -744,13 +744,12 @@ extern C_ROCKSDB_LIBRARY_API crocksdb_options_t* crocksdb_options_create();
 extern C_ROCKSDB_LIBRARY_API crocksdb_options_t* crocksdb_options_copy(const crocksdb_options_t*);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_destroy(crocksdb_options_t*);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_column_family_descriptor_destroy(
-    crocksdb_column_family_descriptor* cf_dec);
-extern C_ROCKSDB_LIBRARY_API void
-crocksdb_list_column_family_descriptors_destroy(
-    crocksdb_column_family_descriptor** cf_decs, size_t cf_decs_len);
-extern C_ROCKSDB_LIBRARY_API void crocksdb_extract_column_family_descriptor(
-    const crocksdb_column_family_descriptor* const cf_dec, char** cf_name,
-    crocksdb_options_t** options);
+    crocksdb_column_family_descriptor* cf_desc);
+extern C_ROCKSDB_LIBRARY_API const char* crocksdb_column_family_descriptor_name(
+    const crocksdb_column_family_descriptor* cf_desc);
+extern C_ROCKSDB_LIBRARY_API crocksdb_options_t*
+crocksdb_column_family_descriptor_options(
+    const crocksdb_column_family_descriptor* cf_desc);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_increase_parallelism(
     crocksdb_options_t* opt, int total_threads);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_optimize_for_point_lookup(
@@ -854,9 +853,9 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_options_enable_statistics(
     crocksdb_options_t*, unsigned char);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_reset_statistics(
     crocksdb_options_t*);
-extern C_ROCKSDB_LIBRARY_API void crocksdb_load_latest_options(
+extern C_ROCKSDB_LIBRARY_API bool crocksdb_load_latest_options(
     const char* dbpath, crocksdb_env_t* env, crocksdb_options_t* db_options,
-    crocksdb_column_family_descriptor*** cf_decs, size_t* cf_decs_len,
+    crocksdb_column_family_descriptor*** cf_descs, size_t* cf_descs_len,
     bool ignore_unknown_options, char** errptr);
 
 /* returns a pointer to a malloc()-ed, null terminated string */

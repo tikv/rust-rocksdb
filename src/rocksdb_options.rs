@@ -1433,6 +1433,44 @@ impl<'a> From<(&'a str, ColumnFamilyOptions)> for ColumnFamilyDescriptor<'a> {
     }
 }
 
+pub struct CColumnFamilyDescriptor {
+    inner: *mut crocksdb_ffi::ColumnFamilyDescriptor,
+}
+
+impl CColumnFamilyDescriptor {
+    pub unsafe fn from_raw(inner: *mut crocksdb_ffi::ColumnFamilyDescriptor) -> CColumnFamilyDescriptor {
+        assert!(
+            !inner.is_null(),
+            "could not new rocksdb column_family_descriptor with null inner"
+        );
+        CColumnFamilyDescriptor {
+            inner,
+        }
+    }
+
+    pub fn name<'a>(&'a self) -> &'a str {
+        unsafe {
+            let raw_cf_name = crocksdb_ffi::crocksdb_column_family_descriptor_name(self.inner);
+            CStr::from_ptr(raw_cf_name).to_str().unwrap()
+        }
+    }
+
+    pub fn options(&self) -> ColumnFamilyOptions {
+        unsafe {
+            let raw_cf_options = crocksdb_ffi::crocksdb_column_family_descriptor_options(self.inner);
+            ColumnFamilyOptions::from_raw(raw_cf_options)
+        }
+    }
+}
+
+impl Drop for CColumnFamilyDescriptor {
+    fn drop(&mut self) {
+        unsafe {
+            crocksdb_ffi::crocksdb_column_family_descriptor_destroy(self.inner);
+        }
+    }
+}
+
 pub struct FlushOptions {
     pub inner: *mut DBFlushOptions,
 }

@@ -1953,20 +1953,16 @@ void crocksdb_column_family_descriptor_destroy(
   delete cf_desc;
 }
 
-void crocksdb_list_column_family_descriptors_destroy(
-    crocksdb_column_family_descriptor** cf_descs, size_t cf_descs_len) {
-  for (size_t i = 0; i < cf_descs_len; ++i) {
-    crocksdb_column_family_descriptor_destroy(cf_descs[i]);
-  }
-  delete[] cf_descs;
+const char* crocksdb_column_family_descriptor_name(
+    const crocksdb_column_family_descriptor* cf_desc) {
+  return cf_desc->rep.name.c_str();
 }
 
-void crocksdb_extract_column_family_descriptor(
-    const crocksdb_column_family_descriptor* cf_desc, char** cf_name,
-    crocksdb_options_t** options) {
-  *cf_name = strdup(cf_desc->rep.name.c_str());
-  *options = new crocksdb_options_t;
-  *static_cast<ColumnFamilyOptions*>(&(*options)->rep) = cf_desc->rep.options;
+crocksdb_options_t* crocksdb_column_family_descriptor_options(
+    const crocksdb_column_family_descriptor* cf_desc) {
+  crocksdb_options_t* options = new crocksdb_options_t;
+  *static_cast<ColumnFamilyOptions*>(&options->rep) = cf_desc->rep.options;
+  return options;
 }
 
 void crocksdb_options_increase_parallelism(
@@ -2625,23 +2621,28 @@ void crocksdb_options_set_vector_memtable_factory(crocksdb_options_t* opt, uint6
   opt->rep.memtable_factory.reset(new VectorRepFactory(reserved_bytes));
 }
 
-void crocksdb_load_latest_options(const char* dbpath, crocksdb_env_t* env,
+bool crocksdb_load_latest_options(const char* dbpath, crocksdb_env_t* env,
                                   crocksdb_options_t* db_options,
                                   crocksdb_column_family_descriptor*** cf_descs,
                                   size_t* cf_descs_len,
                                   bool ignore_unknown_options, char** errptr) {
   std::vector<ColumnFamilyDescriptor> tmp_cf_descs;
-  if (SaveError(errptr, rocksdb::LoadLatestOptions(
-                            dbpath, env->rep, &db_options->rep, &tmp_cf_descs,
-                            ignore_unknown_options))) {
-    return;
-  }
+  Status s = rocksdb::LoadLatestOptions(dbpath, env->rep, &db_options->rep,
+                                        &tmp_cf_descs, ignore_unknown_options);
+
+  *errptr = nullptr;
+  if (s.IsNotFound()) return false;
+  if (SaveError(errptr, s)) return false;
+
   *cf_descs_len = tmp_cf_descs.size();
-  (*cf_descs) = new crocksdb_column_family_descriptor*[*cf_descs_len];
+  (*cf_descs) = (crocksdb_column_family_descriptor**)malloc(
+      sizeof(crocksdb_column_family_descriptor*) * (*cf_descs_len));
   for (std::size_t i = 0; i < tmp_cf_descs.size(); ++i) {
     (*cf_descs)[i] =
         new crocksdb_column_family_descriptor{std::move(tmp_cf_descs[i])};
   }
+
+  return true;
 }
 
 crocksdb_ratelimiter_t* crocksdb_ratelimiter_create(

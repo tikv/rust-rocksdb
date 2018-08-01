@@ -350,16 +350,13 @@ extern "C" {
     pub fn crocksdb_options_create() -> *mut Options;
     pub fn crocksdb_options_copy(opts: *const Options) -> *mut Options;
     pub fn crocksdb_options_destroy(opts: *mut Options);
-    pub fn crocksdb_column_family_descriptor_destroy(cf_dec: *mut ColumnFamilyDescriptor);
-    pub fn crocksdb_list_column_family_descriptors_destroy(
-        cf_decs: *mut *mut ColumnFamilyDescriptor,
-        cf_decs_len: size_t,
-    );
-    pub fn crocksdb_extract_column_family_descriptor(
-        cf_dec: *const ColumnFamilyDescriptor,
-        cf_name: *const *mut c_char,
-        options: *const *mut Options,
-    );
+    pub fn crocksdb_column_family_descriptor_destroy(cf_desc: *mut ColumnFamilyDescriptor);
+    pub fn crocksdb_column_family_descriptor_name(
+        cf_descs: *const ColumnFamilyDescriptor,
+    ) -> *const c_char;
+    pub fn crocksdb_column_family_descriptor_options(
+        cf_descs: *const ColumnFamilyDescriptor,
+    ) -> *mut Options;
     pub fn crocksdb_cache_create_lru(
         capacity: size_t,
         shard_bits: c_int,
@@ -578,11 +575,11 @@ extern "C" {
         dbpath: *const c_char,
         env: *mut DBEnv,
         db_options: *const Options,
-        cf_decs: *const *mut *mut ColumnFamilyDescriptor,
-        cf_decs_len: *mut size_t,
+        cf_descs: *const *mut *mut ColumnFamilyDescriptor,
+        cf_descs_len: *mut size_t,
         ignore_unknown_options: bool,
         errptr: *const *mut c_char,
-    );
+    ) -> bool;
     pub fn crocksdb_ratelimiter_create(
         rate_bytes_per_sec: i64,
         refill_period_us: i64,

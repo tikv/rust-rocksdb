@@ -2633,7 +2633,7 @@ mod test {
     fn test_load_latest_options() {
         let path = TempDir::new("_rust_rocksdb_load_latest_option").expect("");
         let dbpath = path.path().to_str().unwrap().clone();
-        let cf_name: &str = "dorianzheng";
+        let cf_name: &str = "cf_dynamic_level_bytes";
 
         // test when options not exist
         assert!(load_latest_options(dbpath, &Env::default(), false).unwrap().is_none());

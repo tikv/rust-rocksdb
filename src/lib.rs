@@ -36,9 +36,9 @@ pub use rocksdb::{
     WriteBatch,
 };
 pub use rocksdb_options::{
-    BlockBasedOptions, ColumnFamilyOptions, CompactionOptions, CompactOptions, DBOptions,
-    EnvOptions, FifoCompactionOptions, HistogramData, IngestExternalFileOptions, RateLimiter,
-    ReadOptions, RestoreOptions, WriteOptions,
+    BlockBasedOptions, CColumnFamilyDescriptor, ColumnFamilyOptions, CompactionOptions, CompactOptions,
+    DBOptions, EnvOptions, FifoCompactionOptions, HistogramData, IngestExternalFileOptions,
+    RateLimiter, ReadOptions, RestoreOptions, WriteOptions,
 };
 pub use slice_transform::SliceTransform;
 pub use table_filter::TableFilter;

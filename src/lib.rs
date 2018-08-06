@@ -23,22 +23,22 @@ extern crate tempdir;
 pub use compaction_filter::CompactionFilter;
 pub use event_listener::{CompactionJobInfo, EventListener, FlushJobInfo, IngestionInfo};
 pub use librocksdb_sys::{
-    self as crocksdb_ffi, CompactionPriority, DBBottommostLevelCompaction, DBCompactionStyle,
-    DBCompressionType, DBEntryType, DBInfoLogLevel, DBRecoveryMode, DBStatisticsHistogramType,
-    DBStatisticsTickerType, new_bloom_filter,
+    self as crocksdb_ffi, new_bloom_filter, CompactionPriority, DBBottommostLevelCompaction,
+    DBCompactionStyle, DBCompressionType, DBEntryType, DBInfoLogLevel, DBRecoveryMode,
+    DBStatisticsHistogramType, DBStatisticsTickerType,
 };
 pub use merge_operator::MergeOperands;
 pub use metadata::{ColumnFamilyMetaData, LevelMetaData, SstFileMetaData};
-pub use perf_context::{get_perf_level, PerfContext, PerfLevel, set_perf_level};
+pub use perf_context::{get_perf_level, set_perf_level, PerfContext, PerfLevel};
 pub use rocksdb::{
-    BackupEngine, CFHandle, DB, DBIterator, DBVector, Env, ExternalSstFileInfo,
-    Kv, load_latest_options, Range, SeekKey, SequentialFile, set_external_sst_file_global_seq_no, SstFileWriter, Writable,
-    WriteBatch,
+    load_latest_options, set_external_sst_file_global_seq_no, BackupEngine, CFHandle, DBIterator,
+    DBVector, Env, ExternalSstFileInfo, Kv, Range, SeekKey, SequentialFile, SstFileWriter,
+    Writable, WriteBatch, DB,
 };
 pub use rocksdb_options::{
-    BlockBasedOptions, CColumnFamilyDescriptor, ColumnFamilyOptions, CompactionOptions, CompactOptions,
-    DBOptions, EnvOptions, FifoCompactionOptions, HistogramData, IngestExternalFileOptions,
-    RateLimiter, ReadOptions, RestoreOptions, WriteOptions,
+    BlockBasedOptions, CColumnFamilyDescriptor, ColumnFamilyOptions, CompactOptions,
+    CompactionOptions, DBOptions, EnvOptions, FifoCompactionOptions, HistogramData,
+    IngestExternalFileOptions, RateLimiter, ReadOptions, RestoreOptions, WriteOptions,
 };
 pub use slice_transform::SliceTransform;
 pub use table_filter::TableFilter;
@@ -62,4 +62,3 @@ mod table_filter;
 mod table_properties;
 mod table_properties_collector;
 mod table_properties_collector_factory;
-

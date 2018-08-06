@@ -19,11 +19,10 @@ use crocksdb_ffi::{
 use libc::{self, c_char, c_int, c_void, size_t};
 use metadata::ColumnFamilyMetaData;
 use rocksdb_options::{
-    CColumnFamilyDescriptor, ColumnFamilyDescriptor, ColumnFamilyOptions, CompactionOptions, CompactOptions,
-    DBOptions, EnvOptions, FlushOptions, HistogramData, IngestExternalFileOptions,
-    ReadOptions, RestoreOptions, UnsafeSnap, WriteOptions
+    CColumnFamilyDescriptor, ColumnFamilyDescriptor, ColumnFamilyOptions, CompactOptions,
+    CompactionOptions, DBOptions, EnvOptions, FlushOptions, HistogramData,
+    IngestExternalFileOptions, ReadOptions, RestoreOptions, UnsafeSnap, WriteOptions,
 };
-use std::{fs, ptr, slice};
 use std::collections::btree_map::Entry;
 use std::collections::BTreeMap;
 use std::ffi::{CStr, CString};
@@ -32,6 +31,7 @@ use std::io;
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::str::from_utf8;
+use std::{fs, ptr, slice};
 use table_properties::TablePropertiesCollection;
 
 pub struct CFHandle {
@@ -102,12 +102,12 @@ pub struct WriteBatch {
 
 unsafe impl Send for WriteBatch {}
 
-pub struct Snapshot<D: Deref<Target=DB>> {
+pub struct Snapshot<D: Deref<Target = DB>> {
     db: D,
     snap: UnsafeSnap,
 }
 
-pub struct DBIterator<D: Deref<Target=DB>> {
+pub struct DBIterator<D: Deref<Target = DB>> {
     _db: D,
     _readopts: ReadOptions,
     inner: *mut crocksdb_ffi::DBIterator,
@@ -125,7 +125,7 @@ impl<'a> From<&'a [u8]> for SeekKey<'a> {
     }
 }
 
-impl<D: Deref<Target=DB>> DBIterator<D> {
+impl<D: Deref<Target = DB>> DBIterator<D> {
     pub fn new(db: D, readopts: ReadOptions) -> DBIterator<D> {
         unsafe {
             let iterator = crocksdb_ffi::crocksdb_create_iterator(db.inner, readopts.get_inner());
@@ -230,7 +230,7 @@ impl<D: Deref<Target=DB>> DBIterator<D> {
 
 pub type Kv = (Vec<u8>, Vec<u8>);
 
-impl<'b, D: Deref<Target=DB>> Iterator for &'b mut DBIterator<D> {
+impl<'b, D: Deref<Target = DB>> Iterator for &'b mut DBIterator<D> {
     type Item = Kv;
 
     fn next(&mut self) -> Option<Kv> {
@@ -242,7 +242,7 @@ impl<'b, D: Deref<Target=DB>> Iterator for &'b mut DBIterator<D> {
     }
 }
 
-impl<D: Deref<Target=DB>> Drop for DBIterator<D> {
+impl<D: Deref<Target = DB>> Drop for DBIterator<D> {
     fn drop(&mut self) {
         unsafe {
             crocksdb_ffi::crocksdb_iter_destroy(self.inner);
@@ -250,13 +250,13 @@ impl<D: Deref<Target=DB>> Drop for DBIterator<D> {
     }
 }
 
-unsafe impl<D: Deref<Target=DB> + Send> Send for DBIterator<D> {}
+unsafe impl<D: Deref<Target = DB> + Send> Send for DBIterator<D> {}
 
-unsafe impl<D: Deref<Target=DB> + Send + Sync> Send for Snapshot<D> {}
+unsafe impl<D: Deref<Target = DB> + Send + Sync> Send for Snapshot<D> {}
 
-unsafe impl<D: Deref<Target=DB> + Send + Sync> Sync for Snapshot<D> {}
+unsafe impl<D: Deref<Target = DB> + Send + Sync> Sync for Snapshot<D> {}
 
-impl<D: Deref<Target=DB> + Clone> Snapshot<D> {
+impl<D: Deref<Target = DB> + Clone> Snapshot<D> {
     /// Create an iterator and clone the inner db.
     ///
     /// Please note that, the snapshot struct could be dropped before the iterator
@@ -269,7 +269,7 @@ impl<D: Deref<Target=DB> + Clone> Snapshot<D> {
     }
 }
 
-impl<D: Deref<Target=DB>> Snapshot<D> {
+impl<D: Deref<Target = DB>> Snapshot<D> {
     pub fn new(db: D) -> Snapshot<D> {
         unsafe {
             Snapshot {
@@ -308,7 +308,7 @@ impl<D: Deref<Target=DB>> Snapshot<D> {
     }
 }
 
-impl<D: Deref<Target=DB>> Drop for Snapshot<D> {
+impl<D: Deref<Target = DB>> Drop for Snapshot<D> {
     fn drop(&mut self) {
         unsafe { self.db.release_snap(&self.snap) }
     }
@@ -371,8 +371,8 @@ impl DB {
     }
 
     pub fn open_cf<'a, T>(opts: DBOptions, path: &str, cfds: Vec<T>) -> Result<DB, String>
-        where
-            T: Into<ColumnFamilyDescriptor<'a>>,
+    where
+        T: Into<ColumnFamilyDescriptor<'a>>,
     {
         DB::open_cf_internal(opts, path, cfds, None)
     }
@@ -392,8 +392,8 @@ impl DB {
         cfds: Vec<T>,
         error_if_log_file_exist: bool,
     ) -> Result<DB, String>
-        where
-            T: Into<ColumnFamilyDescriptor<'a>>,
+    where
+        T: Into<ColumnFamilyDescriptor<'a>>,
     {
         DB::open_cf_internal(opts, path, cfds, Some(error_if_log_file_exist))
     }
@@ -406,8 +406,8 @@ impl DB {
         // otherwise, open for read only.
         error_if_log_file_exist: Option<bool>,
     ) -> Result<DB, String>
-        where
-            T: Into<ColumnFamilyDescriptor<'a>>,
+    where
+        T: Into<ColumnFamilyDescriptor<'a>>,
     {
         const ERR_CONVERT_PATH: &str = "Failed to convert path to CString when opening rocksdb";
         const ERR_NULL_DB_ONINIT: &str = "Could not initialize database";
@@ -624,8 +624,8 @@ impl DB {
     }
 
     pub fn create_cf<'a, T>(&mut self, cfd: T) -> Result<&CFHandle, String>
-        where
-            T: Into<ColumnFamilyDescriptor<'a>>,
+    where
+        T: Into<ColumnFamilyDescriptor<'a>>,
     {
         let cfd = cfd.into();
         let cname = match CString::new(cfd.name.as_bytes()) {
@@ -2124,19 +2124,21 @@ pub fn load_latest_options(
         let mut cf_descs_len: size_t = 0;
 
         let ok = ffi_try!(crocksdb_load_latest_options(
-                              dbpath.as_ptr(),
-                              env.inner,
-                              db_options.inner,
-                              &mut raw_cf_descs,
-                              &mut cf_descs_len,
-                              ignore_unknown_options));
+            dbpath.as_ptr(),
+            env.inner,
+            db_options.inner,
+            &mut raw_cf_descs,
+            &mut cf_descs_len,
+            ignore_unknown_options
+        ));
         if !ok {
-            return Ok(None)
+            return Ok(None);
         }
         let cf_descs_list = slice::from_raw_parts(raw_cf_descs, cf_descs_len);
-        let cf_descs = cf_descs_list.into_iter().map(|raw_cf_desc| {
-            CColumnFamilyDescriptor::from_raw(*raw_cf_desc)
-        }).collect();
+        let cf_descs = cf_descs_list
+            .into_iter()
+            .map(|raw_cf_desc| CColumnFamilyDescriptor::from_raw(*raw_cf_desc))
+            .collect();
 
         libc::free(raw_cf_descs as *mut c_void);
 
@@ -2146,13 +2148,13 @@ pub fn load_latest_options(
 
 #[cfg(test)]
 mod test {
+    use super::*;
     use std::fs;
     use std::path::Path;
     use std::str;
     use std::string::String;
     use std::sync::*;
     use std::thread;
-    use super::*;
     use tempdir::TempDir;
 
     #[test]
@@ -2527,9 +2529,9 @@ mod test {
         }
         db.flush_cf(cf_handle, true).unwrap();
 
-        let total_sst_files_size =
-            db.get_property_int_cf(cf_handle, "rocksdb.total-sst-files-size")
-                .unwrap();
+        let total_sst_files_size = db
+            .get_property_int_cf(cf_handle, "rocksdb.total-sst-files-size")
+            .unwrap();
         assert!(total_sst_files_size > 0);
     }
 
@@ -2636,7 +2638,11 @@ mod test {
         let cf_name: &str = "cf_dynamic_level_bytes";
 
         // test when options not exist
-        assert!(load_latest_options(dbpath, &Env::default(), false).unwrap().is_none());
+        assert!(
+            load_latest_options(dbpath, &Env::default(), false)
+                .unwrap()
+                .is_none()
+        );
 
         let mut opts = DBOptions::new();
         opts.create_if_missing(true);
@@ -2649,7 +2655,9 @@ mod test {
         let cf_opts = db.get_options_cf(cf_handle);
         assert!(cf_opts.get_level_compaction_dynamic_level_bytes());
 
-        let (_, cf_descs) = load_latest_options(dbpath, &Env::default(), false).unwrap().unwrap();
+        let (_, cf_descs) = load_latest_options(dbpath, &Env::default(), false)
+            .unwrap()
+            .unwrap();
 
         for cf_desc in cf_descs {
             if cf_desc.name() == cf_name {

@@ -1953,12 +1953,12 @@ void crocksdb_column_family_descriptor_destroy(
   delete cf_desc;
 }
 
-const char* crocksdb_column_family_descriptor_name(
+const char* crocksdb_name_from_column_family_descriptor(
     const crocksdb_column_family_descriptor* cf_desc) {
   return cf_desc->rep.name.c_str();
 }
 
-crocksdb_options_t* crocksdb_column_family_descriptor_options(
+crocksdb_options_t* crocksdb_options_from_column_family_descriptor(
     const crocksdb_column_family_descriptor* cf_desc) {
   crocksdb_options_t* options = new crocksdb_options_t;
   *static_cast<ColumnFamilyOptions*>(&options->rep) = cf_desc->rep.options;
@@ -2637,7 +2637,7 @@ bool crocksdb_load_latest_options(const char* dbpath, crocksdb_env_t* env,
   *cf_descs_len = tmp_cf_descs.size();
   (*cf_descs) = (crocksdb_column_family_descriptor**)malloc(
       sizeof(crocksdb_column_family_descriptor*) * (*cf_descs_len));
-  for (std::size_t i = 0; i < tmp_cf_descs.size(); ++i) {
+  for (std::size_t i = 0; i < *cf_descs_len; ++i) {
     (*cf_descs)[i] =
         new crocksdb_column_family_descriptor{std::move(tmp_cf_descs[i])};
   }

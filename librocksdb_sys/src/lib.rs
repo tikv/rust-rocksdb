@@ -351,10 +351,10 @@ extern "C" {
     pub fn crocksdb_options_copy(opts: *const Options) -> *mut Options;
     pub fn crocksdb_options_destroy(opts: *mut Options);
     pub fn crocksdb_column_family_descriptor_destroy(cf_desc: *mut ColumnFamilyDescriptor);
-    pub fn crocksdb_column_family_descriptor_name(
+    pub fn crocksdb_name_from_column_family_descriptor(
         cf_descs: *const ColumnFamilyDescriptor,
     ) -> *const c_char;
-    pub fn crocksdb_column_family_descriptor_options(
+    pub fn crocksdb_options_from_column_family_descriptor(
         cf_descs: *const ColumnFamilyDescriptor,
     ) -> *mut Options;
     pub fn crocksdb_cache_create_lru(

@@ -1450,14 +1450,14 @@ impl CColumnFamilyDescriptor {
 
     pub fn name<'a>(&'a self) -> &'a str {
         unsafe {
-            let raw_cf_name = crocksdb_ffi::crocksdb_column_family_descriptor_name(self.inner);
+            let raw_cf_name = crocksdb_ffi::crocksdb_name_from_column_family_descriptor(self.inner);
             CStr::from_ptr(raw_cf_name).to_str().unwrap()
         }
     }
 
     pub fn options(&self) -> ColumnFamilyOptions {
         unsafe {
-            let raw_cf_options = crocksdb_ffi::crocksdb_column_family_descriptor_options(self.inner);
+            let raw_cf_options = crocksdb_ffi::crocksdb_options_from_column_family_descriptor(self.inner);
             ColumnFamilyOptions::from_raw(raw_cf_options)
         }
     }

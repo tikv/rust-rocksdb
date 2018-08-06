@@ -745,10 +745,11 @@ extern C_ROCKSDB_LIBRARY_API crocksdb_options_t* crocksdb_options_copy(const cro
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_destroy(crocksdb_options_t*);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_column_family_descriptor_destroy(
     crocksdb_column_family_descriptor* cf_desc);
-extern C_ROCKSDB_LIBRARY_API const char* crocksdb_column_family_descriptor_name(
+extern C_ROCKSDB_LIBRARY_API const char*
+crocksdb_name_from_column_family_descriptor(
     const crocksdb_column_family_descriptor* cf_desc);
 extern C_ROCKSDB_LIBRARY_API crocksdb_options_t*
-crocksdb_column_family_descriptor_options(
+crocksdb_options_from_column_family_descriptor(
     const crocksdb_column_family_descriptor* cf_desc);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_increase_parallelism(
     crocksdb_options_t* opt, int total_threads);

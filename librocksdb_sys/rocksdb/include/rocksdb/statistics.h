@@ -379,6 +379,8 @@ enum Histograms : uint32_t {
   // requests.
   READ_NUM_MERGE_OPERANDS,
 
+  INGESTION_JOB_RUN_MICROS,
+
   HISTOGRAM_ENUM_MAX,  // TODO(ldemailly): enforce HistogramsNameMap match
 };
 
@@ -413,6 +415,7 @@ const std::vector<std::pair<Histograms, std::string>> HistogramsNameMap = {
     {BYTES_DECOMPRESSED, "rocksdb.bytes.decompressed"},
     {COMPRESSION_TIMES_NANOS, "rocksdb.compression.times.nanos"},
     {DECOMPRESSION_TIMES_NANOS, "rocksdb.decompression.times.nanos"},
+    {INGESTION_JOB_RUN_MICROS, "rocksdb.ingestion.job.run.micros"},
     {READ_NUM_MERGE_OPERANDS, "rocksdb.read.num.merge_operands"},
 };
 

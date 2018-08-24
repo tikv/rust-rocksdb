@@ -257,6 +257,7 @@ pub enum DBStatisticsHistogramType {
     CompressionTimesNanos = 28,
     DecompressionTimesNanos = 29,
     ReadNumMergeOperands = 30,
+    IngestionJobRunMicros = 31,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]

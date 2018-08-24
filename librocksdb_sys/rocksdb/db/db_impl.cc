@@ -2699,6 +2699,7 @@ Status DBImpl::IngestExternalFile(
 
     // Run the ingestion job
     if (status.ok()) {
+      StopWatch sw(env_, stats_, INGESTION_JOB_RUN_MICROS);
       status = ingestion_job.Run();
     }
 

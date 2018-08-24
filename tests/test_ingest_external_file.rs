@@ -147,6 +147,11 @@ fn test_ingest_external_file() {
     assert_eq!(snap.get_cf(handle, b"k1").unwrap().unwrap(), b"v3");
     assert_eq!(snap.get_cf(handle, b"k2").unwrap().unwrap(), b"v4");
     assert!(snap.get_cf(handle, b"k3").unwrap().is_none());
+
+    let ingestion_micros = db
+        .get_statistics_histogram(DBStatisticsHistogramType::IngestionJobRunMicros)
+        .unwrap();
+    assert!(ingestion_micros.max > 0.0);
 }
 
 #[test]
@@ -298,6 +303,7 @@ fn create_default_database(path: &TempDir) -> DB {
     let path_str = path.path().to_str().unwrap();
     let mut opts = DBOptions::new();
     opts.create_if_missing(true);
+    opts.enable_statistics(true);
     DB::open(opts, path_str).unwrap()
 }
 

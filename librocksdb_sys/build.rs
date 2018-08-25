@@ -96,13 +96,16 @@ fn build_rocksdb() -> Build {
         .build_target("rocksdb")
         .build();
     let build_dir = format!("{}/build", dst.display());
+    let mut zlib = "z";
     if cfg!(target_os = "windows") {
+        zlib = "zlib";
         let profile = match &*env::var("PROFILE").unwrap_or("debug".to_owned()) {
             "bench" | "release" => "Release",
             _ => "Debug",
         };
         println!("cargo:rustc-link-search=native={}/{}", build_dir, profile);
         build.define("OS_WIN", None);
+        println!("cargo:rustc-link-lib=Rpcrt4");
     } else {
         println!("cargo:rustc-link-search=native={}", build_dir);
         build.define("ROCKSDB_PLATFORM_POSIX", None);
@@ -118,7 +121,7 @@ fn build_rocksdb() -> Build {
     build.include(cur_dir.join("rocksdb"));
 
     println!("cargo:rustc-link-lib=static=rocksdb");
-    println!("cargo:rustc-link-lib=static=z");
+    println!("cargo:rustc-link-lib=static={}", zlib);
     println!("cargo:rustc-link-lib=static=bz2");
     println!("cargo:rustc-link-lib=static=lz4");
     println!("cargo:rustc-link-lib=static=zstd");

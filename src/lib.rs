@@ -24,7 +24,7 @@ pub use compaction_filter::CompactionFilter;
 pub use event_listener::{CompactionJobInfo, EventListener, FlushJobInfo, IngestionInfo};
 pub use librocksdb_sys::{
     self as crocksdb_ffi, new_bloom_filter, CompactionPriority, DBBottommostLevelCompaction,
-    DBCompactionStyle, DBCompressionType, DBEntryType, DBInfoLogLevel, DBRecoveryMode,
+    DBCompactionStyle, DBCompressionType, DBEntryType, DBInfoLogLevel, DBReadTier, DBRecoveryMode,
     DBStatisticsHistogramType, DBStatisticsTickerType,
 };
 pub use merge_operator::MergeOperands;

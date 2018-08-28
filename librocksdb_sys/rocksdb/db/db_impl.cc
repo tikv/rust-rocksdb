@@ -2667,6 +2667,7 @@ Status DBImpl::IngestExternalFile(
     // Lock db mutex
     InstrumentedMutexLock l(&mutex_);
     TEST_SYNC_POINT("DBImpl::AddFile:MutexLock");
+    StopWatch sw(env_, stats_, INGESTION_BLOCK_MICROS);
 
     // Stop writes to the DB by entering both write threads
     WriteThread::Writer w;
@@ -2692,6 +2693,7 @@ Status DBImpl::IngestExternalFile(
                                &need_flush);
       if (status.ok() && need_flush) {
         mutex_.Unlock();
+        RecordTick(stats_, NUM_INGESTION_FLUSHES);
         status = FlushMemTable(cfd, FlushOptions(), true /* writes_stopped */);
         mutex_.Lock();
       }
@@ -2699,7 +2701,6 @@ Status DBImpl::IngestExternalFile(
 
     // Run the ingestion job
     if (status.ok()) {
-      StopWatch sw(env_, stats_, INGESTION_JOB_RUN_MICROS);
       status = ingestion_job.Run();
     }
 

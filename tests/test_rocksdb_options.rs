@@ -16,8 +16,8 @@ use rocksdb::crocksdb_ffi::{
     DBStatisticsHistogramType as HistogramType, DBStatisticsTickerType as TickerType,
 };
 use rocksdb::{
-    BlockBasedOptions, ColumnFamilyOptions, CompactOptions, DBOptions, FifoCompactionOptions,
-    ReadOptions, SeekKey, SliceTransform, Writable, WriteOptions, DB,
+    BlockBasedOptions, ColumnFamilyOptions, CompactOptions, DBOptions, DBReadTier,
+    FifoCompactionOptions, ReadOptions, SeekKey, SliceTransform, Writable, WriteOptions, DB,
 };
 use std::path::Path;
 use std::thread;
@@ -607,7 +607,6 @@ fn test_read_options() {
     read_opts.set_ignore_range_deletions(true);
     read_opts.set_max_skippable_internal_keys(0);
     read_opts.set_readahead_size(0);
-    read_opts.set_read_tier(0);
 
     db.put(b"k1", b"a").unwrap();
     db.put(b"k2", b"b").unwrap();
@@ -623,6 +622,34 @@ fn test_read_options() {
         iter.next();
     }
     assert!(key_count == 3);
+}
+
+#[test]
+fn test_readoptions_read_tier() {
+    let path = TempDir::new("_rust_rocksdb_read_options").expect("");
+    let db = DB::open_default(path.path().to_str().unwrap()).unwrap();
+
+    let (k, v) = (b"k", b"v");
+    db.put(k, v).unwrap();
+
+    {
+        let mut ropts = ReadOptions::new();
+        ropts.set_read_tier(DBReadTier::MemtableTier);
+        let mut iter = db.iter_opt(ropts);
+        iter.seek(SeekKey::Start);
+        assert!(iter.valid());
+        assert_eq!(iter.value(), v);
+    }
+
+    db.flush(true).unwrap();
+
+    {
+        let mut ropts = ReadOptions::new();
+        ropts.set_read_tier(DBReadTier::MemtableTier);
+        let mut iter = db.iter_opt(ropts);
+        iter.seek(SeekKey::Start);
+        assert!(!iter.valid());
+    }
 }
 
 #[test]

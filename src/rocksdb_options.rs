@@ -18,8 +18,9 @@ use comparator::{self, compare_callback, ComparatorCallback};
 use crocksdb_ffi::{
     self, DBBlockBasedTableOptions, DBBottommostLevelCompaction, DBCompactOptions,
     DBCompactionOptions, DBCompressionType, DBFifoCompactionOptions, DBFlushOptions,
-    DBInfoLogLevel, DBInstance, DBRateLimiter, DBReadOptions, DBRecoveryMode, DBRestoreOptions,
-    DBSnapshot, DBStatisticsHistogramType, DBStatisticsTickerType, DBWriteOptions, Options,
+    DBInfoLogLevel, DBInstance, DBRateLimiter, DBReadOptions, DBReadTier, DBRecoveryMode,
+    DBRestoreOptions, DBSnapshot, DBStatisticsHistogramType, DBStatisticsTickerType,
+    DBWriteOptions, Options,
 };
 use event_listener::{new_event_listener, EventListener};
 use libc::{self, c_double, c_int, c_uchar, c_void, size_t};
@@ -311,7 +312,7 @@ impl ReadOptions {
         }
     }
 
-    pub fn set_read_tier(&mut self, tier: c_int) {
+    pub fn set_read_tier(&mut self, tier: DBReadTier) {
         unsafe {
             crocksdb_ffi::crocksdb_readoptions_set_read_tier(self.inner, tier);
         }

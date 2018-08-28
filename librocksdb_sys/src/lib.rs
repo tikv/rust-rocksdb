@@ -306,6 +306,15 @@ pub enum DBBottommostLevelCompaction {
     Force = 2,
 }
 
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[repr(C)]
+pub enum DBReadTier {
+    ReadAllTier = 0,
+    BlockCacheTier = 1,
+    PersistedTier = 2,
+    MemtableTier = 3,
+}
+
 pub fn error_message(ptr: *mut c_char) -> String {
     let c_str = unsafe { CStr::from_ptr(ptr) };
     let s = format!("{}", c_str.to_string_lossy());
@@ -675,7 +684,7 @@ extern "C" {
         k: *const u8,
         kLen: size_t,
     );
-    pub fn crocksdb_readoptions_set_read_tier(readopts: *mut DBReadOptions, tier: c_int);
+    pub fn crocksdb_readoptions_set_read_tier(readopts: *mut DBReadOptions, tier: DBReadTier);
     pub fn crocksdb_readoptions_set_tailing(readopts: *mut DBReadOptions, v: bool);
     pub fn crocksdb_readoptions_set_managed(readopts: *mut DBReadOptions, v: bool);
     pub fn crocksdb_readoptions_set_readahead_size(readopts: *mut DBReadOptions, size: size_t);

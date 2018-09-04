@@ -41,8 +41,16 @@ for task in tasks:
             break
         if not task[4].match(line):
             continue
-        name = line.split(',')[0].split('=')[0].strip(' ')
+        tokens = line.split(',')[0].split('=')
+        if len(tokens) == 1:
+            name = tokens[0].strip(' ')
+            value = count
+        elif len(tokens) == 2:
+            name = tokens[0].strip(' ')
+            value = tokens[1].strip(' ')
+            count = int(value)
+        else:
+            sys.exit("invalid enum: " + line)
         name = ''.join([w.capitalize() for w in name.split('_')])
-        value = count
         count = count + 1
         print('    {} = {},'.format(name, value))

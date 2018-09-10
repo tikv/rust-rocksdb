@@ -37,6 +37,8 @@ fn test_metadata() {
     }
 
     let cf_meta = db.get_column_family_meta_data(cf_handle);
+    let level0_files_count = cf_meta.get_level_files_count(0);
+    assert_eq!(level0_files_count, 5);
     let cf_levels = cf_meta.get_levels();
     assert_eq!(cf_levels.len(), 7);
     for (i, cf_level) in cf_levels.iter().enumerate() {

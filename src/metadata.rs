@@ -37,6 +37,18 @@ impl ColumnFamilyMetaData {
         }
         levels
     }
+
+    pub fn get_level_files_count(&self, level: usize) -> usize {
+        unsafe {
+            let n = crocksdb_ffi::crocksdb_column_family_meta_data_level_count(self.inner);
+            if level >= n {
+                return 0;
+            }
+            let level_meta =
+                crocksdb_ffi::crocksdb_column_family_meta_data_level_data(self.inner, level);
+            return crocksdb_ffi::crocksdb_level_meta_data_file_count(level_meta);
+        }
+    }
 }
 
 impl Drop for ColumnFamilyMetaData {

@@ -386,10 +386,17 @@ impl DB {
         DB::open_cf_internal(opts, path, cfds, &[], None)
     }
 
-    pub fn open_cf_with_ttl<'a, T>(opts: DBOptions, path: &str, cfds: Vec<T>, ttls: &[i32]) ->Result<DB, String>
+    pub fn open_cf_with_ttl<'a, T>(
+        opts: DBOptions,
+        path: &str,
+        cfds: Vec<T>,
+        ttls: &[i32],
+    ) -> Result<DB, String>
     where
-         T: Into<ColumnFamilyDescriptor<'a>>, { DB::open_cf_internal(opts, path, cfds, ttls,None) }
-
+        T: Into<ColumnFamilyDescriptor<'a>>,
+    {
+        DB::open_cf_internal(opts, path, cfds, ttls, None)
+    }
 
     pub fn open_for_read_only(
         opts: DBOptions,
@@ -473,25 +480,25 @@ impl DB {
                 if let Some(flag) = error_if_log_file_exist {
                     unsafe {
                         ffi_try!(crocksdb_open_for_read_only_column_families(
-                        db_options,
-                        db_path,
-                        db_cfs_count,
-                        db_cf_ptrs,
-                        db_cf_opts,
-                        db_cf_handles,
-                        flag
-                    ))
+                            db_options,
+                            db_path,
+                            db_cfs_count,
+                            db_cf_ptrs,
+                            db_cf_opts,
+                            db_cf_handles,
+                            flag
+                        ))
                     }
                 } else {
                     unsafe {
                         ffi_try!(crocksdb_open_column_families(
-                        db_options,
-                        db_path,
-                        db_cfs_count,
-                        db_cf_ptrs,
-                        db_cf_opts,
-                        db_cf_handles
-                    ))
+                            db_options,
+                            db_path,
+                            db_cfs_count,
+                            db_cf_ptrs,
+                            db_cf_opts,
+                            db_cf_handles
+                        ))
                     }
                 }
             } else {
@@ -509,7 +516,6 @@ impl DB {
                     ))
                 }
             }
-
         };
         if cf_handles.iter().any(|h| h.is_null()) {
             return Err(ERR_NULL_CF_HANDLE.to_owned());
@@ -2492,7 +2498,8 @@ mod test {
                 db1.put(b"k2", b"v2").unwrap();
                 db1.flush(true).unwrap();
                 db1.compact_range(None, None);
-            }).unwrap();
+            })
+            .unwrap();
         // Wait until all currently running background processes finish.
         db.pause_bg_work();
         assert_eq!(

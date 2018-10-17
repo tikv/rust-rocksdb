@@ -12,13 +12,12 @@ pub fn test_ttl() {
         let cf_opts = ColumnFamilyOptions::new();
         let ttl = 10;
         opts.create_if_missing(true);
-        //  cf_opts.set_num_levels(2);
-        //   assert_eq!(2, cf_opts.get_num_levels());
+
         let mut db = match DB::open_cf_with_ttl(
             opts,
             path.path().to_str().unwrap(),
             vec![("default", cf_opts)],
-            &[ttl]
+            &[ttl],
         ) {
             Ok(db) => {
                 println!("successfully opened db with ttl");
@@ -37,12 +36,16 @@ pub fn test_ttl() {
         drop(db);
     }
 
-
     // should be able to write, read over a cf with ttl
     {
         let cf_opts = ColumnFamilyOptions::new();
         let ttl = 0;
-        let db = match DB::open_cf_with_ttl(DBOptions::new(), path_str, vec![("cf1", cf_opts)], &[ttl]) {
+        let db = match DB::open_cf_with_ttl(
+            DBOptions::new(),
+            path_str,
+            vec![("cf1", cf_opts)],
+            &[ttl],
+        ) {
             Ok(db) => {
                 println!("successfully opened cf with ttl");
                 db
@@ -55,5 +58,4 @@ pub fn test_ttl() {
         let p = db.put_cf(cf1, b"k1", b"a");
         assert!(p.is_ok());
     }
-
 }

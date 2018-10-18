@@ -43,7 +43,7 @@ pub fn test_ttl() {
             path_str,
             vec![
                 ("cf1", ColumnFamilyOptions::new()),
-                ("default", ColumnFamilyOptions::new())
+                ("default", ColumnFamilyOptions::new()),
             ],
             &[10, 10],
         ) {

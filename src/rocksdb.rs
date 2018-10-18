@@ -469,7 +469,7 @@ impl DB {
         };
         let mut with_ttl = false;
 
-        if ttls.len() > 0  {
+        if ttls.len() > 0 {
             with_ttl = true;
         }
         if with_ttl && ttls_vec.len() != cf_names.len() {
@@ -526,7 +526,7 @@ impl DB {
                 }
             }
         };
- 
+
         if cf_handles.iter().any(|h| h.is_null()) {
             return Err(ERR_NULL_CF_HANDLE.to_owned());
         }
@@ -2508,8 +2508,7 @@ mod test {
                 db1.put(b"k2", b"v2").unwrap();
                 db1.flush(true).unwrap();
                 db1.compact_range(None, None);
-            })
-            .unwrap();
+            }).unwrap();
         // Wait until all currently running background processes finish.
         db.pause_bg_work();
         assert_eq!(

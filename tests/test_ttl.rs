@@ -41,8 +41,11 @@ pub fn test_ttl() {
         let db = match DB::open_cf_with_ttl(
             DBOptions::new(),
             path_str,
-            vec![("cf1", ColumnFamilyOptions::new()), ("default", ColumnFamilyOptions::new())],
-            &[10,10],
+            vec![
+                ("cf1", ColumnFamilyOptions::new()),
+                ("default", ColumnFamilyOptions::new())
+            ],
+            &[10, 10],
         ) {
             Ok(db) => {
                 println!("successfully opened cf with ttl");

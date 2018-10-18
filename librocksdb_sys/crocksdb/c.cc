@@ -689,9 +689,9 @@ crocksdb_t* crocksdb_open_column_families_with_ttl(
     int num_column_families,
     const char** column_family_names,
     const crocksdb_options_t** column_family_options,
-    crocksdb_column_family_handle_t** column_family_handles,
     const int32_t* ttl_array,
     bool read_only,
+    crocksdb_column_family_handle_t** column_family_handles,
     char** errptr) {
   std::vector<ColumnFamilyDescriptor> column_families;
   std::vector<int32_t> ttls;

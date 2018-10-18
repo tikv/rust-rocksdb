@@ -864,9 +864,9 @@ extern "C" {
         num_column_families: c_int,
         column_family_names: *const *const c_char,
         column_family_options: *const *const Options,
-        column_family_handles: *const *mut DBCFHandle,
         ttl_array: *const c_int,
         read_only: bool,
+        column_family_handles: *const *mut DBCFHandle,
         err: *mut *mut c_char,
     ) -> *mut DBInstance;
     pub fn crocksdb_open_for_read_only_column_families(

@@ -38,13 +38,11 @@ pub fn test_ttl() {
 
     // should be able to write, read over a cf with ttl
     {
-        let cf_opts = ColumnFamilyOptions::new();
-        let ttl = 0;
         let db = match DB::open_cf_with_ttl(
             DBOptions::new(),
             path_str,
-            vec![("cf1", cf_opts)],
-            &[ttl],
+            vec![("cf1", ColumnFamilyOptions::new()), ("default", ColumnFamilyOptions::new())],
+            &[10,10],
         ) {
             Ok(db) => {
                 println!("successfully opened cf with ttl");

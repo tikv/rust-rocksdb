@@ -230,8 +230,9 @@ extern C_ROCKSDB_LIBRARY_API crocksdb_t* crocksdb_open_column_families_with_ttl(
     const crocksdb_options_t* options, const char* name, int num_column_families,
     const char** column_family_names,
     const crocksdb_options_t** column_family_options,
+    const int32_t* ttl_array, bool read_only,
     crocksdb_column_family_handle_t** column_family_handles,
-    const int32_t* ttl_array, bool read_only, char** errptr);
+    char** errptr);
 
 extern C_ROCKSDB_LIBRARY_API crocksdb_t*
 crocksdb_open_for_read_only_column_families(

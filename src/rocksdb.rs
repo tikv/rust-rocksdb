@@ -52,10 +52,13 @@ impl Drop for CFHandle {
     }
 }
 
-fn ensure_default_cf_exists<'a>(list: &mut Vec<ColumnFamilyDescriptor<'a>>) {
+fn ensure_default_cf_exists<'a>(list: &mut Vec<ColumnFamilyDescriptor<'a>>, ttls: &mut Vec<i32>) {
     let contains = list.iter().any(|ref cf| cf.is_default());
     if !contains {
         list.push(ColumnFamilyDescriptor::default());
+        if ttls.len() < list.len() {
+            ttls.push(0);
+        }
     }
 }
 
@@ -446,7 +449,8 @@ impl DB {
         })?;
 
         let mut descs = cfds.into_iter().map(|t| t.into()).collect();
-        ensure_default_cf_exists(&mut descs);
+        let mut ttls_vec = ttls.to_vec();
+        ensure_default_cf_exists(&mut descs, &mut ttls_vec);
 
         let (names, options) = split_descriptors(descs);
         let cstrings = build_cstring_list(&names);
@@ -463,11 +467,15 @@ impl DB {
         } else {
             false
         };
-        let with_ttl = if ttls.len() > 0 && ttls.len() == cf_names.len() {
-            true
-        } else {
-            false
-        };
+        let mut with_ttl = false;
+
+        if ttls.len() > 0  {
+            with_ttl = true;
+        }
+        if with_ttl && ttls_vec.len() != cf_names.len() {
+            return Err("the length of ttls not equal to length of cfs".to_owned());
+        }
+
         let db = {
             let db_options = opts.inner;
             let db_path = cpath.as_ptr();
@@ -502,7 +510,8 @@ impl DB {
                     }
                 }
             } else {
-                let ttl_array = ttls.as_ptr() as *const c_int;
+                let ttl_array = ttls_vec.as_ptr() as *const c_int;
+
                 unsafe {
                     ffi_try!(crocksdb_open_column_families_with_ttl(
                         db_options,
@@ -510,13 +519,14 @@ impl DB {
                         db_cfs_count,
                         db_cf_ptrs,
                         db_cf_opts,
-                        db_cf_handles,
                         ttl_array,
-                        readonly
+                        readonly,
+                        db_cf_handles
                     ))
                 }
             }
         };
+ 
         if cf_handles.iter().any(|h| h.is_null()) {
             return Err(ERR_NULL_CF_HANDLE.to_owned());
         }
@@ -2498,7 +2508,8 @@ mod test {
                 db1.put(b"k2", b"v2").unwrap();
                 db1.flush(true).unwrap();
                 db1.compact_range(None, None);
-            }).unwrap();
+            })
+            .unwrap();
         // Wait until all currently running background processes finish.
         db.pause_bg_work();
         assert_eq!(

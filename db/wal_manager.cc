@@ -26,6 +26,7 @@
 #include "rocksdb/env.h"
 #include "rocksdb/options.h"
 #include "rocksdb/write_batch.h"
+#include "util/cast_util.h"
 #include "util/coding.h"
 #include "util/file_reader_writer.h"
 #include "util/filename.h"
@@ -37,6 +38,15 @@
 namespace rocksdb {
 
 #ifndef ROCKSDB_LITE
+
+Status WalManager::DeleteFile(const std::string& fname, uint64_t number) {
+  auto s = env_->DeleteFile(db_options_.wal_dir + "/" + fname);
+  if (s.ok()) {
+    MutexLock l(&read_first_record_cache_mutex_);
+    read_first_record_cache_.erase(number);
+  }
+  return s;
+}
 
 Status WalManager::GetSortedWalFiles(VectorLogPtr& files) {
   // First get sorted files in db dir, then get sorted files from archived
@@ -114,7 +124,7 @@ Status WalManager::GetUpdatesSince(
   }
   iter->reset(new TransactionLogIteratorImpl(
       db_options_.wal_dir, &db_options_, read_options, env_options_, seq,
-      std::move(wal_files), version_set));
+      std::move(wal_files), version_set, seq_per_batch_));
   return (*iter)->status();
 }
 
@@ -273,8 +283,8 @@ namespace {
 struct CompareLogByPointer {
   bool operator()(const std::unique_ptr<LogFile>& a,
                   const std::unique_ptr<LogFile>& b) {
-    LogFileImpl* a_impl = dynamic_cast<LogFileImpl*>(a.get());
-    LogFileImpl* b_impl = dynamic_cast<LogFileImpl*>(b.get());
+    LogFileImpl* a_impl = static_cast_with_check<LogFileImpl, LogFile>(a.get());
+    LogFileImpl* b_impl = static_cast_with_check<LogFileImpl, LogFile>(b.get());
     return *a_impl < *b_impl;
   }
 };
@@ -434,7 +444,7 @@ Status WalManager::ReadFirstLine(const std::string& fname,
   Status status = env_->NewSequentialFile(
       fname, &file, env_->OptimizeForLogRead(env_options_));
   unique_ptr<SequentialFileReader> file_reader(
-      new SequentialFileReader(std::move(file)));
+      new SequentialFileReader(std::move(file), fname));
 
   if (!status.ok()) {
     return status;

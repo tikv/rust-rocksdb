@@ -21,7 +21,7 @@ class Slice;
 // from multiple threads.
 class Comparator {
  public:
-  virtual ~Comparator();
+  virtual ~Comparator() {}
 
   // Three-way comparison.  Returns value:
   //   < 0 iff "a" < "b",
@@ -64,6 +64,16 @@ class Comparator {
   // Simple comparator implementations may return with *key unchanged,
   // i.e., an implementation of this method that does nothing is correct.
   virtual void FindShortSuccessor(std::string* key) const = 0;
+
+  // if it is a wrapped comparator, may return the root one.
+  // return itself it is not wrapped.
+  virtual const Comparator* GetRootComparator() const { return this; }
+
+  // given two keys, determine if t is the successor of s
+  virtual bool IsSameLengthImmediateSuccessor(const Slice& /*s*/,
+                                              const Slice& /*t*/) const {
+    return false;
+  }
 };
 
 // Return a builtin comparator that uses lexicographic byte-wise

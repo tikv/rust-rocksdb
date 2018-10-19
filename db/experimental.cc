@@ -14,30 +14,29 @@ namespace experimental {
 
 Status SuggestCompactRange(DB* db, ColumnFamilyHandle* column_family,
                            const Slice* begin, const Slice* end) {
-  auto dbimpl = dynamic_cast<DBImpl*>(db);
-  if (dbimpl == nullptr) {
-    return Status::InvalidArgument("Didn't recognize DB object");
+  if (db == nullptr) {
+    return Status::InvalidArgument("DB is empty");
   }
 
-  return dbimpl->SuggestCompactRange(column_family, begin, end);
+  return db->SuggestCompactRange(column_family, begin, end);
 }
 
 Status PromoteL0(DB* db, ColumnFamilyHandle* column_family, int target_level) {
-  auto dbimpl = dynamic_cast<DBImpl*>(db);
-  if (dbimpl == nullptr) {
+  if (db == nullptr) {
     return Status::InvalidArgument("Didn't recognize DB object");
   }
-  return dbimpl->PromoteL0(column_family, target_level);
+  return db->PromoteL0(column_family, target_level);
 }
 
 #else  // ROCKSDB_LITE
 
-Status SuggestCompactRange(DB* db, ColumnFamilyHandle* column_family,
-                           const Slice* begin, const Slice* end) {
+Status SuggestCompactRange(DB* /*db*/, ColumnFamilyHandle* /*column_family*/,
+                           const Slice* /*begin*/, const Slice* /*end*/) {
   return Status::NotSupported("Not supported in RocksDB LITE");
 }
 
-Status PromoteL0(DB* db, ColumnFamilyHandle* column_family, int target_level) {
+Status PromoteL0(DB* /*db*/, ColumnFamilyHandle* /*column_family*/,
+                 int /*target_level*/) {
   return Status::NotSupported("Not supported in RocksDB LITE");
 }
 

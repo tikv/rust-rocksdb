@@ -1,9 +1,7 @@
-// Copyright (c) 2017-present, Facebook, Inc.  All rights reserved.
+//  Copyright (c) 2017-present, Facebook, Inc.  All rights reserved.
 //  This source code is licensed under both the GPLv2 (found in the
 //  COPYING file in the root directory) and Apache 2.0 License
 //  (found in the LICENSE.Apache file in the root directory).
-// This source code is also licensed under the GPLv2 license found in the
-// COPYING file in the root directory of this source tree.
 
 package org.rocksdb;
 
@@ -12,11 +10,16 @@ package org.rocksdb;
  * values.
  */
 public class CassandraValueMergeOperator extends MergeOperator {
-    public CassandraValueMergeOperator() {
-        super(newSharedCassandraValueMergeOperator());
+  public CassandraValueMergeOperator(int gcGracePeriodInSeconds) {
+    super(newSharedCassandraValueMergeOperator(gcGracePeriodInSeconds, 0));
     }
 
-    private native static long newSharedCassandraValueMergeOperator();
+    public CassandraValueMergeOperator(int gcGracePeriodInSeconds, int operandsLimit) {
+      super(newSharedCassandraValueMergeOperator(gcGracePeriodInSeconds, operandsLimit));
+    }
+
+    private native static long newSharedCassandraValueMergeOperator(
+        int gcGracePeriodInSeconds, int limit);
 
     @Override protected final native void disposeInternal(final long handle);
 }

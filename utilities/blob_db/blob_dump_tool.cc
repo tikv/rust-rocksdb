@@ -17,8 +17,9 @@
 #include "port/port.h"
 #include "rocksdb/convenience.h"
 #include "rocksdb/env.h"
+#include "table/format.h"
 #include "util/coding.h"
-#include "util/crc32c.h"
+#include "util/file_reader_writer.h"
 #include "util/string_util.h"
 
 namespace rocksdb {
@@ -28,7 +29,10 @@ BlobDumpTool::BlobDumpTool()
     : reader_(nullptr), buffer_(nullptr), buffer_size_(0) {}
 
 Status BlobDumpTool::Run(const std::string& filename, DisplayType show_key,
-                         DisplayType show_blob) {
+                         DisplayType show_blob,
+                         DisplayType show_uncompressed_blob,
+                         bool show_summary) {
+  constexpr size_t kReadaheadSize = 2 * 1024 * 1024;
   Status s;
   Env* env = Env::Default();
   s = env->FileExists(filename);
@@ -45,13 +49,15 @@ Status BlobDumpTool::Run(const std::string& filename, DisplayType show_key,
   if (!s.ok()) {
     return s;
   }
+  file = NewReadaheadRandomAccessFile(std::move(file), kReadaheadSize);
   if (file_size == 0) {
     return Status::Corruption("File is empty.");
   }
   reader_.reset(new RandomAccessFileReader(std::move(file), filename));
   uint64_t offset = 0;
   uint64_t footer_offset = 0;
-  s = DumpBlobLogHeader(&offset);
+  CompressionType compression = kNoCompression;
+  s = DumpBlobLogHeader(&offset, &compression);
   if (!s.ok()) {
     return s;
   }
@@ -59,12 +65,28 @@ Status BlobDumpTool::Run(const std::string& filename, DisplayType show_key,
   if (!s.ok()) {
     return s;
   }
-  if (show_key != DisplayType::kNone) {
+  uint64_t total_records = 0;
+  uint64_t total_key_size = 0;
+  uint64_t total_blob_size = 0;
+  uint64_t total_uncompressed_blob_size = 0;
+  if (show_key != DisplayType::kNone || show_summary) {
     while (offset < footer_offset) {
-      s = DumpRecord(show_key, show_blob, &offset);
+      s = DumpRecord(show_key, show_blob, show_uncompressed_blob, show_summary,
+                     compression, &offset, &total_records, &total_key_size,
+                     &total_blob_size, &total_uncompressed_blob_size);
       if (!s.ok()) {
-        return s;
+        break;
       }
+    }
+  }
+  if (show_summary) {
+    fprintf(stdout, "Summary:\n");
+    fprintf(stdout, "  total records: %" PRIu64 "\n", total_records);
+    fprintf(stdout, "  total key size: %" PRIu64 "\n", total_key_size);
+    fprintf(stdout, "  total blob size: %" PRIu64 "\n", total_blob_size);
+    if (compression != kNoCompression) {
+      fprintf(stdout, "  total raw blob size: %" PRIu64 "\n",
+              total_uncompressed_blob_size);
     }
   }
   return s;
@@ -90,9 +112,10 @@ Status BlobDumpTool::Read(uint64_t offset, size_t size, Slice* result) {
   return s;
 }
 
-Status BlobDumpTool::DumpBlobLogHeader(uint64_t* offset) {
+Status BlobDumpTool::DumpBlobLogHeader(uint64_t* offset,
+                                       CompressionType* compression) {
   Slice slice;
-  Status s = Read(0, BlobLogHeader::kHeaderSize, &slice);
+  Status s = Read(0, BlobLogHeader::kSize, &slice);
   if (!s.ok()) {
     return s;
   }
@@ -102,20 +125,20 @@ Status BlobDumpTool::DumpBlobLogHeader(uint64_t* offset) {
     return s;
   }
   fprintf(stdout, "Blob log header:\n");
-  fprintf(stdout, "  Magic Number   : %u\n", header.magic_number());
-  fprintf(stdout, "  Version        : %d\n", header.version());
-  CompressionType compression = header.compression();
+  fprintf(stdout, "  Version          : %" PRIu32 "\n", header.version);
+  fprintf(stdout, "  Column Family ID : %" PRIu32 "\n",
+          header.column_family_id);
   std::string compression_str;
-  if (!GetStringFromCompressionType(&compression_str, compression).ok()) {
+  if (!GetStringFromCompressionType(&compression_str, header.compression)
+           .ok()) {
     compression_str = "Unrecongnized compression type (" +
-                      ToString((int)header.compression()) + ")";
+                      ToString((int)header.compression) + ")";
   }
-  fprintf(stdout, "  Compression    : %s\n", compression_str.c_str());
-  fprintf(stdout, "  TTL Range      : %s\n",
-          GetString(header.ttl_range()).c_str());
-  fprintf(stdout, "  Timestamp Range: %s\n",
-          GetString(header.ts_range()).c_str());
-  *offset = BlobLogHeader::kHeaderSize;
+  fprintf(stdout, "  Compression      : %s\n", compression_str.c_str());
+  fprintf(stdout, "  Expiration range : %s\n",
+          GetString(header.expiration_range).c_str());
+  *offset = BlobLogHeader::kSize;
+  *compression = header.compression;
   return s;
 }
 
@@ -126,43 +149,38 @@ Status BlobDumpTool::DumpBlobLogFooter(uint64_t file_size,
     fprintf(stdout, "No blob log footer.\n");
     return Status::OK();
   };
-  if (file_size < BlobLogHeader::kHeaderSize + BlobLogFooter::kFooterSize) {
+  if (file_size < BlobLogHeader::kSize + BlobLogFooter::kSize) {
     return no_footer();
   }
   Slice slice;
-  Status s = Read(file_size - 4, 4, &slice);
-  if (!s.ok()) {
-    return s;
-  }
-  uint32_t magic_number = DecodeFixed32(slice.data());
-  if (magic_number != kMagicNumber) {
-    return no_footer();
-  }
-  *footer_offset = file_size - BlobLogFooter::kFooterSize;
-  s = Read(*footer_offset, BlobLogFooter::kFooterSize, &slice);
+  *footer_offset = file_size - BlobLogFooter::kSize;
+  Status s = Read(*footer_offset, BlobLogFooter::kSize, &slice);
   if (!s.ok()) {
     return s;
   }
   BlobLogFooter footer;
   s = footer.DecodeFrom(slice);
   if (!s.ok()) {
-    return s;
+    return no_footer();
   }
   fprintf(stdout, "Blob log footer:\n");
-  fprintf(stdout, "  Blob count     : %" PRIu64 "\n", footer.GetBlobCount());
-  fprintf(stdout, "  TTL Range      : %s\n",
-          GetString(footer.GetTTLRange()).c_str());
-  fprintf(stdout, "  Time Range     : %s\n",
-          GetString(footer.GetTimeRange()).c_str());
-  fprintf(stdout, "  Sequence Range : %s\n",
-          GetString(footer.GetSNRange()).c_str());
+  fprintf(stdout, "  Blob count       : %" PRIu64 "\n", footer.blob_count);
+  fprintf(stdout, "  Expiration Range : %s\n",
+          GetString(footer.expiration_range).c_str());
   return s;
 }
 
 Status BlobDumpTool::DumpRecord(DisplayType show_key, DisplayType show_blob,
-                                uint64_t* offset) {
-  fprintf(stdout, "Read record with offset 0x%" PRIx64 " (%" PRIu64 "):\n",
-          *offset, *offset);
+                                DisplayType show_uncompressed_blob,
+                                bool show_summary, CompressionType compression,
+                                uint64_t* offset, uint64_t* total_records,
+                                uint64_t* total_key_size,
+                                uint64_t* total_blob_size,
+                                uint64_t* total_uncompressed_blob_size) {
+  if (show_key != DisplayType::kNone) {
+    fprintf(stdout, "Read record with offset 0x%" PRIx64 " (%" PRIu64 "):\n",
+            *offset, *offset);
+  }
   Slice slice;
   Status s = Read(*offset, BlobLogRecord::kHeaderSize, &slice);
   if (!s.ok()) {
@@ -173,49 +191,49 @@ Status BlobDumpTool::DumpRecord(DisplayType show_key, DisplayType show_blob,
   if (!s.ok()) {
     return s;
   }
-  uint32_t key_size = record.GetKeySize();
-  uint64_t blob_size = record.GetBlobSize();
-  fprintf(stdout, "  key size   : %d\n", key_size);
-  fprintf(stdout, "  blob size  : %" PRIu64 "\n", record.GetBlobSize());
-  fprintf(stdout, "  TTL        : %u\n", record.GetTTL());
-  fprintf(stdout, "  time       : %" PRIu64 "\n", record.GetTimeVal());
-  fprintf(stdout, "  type       : %d, %d\n", record.type(), record.subtype());
-  fprintf(stdout, "  header CRC : %u\n", record.header_checksum());
-  fprintf(stdout, "  CRC        : %u\n", record.checksum());
-  uint32_t header_crc =
-      crc32c::Extend(0, slice.data(), slice.size() - 2 * sizeof(uint32_t));
+  uint64_t key_size = record.key_size;
+  uint64_t value_size = record.value_size;
+  if (show_key != DisplayType::kNone) {
+    fprintf(stdout, "  key size   : %" PRIu64 "\n", key_size);
+    fprintf(stdout, "  value size : %" PRIu64 "\n", value_size);
+    fprintf(stdout, "  expiration : %" PRIu64 "\n", record.expiration);
+  }
   *offset += BlobLogRecord::kHeaderSize;
-  s = Read(*offset, key_size + blob_size + BlobLogRecord::kFooterSize, &slice);
+  s = Read(*offset, key_size + value_size, &slice);
   if (!s.ok()) {
     return s;
   }
-  header_crc = crc32c::Extend(header_crc, slice.data(), key_size);
-  header_crc = crc32c::Mask(header_crc);
-  if (header_crc != record.header_checksum()) {
-    return Status::Corruption("Record header checksum mismatch.");
-  }
-  uint32_t blob_crc = crc32c::Extend(0, slice.data() + key_size, blob_size);
-  blob_crc = crc32c::Mask(blob_crc);
-  if (blob_crc != record.checksum()) {
-    return Status::Corruption("Blob checksum mismatch.");
+  // Decompress value
+  std::string uncompressed_value;
+  if (compression != kNoCompression &&
+      (show_uncompressed_blob != DisplayType::kNone || show_summary)) {
+    BlockContents contents;
+    UncompressionContext uncompression_ctx(compression);
+    s = UncompressBlockContentsForCompressionType(
+        uncompression_ctx, slice.data() + key_size, value_size, &contents,
+        2 /*compress_format_version*/, ImmutableCFOptions(Options()));
+    if (!s.ok()) {
+      return s;
+    }
+    uncompressed_value = contents.data.ToString();
   }
   if (show_key != DisplayType::kNone) {
     fprintf(stdout, "  key        : ");
     DumpSlice(Slice(slice.data(), key_size), show_key);
     if (show_blob != DisplayType::kNone) {
       fprintf(stdout, "  blob       : ");
-      DumpSlice(Slice(slice.data() + key_size, blob_size), show_blob);
+      DumpSlice(Slice(slice.data() + key_size, value_size), show_blob);
+    }
+    if (show_uncompressed_blob != DisplayType::kNone) {
+      fprintf(stdout, "  raw blob   : ");
+      DumpSlice(Slice(uncompressed_value), show_uncompressed_blob);
     }
   }
-  Slice footer_slice(slice.data() + record.GetKeySize() + record.GetBlobSize(),
-                     BlobLogRecord::kFooterSize);
-  s = record.DecodeFooterFrom(footer_slice);
-  if (!s.ok()) {
-    return s;
-  }
-  fprintf(stdout, "  footer CRC : %u\n", record.footer_checksum());
-  fprintf(stdout, "  sequence   : %" PRIu64 "\n", record.GetSN());
-  *offset += key_size + blob_size + BlobLogRecord::kFooterSize;
+  *offset += key_size + value_size;
+  *total_records += 1;
+  *total_key_size += key_size;
+  *total_blob_size += value_size;
+  *total_uncompressed_blob_size += uncompressed_value.size();
   return s;
 }
 

@@ -7,6 +7,7 @@
 #include <chrono>
 #include <thread>
 #include "db/column_family.h"
+#include "monitoring/perf_context_imp.h"
 #include "port/port.h"
 #include "util/random.h"
 #include "util/sync_point.h"
@@ -57,6 +58,10 @@ uint8_t WriteThread::AwaitState(Writer* w, uint8_t goal_mask,
                                 AdaptationContext* ctx) {
   uint8_t state;
 
+  // 1. Busy loop using "pause" for 1 micro sec
+  // 2. Else SOMETIMES busy loop using "yield" for 100 micro sec (default)
+  // 3. Else blocking wait
+
   // On a modern Xeon each loop takes about 7 nanoseconds (most of which
   // is the effect of the pause instruction), so 200 iterations is a bit
   // more than a microsecond.  This is long enough that waits longer than
@@ -68,6 +73,10 @@ uint8_t WriteThread::AwaitState(Writer* w, uint8_t goal_mask,
     }
     port::AsmVolatilePause();
   }
+
+  // This is below the fast path, so that the stat is zero when all writes are
+  // from the same thread.
+  PERF_TIMER_GUARD(write_thread_wait_nanos);
 
   // If we're only going to end up waiting a short period of time,
   // it can be a lot more efficient to call std::this_thread::yield()
@@ -114,13 +123,21 @@ uint8_t WriteThread::AwaitState(Writer* w, uint8_t goal_mask,
 
   const size_t kMaxSlowYieldsWhileSpinning = 3;
 
+  // Whether the yield approach has any credit in this context. The credit is
+  // added by yield being succesfull before timing out, and decreased otherwise.
+  auto& yield_credit = ctx->value;
+  // Update the yield_credit based on sample runs or right after a hard failure
   bool update_ctx = false;
+  // Should we reinforce the yield credit
   bool would_spin_again = false;
+  // The samling base for updating the yeild credit. The sampling rate would be
+  // 1/sampling_base.
+  const int sampling_base = 256;
 
   if (max_yield_usec_ > 0) {
-    update_ctx = Random::GetTLSInstance()->OneIn(256);
+    update_ctx = Random::GetTLSInstance()->OneIn(sampling_base);
 
-    if (update_ctx || ctx->value.load(std::memory_order_relaxed) >= 0) {
+    if (update_ctx || yield_credit.load(std::memory_order_relaxed) >= 0) {
       // we're updating the adaptation statistics, or spinning has >
       // 50% chance of being shorter than max_yield_usec_ and causing no
       // involuntary context switches
@@ -149,7 +166,7 @@ uint8_t WriteThread::AwaitState(Writer* w, uint8_t goal_mask,
           // accurate enough to measure the yield duration
           ++slow_yield_count;
           if (slow_yield_count >= kMaxSlowYieldsWhileSpinning) {
-            // Not just one ivcsw, but several.  Immediately update ctx
+            // Not just one ivcsw, but several.  Immediately update yield_credit
             // and fall back to blocking
             update_ctx = true;
             break;
@@ -165,11 +182,19 @@ uint8_t WriteThread::AwaitState(Writer* w, uint8_t goal_mask,
   }
 
   if (update_ctx) {
-    auto v = ctx->value.load(std::memory_order_relaxed);
+    // Since our update is sample based, it is ok if a thread overwrites the
+    // updates by other threads. Thus the update does not have to be atomic.
+    auto v = yield_credit.load(std::memory_order_relaxed);
     // fixed point exponential decay with decay constant 1/1024, with +1
     // and -1 scaled to avoid overflow for int32_t
-    v = v + (v / 1024) + (would_spin_again ? 1 : -1) * 16384;
-    ctx->value.store(v, std::memory_order_relaxed);
+    //
+    // On each update the positive credit is decayed by a facor of 1/1024 (i.e.,
+    // 0.1%). If the sampled yield was successful, the credit is also increased
+    // by X. Setting X=2^17 ensures that the credit never exceeds
+    // 2^17*2^10=2^27, which is lower than 2^31 the upperbound of int32_t. Same
+    // logic applies to negative credits.
+    v = v - (v / 1024) + (would_spin_again ? 1 : -1) * 131072;
+    yield_credit.store(v, std::memory_order_relaxed);
   }
 
   assert((state & goal_mask) != 0);
@@ -238,6 +263,17 @@ void WriteThread::CreateMissingNewerLinks(Writer* head) {
   }
 }
 
+WriteThread::Writer* WriteThread::FindNextLeader(Writer* from,
+                                                 Writer* boundary) {
+  assert(from != nullptr && from != boundary);
+  Writer* current = from;
+  while (current->link_older != boundary) {
+    current = current->link_older;
+    assert(current != nullptr);
+  }
+  return current;
+}
+
 void WriteThread::CompleteLeader(WriteGroup& write_group) {
   assert(write_group.size > 0);
   Writer* leader = write_group.leader;
@@ -267,10 +303,11 @@ void WriteThread::CompleteFollower(Writer* w, WriteGroup& write_group) {
   SetState(w, STATE_COMPLETED);
 }
 
+static WriteThread::AdaptationContext jbg_ctx("JoinBatchGroup");
 void WriteThread::JoinBatchGroup(Writer* w) {
-  static AdaptationContext ctx("JoinBatchGroup");
-
+  TEST_SYNC_POINT_CALLBACK("WriteThread::JoinBatchGroup:Start", w);
   assert(w->batch != nullptr);
+
   bool linked_as_leader = LinkOne(w, &newest_writer_);
   if (linked_as_leader) {
     SetState(w, STATE_GROUP_LEADER);
@@ -292,9 +329,10 @@ void WriteThread::JoinBatchGroup(Writer* w) {
      * 3.2) an existing memtable writer group leader tell us to finish memtable
      *      writes in parallel.
      */
+    TEST_SYNC_POINT_CALLBACK("WriteThread::JoinBatchGroup:BeganWaiting", w);
     AwaitState(w, STATE_GROUP_LEADER | STATE_MEMTABLE_WRITER_LEADER |
                       STATE_PARALLEL_MEMTABLE_WRITER | STATE_COMPLETED,
-               &ctx);
+               &jbg_ctx);
     TEST_SYNC_POINT_CALLBACK("WriteThread::JoinBatchGroup:DoneWaiting", w);
   }
 }
@@ -373,6 +411,7 @@ size_t WriteThread::EnterAsBatchGroupLeader(Writer* leader,
     write_group->last_writer = w;
     write_group->size++;
   }
+  TEST_SYNC_POINT_CALLBACK("WriteThread::EnterAsBatchGroupLeader:End", w);
   return size;
 }
 
@@ -434,7 +473,8 @@ void WriteThread::EnterAsMemTableWriter(Writer* leader,
       last_writer->sequence + WriteBatchInternal::Count(last_writer->batch) - 1;
 }
 
-void WriteThread::ExitAsMemTableWriter(Writer* self, WriteGroup& write_group) {
+void WriteThread::ExitAsMemTableWriter(Writer* /*self*/,
+                                       WriteGroup& write_group) {
   Writer* leader = write_group.leader;
   Writer* last_writer = write_group.last_writer;
 
@@ -473,9 +513,9 @@ void WriteThread::LaunchParallelMemTableWriters(WriteGroup* write_group) {
   }
 }
 
+static WriteThread::AdaptationContext cpmtw_ctx("CompleteParallelMemTableWriter");
 // This method is called by both the leader and parallel followers
 bool WriteThread::CompleteParallelMemTableWriter(Writer* w) {
-  static AdaptationContext ctx("CompleteParallelMemTableWriter");
 
   auto* write_group = w->write_group;
   if (!w->status.ok()) {
@@ -485,7 +525,7 @@ bool WriteThread::CompleteParallelMemTableWriter(Writer* w) {
 
   if (write_group->running-- > 1) {
     // we're not the last one
-    AwaitState(w, STATE_COMPLETED, &ctx);
+    AwaitState(w, STATE_COMPLETED, &cpmtw_ctx);
     return false;
   }
   // else we're the last parallel worker and should perform exit duties.
@@ -504,12 +544,17 @@ void WriteThread::ExitAsBatchGroupFollower(Writer* w) {
   SetState(write_group->leader, STATE_COMPLETED);
 }
 
+static WriteThread::AdaptationContext eabgl_ctx("ExitAsBatchGroupLeader");
 void WriteThread::ExitAsBatchGroupLeader(WriteGroup& write_group,
                                          Status status) {
-  static AdaptationContext ctx("ExitAsBatchGroupLeader");
   Writer* leader = write_group.leader;
   Writer* last_writer = write_group.last_writer;
   assert(leader->link_older == nullptr);
+
+  // Propagate memtable write error to the whole group.
+  if (status.ok() && !write_group.status.ok()) {
+    status = write_group.status;
+  }
 
   if (enable_pipelined_write_) {
     // Notify writers don't write to memtable to exit.
@@ -524,27 +569,55 @@ void WriteThread::ExitAsBatchGroupLeader(WriteGroup& write_group,
     if (!leader->ShouldWriteToMemtable()) {
       CompleteLeader(write_group);
     }
+
+    Writer* next_leader = nullptr;
+
+    // Look for next leader before we call LinkGroup. If there isn't
+    // pending writers, place a dummy writer at the tail of the queue
+    // so we know the boundary of the current write group.
+    Writer dummy;
+    Writer* expected = last_writer;
+    bool has_dummy = newest_writer_.compare_exchange_strong(expected, &dummy);
+    if (!has_dummy) {
+      // We find at least one pending writer when we insert dummy. We search
+      // for next leader from there.
+      next_leader = FindNextLeader(expected, last_writer);
+      assert(next_leader != nullptr && next_leader != last_writer);
+    }
+
     // Link the ramaining of the group to memtable writer list.
+    //
+    // We have to link our group to memtable writer queue before wake up the
+    // next leader or set newest_writer_ to null, otherwise the next leader
+    // can run ahead of us and link to memtable writer queue before we do.
     if (write_group.size > 0) {
       if (LinkGroup(write_group, &newest_memtable_writer_)) {
         // The leader can now be different from current writer.
         SetState(write_group.leader, STATE_MEMTABLE_WRITER_LEADER);
       }
     }
-    // Reset newest_writer_ and wake up the next leader.
-    Writer* newest_writer = last_writer;
-    if (!newest_writer_.compare_exchange_strong(newest_writer, nullptr)) {
-      Writer* next_leader = newest_writer;
-      while (next_leader->link_older != last_writer) {
-        next_leader = next_leader->link_older;
-        assert(next_leader != nullptr);
+
+    // If we have inserted dummy in the queue, remove it now and check if there
+    // are pending writer join the queue since we insert the dummy. If so,
+    // look for next leader again.
+    if (has_dummy) {
+      assert(next_leader == nullptr);
+      expected = &dummy;
+      bool has_pending_writer =
+          !newest_writer_.compare_exchange_strong(expected, nullptr);
+      if (has_pending_writer) {
+        next_leader = FindNextLeader(expected, &dummy);
+        assert(next_leader != nullptr && next_leader != &dummy);
       }
+    }
+
+    if (next_leader != nullptr) {
       next_leader->link_older = nullptr;
       SetState(next_leader, STATE_GROUP_LEADER);
     }
     AwaitState(leader, STATE_MEMTABLE_WRITER_LEADER |
                            STATE_PARALLEL_MEMTABLE_WRITER | STATE_COMPLETED,
-               &ctx);
+               &eabgl_ctx);
   } else {
     Writer* head = newest_writer_.load(std::memory_order_acquire);
     if (head != last_writer ||
@@ -591,15 +664,15 @@ void WriteThread::ExitAsBatchGroupLeader(WriteGroup& write_group,
   }
 }
 
+static WriteThread::AdaptationContext eu_ctx("EnterUnbatched");
 void WriteThread::EnterUnbatched(Writer* w, InstrumentedMutex* mu) {
-  static AdaptationContext ctx("EnterUnbatched");
   assert(w != nullptr && w->batch == nullptr);
   mu->Unlock();
   bool linked_as_leader = LinkOne(w, &newest_writer_);
   if (!linked_as_leader) {
     TEST_SYNC_POINT("WriteThread::EnterUnbatched:Wait");
     // Last leader will not pick us as a follower since our batch is nullptr
-    AwaitState(w, STATE_GROUP_LEADER, &ctx);
+    AwaitState(w, STATE_GROUP_LEADER, &eu_ctx);
   }
   if (enable_pipelined_write_) {
     WaitForMemTableWriters();
@@ -619,15 +692,15 @@ void WriteThread::ExitUnbatched(Writer* w) {
   }
 }
 
+static WriteThread::AdaptationContext wfmw_ctx("WaitForMemTableWriters");
 void WriteThread::WaitForMemTableWriters() {
-  static AdaptationContext ctx("WaitForMemTableWriters");
   assert(enable_pipelined_write_);
   if (newest_memtable_writer_.load() == nullptr) {
     return;
   }
   Writer w;
   if (!LinkOne(&w, &newest_memtable_writer_)) {
-    AwaitState(&w, STATE_MEMTABLE_WRITER_LEADER, &ctx);
+    AwaitState(&w, STATE_MEMTABLE_WRITER_LEADER, &wfmw_ctx);
   }
   newest_memtable_writer_.store(nullptr);
 }

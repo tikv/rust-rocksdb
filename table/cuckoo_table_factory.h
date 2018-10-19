@@ -24,6 +24,8 @@ static inline uint64_t CuckooHash(
   if (get_slice_hash != nullptr) {
     return get_slice_hash(user_key, hash_cnt, table_size_);
   }
+#else
+  (void)get_slice_hash;
 #endif
 
   uint64_t value = 0;
@@ -67,14 +69,20 @@ class CuckooTableFactory : public TableFactory {
       uint32_t column_family_id, WritableFileWriter* file) const override;
 
   // Sanitizes the specified DB Options.
-  Status SanitizeOptions(const DBOptions& db_opts,
-                         const ColumnFamilyOptions& cf_opts) const override {
+  Status SanitizeOptions(
+      const DBOptions& /*db_opts*/,
+      const ColumnFamilyOptions& /*cf_opts*/) const override {
     return Status::OK();
   }
 
   std::string GetPrintableTableOptions() const override;
 
   void* GetOptions() override { return &table_options_; }
+
+  Status GetOptionString(std::string* /*opt_string*/,
+                         const std::string& /*delimiter*/) const override {
+    return Status::OK();
+  }
 
  private:
   CuckooTableOptions table_options_;

@@ -25,6 +25,8 @@ class MaxOperator : public MergeOperator {
     if (merge_in.existing_value) {
       max = Slice(merge_in.existing_value->data(),
                   merge_in.existing_value->size());
+    } else if (max.data() == nullptr) {
+      max = Slice();
     }
 
     for (const auto& op : merge_in.operand_list) {
@@ -36,9 +38,9 @@ class MaxOperator : public MergeOperator {
     return true;
   }
 
-  virtual bool PartialMerge(const Slice& key, const Slice& left_operand,
+  virtual bool PartialMerge(const Slice& /*key*/, const Slice& left_operand,
                             const Slice& right_operand, std::string* new_value,
-                            Logger* logger) const override {
+                            Logger* /*logger*/) const override {
     if (left_operand.compare(right_operand) >= 0) {
       new_value->assign(left_operand.data(), left_operand.size());
     } else {
@@ -47,10 +49,10 @@ class MaxOperator : public MergeOperator {
     return true;
   }
 
-  virtual bool PartialMergeMulti(const Slice& key,
+  virtual bool PartialMergeMulti(const Slice& /*key*/,
                                  const std::deque<Slice>& operand_list,
                                  std::string* new_value,
-                                 Logger* logger) const override {
+                                 Logger* /*logger*/) const override {
     Slice max;
     for (const auto& operand : operand_list) {
       if (max.compare(operand) < 0) {

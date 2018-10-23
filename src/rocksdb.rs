@@ -450,6 +450,7 @@ impl DB {
             )
         })?;
 
+        let cfds_len = cfds.len();
         let mut descs = cfds.into_iter().map(|t| t.into()).collect();
         let mut ttls_vec = ttls.to_vec();
         ensure_default_cf_exists(&mut descs, &mut ttls_vec);
@@ -469,14 +470,16 @@ impl DB {
         } else {
             false
         };
-        let mut with_ttl = false;
 
-        if ttls.len() > 0 {
-            with_ttl = true;
-        }
-        if with_ttl && ttls_vec.len() != cf_names.len() {
-            return Err("the length of ttls not equal to length of cfs".to_owned());
-        }
+        let with_ttl = if ttls.len() > 0 {
+            if ttls.len() == cfds_len && ttls_vec.len() == cf_names.len() {
+                true
+            } else {
+                return Err("the length of ttls not equal to length of cfs".to_owned());
+            }
+        } else {
+            false
+        };
 
         let db = {
             let db_options = opts.inner;

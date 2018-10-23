@@ -40,7 +40,7 @@ pub fn test_ttl() {
                 panic!("could not create column family: {}", e);
             }
         }
-        assert_eq!(db.cf_names(), vec!["cf1","cf2", "default"]);
+        assert_eq!(db.cf_names(), vec!["cf1", "cf2", "default"]);
         drop(db);
     }
 
@@ -107,11 +107,9 @@ pub fn test_ttl() {
         ) {
             Ok(_) => panic!(
                 "should not have opened DB successfully with ttl \
-                        when the length of ttl not equal to that of cfs"
+                 when the length of ttl not equal to that of cfs"
             ),
-            Err(e) => assert!(e.starts_with(
-                "the length of ttls not equal to length of cfs"
-            )),
+            Err(e) => assert!(e.starts_with("the length of ttls not equal to length of cfs")),
         };
     }
 
@@ -126,15 +124,13 @@ pub fn test_ttl() {
                 ("cf2", ColumnFamilyOptions::new()),
                 ("default", ColumnFamilyOptions::new()),
             ],
-            &[10,10],
+            &[10, 10],
         ) {
             Ok(_) => panic!(
                 "should not have opened DB successfully with ttl \
-                        when the length of ttl not equal to that of cfs"
+                 when the length of ttl not equal to that of cfs"
             ),
-            Err(e) => assert!(e.starts_with(
-                "the length of ttls not equal to length of cfs"
-            )),
+            Err(e) => assert!(e.starts_with("the length of ttls not equal to length of cfs")),
         };
     }
 

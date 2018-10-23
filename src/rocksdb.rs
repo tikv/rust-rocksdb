@@ -375,11 +375,10 @@ impl DB {
 
     pub fn open_with_ttl(opts: DBOptions, path: &str, ttls: &[i32]) -> Result<DB, String> {
         let cfds: Vec<&str> = vec![];
-        if ttls.len() > 0 {
-            DB::open_cf_with_ttl(opts, path, cfds, ttls)
-        } else {
-            DB::open_cf(opts, path, cfds)
+        if ttls.len() == 0 {
+            return Err("ttls is empty in with_ttl function".to_owned());
         }
+        DB::open_cf_with_ttl(opts, path, cfds, ttls)
     }
 
     pub fn open_cf<'a, T>(opts: DBOptions, path: &str, cfds: Vec<T>) -> Result<DB, String>
@@ -398,6 +397,9 @@ impl DB {
     where
         T: Into<ColumnFamilyDescriptor<'a>>,
     {
+        if ttls.len() == 0 {
+            return Err("ttls is empty in with_ttl function".to_owned());
+        }
         DB::open_cf_internal(opts, path, cfds, ttls, None)
     }
 

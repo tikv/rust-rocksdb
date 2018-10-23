@@ -133,5 +133,4 @@ pub fn test_ttl() {
             Err(e) => assert!(e.starts_with("the length of ttls not equal to length of cfs")),
         };
     }
-
 }

@@ -91,6 +91,7 @@ struct StallEventCounter {
     stall_conditions_changed_num: Arc<AtomicUsize>,
     triggered_writes_slowdown: Arc<AtomicUsize>,
     triggered_writes_stop: Arc<AtomicUsize>,
+    stall_change_from_normal_to_other: Arc<AtomicUsize>,
 }
 
 impl EventListener for StallEventCounter {
@@ -107,6 +108,10 @@ impl EventListener for StallEventCounter {
         assert!(!info.cf_name().is_empty());
         self.stall_conditions_changed_num
             .fetch_add(1, Ordering::SeqCst);
+        if info.prev() == WriteStallCondition::Normal && info.cur() != WriteStallCondition::Normal {
+            self.stall_change_from_normal_to_other
+                .fetch_add(1, Ordering::SeqCst);
+        }
     }
 }
 
@@ -137,9 +142,13 @@ fn test_event_listener_stall_conditions_changed() {
     let stall_conditions_changed_num = counter.stall_conditions_changed_num.load(Ordering::SeqCst);
     let triggered_writes_slowdown = counter.triggered_writes_slowdown.load(Ordering::SeqCst);
     let triggered_writes_stop = counter.triggered_writes_stop.load(Ordering::SeqCst);
+    let stall_change_from_normal_to_other = counter
+        .stall_change_from_normal_to_other
+        .load(Ordering::SeqCst);
     assert_ne!(stall_conditions_changed_num, 0);
     assert_ne!(triggered_writes_slowdown, 0);
     assert_ne!(triggered_writes_stop, 0);
+    assert_ne!(stall_change_from_normal_to_other, 0);
 }
 
 #[test]

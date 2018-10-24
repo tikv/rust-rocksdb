@@ -56,7 +56,7 @@ fn ensure_default_cf_exists<'a>(list: &mut Vec<ColumnFamilyDescriptor<'a>>, ttls
     let contains = list.iter().any(|ref cf| cf.is_default());
     if !contains {
         list.push(ColumnFamilyDescriptor::default());
-        if ttls.len() < list.len() {
+        if ttls.len() > 0 {
             ttls.push(0);
         }
     }
@@ -450,7 +450,7 @@ impl DB {
             )
         })?;
 
-        let cfds_len = cfds.len();
+
         let mut descs = cfds.into_iter().map(|t| t.into()).collect();
         let mut ttls_vec = ttls.to_vec();
         ensure_default_cf_exists(&mut descs, &mut ttls_vec);
@@ -471,8 +471,8 @@ impl DB {
             false
         };
 
-        let with_ttl = if ttls.len() > 0 {
-            if ttls.len() == cfds_len && ttls_vec.len() == cf_names.len() {
+        let with_ttl = if ttls_vec.len() > 0 {
+            if ttls_vec.len() == cf_names.len() {
                 true
             } else {
                 return Err("the length of ttls not equal to length of cfs".to_owned());

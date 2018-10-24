@@ -450,7 +450,6 @@ impl DB {
             )
         })?;
 
-
         let mut descs = cfds.into_iter().map(|t| t.into()).collect();
         let mut ttls_vec = ttls.to_vec();
         ensure_default_cf_exists(&mut descs, &mut ttls_vec);

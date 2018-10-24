@@ -105,7 +105,7 @@ impl EventListener for StallEventCounter {
     }
 
     fn on_stall_conditions_changed(&self, info: &WriteStallInfo) {
-        assert!(!info.cf_name().is_empty());
+        assert!(info.cf_name() == "test_cf");
         self.stall_conditions_changed_num
             .fetch_add(1, Ordering::SeqCst);
         if info.prev() == WriteStallCondition::Normal && info.cur() != WriteStallCondition::Normal {
@@ -128,14 +128,21 @@ fn test_event_listener_stall_conditions_changed() {
     cf_opts.set_level_zero_slowdown_writes_trigger(1);
     cf_opts.set_level_zero_stop_writes_trigger(1);
     cf_opts.set_level_zero_file_num_compaction_trigger(1);
-    let db = DB::open_cf(opts, path_str, vec![("default", cf_opts)]).unwrap();
+    let mut db = DB::open_cf(
+        opts,
+        path_str,
+        vec![("default", ColumnFamilyOptions::new())],
+    ).unwrap();
+    db.create_cf(("test_cf", cf_opts)).unwrap();
 
+    let test_cf = db.cf_handle("test_cf").unwrap();
     for i in 1..5 {
-        db.put(
+        db.put_cf(
+            test_cf,
             format!("{:04}", i).as_bytes(),
             format!("{:04}", i).as_bytes(),
         ).unwrap();
-        db.flush(true).unwrap();
+        db.flush_cf(test_cf, true).unwrap();
     }
     let flush_cnt = counter.flush.load(Ordering::SeqCst);
     assert_ne!(flush_cnt, 0);

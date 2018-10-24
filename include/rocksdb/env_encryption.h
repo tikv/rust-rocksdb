@@ -1,9 +1,7 @@
 //  Copyright (c) 2016-present, Facebook, Inc.  All rights reserved.
-//  This source code is licensed under the BSD-style license found in the
-//  LICENSE file in the root directory of this source tree. An additional grant
-//  of patent rights can be found in the PATENTS file in the same directory.
-//  This source code is also licensed under the GPLv2 license found in the
-//  COPYING file in the root directory of this source tree.
+//  This source code is licensed under both the GPLv2 (found in the
+//  COPYING file in the root directory) and Apache 2.0 License
+//  (found in the LICENSE.Apache file in the root directory).
 
 #pragma once
 
@@ -135,7 +133,7 @@ class EncryptionProvider {
     // GetPrefixLength returns the length of the prefix that is added to every file
     // and used for storing encryption options.
     // For optimal performance, the prefix length should be a multiple of 
-    // the a page size.
+    // the page size.
     virtual size_t GetPrefixLength() = 0;
 
     // CreateNewPrefix initialized an allocated block of prefix memory 
@@ -167,7 +165,7 @@ class CTREncryptionProvider : public EncryptionProvider {
     // GetPrefixLength returns the length of the prefix that is added to every file
     // and used for storing encryption options.
     // For optimal performance, the prefix length should be a multiple of 
-    // the a page size.
+    // the page size.
     virtual size_t GetPrefixLength() override;
 
     // CreateNewPrefix initialized an allocated block of prefix memory 

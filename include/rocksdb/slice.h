@@ -43,7 +43,9 @@ class Slice {
 
   // Create a slice that refers to s[0,strlen(s)-1]
   /* implicit */
-  Slice(const char* s) : data_(s), size_(strlen(s)) { }
+  Slice(const char* s) : data_(s) {
+    size_ = (s == nullptr) ? 0 : strlen(s);
+  }
 
   // Create a single slice from SliceParts using buf as storage.
   // buf must exist as long as the returned Slice exists.
@@ -121,13 +123,17 @@ class Slice {
 /**
  * A Slice that can be pinned with some cleanup tasks, which will be run upon
  * ::Reset() or object destruction, whichever is invoked first. This can be used
- * to avoid memcpy by having the PinnsableSlice object referring to the data
+ * to avoid memcpy by having the PinnableSlice object referring to the data
  * that is locked in the memory and release them after the data is consumed.
  */
 class PinnableSlice : public Slice, public Cleanable {
  public:
   PinnableSlice() { buf_ = &self_space_; }
   explicit PinnableSlice(std::string* buf) { buf_ = buf; }
+
+  // No copy constructor and copy assignment allowed.
+  PinnableSlice(PinnableSlice&) = delete;
+  PinnableSlice& operator=(PinnableSlice&) = delete;
 
   inline void PinSlice(const Slice& s, CleanupFunction f, void* arg1,
                        void* arg2) {
@@ -173,7 +179,7 @@ class PinnableSlice : public Slice, public Cleanable {
     }
   }
 
-  void remove_prefix(size_t n) {
+  void remove_prefix(size_t /*n*/) {
     assert(0);  // Not implemented
   }
 
@@ -214,6 +220,7 @@ inline bool operator!=(const Slice& x, const Slice& y) {
 }
 
 inline int Slice::compare(const Slice& b) const {
+  assert(data_ != nullptr && b.data_ != nullptr);
   const size_t min_len = (size_ < b.size_) ? size_ : b.size_;
   int r = memcmp(data_, b.data_, min_len);
   if (r == 0) {

@@ -9,6 +9,7 @@
 
 #pragma once
 #include <memory>
+#include "rocksdb/slice_transform.h"
 #include "table/internal_iterator.h"
 
 namespace rocksdb {
@@ -39,12 +40,13 @@ class TableReader {
   // skip_filters: disables checking the bloom filters even if they exist. This
   //               option is effective only for block-based table format.
   virtual InternalIterator* NewIterator(const ReadOptions&,
+                                        const SliceTransform* prefix_extractor,
                                         Arena* arena = nullptr,
-                                        const InternalKeyComparator* = nullptr,
-                                        bool skip_filters = false) = 0;
+                                        bool skip_filters = false,
+                                        bool for_compaction = false) = 0;
 
   virtual InternalIterator* NewRangeTombstoneIterator(
-      const ReadOptions& read_options) {
+      const ReadOptions& /*read_options*/) {
     return nullptr;
   }
 
@@ -63,7 +65,7 @@ class TableReader {
   virtual std::shared_ptr<const TableProperties> GetTableProperties() const = 0;
 
   // Prepare work that can be done before the real Get()
-  virtual void Prepare(const Slice& target) {}
+  virtual void Prepare(const Slice& /*target*/) {}
 
   // Report an approximation of how much memory has been used.
   virtual size_t ApproximateMemoryUsage() const = 0;
@@ -80,7 +82,9 @@ class TableReader {
   // skip_filters: disables checking the bloom filters even if they exist. This
   //               option is effective only for block-based table format.
   virtual Status Get(const ReadOptions& readOptions, const Slice& key,
-                     GetContext* get_context, bool skip_filters = false) = 0;
+                     GetContext* get_context,
+                     const SliceTransform* prefix_extractor,
+                     bool skip_filters = false) = 0;
 
   // Prefetch data corresponding to a give range of keys
   // Typically this functionality is required for table implementations that
@@ -95,8 +99,14 @@ class TableReader {
   }
 
   // convert db file to a human readable form
-  virtual Status DumpTable(WritableFile* out_file) {
+  virtual Status DumpTable(WritableFile* /*out_file*/,
+                           const SliceTransform* /*prefix_extractor*/) {
     return Status::NotSupported("DumpTable() not supported");
+  }
+
+  // check whether there is corruption in this db file
+  virtual Status VerifyChecksum() {
+    return Status::NotSupported("VerifyChecksum() not supported");
   }
 
   virtual void Close() {}

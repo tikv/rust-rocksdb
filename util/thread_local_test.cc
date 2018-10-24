@@ -535,7 +535,7 @@ TEST_F(ThreadLocalTest, CompareAndSwap) {
 
 namespace {
 
-void* AccessThreadLocal(void* arg) {
+void* AccessThreadLocal(void* /*arg*/) {
   TEST_SYNC_POINT("AccessThreadLocal:Start");
   ThreadLocalPtr tlp;
   tlp.Reset(new std::string("hello RocksDB"));
@@ -569,7 +569,7 @@ TEST_F(ThreadLocalTest, DISABLED_MainThreadDiesFirst) {
 #ifndef ROCKSDB_LITE
   } catch (const std::system_error& ex) {
     std::cerr << "Start thread: " << ex.code() << std::endl;
-    ASSERT_TRUE(false);
+    FAIL();
   }
 #endif  // ROCKSDB_LITE
 }

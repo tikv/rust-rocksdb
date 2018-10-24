@@ -57,7 +57,7 @@ struct LRUHandle {
   // Include the following flags:
   //   in_cache:    whether this entry is referenced by the hash table.
   //   is_high_pri: whether this entry is high priority entry.
-  //   in_high_pro_pool: whether this entry is in high-pri pool.
+  //   in_high_pri_pool: whether this entry is in high-pri pool.
   char flags;
 
   uint32_t hash;     // Hash of key(); used for fast sharding and comparisons
@@ -77,6 +77,7 @@ struct LRUHandle {
   bool InCache() { return flags & 1; }
   bool IsHighPri() { return flags & 2; }
   bool InHighPriPool() { return flags & 4; }
+  bool HasHit() { return flags & 8; }
 
   void SetInCache(bool in_cache) {
     if (in_cache) {
@@ -101,6 +102,8 @@ struct LRUHandle {
       flags &= ~4;
     }
   }
+
+  void SetHit() { flags |= 8; }
 
   void Free() {
     assert((refs == 1 && InCache()) || (refs == 0 && !InCache()));
@@ -148,15 +151,16 @@ class LRUHandleTable {
 
   // The table consists of an array of buckets where each bucket is
   // a linked list of cache entries that hash into the bucket.
+  LRUHandle** list_;
   uint32_t length_;
   uint32_t elems_;
-  LRUHandle** list_;
 };
 
 // A single shard of sharded cache.
-class LRUCacheShard : public CacheShard {
+class ALIGN_AS(CACHE_LINE_SIZE) LRUCacheShard : public CacheShard {
  public:
-  LRUCacheShard();
+  LRUCacheShard(size_t capacity, bool strict_capacity_limit,
+                double high_pri_pool_ratio);
   virtual ~LRUCacheShard();
 
   // Separate from constructor so caller can easily make an array of LRUCache
@@ -198,6 +202,13 @@ class LRUCacheShard : public CacheShard {
 
   void TEST_GetLRUList(LRUHandle** lru, LRUHandle** lru_low_pri);
 
+  //  Retrieves number of elements in LRU, for unit test purpose only
+  //  not threadsafe
+  size_t TEST_GetLRUSize();
+
+  //  Retrives high pri pool ratio
+  double GetHighPriPoolRatio();
+
  private:
   void LRU_Remove(LRUHandle* e);
   void LRU_Insert(LRUHandle* e);
@@ -219,12 +230,6 @@ class LRUCacheShard : public CacheShard {
   // Initialized before use.
   size_t capacity_;
 
-  // Memory size for entries residing in the cache
-  size_t usage_;
-
-  // Memory size for entries residing only in the LRU list
-  size_t lru_usage_;
-
   // Memory size for entries in high-pri pool.
   size_t high_pri_pool_usage_;
 
@@ -238,11 +243,6 @@ class LRUCacheShard : public CacheShard {
   // Remember the value to avoid recomputing each time.
   double high_pri_pool_capacity_;
 
-  // mutex_ protects the following state.
-  // We don't count mutex_ as the cache's internal state so semantically we
-  // don't mind mutex_ invoking the non-const actions.
-  mutable port::Mutex mutex_;
-
   // Dummy head of LRU list.
   // lru.prev is newest entry, lru.next is oldest entry.
   // LRU contains items which can be evicted, ie reference only by cache
@@ -251,7 +251,29 @@ class LRUCacheShard : public CacheShard {
   // Pointer to head of low-pri pool in LRU list.
   LRUHandle* lru_low_pri_;
 
+  // ------------^^^^^^^^^^^^^-----------
+  // Not frequently modified data members
+  // ------------------------------------
+  //
+  // We separate data members that are updated frequently from the ones that
+  // are not frequently updated so that they don't share the same cache line
+  // which will lead into false cache sharing
+  //
+  // ------------------------------------
+  // Frequently modified data members
+  // ------------vvvvvvvvvvvvv-----------
   LRUHandleTable table_;
+
+  // Memory size for entries residing in the cache
+  size_t usage_;
+
+  // Memory size for entries residing only in the LRU list
+  size_t lru_usage_;
+
+  // mutex_ protects the following state.
+  // We don't count mutex_ as the cache's internal state so semantically we
+  // don't mind mutex_ invoking the non-const actions.
+  mutable port::Mutex mutex_;
 };
 
 class LRUCache : public ShardedCache {
@@ -267,8 +289,14 @@ class LRUCache : public ShardedCache {
   virtual uint32_t GetHash(Handle* handle) const override;
   virtual void DisownData() override;
 
+  //  Retrieves number of elements in LRU, for unit test purpose only
+  size_t TEST_GetLRUSize();
+  //  Retrives high pri pool ratio
+  double GetHighPriPoolRatio();
+
  private:
-  LRUCacheShard* shards_;
+  LRUCacheShard* shards_ = nullptr;
+  int num_shards_ = 0;
 };
 
 }  // namespace rocksdb

@@ -5,18 +5,48 @@
 
 #include "db/merge_helper.h"
 
-#include <stdio.h>
 #include <string>
 
 #include "db/dbformat.h"
 #include "monitoring/perf_context_imp.h"
 #include "monitoring/statistics.h"
+#include "port/likely.h"
 #include "rocksdb/comparator.h"
 #include "rocksdb/db.h"
 #include "rocksdb/merge_operator.h"
+#include "table/format.h"
 #include "table/internal_iterator.h"
 
 namespace rocksdb {
+
+MergeHelper::MergeHelper(Env* env, const Comparator* user_comparator,
+                         const MergeOperator* user_merge_operator,
+                         const CompactionFilter* compaction_filter,
+                         Logger* logger, bool assert_valid_internal_key,
+                         SequenceNumber latest_snapshot,
+                         const SnapshotChecker* snapshot_checker, int level,
+                         Statistics* stats,
+                         const std::atomic<bool>* shutting_down)
+    : env_(env),
+      user_comparator_(user_comparator),
+      user_merge_operator_(user_merge_operator),
+      compaction_filter_(compaction_filter),
+      shutting_down_(shutting_down),
+      logger_(logger),
+      assert_valid_internal_key_(assert_valid_internal_key),
+      allow_single_operand_(false),
+      latest_snapshot_(latest_snapshot),
+      snapshot_checker_(snapshot_checker),
+      level_(level),
+      keys_(),
+      filter_timer_(env_),
+      total_filter_time_(0U),
+      stats_(stats) {
+  assert(user_comparator_ != nullptr);
+  if (user_merge_operator_) {
+    allow_single_operand_ = user_merge_operator_->AllowSingleOperand();
+  }
+}
 
 Status MergeHelper::TimedFullMerge(const MergeOperator* merge_operator,
                                    const Slice& key, const Slice* value,
@@ -131,7 +161,10 @@ Status MergeHelper::MergeUntil(InternalIterator* iter,
       // hit a different user key, stop right here
       hit_the_next_user_key = true;
       break;
-    } else if (stop_before && ikey.sequence <= stop_before) {
+    } else if (stop_before > 0 && ikey.sequence <= stop_before &&
+               LIKELY(snapshot_checker_ == nullptr ||
+                      snapshot_checker_->IsInSnapshot(ikey.sequence,
+                                                      stop_before))) {
       // hit an entry that's visible by the previous snapshot, can't touch that
       break;
     }
@@ -201,12 +234,10 @@ Status MergeHelper::MergeUntil(InternalIterator* iter,
           ikey.sequence <= latest_snapshot_
               ? CompactionFilter::Decision::kKeep
               : FilterMerge(orig_ikey.user_key, value_slice);
-      if (range_del_agg != nullptr &&
-
+      if (filter != CompactionFilter::Decision::kRemoveAndSkipUntil &&
+          range_del_agg != nullptr &&
           range_del_agg->ShouldDelete(
-              iter->key(),
-              RangeDelAggregator::RangePositioningMode::kForwardTraversal) &&
-          filter != CompactionFilter::Decision::kRemoveAndSkipUntil) {
+              iter->key(), RangeDelPositioningMode::kForwardTraversal)) {
         filter = CompactionFilter::Decision::kRemove;
       }
       if (filter == CompactionFilter::Decision::kKeep ||
@@ -289,7 +320,8 @@ Status MergeHelper::MergeUntil(InternalIterator* iter,
     // Attempt to use the user's associative merge function to
     // merge the stacked merge operands into a single operand.
     s = Status::MergeInProgress();
-    if (merge_context_.GetNumOperands() >= 2) {
+    if (merge_context_.GetNumOperands() >= 2 ||
+        (allow_single_operand_ && merge_context_.GetNumOperands() == 1)) {
       bool merge_success = false;
       std::string merge_result;
       {
@@ -340,7 +372,7 @@ CompactionFilter::Decision MergeHelper::FilterMerge(const Slice& user_key,
   if (compaction_filter_ == nullptr) {
     return CompactionFilter::Decision::kKeep;
   }
-  if (stats_ != nullptr) {
+  if (stats_ != nullptr && ShouldReportDetailedTime(env_, stats_)) {
     filter_timer_.Start();
   }
   compaction_filter_value_.clear();

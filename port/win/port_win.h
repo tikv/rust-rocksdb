@@ -27,6 +27,8 @@
 #include <mutex>
 #include <limits>
 #include <condition_variable>
+#include <malloc.h>
+#include <intrin.h>
 
 #include <stdint.h>
 
@@ -79,19 +81,8 @@ namespace rocksdb {
 
 namespace port {
 
-// VS 15
-#if (defined _MSC_VER) && (_MSC_VER >= 1900)
-
-#define ROCKSDB_NOEXCEPT noexcept
-
-// For use at db/file_indexer.h kLevelMaxIndex
-const int kMaxInt32 = std::numeric_limits<int>::max();
-const uint64_t kMaxUint64 = std::numeric_limits<uint64_t>::max();
-const int64_t kMaxInt64 = std::numeric_limits<int64_t>::max();
-
-const size_t kMaxSizet = std::numeric_limits<size_t>::max();
-
-#else //_MSC_VER
+// VS < 2015
+#if defined(_MSC_VER) && (_MSC_VER < 1900)
 
 // VS 15 has snprintf
 #define snprintf _snprintf
@@ -101,6 +92,7 @@ const size_t kMaxSizet = std::numeric_limits<size_t>::max();
 // therefore, use the same limits
 
 // For use at db/file_indexer.h kLevelMaxIndex
+const uint32_t kMaxUint32 = UINT32_MAX;
 const int kMaxInt32 = INT32_MAX;
 const int64_t kMaxInt64 = INT64_MAX;
 const uint64_t kMaxUint64 = UINT64_MAX;
@@ -110,6 +102,18 @@ const size_t kMaxSizet = UINT64_MAX;
 #else
 const size_t kMaxSizet = UINT_MAX;
 #endif
+
+#else // VS >= 2015 or MinGW
+
+#define ROCKSDB_NOEXCEPT noexcept
+
+// For use at db/file_indexer.h kLevelMaxIndex
+const uint32_t kMaxUint32 = std::numeric_limits<uint32_t>::max();
+const int kMaxInt32 = std::numeric_limits<int>::max();
+const uint64_t kMaxUint64 = std::numeric_limits<uint64_t>::max();
+const int64_t kMaxInt64 = std::numeric_limits<int64_t>::max();
+
+const size_t kMaxSizet = std::numeric_limits<size_t>::max();
 
 #endif //_MSC_VER
 
@@ -237,6 +241,36 @@ extern void InitOnce(OnceType* once, void (*initializer)());
 
 #ifndef CACHE_LINE_SIZE
 #define CACHE_LINE_SIZE 64U
+#endif
+
+#ifdef ROCKSDB_JEMALLOC
+// Separate inlines so they can be replaced if needed
+void* jemalloc_aligned_alloc(size_t size, size_t alignment) ROCKSDB_NOEXCEPT;
+void jemalloc_aligned_free(void* p) ROCKSDB_NOEXCEPT;
+#endif
+
+inline void *cacheline_aligned_alloc(size_t size) {
+#ifdef ROCKSDB_JEMALLOC
+  return jemalloc_aligned_alloc(size, CACHE_LINE_SIZE);
+#else
+  return _aligned_malloc(size, CACHE_LINE_SIZE);
+#endif
+}
+
+inline void cacheline_aligned_free(void *memblock) {
+#ifdef ROCKSDB_JEMALLOC
+  jemalloc_aligned_free(memblock);
+#else
+  _aligned_free(memblock);
+#endif
+}
+
+// https://gcc.gnu.org/bugzilla/show_bug.cgi?id=52991 for MINGW32
+// could not be worked around with by -mno-ms-bitfields
+#ifndef __MINGW32__
+#define ALIGN_AS(n) __declspec(align(n))
+#else
+#define ALIGN_AS(n)
 #endif
 
 static inline void AsmVolatilePause() {

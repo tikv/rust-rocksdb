@@ -40,6 +40,9 @@ void PerfContext::Reset() {
   block_read_time = 0;
   block_checksum_time = 0;
   block_decompress_time = 0;
+  get_read_bytes = 0;
+  multiget_read_bytes = 0;
+  iter_read_bytes = 0;
   internal_key_skipped_count = 0;
   internal_delete_skipped_count = 0;
   internal_recent_skipped_count = 0;
@@ -63,6 +66,8 @@ void PerfContext::Reset() {
   write_pre_and_post_process_time = 0;
   write_memtable_time = 0;
   write_delay_time = 0;
+  write_thread_wait_nanos = 0;
+  write_scheduling_flushes_compactions_time = 0;
   db_mutex_lock_nanos = 0;
   db_condition_wait_nanos = 0;
   merge_operator_time_nanos = 0;
@@ -76,6 +81,8 @@ void PerfContext::Reset() {
   bloom_memtable_miss_count = 0;
   bloom_sst_hit_count = 0;
   bloom_sst_miss_count = 0;
+  key_lock_wait_time = 0;
+  key_lock_wait_count = 0;
 
   env_new_sequential_file_nanos = 0;
   env_new_random_access_file_nanos = 0;
@@ -117,6 +124,9 @@ std::string PerfContext::ToString(bool exclude_zero_counters) const {
   PERF_CONTEXT_OUTPUT(block_read_time);
   PERF_CONTEXT_OUTPUT(block_checksum_time);
   PERF_CONTEXT_OUTPUT(block_decompress_time);
+  PERF_CONTEXT_OUTPUT(get_read_bytes);
+  PERF_CONTEXT_OUTPUT(multiget_read_bytes);
+  PERF_CONTEXT_OUTPUT(iter_read_bytes);
   PERF_CONTEXT_OUTPUT(internal_key_skipped_count);
   PERF_CONTEXT_OUTPUT(internal_delete_skipped_count);
   PERF_CONTEXT_OUTPUT(internal_recent_skipped_count);
@@ -138,6 +148,8 @@ std::string PerfContext::ToString(bool exclude_zero_counters) const {
   PERF_CONTEXT_OUTPUT(find_next_user_entry_time);
   PERF_CONTEXT_OUTPUT(write_pre_and_post_process_time);
   PERF_CONTEXT_OUTPUT(write_memtable_time);
+  PERF_CONTEXT_OUTPUT(write_thread_wait_nanos);
+  PERF_CONTEXT_OUTPUT(write_scheduling_flushes_compactions_time);
   PERF_CONTEXT_OUTPUT(db_mutex_lock_nanos);
   PERF_CONTEXT_OUTPUT(db_condition_wait_nanos);
   PERF_CONTEXT_OUTPUT(merge_operator_time_nanos);
@@ -152,6 +164,8 @@ std::string PerfContext::ToString(bool exclude_zero_counters) const {
   PERF_CONTEXT_OUTPUT(bloom_memtable_miss_count);
   PERF_CONTEXT_OUTPUT(bloom_sst_hit_count);
   PERF_CONTEXT_OUTPUT(bloom_sst_miss_count);
+  PERF_CONTEXT_OUTPUT(key_lock_wait_time);
+  PERF_CONTEXT_OUTPUT(key_lock_wait_count);
   PERF_CONTEXT_OUTPUT(env_new_sequential_file_nanos);
   PERF_CONTEXT_OUTPUT(env_new_random_access_file_nanos);
   PERF_CONTEXT_OUTPUT(env_new_writable_file_nanos);

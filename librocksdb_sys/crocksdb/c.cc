@@ -3465,10 +3465,13 @@ bool crocksdb_ingest_external_file_optimized(
   auto ingest_opts = opt->rep;
   ingest_opts.allow_blocking_flush = false;
   auto s = db->rep->IngestExternalFile(handle->rep, files, ingest_opts);
-  if (s.IsInvalidArgument()) {
+  if (s.IsInvalidArgument() &&
+      s.ToString().find("External file requires flush") != std::string::npos) {
     // When `allow_blocking_flush = false` and the file being ingested
     // is overlapped with the memtable, `IngestExternalFile` returns
-    // an invalid argument error. Then we can try to flush the
+    // an invalid argument error. It is a bit hack to search for the
+    // specific error message here but don't worry, the unit test
+    // ensures that we get this right. Then we can try to flush the
     // memtable outside without blocking writes. We also set
     // `allow_write_stall = false` to prevent the flush from
     // triggering write stall.

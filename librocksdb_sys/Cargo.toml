@@ -23,7 +23,7 @@ cc = "1.0.3"
 cmake = "0.1"
 
 [dependencies.libz-sys]
-version = "1.0.25"
+version = "1.0.18"
 features = ["static"]
 
 [dependencies.bzip2-sys]

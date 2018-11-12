@@ -1970,6 +1970,19 @@ impl SstFileWriter {
         }
     }
 
+    pub fn delete_range(&mut self, begin_key: &[u8], end_key: &[u8]) -> Result<(), String> {
+        unsafe {
+            ffi_try!(crocksdb_sstfilewriter_delete_range(
+                self.inner,
+                begin_key.as_ptr(),
+                begin_key.len(),
+                end_key.as_ptr(),
+                end_key.len()
+            ));
+            Ok(())
+        }
+    }
+
     /// Finalize writing to sst file and close file.
     pub fn finish(&mut self) -> Result<ExternalSstFileInfo, String> {
         let info = ExternalSstFileInfo::new();
@@ -2225,6 +2238,20 @@ pub fn load_latest_options(
         libc::free(raw_cf_descs as *mut c_void);
 
         Ok(Some((db_options, cf_descs)))
+    }
+}
+
+pub fn run_ldb_tool(ldb_args: &Vec<String>) {
+    unsafe {
+        let ldb_args_cstrs: Vec<_> = ldb_args
+            .iter()
+            .map(|s| CString::new(s.as_bytes()).unwrap())
+            .collect();
+        let args: Vec<_> = ldb_args_cstrs.iter().map(|s| s.as_ptr()).collect();
+        crocksdb_ffi::crocksdb_run_ldb_tool(
+            args.len() as i32,
+            args.as_ptr() as *const *const c_char,
+        );
     }
 }
 

@@ -17,6 +17,7 @@
 #include "rocksdb/env.h"
 #include "rocksdb/filter_policy.h"
 #include "rocksdb/iterator.h"
+#include "rocksdb/ldb_tool.h"
 #include "rocksdb/listener.h"
 #include "rocksdb/memtablerep.h"
 #include "rocksdb/merge_operator.h"
@@ -145,6 +146,7 @@ using rocksdb::CompactionOptions;
 using rocksdb::PerfLevel;
 using rocksdb::PerfContext;
 using rocksdb::BottommostLevelCompaction;
+using rocksdb::LDBTool;
 
 using std::shared_ptr;
 
@@ -3338,6 +3340,14 @@ void crocksdb_sstfilewriter_delete(crocksdb_sstfilewriter_t *writer,
   SaveError(errptr, writer->rep->Delete(Slice(key, keylen)));
 }
 
+void crocksdb_sstfilewriter_delete_range(crocksdb_sstfilewriter_t *writer,
+                                         const char *begin_key, size_t begin_keylen,
+                                         const char *end_key, size_t end_keylen,
+                                         char **errptr) {
+  SaveError(errptr, writer->rep->DeleteRange(Slice(begin_key, begin_keylen),
+                                             Slice(end_key, end_keylen)));
+}
+
 void crocksdb_sstfilewriter_finish(crocksdb_sstfilewriter_t* writer,
                                    crocksdb_externalsstfileinfo_t* info,
                                    char** errptr) {
@@ -4721,6 +4731,10 @@ uint64_t crocksdb_perf_context_env_unlock_file_nanos(crocksdb_perf_context_t* ct
 
 uint64_t crocksdb_perf_context_env_new_logger_nanos(crocksdb_perf_context_t* ctx) {
   return ctx->rep.env_new_logger_nanos;
+}
+
+void crocksdb_run_ldb_tool(int argc, char** argv) {
+  LDBTool().Run(argc, argv);
 }
 
 }  // end extern "C"

@@ -3352,6 +3352,41 @@ void crocksdb_ingest_external_file_cf(
   SaveError(errptr, db->rep->IngestExternalFile(handle->rep, files, opt->rep));
 }
 
+bool crocksdb_ingest_external_file_optimized(
+    crocksdb_t* db, crocksdb_column_family_handle_t* handle,
+    const char* const* file_list, const size_t list_len,
+    const crocksdb_ingestexternalfileoptions_t* opt, char** errptr) {
+  std::vector<std::string> files(list_len);
+  for (size_t i = 0; i < list_len; ++i) {
+    files[i] = std::string(file_list[i]);
+  }
+  bool has_flush = false;
+  // If the file being ingested is overlapped with the memtable, it
+  // will block writes and wait for flushing, which can cause high
+  // write latency. So we set `allow_blocking_flush = false`.
+  auto ingest_opts = opt->rep;
+  ingest_opts.allow_blocking_flush = false;
+  auto s = db->rep->IngestExternalFile(handle->rep, files, ingest_opts);
+  if (s.IsInvalidArgument() &&
+      s.ToString().find("External file requires flush") != std::string::npos) {
+    // When `allow_blocking_flush = false` and the file being ingested
+    // is overlapped with the memtable, `IngestExternalFile` returns
+    // an invalid argument error. It is tricky to search for the
+    // specific error message here but don't worry, the unit test
+    // ensures that we get this right. Then we can try to flush the
+    // memtable outside without blocking writes.
+    has_flush = true;
+    FlushOptions flush_opts;
+    flush_opts.wait = true;
+    // We don't check the status of this flush because we will
+    // fallback to a blocking ingestion anyway.
+    db->rep->Flush(flush_opts, handle->rep);
+    s = db->rep->IngestExternalFile(handle->rep, files, opt->rep);
+  }
+  SaveError(errptr, s);
+  return has_flush;
+}
+
 crocksdb_slicetransform_t* crocksdb_slicetransform_create(
     void* state,
     void (*destructor)(void*),

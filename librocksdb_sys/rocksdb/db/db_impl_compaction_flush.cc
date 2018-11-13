@@ -409,7 +409,7 @@ Status DBImpl::CompactFiles(
                        immutable_db_options_.info_log.get());
 
   // Perform CompactFiles
-  SuperVersion* sv = cfd->GetReferencedSuperVersion(&mutex_);
+  TEST_SYNC_POINT("TestCompactFiles::IngestExternalFile2");
   {
     InstrumentedMutexLock l(&mutex_);
 
@@ -417,15 +417,16 @@ Status DBImpl::CompactFiles(
     // IngestExternalFile() calls to finish.
     WaitForIngestFile();
 
-    s = CompactFilesImpl(compact_options, cfd, sv->current,
+    // We need to get current after `WaitForIngestFile`, because
+    // `IngestExternalFile` may add files that overlap with `input_file_names`
+    auto* current = cfd->current();
+    current->Ref();
+
+    s = CompactFilesImpl(compact_options, cfd, current,
                          input_file_names, output_level,
                          output_path_id, &job_context, &log_buffer);
-  }
-  if (sv->Unref()) {
-    mutex_.Lock();
-    sv->Cleanup();
-    mutex_.Unlock();
-    delete sv;
+
+    current->Unref();
   }
 
   // Find and delete obsolete files

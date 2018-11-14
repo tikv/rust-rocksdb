@@ -1,7 +1,7 @@
 rust-rocksdb
 ============
 
-This library has been tested against RocksDB 5.6.1 on Linux and macOS.
+This library has been tested against RocksDB 5.8 on Linux and macOS.
 
 ### status
   - [x] basic open/put/get/delete/close

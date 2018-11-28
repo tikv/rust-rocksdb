@@ -403,6 +403,7 @@ mod test {
 
         let (tx, rx) = mpsc::sync_channel(1);
         let t = thread::spawn(move || {
+            set_perf_level(PerfLevel::EnableTimeExceptForMutex);
             rx.recv().unwrap();
             let ctx = PerfContext::get();
             assert_eq!(ctx.write_memtable_time(), 0);

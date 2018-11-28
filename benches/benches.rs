@@ -21,9 +21,9 @@ use test::Bencher;
 #[bench]
 fn bench_perf_context(b: &mut Bencher) {
     set_perf_level(PerfLevel::EnableTimeExceptForMutex);
-    let mut ctx = PerfContext::get();
-    ctx.reset();
     b.iter(|| {
+        let mut ctx = PerfContext::get();
+        ctx.reset();
         assert_eq!(ctx.write_wal_time(), 0);
         assert_eq!(ctx.write_memtable_time(), 0);
         assert_eq!(ctx.write_delay_time(), 0);

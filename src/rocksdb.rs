@@ -52,10 +52,13 @@ impl Drop for CFHandle {
     }
 }
 
-fn ensure_default_cf_exists<'a>(list: &mut Vec<ColumnFamilyDescriptor<'a>>) {
+fn ensure_default_cf_exists<'a>(list: &mut Vec<ColumnFamilyDescriptor<'a>>, ttls: &mut Vec<i32>) {
     let contains = list.iter().any(|ref cf| cf.is_default());
     if !contains {
         list.push(ColumnFamilyDescriptor::default());
+        if ttls.len() > 0 {
+            ttls.push(0);
+        }
     }
 }
 
@@ -370,11 +373,34 @@ impl DB {
         DB::open_cf(opts, path, cfds)
     }
 
+    pub fn open_with_ttl(opts: DBOptions, path: &str, ttls: &[i32]) -> Result<DB, String> {
+        let cfds: Vec<&str> = vec![];
+        if ttls.len() == 0 {
+            return Err("ttls is empty in with_ttl function".to_owned());
+        }
+        DB::open_cf_with_ttl(opts, path, cfds, ttls)
+    }
+
     pub fn open_cf<'a, T>(opts: DBOptions, path: &str, cfds: Vec<T>) -> Result<DB, String>
     where
         T: Into<ColumnFamilyDescriptor<'a>>,
     {
-        DB::open_cf_internal(opts, path, cfds, None)
+        DB::open_cf_internal(opts, path, cfds, &[], None)
+    }
+
+    pub fn open_cf_with_ttl<'a, T>(
+        opts: DBOptions,
+        path: &str,
+        cfds: Vec<T>,
+        ttls: &[i32],
+    ) -> Result<DB, String>
+    where
+        T: Into<ColumnFamilyDescriptor<'a>>,
+    {
+        if ttls.len() == 0 {
+            return Err("ttls is empty in with_ttl function".to_owned());
+        }
+        DB::open_cf_internal(opts, path, cfds, ttls, None)
     }
 
     pub fn open_for_read_only(
@@ -395,13 +421,14 @@ impl DB {
     where
         T: Into<ColumnFamilyDescriptor<'a>>,
     {
-        DB::open_cf_internal(opts, path, cfds, Some(error_if_log_file_exist))
+        DB::open_cf_internal(opts, path, cfds, &[], Some(error_if_log_file_exist))
     }
 
     fn open_cf_internal<'a, T>(
         opts: DBOptions,
         path: &str,
         cfds: Vec<T>,
+        ttls: &[i32],
         // if none, open for read write mode.
         // otherwise, open for read only.
         error_if_log_file_exist: Option<bool>,
@@ -424,7 +451,8 @@ impl DB {
         })?;
 
         let mut descs = cfds.into_iter().map(|t| t.into()).collect();
-        ensure_default_cf_exists(&mut descs);
+        let mut ttls_vec = ttls.to_vec();
+        ensure_default_cf_exists(&mut descs, &mut ttls_vec);
 
         let (names, options) = split_descriptors(descs);
         let cstrings = build_cstring_list(&names);
@@ -441,6 +469,17 @@ impl DB {
         } else {
             false
         };
+
+        let with_ttl = if ttls_vec.len() > 0 {
+            if ttls_vec.len() == cf_names.len() {
+                true
+            } else {
+                return Err("the length of ttls not equal to length of cfs".to_owned());
+            }
+        } else {
+            false
+        };
+
         let db = {
             let db_options = opts.inner;
             let db_path = cpath.as_ptr();
@@ -448,31 +487,50 @@ impl DB {
             let db_cf_ptrs = cf_names.as_ptr();
             let db_cf_opts = cf_options.as_ptr();
             let db_cf_handles = cf_handles.as_ptr();
-            if let Some(flag) = error_if_log_file_exist {
-                unsafe {
-                    ffi_try!(crocksdb_open_for_read_only_column_families(
-                        db_options,
-                        db_path,
-                        db_cfs_count,
-                        db_cf_ptrs,
-                        db_cf_opts,
-                        db_cf_handles,
-                        flag
-                    ))
+
+            if !with_ttl {
+                if let Some(flag) = error_if_log_file_exist {
+                    unsafe {
+                        ffi_try!(crocksdb_open_for_read_only_column_families(
+                            db_options,
+                            db_path,
+                            db_cfs_count,
+                            db_cf_ptrs,
+                            db_cf_opts,
+                            db_cf_handles,
+                            flag
+                        ))
+                    }
+                } else {
+                    unsafe {
+                        ffi_try!(crocksdb_open_column_families(
+                            db_options,
+                            db_path,
+                            db_cfs_count,
+                            db_cf_ptrs,
+                            db_cf_opts,
+                            db_cf_handles
+                        ))
+                    }
                 }
             } else {
+                let ttl_array = ttls_vec.as_ptr() as *const c_int;
+
                 unsafe {
-                    ffi_try!(crocksdb_open_column_families(
+                    ffi_try!(crocksdb_open_column_families_with_ttl(
                         db_options,
                         db_path,
                         db_cfs_count,
                         db_cf_ptrs,
                         db_cf_opts,
+                        ttl_array,
+                        readonly,
                         db_cf_handles
                     ))
                 }
             }
         };
+
         if cf_handles.iter().any(|h| h.is_null()) {
             return Err(ERR_NULL_CF_HANDLE.to_owned());
         }
@@ -1297,6 +1355,30 @@ impl DB {
         Ok(())
     }
 
+    /// An optimized version of `ingest_external_file_cf`. It will
+    /// first try to ingest files without blocking and fallback to a
+    /// blocking ingestion if the optimization fails.
+    /// Returns true if a memtable is flushed without blocking.
+    pub fn ingest_external_file_optimized(
+        &self,
+        cf: &CFHandle,
+        opt: &IngestExternalFileOptions,
+        files: &[&str],
+    ) -> Result<bool, String> {
+        let c_files = build_cstring_list(files);
+        let c_files_ptrs: Vec<*const _> = c_files.iter().map(|s| s.as_ptr()).collect();
+        let has_flush = unsafe {
+            ffi_try!(crocksdb_ingest_external_file_optimized(
+                self.inner,
+                cf.inner,
+                c_files_ptrs.as_ptr(),
+                c_files_ptrs.len(),
+                opt.inner
+            ))
+        };
+        Ok(has_flush)
+    }
+
     pub fn backup_at(&self, path: &str) -> Result<BackupEngine, String> {
         let backup_engine = BackupEngine::open(DBOptions::new(), path).unwrap();
         unsafe {
@@ -1888,6 +1970,19 @@ impl SstFileWriter {
         }
     }
 
+    pub fn delete_range(&mut self, begin_key: &[u8], end_key: &[u8]) -> Result<(), String> {
+        unsafe {
+            ffi_try!(crocksdb_sstfilewriter_delete_range(
+                self.inner,
+                begin_key.as_ptr(),
+                begin_key.len(),
+                end_key.as_ptr(),
+                end_key.len()
+            ));
+            Ok(())
+        }
+    }
+
     /// Finalize writing to sst file and close file.
     pub fn finish(&mut self) -> Result<ExternalSstFileInfo, String> {
         let info = ExternalSstFileInfo::new();
@@ -2143,6 +2238,20 @@ pub fn load_latest_options(
         libc::free(raw_cf_descs as *mut c_void);
 
         Ok(Some((db_options, cf_descs)))
+    }
+}
+
+pub fn run_ldb_tool(ldb_args: &Vec<String>) {
+    unsafe {
+        let ldb_args_cstrs: Vec<_> = ldb_args
+            .iter()
+            .map(|s| CString::new(s.as_bytes()).unwrap())
+            .collect();
+        let args: Vec<_> = ldb_args_cstrs.iter().map(|s| s.as_ptr()).collect();
+        crocksdb_ffi::crocksdb_run_ldb_tool(
+            args.len() as i32,
+            args.as_ptr() as *const *const c_char,
+        );
     }
 }
 
@@ -2454,8 +2563,7 @@ mod test {
                 db1.put(b"k2", b"v2").unwrap();
                 db1.flush(true).unwrap();
                 db1.compact_range(None, None);
-            })
-            .unwrap();
+            }).unwrap();
         // Wait until all currently running background processes finish.
         db.pause_bg_work();
         assert_eq!(

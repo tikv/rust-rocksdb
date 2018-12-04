@@ -20,6 +20,7 @@ extern crate tempdir;
 
 use libc::{c_char, c_double, c_int, c_uchar, c_void, size_t, uint32_t, uint64_t, uint8_t};
 use std::ffi::CStr;
+use std::fmt;
 
 pub enum Options {}
 pub enum ColumnFamilyDescriptor {}
@@ -68,6 +69,18 @@ pub enum DBLevelMetaData {}
 pub enum DBSstFileMetaData {}
 pub enum DBCompactionOptions {}
 pub enum DBPerfContext {}
+pub enum DBWriteStallInfo {}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[repr(C)]
+pub enum WriteStallCondition {
+    Normal = 0,
+    Delayed = 1,
+    Stopped = 2,
+}
+
+mod generated;
+pub use generated::*;
 
 pub fn new_bloom_filter(bits: c_int) -> *mut DBFilterPolicy {
     unsafe { crocksdb_filterpolicy_create_bloom(bits) }
@@ -154,109 +167,46 @@ pub enum CompactionPriority {
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 #[repr(C)]
-pub enum DBStatisticsTickerType {
-    BlockCacheMiss = 0, // total block cache miss
-    BlockCacheHit = 1,  // total block cache hit
-    BlockCacheAdd = 2,
-    BlockCacheAddFailures = 3,
-    BlockCacheIndexMiss = 4, // times cache miss when accessing index block from block cache
-    BlockCacheIndexHit = 5,
-    BlockCacheIndexAdd = 6,
-    BlockCacheIndexBytesInsert = 7,
-    BlockCacheIndexBytesEvict = 8,
-    BlockCacheFilterMiss = 9, // times cache miss when accessing filter block from block cache
-    BlockCacheFilterHit = 10,
-    BlockCacheFilterAdd = 11,
-    BlockCacheFilterBytesInsert = 12,
-    BlockCacheFilterBytesEvict = 13,
-    BlockCacheDataMiss = 14, // times cache miss when accessing data block from block cache
-    BlockCacheDataHit = 15,  // times cache hit when accessing data block from block cache
-    BlockCacheDataAdd = 16,
-    BlockCacheDataBytesInsert = 17,
-    BlockCacheByteRead = 18,  // bytes read from cache
-    BlockCacheByteWrite = 19, // bytes written into cache
-    BloomFilterUseful = 20,   // times bloom filter has avoided file reads
-    MemtableHit = 25,
-    MemtableMiss = 26,
-    GetHitL0 = 27,      // Get() queries served by L0
-    GetHitL1 = 28,      // Get() queries served by L1
-    GetHitL2AndUp = 29, // Get() queries served by L2 and up
-    CompactionKeyDropNewerEntry = 30, /* key was written with a newer value.
-                         * Also includes keys dropped for range del. */
-    CompactionKeyDropObsolete = 31,          // The key is obsolete.
-    CompactionKeyDropRangeDel = 32,          // key was covered by a range tombstone.
-    CompactionRangeDelDropObsolete = 34,     // all keys in range were deleted.
-    CompactionOptimizedDelDropObsolete = 35, // Deletions obsoleted before bottom level due to file gap optimization.
-    NumberKeysWritten = 36, // number of keys written to the database via the Put and Write call's
-    NumberKeysRead = 37,    // number of keys read
-    NumberKeysUpdated = 38,
-    BytesWritten = 39, // the number of uncompressed bytes read from DB::Put, DB::Delete,
-    // DB::Merge and DB::Write
-    BytesRead = 40,    // the number of uncompressed bytes read from DB::Get()
-    NumberDbSeek = 41, // the number of calls to seek/next/prev
-    NumberDbNext = 42,
-    NumberDbPrev = 43,
-    NumberDbSeekFound = 44, // the number of calls to seek/next/prev that returned data
-    NumberDbNextFound = 45,
-    NumberDbPrevFound = 46,
-    IterBytesRead = 47, // the number of uncompressed bytes read from an iterator, include size of
-    // key and value
-    NoFileCloses = 48,
-    NoFileOpens = 49,
-    NoFileErrors = 50,
-    StallMicros = 54, // writer has to wait for compaction or flush to finish
-    NoIterators = 57, // number of iterators currently open
-    BloomFilterPrefixChecked = 63, // number of times bloom was checked before creating iterator
-    // on a file
-    BloomFilterPrefixUseful = 64, // number of times the check was useful in avoiding iterator
-    // creating
-    WalFileSynced = 71,              // number of times WAL sync is done
-    WalFileBytes = 72,               // number of bytes written to WAL
-    WriteDoneBySelf = 73,            // number of writes processed by self
-    WriteDoneByOther = 74,           // number of writes processed by other
-    WriteTimeout = 75,               // number of writes ending up with timed-out
-    WriteWithWAL = 76,               // number of writes that request WAL
-    CompactReadBytes = 77,           // bytes read during compaction
-    CompactWriteBytes = 78,          // bytes written during compaction
-    FlushWriteBytes = 79,            // bytes written during flush
-    ReadAmpEstimateUsefulBytes = 91, // total bytes actually used
-    ReadAmpTotalReadBytes = 92,      // total size of loaded data blocks
+pub enum CompactionReason {
+    Unknown,
+    // [Level] number of L0 files > level0_file_num_compaction_trigger
+    LevelL0FilesNum,
+    // [Level] total size of level > MaxBytesForLevel()
+    LevelMaxLevelSize,
+    // [Universal] Compacting for size amplification
+    UniversalSizeAmplification,
+    // [Universal] Compacting for size ratio
+    UniversalSizeRatio,
+    // [Universal] number of sorted runs > level0_file_num_compaction_trigger
+    UniversalSortedRunNum,
+    // [FIFO] total size > max_table_files_size
+    FIFOMaxSize,
+    // [FIFO] reduce number of files.
+    FIFOReduceNumFiles,
+    // [FIFO] files with creation time < (current_time - interval)
+    FIFOTtl,
+    // Manual compaction
+    ManualCompaction,
+    // DB::SuggestCompactRange() marked files for compaction
+    FilesMarkedForCompaction,
+    // [Level] Automatic compaction within bottommost level to cleanup duplicate
+    // versions of same user key, usually due to a released snapshot.
+    BottommostFiles,
+    // Compaction based on TTL
+    Ttl,
+    // According to the comments in flush_job.cc, RocksDB treats flush as
+    // a level 0 compaction in internal stats.
+    Flush,
+    // Compaction caused by external sst file ingestion
+    ExternalSstIngestion,
+    // total number of compaction reasons, new reasons must be added above this.
+    NumOfReasons,
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
-#[repr(C)]
-pub enum DBStatisticsHistogramType {
-    GetMicros = 0,
-    WriteMicros = 1,
-    CompactionTime = 2,
-    SubcompactionSetupTime = 3,
-    TableSyncMicros = 4,
-    CompactionOutfileSyncMicros = 5,
-    WalFileSyncMicros = 6,
-    ManifestFileSyncMicros = 7,
-    TableOpenIOMicros = 8,
-    MultiGetMicros = 9,
-    ReadBlockCompactionMicros = 10,
-    ReadBlockGetMicros = 11,
-    WriteRawBlockMicros = 12,
-    StallL0SlowdownCount = 13,
-    StallMemtableCompactionCount = 14,
-    StallL0NumFilesCount = 15,
-    HardRateLimitDelayCount = 16,
-    SoftRateLimitDelayCount = 17,
-    NumFilesInSingleCompaction = 18,
-    SeekMicros = 19,
-    WriteStall = 20,
-    SSTReadMicros = 21,
-    NumSubcompactionsScheduled = 22,
-    BytesPerRead = 23,
-    BytesPerWrite = 24,
-    BytesPerMultiget = 25,
-    BytesCompressed = 26,
-    BytesDecompressed = 27,
-    CompressionTimesNanos = 28,
-    DecompressionTimesNanos = 29,
-    ReadNumMergeOperands = 30,
+impl fmt::Display for CompactionReason {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -621,6 +571,12 @@ extern "C" {
         path: *const c_char,
         err: *mut *mut c_char,
     ) -> *mut DBInstance;
+    pub fn crocksdb_open_with_ttl(
+        options: *mut Options,
+        path: *const c_char,
+        ttl: c_int,
+        err: *mut *mut c_char,
+    ) -> *mut DBInstance;
     pub fn crocksdb_open_for_read_only(
         options: *mut Options,
         path: *const c_char,
@@ -956,6 +912,17 @@ extern "C" {
         column_family_handles: *const *mut DBCFHandle,
         err: *mut *mut c_char,
     ) -> *mut DBInstance;
+    pub fn crocksdb_open_column_families_with_ttl(
+        options: *const Options,
+        path: *const c_char,
+        num_column_families: c_int,
+        column_family_names: *const *const c_char,
+        column_family_options: *const *const Options,
+        ttl_array: *const c_int,
+        read_only: bool,
+        column_family_handles: *const *mut DBCFHandle,
+        err: *mut *mut c_char,
+    ) -> *mut DBInstance;
     pub fn crocksdb_open_for_read_only_column_families(
         options: *const Options,
         path: *const c_char,
@@ -991,6 +958,7 @@ extern "C" {
     pub fn crocksdb_flushoptions_create() -> *mut DBFlushOptions;
     pub fn crocksdb_flushoptions_destroy(opt: *mut DBFlushOptions);
     pub fn crocksdb_flushoptions_set_wait(opt: *mut DBFlushOptions, whether_wait: bool);
+    pub fn crocksdb_flushoptions_set_allow_write_stall(opt: *mut DBFlushOptions, allow: bool);
 
     pub fn crocksdb_flush(
         db: *mut DBInstance,
@@ -1222,14 +1190,6 @@ extern "C" {
         name: *const c_char,
         err: *mut *mut c_char,
     );
-    pub fn crocksdb_sstfilewriter_add(
-        writer: *mut SstFileWriter,
-        key: *const u8,
-        key_len: size_t,
-        val: *const u8,
-        val_len: size_t,
-        err: *mut *mut c_char,
-    );
     pub fn crocksdb_sstfilewriter_put(
         writer: *mut SstFileWriter,
         key: *const u8,
@@ -1250,6 +1210,14 @@ extern "C" {
         writer: *mut SstFileWriter,
         key: *const u8,
         key_len: size_t,
+        err: *mut *mut c_char,
+    );
+    pub fn crocksdb_sstfilewriter_delete_range(
+        writer: *mut SstFileWriter,
+        begin_key: *const u8,
+        begin_key_len: size_t,
+        end_key: *const u8,
+        end_key_len: size_t,
         err: *mut *mut c_char,
     );
     pub fn crocksdb_sstfilewriter_finish(
@@ -1295,6 +1263,14 @@ extern "C" {
         opt: *const IngestExternalFileOptions,
         err: *mut *mut c_char,
     );
+    pub fn crocksdb_ingest_external_file_optimized(
+        db: *mut DBInstance,
+        handle: *const DBCFHandle,
+        file_list: *const *const c_char,
+        list_len: size_t,
+        opt: *const IngestExternalFileOptions,
+        err: *mut *mut c_char,
+    ) -> bool;
 
     // Restore Option
     pub fn crocksdb_restore_options_create() -> *mut DBRestoreOptions;
@@ -1519,6 +1495,8 @@ extern "C" {
     pub fn crocksdb_flushjobinfo_table_properties(
         info: *const DBFlushJobInfo,
     ) -> *const DBTableProperties;
+    pub fn crocksdb_flushjobinfo_triggered_writes_slowdown(info: *const DBFlushJobInfo) -> bool;
+    pub fn crocksdb_flushjobinfo_triggered_writes_stop(info: *const DBFlushJobInfo) -> bool;
 
     pub fn crocksdb_compactionjobinfo_cf_name(
         info: *const DBCompactionJobInfo,
@@ -1555,6 +1533,9 @@ extern "C" {
     pub fn crocksdb_compactionjobinfo_total_output_bytes(
         info: *const DBCompactionJobInfo,
     ) -> uint64_t;
+    pub fn crocksdb_compactionjobinfo_compaction_reason(
+        info: *const DBCompactionJobInfo,
+    ) -> CompactionReason;
 
     pub fn crocksdb_externalfileingestioninfo_cf_name(
         info: *const DBIngestionInfo,
@@ -1568,12 +1549,23 @@ extern "C" {
         info: *const DBIngestionInfo,
     ) -> *const DBTableProperties;
 
+    pub fn crocksdb_writestallinfo_cf_name(
+        info: *const DBWriteStallInfo,
+        size: *mut size_t,
+    ) -> *const c_char;
+    pub fn crocksdb_writestallinfo_prev(
+        info: *const DBWriteStallInfo,
+    ) -> *const WriteStallCondition;
+    pub fn crocksdb_writestallinfo_cur(info: *const DBWriteStallInfo)
+        -> *const WriteStallCondition;
+
     pub fn crocksdb_eventlistener_create(
         state: *mut c_void,
         destructor: extern "C" fn(*mut c_void),
         flush: extern "C" fn(*mut c_void, *mut DBInstance, *const DBFlushJobInfo),
         compact: extern "C" fn(*mut c_void, *mut DBInstance, *const DBCompactionJobInfo),
         ingest: extern "C" fn(*mut c_void, *mut DBInstance, *const DBIngestionInfo),
+        stall_conditions: extern "C" fn(*mut c_void, *const DBWriteStallInfo),
     ) -> *mut DBEventListener;
     pub fn crocksdb_eventlistener_destroy(et: *mut DBEventListener);
     pub fn crocksdb_options_add_eventlistener(opt: *mut Options, et: *mut DBEventListener);
@@ -1739,6 +1731,7 @@ extern "C" {
     pub fn crocksdb_perf_context_env_lock_file_nanos(ctx: *mut DBPerfContext) -> u64;
     pub fn crocksdb_perf_context_env_unlock_file_nanos(ctx: *mut DBPerfContext) -> u64;
     pub fn crocksdb_perf_context_env_new_logger_nanos(ctx: *mut DBPerfContext) -> u64;
+    pub fn crocksdb_run_ldb_tool(argc: c_int, argv: *const *const c_char);
 }
 
 #[cfg(test)]
@@ -1804,12 +1797,13 @@ mod test {
             assert_eq!(sizes.len(), 1);
             assert!(sizes[0] > 0);
 
-            crocksdb_delete_file_in_range(
+            crocksdb_delete_files_in_range(
                 db,
                 b"\x00\x00".as_ptr(),
                 2,
                 b"\xff\x00".as_ptr(),
                 2,
+                true,
                 &mut err,
             );
             assert!(err.is_null(), error_message(err));
@@ -1883,13 +1877,13 @@ mod test {
 
             crocksdb_sstfilewriter_open(writer, c_sst_path_ptr, &mut err);
             assert!(err.is_null(), error_message(err));
-            crocksdb_sstfilewriter_add(writer, b"sstk1".as_ptr(), 5, b"v1".as_ptr(), 2, &mut err);
+            crocksdb_sstfilewriter_put(writer, b"sstk1".as_ptr(), 5, b"v1".as_ptr(), 2, &mut err);
             assert!(err.is_null(), error_message(err));
             crocksdb_sstfilewriter_put(writer, b"sstk2".as_ptr(), 5, b"v2".as_ptr(), 2, &mut err);
             assert!(err.is_null(), error_message(err));
             crocksdb_sstfilewriter_put(writer, b"sstk3".as_ptr(), 5, b"v3".as_ptr(), 2, &mut err);
             assert!(err.is_null(), error_message(err));
-            crocksdb_sstfilewriter_finish(writer, &mut err);
+            crocksdb_sstfilewriter_finish(writer, ptr::null_mut(), &mut err);
             assert!(err.is_null(), error_message(err));
             assert!(crocksdb_sstfilewriter_file_size(writer) > 0);
 
@@ -1907,13 +1901,13 @@ mod test {
             fs::remove_file(sst_path).unwrap();
             crocksdb_sstfilewriter_open(writer, c_sst_path_ptr, &mut err);
             assert!(err.is_null(), error_message(err));
-            crocksdb_sstfilewriter_add(writer, "sstk2".as_ptr(), 5, "v4".as_ptr(), 2, &mut err);
+            crocksdb_sstfilewriter_put(writer, "sstk2".as_ptr(), 5, "v4".as_ptr(), 2, &mut err);
             assert!(err.is_null(), error_message(err));
             crocksdb_sstfilewriter_put(writer, "sstk22".as_ptr(), 6, "v5".as_ptr(), 2, &mut err);
             assert!(err.is_null(), error_message(err));
             crocksdb_sstfilewriter_put(writer, "sstk3".as_ptr(), 5, "v6".as_ptr(), 2, &mut err);
             assert!(err.is_null(), error_message(err));
-            crocksdb_sstfilewriter_finish(writer, &mut err);
+            crocksdb_sstfilewriter_finish(writer, ptr::null_mut(), &mut err);
             assert!(err.is_null(), error_message(err));
             assert!(crocksdb_sstfilewriter_file_size(writer) > 0);
 

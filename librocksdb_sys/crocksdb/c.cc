@@ -17,6 +17,7 @@
 #include "rocksdb/env.h"
 #include "rocksdb/filter_policy.h"
 #include "rocksdb/iterator.h"
+#include "rocksdb/ldb_tool.h"
 #include "rocksdb/listener.h"
 #include "rocksdb/memtablerep.h"
 #include "rocksdb/merge_operator.h"
@@ -32,7 +33,9 @@
 #include "rocksdb/utilities/backupable_db.h"
 #include "rocksdb/utilities/debug.h"
 #include "rocksdb/utilities/options_util.h"
+#include "rocksdb/utilities/db_ttl.h"
 #include "rocksdb/write_batch.h"
+
 
 #include "db/column_family.h"
 #include "table/sst_file_writer_collectors.h"
@@ -64,6 +67,7 @@ using rocksdb::Comparator;
 using rocksdb::CompressionType;
 using rocksdb::WALRecoveryMode;
 using rocksdb::DB;
+using rocksdb::DBWithTTL;
 using rocksdb::DBOptions;
 using rocksdb::Env;
 using rocksdb::EnvOptions;
@@ -73,6 +77,8 @@ using rocksdb::InfoLogLevel;
 using rocksdb::FileLock;
 using rocksdb::FilterPolicy;
 using rocksdb::FlushJobInfo;
+using rocksdb::WriteStallInfo;
+using rocksdb::WriteStallCondition;
 using rocksdb::FlushOptions;
 using rocksdb::IngestExternalFileOptions;
 using rocksdb::Iterator;
@@ -137,9 +143,11 @@ using rocksdb::ColumnFamilyMetaData;
 using rocksdb::LevelMetaData;
 using rocksdb::SstFileMetaData;
 using rocksdb::CompactionOptions;
+using rocksdb::CompactionReason;
 using rocksdb::PerfLevel;
 using rocksdb::PerfContext;
 using rocksdb::BottommostLevelCompaction;
+using rocksdb::LDBTool;
 
 using std::shared_ptr;
 
@@ -189,6 +197,12 @@ struct crocksdb_histogramdata_t   { HistogramData     rep; };
 struct crocksdb_pinnableslice_t   { PinnableSlice     rep; };
 struct crocksdb_flushjobinfo_t {
   FlushJobInfo rep;
+};
+struct crocksdb_writestallcondition_t {
+  WriteStallCondition rep;
+};
+struct crocksdb_writestallinfo_t {
+  WriteStallInfo rep;
 };
 struct crocksdb_compactionjobinfo_t {
   CompactionJobInfo rep;
@@ -522,6 +536,20 @@ crocksdb_t* crocksdb_open(
   return result;
 }
 
+crocksdb_t* crocksdb_open_with_ttl(
+    const crocksdb_options_t* options,
+    const char* name,
+    int ttl,
+    char** errptr) {
+  DBWithTTL* db;
+  if (SaveError(errptr, DBWithTTL::Open(options->rep, std::string(name), &db, ttl))) {
+    return nullptr;
+  }
+  crocksdb_t* result = new crocksdb_t;
+  result->rep = db;
+  return result;
+}
+
 crocksdb_t* crocksdb_open_for_read_only(
     const crocksdb_options_t* options,
     const char* name,
@@ -653,6 +681,42 @@ crocksdb_t* crocksdb_open_column_families(
   std::vector<ColumnFamilyHandle*> handles;
   if (SaveError(errptr, DB::Open(DBOptions(db_options->rep),
           std::string(name), column_families, &handles, &db))) {
+    return nullptr;
+  }
+
+  for (size_t i = 0; i < handles.size(); i++) {
+    crocksdb_column_family_handle_t* c_handle = new crocksdb_column_family_handle_t;
+    c_handle->rep = handles[i];
+    column_family_handles[i] = c_handle;
+  }
+  crocksdb_t* result = new crocksdb_t;
+  result->rep = db;
+  return result;
+}
+
+crocksdb_t* crocksdb_open_column_families_with_ttl(
+    const crocksdb_options_t* db_options,
+    const char* name,
+    int num_column_families,
+    const char** column_family_names,
+    const crocksdb_options_t** column_family_options,
+    const int32_t* ttl_array,
+    bool read_only,
+    crocksdb_column_family_handle_t** column_family_handles,
+    char** errptr) {
+  std::vector<ColumnFamilyDescriptor> column_families;
+  std::vector<int32_t> ttls;
+  for (int i = 0; i < num_column_families; i++) {
+    column_families.push_back(ColumnFamilyDescriptor(
+        std::string(column_family_names[i]),
+        ColumnFamilyOptions(column_family_options[i]->rep)));
+    ttls.push_back(ttl_array[i]);
+  }
+
+  DBWithTTL* db;
+  std::vector<ColumnFamilyHandle*> handles;
+  if (SaveError(errptr, DBWithTTL::Open(DBOptions(db_options->rep),
+          std::string(name), column_families, &handles, &db, ttls, read_only))) {
     return nullptr;
   }
 
@@ -1739,6 +1803,14 @@ const crocksdb_table_properties_t* crocksdb_flushjobinfo_table_properties(
       &info->rep.table_properties);
 }
 
+bool crocksdb_flushjobinfo_triggered_writes_slowdown(const crocksdb_flushjobinfo_t* info) {
+  return info->rep.triggered_writes_slowdown;
+}
+
+bool crocksdb_flushjobinfo_triggered_writes_stop(const crocksdb_flushjobinfo_t* info) {
+  return info->rep.triggered_writes_stop;
+}
+
 /* CompactionJobInfo */
 
 const char* crocksdb_compactionjobinfo_cf_name(
@@ -1813,6 +1885,11 @@ uint64_t crocksdb_compactionjobinfo_total_output_bytes(
   return info->rep.stats.total_output_bytes;
 }
 
+CompactionReason crocksdb_compactionjobinfo_compaction_reason(
+    const crocksdb_compactionjobinfo_t* info) {
+  return info->rep.compaction_reason;
+}
+
 /* ExternalFileIngestionInfo */
 
 const char* crocksdb_externalfileingestioninfo_cf_name(
@@ -1834,6 +1911,26 @@ crocksdb_externalfileingestioninfo_table_properties(
       &info->rep.table_properties);
 }
 
+/* External write stall info */
+extern C_ROCKSDB_LIBRARY_API const char*
+crocksdb_writestallinfo_cf_name(
+    const crocksdb_writestallinfo_t* info, size_t* size) {
+  *size = info->rep.cf_name.size();
+  return info->rep.cf_name.data();
+}
+
+const crocksdb_writestallcondition_t* crocksdb_writestallinfo_cur(
+    const crocksdb_writestallinfo_t* info) {
+  return reinterpret_cast<const crocksdb_writestallcondition_t*>(
+      &info->rep.condition.cur);
+}
+
+const crocksdb_writestallcondition_t* crocksdb_writestallinfo_prev(
+    const crocksdb_writestallinfo_t* info) {
+  return reinterpret_cast<const crocksdb_writestallcondition_t*>(
+      &info->rep.condition.prev);
+}
+
 /* event listener */
 
 struct crocksdb_eventlistener_t : public EventListener {
@@ -1845,6 +1942,7 @@ struct crocksdb_eventlistener_t : public EventListener {
                                   const crocksdb_compactionjobinfo_t*);
   void (*on_external_file_ingested)(
       void*, crocksdb_t*, const crocksdb_externalfileingestioninfo_t*);
+  void (*on_stall_conditions_changed)(void*, const crocksdb_writestallinfo_t*);
 
   virtual void OnFlushCompleted(DB* db, const FlushJobInfo& info) {
     crocksdb_t c_db = {db};
@@ -1867,6 +1965,12 @@ struct crocksdb_eventlistener_t : public EventListener {
         reinterpret_cast<const crocksdb_externalfileingestioninfo_t*>(&info));
   }
 
+  virtual void OnStallConditionsChanged(const WriteStallInfo& info) {
+    on_stall_conditions_changed(
+        state_,
+        reinterpret_cast<const crocksdb_writestallinfo_t*>(&info));
+  }
+
   virtual ~crocksdb_eventlistener_t() { destructor_(state_); }
 };
 
@@ -1874,13 +1978,15 @@ crocksdb_eventlistener_t* crocksdb_eventlistener_create(
     void* state_, void (*destructor_)(void*),
     on_flush_completed_cb on_flush_completed,
     on_compaction_completed_cb on_compaction_completed,
-    on_external_file_ingested_cb on_external_file_ingested) {
+    on_external_file_ingested_cb on_external_file_ingested,
+    on_stall_conditions_changed_cb on_stall_conditions_changed) {
   crocksdb_eventlistener_t* et = new crocksdb_eventlistener_t;
   et->state_ = state_;
   et->destructor_ = destructor_;
   et->on_flush_completed = on_flush_completed;
   et->on_compaction_completed = on_compaction_completed;
   et->on_external_file_ingested = on_external_file_ingested;
+  et->on_stall_conditions_changed = on_stall_conditions_changed;
   return et;
 }
 
@@ -3103,6 +3209,11 @@ void crocksdb_flushoptions_set_wait(
   opt->rep.wait = v;
 }
 
+void crocksdb_flushoptions_set_allow_write_stall(
+    crocksdb_flushoptions_t* opt, unsigned char v) {
+  opt->rep.allow_write_stall = v;
+}
+
 crocksdb_cache_t* crocksdb_cache_create_lru(size_t capacity,
   int num_shard_bits, unsigned char strict_capacity_limit, double high_pri_pool_ratio) {
   crocksdb_cache_t* c = new crocksdb_cache_t;
@@ -3235,6 +3346,14 @@ void crocksdb_sstfilewriter_delete(crocksdb_sstfilewriter_t *writer,
   SaveError(errptr, writer->rep->Delete(Slice(key, keylen)));
 }
 
+void crocksdb_sstfilewriter_delete_range(crocksdb_sstfilewriter_t *writer,
+                                         const char *begin_key, size_t begin_keylen,
+                                         const char *end_key, size_t end_keylen,
+                                         char **errptr) {
+  SaveError(errptr, writer->rep->DeleteRange(Slice(begin_key, begin_keylen),
+                                             Slice(end_key, end_keylen)));
+}
+
 void crocksdb_sstfilewriter_finish(crocksdb_sstfilewriter_t* writer,
                                    crocksdb_externalsstfileinfo_t* info,
                                    char** errptr) {
@@ -3345,6 +3464,44 @@ void crocksdb_ingest_external_file_cf(
     files[i] = std::string(file_list[i]);
   }
   SaveError(errptr, db->rep->IngestExternalFile(handle->rep, files, opt->rep));
+}
+
+bool crocksdb_ingest_external_file_optimized(
+    crocksdb_t* db, crocksdb_column_family_handle_t* handle,
+    const char* const* file_list, const size_t list_len,
+    const crocksdb_ingestexternalfileoptions_t* opt, char** errptr) {
+  std::vector<std::string> files(list_len);
+  for (size_t i = 0; i < list_len; ++i) {
+    files[i] = std::string(file_list[i]);
+  }
+  bool has_flush = false;
+  // If the file being ingested is overlapped with the memtable, it
+  // will block writes and wait for flushing, which can cause high
+  // write latency. So we set `allow_blocking_flush = false`.
+  auto ingest_opts = opt->rep;
+  ingest_opts.allow_blocking_flush = false;
+  auto s = db->rep->IngestExternalFile(handle->rep, files, ingest_opts);
+  if (s.IsInvalidArgument() &&
+      s.ToString().find("External file requires flush") != std::string::npos) {
+    // When `allow_blocking_flush = false` and the file being ingested
+    // is overlapped with the memtable, `IngestExternalFile` returns
+    // an invalid argument error. It is tricky to search for the
+    // specific error message here but don't worry, the unit test
+    // ensures that we get this right. Then we can try to flush the
+    // memtable outside without blocking writes. We also set
+    // `allow_write_stall = false` to prevent the flush from
+    // triggering write stall.
+    has_flush = true;
+    FlushOptions flush_opts;
+    flush_opts.wait = true;
+    flush_opts.allow_write_stall = false;
+    // We don't check the status of this flush because we will
+    // fallback to a blocking ingestion anyway.
+    db->rep->Flush(flush_opts, handle->rep);
+    s = db->rep->IngestExternalFile(handle->rep, files, opt->rep);
+  }
+  SaveError(errptr, s);
+  return has_flush;
 }
 
 crocksdb_slicetransform_t* crocksdb_slicetransform_create(
@@ -4087,8 +4244,9 @@ int crocksdb_keyversions_type(const crocksdb_keyversions_t *kvs, int index) {
 }
 
 struct ExternalSstFileModifier {
-  ExternalSstFileModifier(Env *env, ColumnFamilyData *cfd, DBOptions &db_options)
-  :env_(env), cfd_(cfd), env_options_(db_options), table_reader_(nullptr) { }
+  ExternalSstFileModifier(Env *env, const EnvOptions& env_options,
+                          ColumnFamilyHandle* handle)
+      : env_(env), env_options_(env_options), handle_(handle) {}
 
   Status Open(std::string file) {
     file_ = file;
@@ -4109,9 +4267,14 @@ struct ExternalSstFileModifier {
     sst_file_reader.reset(new RandomAccessFileReader(std::move(sst_file), file_));
 
     // Get Table Reader
-    status = cfd_->ioptions()->table_factory->NewTableReader(
-        TableReaderOptions(*cfd_->ioptions(), env_options_,
-                           cfd_->internal_comparator()),
+    ColumnFamilyDescriptor desc;
+    handle_->GetDescriptor(&desc);
+    auto cfd = reinterpret_cast<ColumnFamilyHandleImpl*>(handle_)->cfd();
+    auto ioptions = *cfd->ioptions();
+    status = ioptions.table_factory->NewTableReader(
+        TableReaderOptions(ioptions,
+                           desc.options.prefix_extractor.get(),
+                           env_options_, cfd->internal_comparator()),
         std::move(sst_file_reader), file_size, &table_reader_);
     return status;
   }
@@ -4162,10 +4325,10 @@ struct ExternalSstFileModifier {
   }
 
   private:
-    Env              *env_;
-    ColumnFamilyData *cfd_;
-    EnvOptions        env_options_;
-    std::string       file_;
+    Env *env_;
+    EnvOptions env_options_;
+    ColumnFamilyHandle* handle_;
+    std::string file_;
     std::unique_ptr<TableReader> table_reader_;
 };
 
@@ -4177,9 +4340,9 @@ uint64_t crocksdb_set_external_sst_file_global_seq_no(
     const char *file,
     uint64_t seq_no,
     char **errptr) {
-  auto cfh = reinterpret_cast<ColumnFamilyHandleImpl*>(column_family->rep);
-  auto db_options = db->rep->GetDBOptions();
-  ExternalSstFileModifier modifier(db->rep->GetEnv(), cfh->cfd(), db_options);
+  auto env = db->rep->GetEnv();
+  EnvOptions env_options(db->rep->GetDBOptions());
+  ExternalSstFileModifier modifier(env, env_options, column_family->rep);
   auto s = modifier.Open(std::string(file));
   uint64_t pre_seq_no = 0;
   if (!s.ok()) {
@@ -4574,6 +4737,10 @@ uint64_t crocksdb_perf_context_env_unlock_file_nanos(crocksdb_perf_context_t* ct
 
 uint64_t crocksdb_perf_context_env_new_logger_nanos(crocksdb_perf_context_t* ctx) {
   return ctx->rep.env_new_logger_nanos;
+}
+
+void crocksdb_run_ldb_tool(int argc, char** argv) {
+  LDBTool().Run(argc, argv);
 }
 
 }  // end extern "C"

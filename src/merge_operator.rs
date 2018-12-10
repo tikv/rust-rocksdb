@@ -88,7 +88,7 @@ pub extern "C" fn partial_merge_callback(
         // TODO(tan) investigate zero-copy techniques to improve performance
         let buf = libc::malloc(result.len() as size_t);
         assert!(!buf.is_null());
-        *new_value_length = 1 as size_t;
+        *new_value_length = result.len() as size_t;
         *success = 1 as u8;
         ptr::copy(result.as_ptr() as *mut c_void, &mut *buf, result.len());
         buf as *const c_char
@@ -188,7 +188,8 @@ mod test {
             opts,
             path.path().to_str().unwrap(),
             vec![("default", cf_opts)],
-        ).unwrap();
+        )
+            .unwrap();
         let p = db.put(b"k1", b"a");
         assert!(p.is_ok());
         let _ = db.merge(b"k1", b"b");

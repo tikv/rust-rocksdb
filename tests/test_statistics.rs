@@ -35,10 +35,9 @@ fn test_db_statistics() {
     assert!(db.get_statistics_ticker_count(TickerType::BlockCacheHit) > 0);
     assert!(db.get_and_reset_statistics_ticker_count(TickerType::BlockCacheHit) > 0);
     assert_eq!(db.get_statistics_ticker_count(TickerType::BlockCacheHit), 0);
-    assert!(
-        db.get_statistics_histogram_string(HistogramType::GetMicros)
-            .is_some()
-    );
+    assert!(db
+        .get_statistics_histogram_string(HistogramType::GetMicros)
+        .is_some());
     assert!(
         db.get_statistics_histogram(HistogramType::GetMicros)
             .is_some()
@@ -77,10 +76,9 @@ fn test_disable_db_statistics() {
         db.get_and_reset_statistics_ticker_count(TickerType::BlockCacheHit),
         0
     );
-    assert!(
-        db.get_statistics_histogram_string(HistogramType::GetMicros)
-            .is_none()
-    );
+    assert!(db
+        .get_statistics_histogram_string(HistogramType::GetMicros)
+        .is_none());
     assert!(
         db.get_statistics_histogram(HistogramType::GetMicros)
             .is_none()

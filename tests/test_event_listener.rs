@@ -99,7 +99,8 @@ fn test_event_listener_basic() {
         db.put(
             format!("{:04}", i).as_bytes(),
             format!("{:04}", i).as_bytes(),
-        ).unwrap();
+        )
+        .unwrap();
     }
     db.flush(true).unwrap();
     assert_ne!(counter.flush.load(Ordering::SeqCst), 0);
@@ -108,7 +109,8 @@ fn test_event_listener_basic() {
         db.put(
             format!("{:04}", i).as_bytes(),
             format!("{:04}", i).as_bytes(),
-        ).unwrap();
+        )
+        .unwrap();
     }
     db.flush(true).unwrap();
     let flush_cnt = counter.flush.load(Ordering::SeqCst);

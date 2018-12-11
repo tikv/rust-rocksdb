@@ -1,5 +1,4 @@
-[submodule "rocksdb"]
+[submodule "librocksdb_sys/rocksdb"]
 	path = librocksdb_sys/rocksdb
-	url = https://github.com/pingcap/rocksdb.git
-	branch = release-5.15
-	shallow = true
+	url = https://github.com/dorianzheng/rocksdb.git
+	branch = titan-5.15

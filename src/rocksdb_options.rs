@@ -19,7 +19,8 @@ use crocksdb_ffi::{
     self, DBBlockBasedTableOptions, DBBottommostLevelCompaction, DBCompactOptions,
     DBCompactionOptions, DBCompressionType, DBFifoCompactionOptions, DBFlushOptions,
     DBInfoLogLevel, DBInstance, DBRateLimiter, DBReadOptions, DBRecoveryMode, DBRestoreOptions,
-    DBSnapshot, DBStatisticsHistogramType, DBStatisticsTickerType, DBWriteOptions, Options,
+    DBSnapshot, DBStatisticsHistogramType, DBStatisticsTickerType, DBTitanDBOptions,
+    DBWriteOptions, Options,
 };
 use event_listener::{new_event_listener, EventListener};
 use libc::{self, c_double, c_int, c_uchar, c_void, size_t};
@@ -30,11 +31,13 @@ use slice_transform::{new_slice_transform, SliceTransform};
 use std::ffi::{CStr, CString};
 use std::mem;
 use std::path::Path;
+use std::ptr;
 use std::sync::Arc;
 use table_filter::{destroy_table_filter, table_filter, TableFilter};
 use table_properties_collector_factory::{
     new_table_properties_collector_factory, TablePropertiesCollectorFactory,
 };
+use titan::TitanDBOptions;
 
 #[derive(Default, Debug)]
 pub struct HistogramData {
@@ -548,12 +551,16 @@ impl Drop for CompactionOptions {
 pub struct DBOptions {
     pub inner: *mut Options,
     env: Option<Arc<Env>>,
+    pub titan_inner: *mut DBTitanDBOptions,
 }
 
 impl Drop for DBOptions {
     fn drop(&mut self) {
         unsafe {
             crocksdb_ffi::crocksdb_options_destroy(self.inner);
+            if !self.titan_inner.is_null() {
+                crocksdb_ffi::ctitandb_options_destroy(self.titan_inner);
+            }
         }
     }
 }
@@ -566,6 +573,7 @@ impl Default for DBOptions {
             DBOptions {
                 inner: opts,
                 env: None,
+                titan_inner: ptr::null_mut::<DBTitanDBOptions>(),
             }
         }
     }
@@ -576,9 +584,14 @@ impl Clone for DBOptions {
         unsafe {
             let opts = crocksdb_ffi::crocksdb_options_copy(self.inner);
             assert!(!opts.is_null());
+            let mut titan_opts = self.titan_inner;
+            if !titan_opts.is_null() {
+                titan_opts = crocksdb_ffi::ctitandb_options_copy(self.inner, self.titan_inner);
+            }
             DBOptions {
                 inner: opts,
                 env: self.env.clone(),
+                titan_inner: titan_opts,
             }
         }
     }
@@ -593,7 +606,12 @@ impl DBOptions {
         DBOptions {
             inner: inner,
             env: None,
+            titan_inner: ptr::null_mut::<DBTitanDBOptions>(),
         }
+    }
+
+    pub fn set_titandb_options(&mut self, opts: &TitanDBOptions) {
+        self.titan_inner = unsafe { crocksdb_ffi::ctitandb_options_copy(self.inner, opts.inner) }
     }
 
     pub fn increase_parallelism(&mut self, parallelism: i32) {
@@ -944,6 +962,7 @@ impl DBOptions {
 
 pub struct ColumnFamilyOptions {
     pub inner: *mut Options,
+    pub titan_inner: *mut DBTitanDBOptions,
     env: Option<Arc<Env>>,
     filter: Option<CompactionFilterHandle>,
 }
@@ -952,6 +971,9 @@ impl Drop for ColumnFamilyOptions {
     fn drop(&mut self) {
         unsafe {
             crocksdb_ffi::crocksdb_options_destroy(self.inner);
+            if !self.titan_inner.is_null() {
+                crocksdb_ffi::ctitandb_options_destroy(self.titan_inner);
+            }
         }
     }
 }
@@ -966,6 +988,7 @@ impl Default for ColumnFamilyOptions {
             );
             ColumnFamilyOptions {
                 inner: opts,
+                titan_inner: ptr::null_mut::<DBTitanDBOptions>(),
                 env: None,
                 filter: None,
             }
@@ -979,8 +1002,13 @@ impl Clone for ColumnFamilyOptions {
         unsafe {
             let opts = crocksdb_ffi::crocksdb_options_copy(self.inner);
             assert!(!opts.is_null());
+            let mut titan_opts = self.titan_inner;
+            if !titan_opts.is_null() {
+                titan_opts = crocksdb_ffi::ctitandb_options_copy(self.inner, self.titan_inner);
+            }
             ColumnFamilyOptions {
                 inner: opts,
+                titan_inner: titan_opts,
                 env: self.env.clone(),
                 filter: None,
             }
@@ -999,9 +1027,16 @@ impl ColumnFamilyOptions {
             "could not new rocksdb options with null inner"
         );
         ColumnFamilyOptions {
-            inner: inner,
+            inner,
+            titan_inner: ptr::null_mut::<DBTitanDBOptions>(),
             env: None,
             filter: None,
+        }
+    }
+
+    pub fn set_titandb_options(&mut self, opts: &TitanDBOptions) {
+        if !opts.inner.is_null() {
+            self.titan_inner = unsafe { crocksdb_ffi::ctitandb_options_copy(self.inner, opts.inner) }
         }
     }
 

@@ -463,6 +463,10 @@ impl DB {
             .iter()
             .map(|x| x.inner as *const crocksdb_ffi::Options)
             .collect();
+        let tdb_cf_options: Vec<_> = options
+            .iter()
+            .map(|x| x.titan_inner as *const crocksdb_ffi::DBTitanDBOptions)
+            .collect();
 
         let readonly = if error_if_log_file_exist.is_some() {
             true
@@ -486,7 +490,18 @@ impl DB {
             let db_cfs_count = cf_names.len() as c_int;
             let db_cf_ptrs = cf_names.as_ptr();
             let db_cf_opts = cf_options.as_ptr();
+            let tdb_cf_opts = tdb_cf_options.as_ptr();
             let db_cf_handles = cf_handles.as_ptr();
+
+            let tdb_options = opts.titan_inner;
+            if !tdb_options.is_null() {
+                if error_if_log_file_exist.is_some() {
+                    return Err("TitanDB doesn't support read only mode.".to_owned());
+                } else if with_ttl {
+                    return Err("TitanDB doesn't support ttl.".to_owned());
+                }
+            }
+
 
             if !with_ttl {
                 if let Some(flag) = error_if_log_file_exist {
@@ -501,7 +516,7 @@ impl DB {
                             flag
                         ))
                     }
-                } else {
+                } else if tdb_options.is_null() {
                     unsafe {
                         ffi_try!(crocksdb_open_column_families(
                             db_options,
@@ -509,6 +524,19 @@ impl DB {
                             db_cfs_count,
                             db_cf_ptrs,
                             db_cf_opts,
+                            db_cf_handles
+                        ))
+                    }
+                } else {
+                    unsafe {
+                        ffi_try!(ctitandb_open_column_families(
+                            db_path,
+                            db_options,
+                            tdb_options,
+                            db_cfs_count,
+                            db_cf_ptrs,
+                            db_cf_opts,
+                            tdb_cf_opts,
                             db_cf_handles
                         ))
                     }

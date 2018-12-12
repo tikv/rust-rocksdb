@@ -4800,13 +4800,11 @@ ctitandb_options_t* ctitandb_options_create() { return new ctitandb_options_t; }
 
 void ctitandb_options_destroy(ctitandb_options_t* opts) { delete opts; }
 
-ctitandb_options_t* ctitandb_options_copy(crocksdb_options_t* src1,
-                                          ctitandb_options_t* src2) {
-  auto dst = new ctitandb_options_t;
-  dst->rep = src2->rep;
-  *(rocksdb::titandb::TitanDBOptions*)&dst->rep = src1->rep;
-  *(rocksdb::titandb::TitanCFOptions*)&dst->rep = src1->rep;
-  return dst;
+ctitandb_options_t* ctitandb_options_copy(ctitandb_options_t* src) {
+  if (src == nullptr) {
+    return nullptr;
+  }
+  return new ctitandb_options_t{src->rep};
 }
 
 const char* ctitandb_options_dirname(ctitandb_options_t* opts) {

@@ -584,9 +584,9 @@ impl Clone for DBOptions {
         unsafe {
             let opts = crocksdb_ffi::crocksdb_options_copy(self.inner);
             assert!(!opts.is_null());
-            let mut titan_opts = self.titan_inner;
-            if !titan_opts.is_null() {
-                titan_opts = crocksdb_ffi::ctitandb_options_copy(self.inner, self.titan_inner);
+            let mut titan_opts = ptr::null_mut::<DBTitanDBOptions>();
+            if !self.titan_inner.is_null() {
+                titan_opts = crocksdb_ffi::ctitandb_options_copy(self.titan_inner);
             }
             DBOptions {
                 inner: opts,
@@ -611,7 +611,7 @@ impl DBOptions {
     }
 
     pub fn set_titandb_options(&mut self, opts: &TitanDBOptions) {
-        self.titan_inner = unsafe { crocksdb_ffi::ctitandb_options_copy(self.inner, opts.inner) }
+        self.titan_inner = unsafe { crocksdb_ffi::ctitandb_options_copy(opts.inner) }
     }
 
     pub fn increase_parallelism(&mut self, parallelism: i32) {
@@ -1002,9 +1002,9 @@ impl Clone for ColumnFamilyOptions {
         unsafe {
             let opts = crocksdb_ffi::crocksdb_options_copy(self.inner);
             assert!(!opts.is_null());
-            let mut titan_opts = self.titan_inner;
-            if !titan_opts.is_null() {
-                titan_opts = crocksdb_ffi::ctitandb_options_copy(self.inner, self.titan_inner);
+            let mut titan_opts = ptr::null_mut::<DBTitanDBOptions>();
+            if !self.titan_inner.is_null() {
+                titan_opts = crocksdb_ffi::ctitandb_options_copy(self.titan_inner);
             }
             ColumnFamilyOptions {
                 inner: opts,
@@ -1036,7 +1036,7 @@ impl ColumnFamilyOptions {
 
     pub fn set_titandb_options(&mut self, opts: &TitanDBOptions) {
         if !opts.inner.is_null() {
-            self.titan_inner = unsafe { crocksdb_ffi::ctitandb_options_copy(self.inner, opts.inner) }
+            self.titan_inner = unsafe { crocksdb_ffi::ctitandb_options_copy(opts.inner) }
         }
     }
 

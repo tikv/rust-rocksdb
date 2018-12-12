@@ -1749,11 +1749,12 @@ extern "C" {
     pub fn crocksdb_run_ldb_tool(argc: c_int, argv: *const *const c_char);
 }
 
+// Titan
 extern "C" {
     pub fn ctitandb_open_column_families(
         path: *const c_char,
         options: *const Options,
-        tdb_options: *const DBTitanDBOptions,
+        titan_options: *const DBTitanDBOptions,
         num_column_families: c_int,
         column_family_names: *const *const c_char,
         column_family_options: *const *const Options,
@@ -1764,7 +1765,7 @@ extern "C" {
 
     pub fn ctitandb_options_create() -> *mut DBTitanDBOptions;
     pub fn ctitandb_options_destroy(opts: *mut DBTitanDBOptions);
-    pub fn ctitandb_options_copy(opts1: *mut Options, opts: *mut DBTitanDBOptions) -> *mut DBTitanDBOptions;
+    pub fn ctitandb_options_copy(opts: *mut DBTitanDBOptions) -> *mut DBTitanDBOptions;
     pub fn ctitandb_options_dirname(opts: *mut DBTitanDBOptions) -> *const c_char;
     pub fn ctitandb_options_set_dirname(opts: *mut DBTitanDBOptions, name: *const c_char);
     pub fn ctitandb_options_min_blob_size(opts: *mut DBTitanDBOptions) -> u64;

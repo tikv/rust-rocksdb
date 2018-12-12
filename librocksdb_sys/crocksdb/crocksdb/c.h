@@ -1921,7 +1921,7 @@ extern C_ROCKSDB_LIBRARY_API ctitandb_options_t* ctitandb_options_create();
 extern C_ROCKSDB_LIBRARY_API void ctitandb_options_destroy(ctitandb_options_t*);
 
 extern C_ROCKSDB_LIBRARY_API ctitandb_options_t* ctitandb_options_copy(
-    crocksdb_options_t* src1, ctitandb_options_t* src2);
+    ctitandb_options_t*);
 
 extern C_ROCKSDB_LIBRARY_API const char* ctitandb_options_dirname(
     ctitandb_options_t*);

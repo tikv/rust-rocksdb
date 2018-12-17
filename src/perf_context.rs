@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crocksdb_ffi::{self, DBPerfContext, DBIOStatsContext};
+use crocksdb_ffi::{self, DBIOStatsContext, DBPerfContext};
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum PerfLevel {

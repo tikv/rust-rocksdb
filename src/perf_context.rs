@@ -483,7 +483,6 @@ mod test {
         assert!(ctx.bytes_written() > 0);
         assert!(ctx.bytes_read() > 0);
         assert!(ctx.open_nanos() > 0);
-        assert!(ctx.allocate_nanos() > 0);
         assert!(ctx.write_nanos() > 0);
         assert!(ctx.read_nanos() > 0);
         assert!(ctx.fsync_nanos() > 0);

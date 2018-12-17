@@ -401,7 +401,7 @@ mod test {
     use tempdir::TempDir;
 
     use rocksdb::{SeekKey, Writable, DB};
-    use rocksdb_options::DBOptions;
+    use rocksdb_options::{DBOptions, WriteOptions};
 
     #[test]
     fn test_perf_context() {
@@ -457,16 +457,37 @@ mod test {
 
         set_perf_level(PerfLevel::EnableTime);
         let mut ctx = IOStatsContext::get();
-        assert_eq!(ctx.write_nanos(), 0);
 
+        ctx.reset();
+        assert_eq!(ctx.bytes_written(), 0);
+        assert_eq!(ctx.bytes_read(), 0);
+        assert_eq!(ctx.open_nanos(), 0);
+        assert_eq!(ctx.allocate_nanos(), 0);
+        assert_eq!(ctx.write_nanos(), 0);
+        assert_eq!(ctx.read_nanos(), 0);
+        assert_eq!(ctx.range_sync_nanos(), 0);
+        assert_eq!(ctx.fsync_nanos(), 0);
+        assert_eq!(ctx.prepare_write_nanos(), 0);
+        assert_eq!(ctx.logger_nanos(), 0);
+
+        let mut wopts = WriteOptions::new();
+        wopts.set_sync(true);
         let n = 10;
         for i in 0..n {
             let k = &[i as u8];
-            db.put(k, k).unwrap();
+            db.put_opt(k, k, &wopts).unwrap();
+            db.flush(true).unwrap();
+            assert_eq!(db.get(k).unwrap().unwrap(), k);
         }
 
+        assert!(ctx.bytes_written() > 0);
+        assert!(ctx.bytes_read() > 0);
+        assert!(ctx.open_nanos() > 0);
+        assert!(ctx.allocate_nanos() > 0);
         assert!(ctx.write_nanos() > 0);
-        ctx.reset();
-        assert_eq!(ctx.write_nanos(), 0);
+        assert!(ctx.read_nanos() > 0);
+        assert!(ctx.fsync_nanos() > 0);
+        assert!(ctx.prepare_write_nanos() > 0);
+        assert!(ctx.logger_nanos() > 0);
     }
 }

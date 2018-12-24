@@ -3282,15 +3282,25 @@ struct CTRBlockCipher : public BlockCipher {
   size_t block_size_;
 };
 
-crocksdb_env_t* crocksdb_default_ctr_encrypted_env_create(
+crocksdb_env_t*
+crocksdb_ctr_encrypted_env_create(crocksdb_env_t* base_env,
     const char* ciphertext, size_t ciphertext_len) {
   auto result = new crocksdb_env_t;
   result->block_cipher = new CTRBlockCipher(
       ciphertext_len, std::string(ciphertext, ciphertext_len));
   result->encryption_provoider =
       new CTREncryptionProvider(*result->block_cipher);
-  result->rep = NewEncryptedEnv(Env::Default(), result->encryption_provoider);
-  result->is_default = true;
+  result->rep = NewEncryptedEnv(base_env->rep, result->encryption_provoider);
+  result->is_default = false;
+
+  return result;
+}
+
+crocksdb_env_t* crocksdb_default_ctr_encrypted_env_create(
+    const char* ciphertext, size_t ciphertext_len) {
+  auto* default_env = crocksdb_default_env_create();
+  crocksdb_ctr_encrypted_env_create(default_env, ciphertext, ciphertext_len);
+  crocksdb_env_destroy(default_env);
 
   return result;
 }

@@ -1664,7 +1664,7 @@ impl Drop for DB {
     fn drop(&mut self) {
         // SyncWAL before call close.
         if !self.readonly {
-            self.sync_wal().unwrap();
+            self.sync_wal().unwrap_or_else(|_| {});
         }
         unsafe {
             self.cfs.clear();
@@ -2107,10 +2107,10 @@ impl Env {
         }
     }
 
-    // Create a ctr encrypted env with the default env and a given ciper text.
+    // Create a ctr encrypted env with a given base env and a given ciper text.
     // The length of ciper text must be 2^n, and must be less or equal to 2048.
     // The recommanded block size are 1024, 512 and 256.
-    pub fn new_default_ctr_encrypted_env(ciphertext: &[u8]) -> Result<Env, String> {
+    pub fn new_ctr_encrypted_env(base_env: &Env, ciphertext: &[u8]) -> Result<Env, String> {
         let len = ciphertext.len();
         if len > 2048 || !is_power_of_two(len) {
             return Err(
@@ -2119,12 +2119,18 @@ impl Env {
             );
         }
         let env = unsafe {
-            crocksdb_ffi::crocksdb_default_ctr_encrypted_env_create(
+            crocksdb_ffi::crocksdb_ctr_encrypted_env_create(
+                base_env.inner,
                 mem::transmute(&ciphertext[0]),
                 len,
             )
         };
         Ok(Env { inner: env })
+    }
+
+    // Create a ctr encrypted env with the default env
+    pub fn new_default_ctr_encrypted_env(ciphertext: &[u8]) -> Result<Env, String> {
+        Env::new_ctr_encrypted_env(&Env::default(), ciphertext)
     }
 
     pub fn new_sequential_file(

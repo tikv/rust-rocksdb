@@ -3296,15 +3296,6 @@ crocksdb_ctr_encrypted_env_create(crocksdb_env_t* base_env,
   return result;
 }
 
-crocksdb_env_t* crocksdb_default_ctr_encrypted_env_create(
-    const char* ciphertext, size_t ciphertext_len) {
-  auto* default_env = crocksdb_default_env_create();
-  crocksdb_ctr_encrypted_env_create(default_env, ciphertext, ciphertext_len);
-  crocksdb_env_destroy(default_env);
-
-  return result;
-}
-
 void crocksdb_env_set_background_threads(crocksdb_env_t* env, int n) {
   env->rep->SetBackgroundThreads(n);
 }

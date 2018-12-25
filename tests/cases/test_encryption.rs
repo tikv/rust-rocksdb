@@ -23,6 +23,12 @@ fn test_ctr_encrypted_env() {
         &[8, 7, 6, 5, 4, 3, 2, 1],
     ];
     for ciphertext in test_cipher_texts {
+        let base_env = Env::new_mem();
+        test_ctr_encrypted_env_impl(Arc::new(
+            Env::new_ctr_encrypted_env(&base_env, ciphertext).unwrap(),
+        ));
+    }
+    for ciphertext in test_cipher_texts {
         test_ctr_encrypted_env_impl(Arc::new(
             Env::new_default_ctr_encrypted_env(ciphertext).unwrap(),
         ));

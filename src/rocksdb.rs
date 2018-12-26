@@ -2080,9 +2080,9 @@ pub fn supported_compression() -> Vec<DBCompressionType> {
     }
 }
 
-#[allow(dead_code)]
 pub struct Env {
     pub inner: *mut DBEnv,
+    #[allow(dead_code)]
     base: Option<Arc<Env>>,
 }
 

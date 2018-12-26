@@ -1664,6 +1664,9 @@ impl Drop for DB {
     fn drop(&mut self) {
         // SyncWAL before call close.
         if !self.readonly {
+            // DB::SyncWal requires writable file support thread safe sync, but
+            // not all types of env can create writable file that support thread
+            // safe sync. eg, MemEnv.
             self.sync_wal().unwrap_or_else(|_| {});
         }
         unsafe {

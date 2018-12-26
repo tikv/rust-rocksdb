@@ -2080,8 +2080,10 @@ pub fn supported_compression() -> Vec<DBCompressionType> {
     }
 }
 
+#[allow(dead_code)]
 pub struct Env {
     pub inner: *mut DBEnv,
+    base: Option<Arc<Env>>,
 }
 
 unsafe impl Send for Env {}
@@ -2093,6 +2095,7 @@ impl Default for Env {
         unsafe {
             Env {
                 inner: crocksdb_ffi::crocksdb_default_env_create(),
+                base: None,
             }
         }
     }
@@ -2103,6 +2106,7 @@ impl Env {
         unsafe {
             Env {
                 inner: crocksdb_ffi::crocksdb_mem_env_create(),
+                base: None,
             }
         }
     }
@@ -2110,7 +2114,7 @@ impl Env {
     // Create a ctr encrypted env with a given base env and a given ciper text.
     // The length of ciper text must be 2^n, and must be less or equal to 2048.
     // The recommanded block size are 1024, 512 and 256.
-    pub fn new_ctr_encrypted_env(base_env: &Env, ciphertext: &[u8]) -> Result<Env, String> {
+    pub fn new_ctr_encrypted_env(base_env: Arc<Env>, ciphertext: &[u8]) -> Result<Env, String> {
         let len = ciphertext.len();
         if len > 2048 || !is_power_of_two(len) {
             return Err(
@@ -2125,12 +2129,15 @@ impl Env {
                 len,
             )
         };
-        Ok(Env { inner: env })
+        Ok(Env {
+            inner: env,
+            base: Some(base_env),
+        })
     }
 
     // Create a ctr encrypted env with the default env
     pub fn new_default_ctr_encrypted_env(ciphertext: &[u8]) -> Result<Env, String> {
-        Env::new_ctr_encrypted_env(&Env::default(), ciphertext)
+        Env::new_ctr_encrypted_env(Arc::new(Env::default()), ciphertext)
     }
 
     pub fn new_sequential_file(

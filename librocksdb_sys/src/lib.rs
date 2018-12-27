@@ -69,6 +69,7 @@ pub enum DBLevelMetaData {}
 pub enum DBSstFileMetaData {}
 pub enum DBCompactionOptions {}
 pub enum DBPerfContext {}
+pub enum DBIOStatsContext {}
 pub enum DBWriteStallInfo {}
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -1137,8 +1138,13 @@ extern "C" {
     pub fn crocksdb_compactionfilter_destroy(filter: *mut DBCompactionFilter);
 
     // Env
-    pub fn crocksdb_create_default_env() -> *mut DBEnv;
-    pub fn crocksdb_create_mem_env() -> *mut DBEnv;
+    pub fn crocksdb_default_env_create() -> *mut DBEnv;
+    pub fn crocksdb_mem_env_create() -> *mut DBEnv;
+    pub fn crocksdb_ctr_encrypted_env_create(
+        base_env: *mut DBEnv,
+        ciphertext: *const c_char,
+        ciphertext_len: size_t,
+    ) -> *mut DBEnv;
     pub fn crocksdb_env_file_exists(env: *mut DBEnv, path: *const c_char, err: *mut *mut c_char);
     pub fn crocksdb_env_delete_file(env: *mut DBEnv, path: *const c_char, err: *mut *mut c_char);
     pub fn crocksdb_env_destroy(env: *mut DBEnv);
@@ -1746,6 +1752,20 @@ extern "C" {
     pub fn crocksdb_perf_context_env_lock_file_nanos(ctx: *mut DBPerfContext) -> u64;
     pub fn crocksdb_perf_context_env_unlock_file_nanos(ctx: *mut DBPerfContext) -> u64;
     pub fn crocksdb_perf_context_env_new_logger_nanos(ctx: *mut DBPerfContext) -> u64;
+
+    pub fn crocksdb_get_iostats_context() -> *mut DBIOStatsContext;
+    pub fn crocksdb_iostats_context_reset(ctx: *mut DBIOStatsContext);
+    pub fn crocksdb_iostats_context_bytes_written(ctx: *mut DBIOStatsContext) -> u64;
+    pub fn crocksdb_iostats_context_bytes_read(ctx: *mut DBIOStatsContext) -> u64;
+    pub fn crocksdb_iostats_context_open_nanos(ctx: *mut DBIOStatsContext) -> u64;
+    pub fn crocksdb_iostats_context_allocate_nanos(ctx: *mut DBIOStatsContext) -> u64;
+    pub fn crocksdb_iostats_context_write_nanos(ctx: *mut DBIOStatsContext) -> u64;
+    pub fn crocksdb_iostats_context_read_nanos(ctx: *mut DBIOStatsContext) -> u64;
+    pub fn crocksdb_iostats_context_range_sync_nanos(ctx: *mut DBIOStatsContext) -> u64;
+    pub fn crocksdb_iostats_context_fsync_nanos(ctx: *mut DBIOStatsContext) -> u64;
+    pub fn crocksdb_iostats_context_prepare_write_nanos(ctx: *mut DBIOStatsContext) -> u64;
+    pub fn crocksdb_iostats_context_logger_nanos(ctx: *mut DBIOStatsContext) -> u64;
+
     pub fn crocksdb_run_ldb_tool(argc: c_int, argv: *const *const c_char);
 }
 

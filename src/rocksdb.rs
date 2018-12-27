@@ -28,11 +28,14 @@ use std::collections::BTreeMap;
 use std::ffi::{CStr, CString};
 use std::fmt::{self, Debug, Formatter};
 use std::io;
+use std::mem;
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::str::from_utf8;
+use std::sync::Arc;
 use std::{fs, ptr, slice};
 use table_properties::TablePropertiesCollection;
+use util::is_power_of_two;
 
 pub struct CFHandle {
     inner: *mut DBCFHandle,
@@ -628,6 +631,10 @@ impl DB {
         }
 
         Ok(cfs)
+    }
+
+    pub fn env(&self) -> Option<Arc<Env>> {
+        self.opts.env()
     }
 
     pub fn pause_bg_work(&self) {
@@ -1685,7 +1692,10 @@ impl Drop for DB {
     fn drop(&mut self) {
         // SyncWAL before call close.
         if !self.readonly {
-            self.sync_wal().unwrap();
+            // DB::SyncWal requires writable file support thread safe sync, but
+            // not all types of env can create writable file that support thread
+            // safe sync. eg, MemEnv.
+            self.sync_wal().unwrap_or_else(|_| {});
         }
         unsafe {
             self.cfs.clear();
@@ -2103,6 +2113,8 @@ pub fn supported_compression() -> Vec<DBCompressionType> {
 
 pub struct Env {
     pub inner: *mut DBEnv,
+    #[allow(dead_code)]
+    base: Option<Arc<Env>>,
 }
 
 unsafe impl Send for Env {}
@@ -2113,7 +2125,8 @@ impl Default for Env {
     fn default() -> Env {
         unsafe {
             Env {
-                inner: crocksdb_ffi::crocksdb_create_default_env(),
+                inner: crocksdb_ffi::crocksdb_default_env_create(),
+                base: None,
             }
         }
     }
@@ -2123,9 +2136,39 @@ impl Env {
     pub fn new_mem() -> Env {
         unsafe {
             Env {
-                inner: crocksdb_ffi::crocksdb_create_mem_env(),
+                inner: crocksdb_ffi::crocksdb_mem_env_create(),
+                base: None,
             }
         }
+    }
+
+    // Create a ctr encrypted env with a given base env and a given ciper text.
+    // The length of ciper text must be 2^n, and must be less or equal to 2048.
+    // The recommanded block size are 1024, 512 and 256.
+    pub fn new_ctr_encrypted_env(base_env: Arc<Env>, ciphertext: &[u8]) -> Result<Env, String> {
+        let len = ciphertext.len();
+        if len > 2048 || !is_power_of_two(len) {
+            return Err(
+                "ciphertext length must be less or equal to 2048, and must be power of 2"
+                    .to_owned(),
+            );
+        }
+        let env = unsafe {
+            crocksdb_ffi::crocksdb_ctr_encrypted_env_create(
+                base_env.inner,
+                mem::transmute(&ciphertext[0]),
+                len,
+            )
+        };
+        Ok(Env {
+            inner: env,
+            base: Some(base_env),
+        })
+    }
+
+    // Create a ctr encrypted env with the default env
+    pub fn new_default_ctr_encrypted_env(ciphertext: &[u8]) -> Result<Env, String> {
+        Env::new_ctr_encrypted_env(Arc::new(Env::default()), ciphertext)
     }
 
     pub fn new_sequential_file(
@@ -2290,7 +2333,6 @@ mod test {
     use std::path::Path;
     use std::str;
     use std::string::String;
-    use std::sync::*;
     use std::thread;
     use tempdir::TempDir;
 

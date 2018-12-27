@@ -15,6 +15,7 @@
 #include "rocksdb/convenience.h"
 #include "rocksdb/db.h"
 #include "rocksdb/env.h"
+#include "rocksdb/env_encryption.h"
 #include "rocksdb/filter_policy.h"
 #include "rocksdb/iterator.h"
 #include "rocksdb/ldb_tool.h"
@@ -31,11 +32,11 @@
 #include "rocksdb/table_properties.h"
 #include "rocksdb/universal_compaction.h"
 #include "rocksdb/utilities/backupable_db.h"
+#include "rocksdb/utilities/db_ttl.h"
 #include "rocksdb/utilities/debug.h"
 #include "rocksdb/utilities/options_util.h"
-#include "rocksdb/utilities/db_ttl.h"
 #include "rocksdb/write_batch.h"
-
+#include "rocksdb/iostats_context.h"
 
 #include "db/column_family.h"
 #include "table/sst_file_writer_collectors.h"
@@ -75,6 +76,10 @@ using rocksdb::DBWithTTL;
 using rocksdb::DBOptions;
 using rocksdb::Env;
 using rocksdb::EnvOptions;
+using rocksdb::EncryptionProvider;
+using rocksdb::BlockCipher;
+using rocksdb::CTREncryptionProvider;
+using rocksdb::NewEncryptedEnv;
 using rocksdb::ExternalFileIngestionInfo;
 using rocksdb::EventListener;
 using rocksdb::InfoLogLevel;
@@ -150,6 +155,7 @@ using rocksdb::CompactionOptions;
 using rocksdb::CompactionReason;
 using rocksdb::PerfLevel;
 using rocksdb::PerfContext;
+using rocksdb::IOStatsContext;
 using rocksdb::BottommostLevelCompaction;
 using rocksdb::LDBTool;
 
@@ -471,6 +477,8 @@ struct crocksdb_mergeoperator_t : public MergeOperator {
 struct crocksdb_env_t {
   Env* rep;
   bool is_default;
+  EncryptionProvider* encryption_provoider;
+  BlockCipher* block_cipher;
 };
 
 struct crocksdb_slicetransform_t : public SliceTransform {
@@ -3240,17 +3248,62 @@ void crocksdb_cache_set_capacity(crocksdb_cache_t* cache, size_t capacity) {
   cache->rep->SetCapacity(capacity);
 }
 
-crocksdb_env_t* crocksdb_create_default_env() {
+crocksdb_env_t* crocksdb_default_env_create() {
   crocksdb_env_t* result = new crocksdb_env_t;
   result->rep = Env::Default();
+  result->block_cipher = nullptr;
+  result->encryption_provoider = nullptr;
   result->is_default = true;
   return result;
 }
 
-crocksdb_env_t* crocksdb_create_mem_env() {
+crocksdb_env_t* crocksdb_mem_env_create() {
   crocksdb_env_t* result = new crocksdb_env_t;
   result->rep = rocksdb::NewMemEnv(Env::Default());
+  result->block_cipher = nullptr;
+  result->encryption_provoider = nullptr;
   result->is_default = false;
+  return result;
+}
+
+struct CTRBlockCipher : public BlockCipher {
+  CTRBlockCipher(size_t block_size, const std::string& cipertext)
+      : block_size_(block_size), cipertext_(cipertext) {
+    assert(block_size == cipertext.size());
+  }
+
+  virtual size_t BlockSize() { return block_size_; }
+
+  virtual Status Encrypt(char* data) {
+    const char* ciper_ptr = cipertext_.c_str();
+    for (size_t i = 0; i < block_size_; i++) {
+      data[i] = data[i] ^ ciper_ptr[i];
+    }
+
+    return Status::OK();
+  }
+
+  virtual Status Decrypt(char* data) {
+    Encrypt(data);
+    return Status::OK();
+  }
+
+ protected:
+  std::string cipertext_;
+  size_t block_size_;
+};
+
+crocksdb_env_t*
+crocksdb_ctr_encrypted_env_create(crocksdb_env_t* base_env,
+    const char* ciphertext, size_t ciphertext_len) {
+  auto result = new crocksdb_env_t;
+  result->block_cipher = new CTRBlockCipher(
+      ciphertext_len, std::string(ciphertext, ciphertext_len));
+  result->encryption_provoider =
+      new CTREncryptionProvider(*result->block_cipher);
+  result->rep = NewEncryptedEnv(base_env->rep, result->encryption_provoider);
+  result->is_default = false;
+
   return result;
 }
 
@@ -3276,6 +3329,8 @@ void crocksdb_env_delete_file(crocksdb_env_t* env, const char* path, char** errp
 
 void crocksdb_env_destroy(crocksdb_env_t* env) {
   if (!env->is_default) delete env->rep;
+  if (env->block_cipher) delete env->block_cipher;
+  if (env->encryption_provoider) delete env->encryption_provoider;
   delete env;
 }
 
@@ -4748,6 +4803,60 @@ uint64_t crocksdb_perf_context_env_unlock_file_nanos(crocksdb_perf_context_t* ct
 
 uint64_t crocksdb_perf_context_env_new_logger_nanos(crocksdb_perf_context_t* ctx) {
   return ctx->rep.env_new_logger_nanos;
+}
+
+// IOStatsContext
+
+struct crocksdb_iostats_context_t {
+  IOStatsContext rep;
+};
+
+crocksdb_iostats_context_t* crocksdb_get_iostats_context(void) {
+  return reinterpret_cast<crocksdb_iostats_context_t*>(rocksdb::get_iostats_context());
+}
+
+void crocksdb_iostats_context_reset(crocksdb_iostats_context_t* ctx) {
+  ctx->rep.Reset();
+}
+
+uint64_t crocksdb_iostats_context_bytes_written(crocksdb_iostats_context_t* ctx) {
+  return ctx->rep.bytes_written;
+}
+
+uint64_t crocksdb_iostats_context_bytes_read(crocksdb_iostats_context_t* ctx) {
+  return ctx->rep.bytes_read;
+}
+
+uint64_t crocksdb_iostats_context_open_nanos(crocksdb_iostats_context_t* ctx) {
+  return ctx->rep.open_nanos;
+}
+
+uint64_t crocksdb_iostats_context_allocate_nanos(crocksdb_iostats_context_t* ctx) {
+  return ctx->rep.allocate_nanos;
+}
+
+uint64_t crocksdb_iostats_context_write_nanos(crocksdb_iostats_context_t* ctx) {
+  return ctx->rep.write_nanos;
+}
+
+uint64_t crocksdb_iostats_context_read_nanos(crocksdb_iostats_context_t* ctx) {
+  return ctx->rep.read_nanos;
+}
+
+uint64_t crocksdb_iostats_context_range_sync_nanos(crocksdb_iostats_context_t* ctx) {
+  return ctx->rep.range_sync_nanos;
+}
+
+uint64_t crocksdb_iostats_context_fsync_nanos(crocksdb_iostats_context_t* ctx) {
+  return ctx->rep.fsync_nanos;
+}
+
+uint64_t crocksdb_iostats_context_prepare_write_nanos(crocksdb_iostats_context_t* ctx) {
+  return ctx->rep.prepare_write_nanos;
+}
+
+uint64_t crocksdb_iostats_context_logger_nanos(crocksdb_iostats_context_t* ctx) {
+  return ctx->rep.logger_nanos;
 }
 
 void crocksdb_run_ldb_tool(int argc, char** argv) {

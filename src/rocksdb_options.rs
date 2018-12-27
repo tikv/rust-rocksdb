@@ -602,6 +602,10 @@ impl DBOptions {
         DBOptions::default()
     }
 
+    pub fn env(&self) -> Option<Arc<Env>> {
+        self.env.clone()
+    }
+
     pub unsafe fn from_raw(inner: *mut Options) -> DBOptions {
         DBOptions {
             inner: inner,

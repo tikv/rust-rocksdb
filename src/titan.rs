@@ -2,9 +2,9 @@ use std::ffi::{CStr, CString};
 use std::ops::Deref;
 
 use crocksdb_ffi::{self, DBCompressionType, DBTitanBlobIndex, DBTitanDBOptions};
+use std::os::raw::c_double;
 use std::os::raw::c_int;
 use std::os::raw::c_uchar;
-use std::os::raw::c_double;
 
 pub struct TitanDBOptions {
     pub inner: *mut DBTitanDBOptions,

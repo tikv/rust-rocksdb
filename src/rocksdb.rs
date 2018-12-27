@@ -505,7 +505,6 @@ impl DB {
                 }
             }
 
-
             if !with_ttl {
                 if let Some(flag) = error_if_log_file_exist {
                     unsafe {

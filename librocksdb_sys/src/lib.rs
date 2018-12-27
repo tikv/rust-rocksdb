@@ -1804,10 +1804,7 @@ extern "C" {
         errptr: *mut *mut c_char,
     );
 
-    pub fn ctitandb_options_set_disable_background_gc(
-        opts: *mut DBTitanDBOptions,
-        disable: bool,
-    );
+    pub fn ctitandb_options_set_disable_background_gc(opts: *mut DBTitanDBOptions, disable: bool);
     pub fn ctitandb_options_set_max_background_gc(opts: *mut DBTitanDBOptions, size: i32);
     pub fn ctitandb_options_set_min_gc_batch_size(opts: *mut DBTitanDBOptions, size: u64);
     pub fn ctitandb_options_set_max_gc_batch_size(opts: *mut DBTitanDBOptions, size: u64);

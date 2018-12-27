@@ -120,7 +120,8 @@ fn test_titandb() {
         opts,
         path.path().to_str().unwrap(),
         vec![("default", cf_opts)],
-    ).unwrap();
+    )
+    .unwrap();
 
     let n = 10;
     for i in 0..n {

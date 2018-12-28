@@ -20,7 +20,7 @@ use crocksdb_ffi::{
     DBCompactionOptions, DBCompressionType, DBFifoCompactionOptions, DBFlushOptions,
     DBInfoLogLevel, DBInstance, DBRateLimiter, DBReadOptions, DBRecoveryMode, DBRestoreOptions,
     DBSnapshot, DBStatisticsHistogramType, DBStatisticsTickerType, DBTitanDBOptions,
-    DBWriteOptions, Options,
+    DBWriteOptions, Options, DBRateLimiterMode,
 };
 use event_listener::{new_event_listener, EventListener};
 use libc::{self, c_double, c_int, c_uchar, c_void, size_t};
@@ -176,6 +176,19 @@ impl RateLimiter {
                 rate_bytes_per_sec,
                 refill_period_us,
                 fairness,
+            )
+        };
+        RateLimiter { inner: limiter }
+    }
+
+    pub fn new_with_auto_tuned(rate_bytes_per_sec: i64, refill_period_us: i64, fairness: i32, mode: DBRateLimiterMode, auto_tuned: bool) -> RateLimiter {
+        let limiter = unsafe {
+            crocksdb_ffi::crocksdb_ratelimiter_create_with_auto_tuned(
+                rate_bytes_per_sec,
+                refill_period_us,
+                fairness,
+                mode,
+                auto_tuned,
             )
         };
         RateLimiter { inner: limiter }

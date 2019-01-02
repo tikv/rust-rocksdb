@@ -18,9 +18,9 @@ use comparator::{self, compare_callback, ComparatorCallback};
 use crocksdb_ffi::{
     self, DBBlockBasedTableOptions, DBBottommostLevelCompaction, DBCompactOptions,
     DBCompactionOptions, DBCompressionType, DBFifoCompactionOptions, DBFlushOptions,
-    DBInfoLogLevel, DBInstance, DBRateLimiter, DBReadOptions, DBRecoveryMode, DBRestoreOptions,
-    DBSnapshot, DBStatisticsHistogramType, DBStatisticsTickerType, DBTitanDBOptions,
-    DBWriteOptions, Options, DBRateLimiterMode,
+    DBInfoLogLevel, DBInstance, DBRateLimiter, DBRateLimiterMode, DBReadOptions, DBRecoveryMode,
+    DBRestoreOptions, DBSnapshot, DBStatisticsHistogramType, DBStatisticsTickerType,
+    DBTitanDBOptions, DBWriteOptions, Options,
 };
 use event_listener::{new_event_listener, EventListener};
 use libc::{self, c_double, c_int, c_uchar, c_void, size_t};
@@ -181,7 +181,13 @@ impl RateLimiter {
         RateLimiter { inner: limiter }
     }
 
-    pub fn new_with_auto_tuned(rate_bytes_per_sec: i64, refill_period_us: i64, fairness: i32, mode: DBRateLimiterMode, auto_tuned: bool) -> RateLimiter {
+    pub fn new_with_auto_tuned(
+        rate_bytes_per_sec: i64,
+        refill_period_us: i64,
+        fairness: i32,
+        mode: DBRateLimiterMode,
+        auto_tuned: bool,
+    ) -> RateLimiter {
         let limiter = unsafe {
             crocksdb_ffi::crocksdb_ratelimiter_create_with_auto_tuned(
                 rate_bytes_per_sec,
@@ -912,7 +918,12 @@ impl DBOptions {
         }
     }
 
-    pub fn set_ratelimiter_with_auto_tuned(&mut self, rate_bytes_per_sec: i64, mode: DBRateLimiterMode, auto_tuned: bool) {
+    pub fn set_ratelimiter_with_auto_tuned(
+        &mut self,
+        rate_bytes_per_sec: i64,
+        mode: DBRateLimiterMode,
+        auto_tuned: bool,
+    ) {
         let rate_limiter = RateLimiter::new_with_auto_tuned(
             rate_bytes_per_sec,
             DEFAULT_REFILL_PERIOD_US,

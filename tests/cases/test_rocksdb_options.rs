@@ -12,9 +12,8 @@
 // limitations under the License.
 
 use rocksdb::crocksdb_ffi::{
-    CompactionPriority, DBCompressionType, DBInfoLogLevel as InfoLogLevel,
+    CompactionPriority, DBCompressionType, DBInfoLogLevel as InfoLogLevel, DBRateLimiterMode,
     DBStatisticsHistogramType as HistogramType, DBStatisticsTickerType as TickerType,
-    DBRateLimiterMode,
 };
 use rocksdb::{
     BlockBasedOptions, ColumnFamilyOptions, CompactOptions, DBOptions, Env, FifoCompactionOptions,

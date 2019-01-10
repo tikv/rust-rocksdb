@@ -189,7 +189,7 @@ mod test {
             path.path().to_str().unwrap(),
             vec![("default", cf_opts)],
         )
-            .unwrap();
+        .unwrap();
         let p = db.put(b"k1", b"a");
         assert!(p.is_ok());
         let _ = db.merge(b"k1", b"b");

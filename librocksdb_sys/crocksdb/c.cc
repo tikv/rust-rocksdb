@@ -1741,6 +1741,11 @@ const crocksdb_table_properties_t* crocksdb_flushjobinfo_table_properties(
 
 /* CompactionJobInfo */
 
+void crocksdb_compactionjobinfo_status(const crocksdb_compactionjobinfo_t* info,
+                                       char** errptr) {
+  SaveError(errptr, info->rep.status);
+}
+
 const char* crocksdb_compactionjobinfo_cf_name(
     const crocksdb_compactionjobinfo_t* info, size_t* size) {
   *size = info->rep.cf_name.size();
@@ -3874,8 +3879,12 @@ const char* crocksdb_table_properties_collection_iter_key(
 const crocksdb_table_properties_t*
 crocksdb_table_properties_collection_iter_value(
     const crocksdb_table_properties_collection_iterator_t* it) {
-  return reinterpret_cast<const crocksdb_table_properties_t*>(
-      it->cur_->second.get());
+  if (it->cur_->second) {
+    return reinterpret_cast<const crocksdb_table_properties_t*>(
+        it->cur_->second.get());
+  } else {
+    return nullptr;
+  }
 }
 
 /* Table Properties Collector */

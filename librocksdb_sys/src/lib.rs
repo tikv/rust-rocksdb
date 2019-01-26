@@ -1523,6 +1523,10 @@ extern "C" {
         info: *const DBFlushJobInfo,
     ) -> *const DBTableProperties;
 
+    pub fn crocksdb_compactionjobinfo_status(
+        info: *const DBCompactionJobInfo,
+        errptr: *mut *mut c_char,
+    );
     pub fn crocksdb_compactionjobinfo_cf_name(
         info: *const DBCompactionJobInfo,
         size: *mut size_t,

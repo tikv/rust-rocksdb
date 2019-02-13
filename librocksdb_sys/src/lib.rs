@@ -1824,7 +1824,7 @@ extern "C" {
     );
     pub fn ctitandb_encode_blob_index(
         index: &DBTitanBlobIndex,
-        value: *mut *const u8,
+        value: *mut *mut u8,
         value_size: u64,
     );
 

@@ -2,9 +2,11 @@ use std::ffi::{CStr, CString};
 use std::ops::Deref;
 
 use crocksdb_ffi::{self, DBCompressionType, DBTitanBlobIndex, DBTitanDBOptions};
+use librocksdb_sys::ctitandb_encode_blob_index;
 use std::os::raw::c_double;
 use std::os::raw::c_int;
 use std::os::raw::c_uchar;
+use std::ptr;
 
 pub struct TitanDBOptions {
     pub inner: *mut DBTitanDBOptions,
@@ -134,6 +136,16 @@ impl TitanBlobIndex {
             ));
         }
         Ok(index)
+    }
+
+    pub fn encode_to(index: &TitanBlobIndex) -> Vec<u8> {
+        let mut value = ptr::null_mut();
+        let value_size: u64 = 0;
+        unsafe {
+            ctitandb_encode_blob_index(&index.inner, &mut value, value_size);
+
+            Vec::from_raw_parts(value, value_size as usize, value_size as usize)
+        }
     }
 }
 

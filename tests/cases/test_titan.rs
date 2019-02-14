@@ -21,6 +21,7 @@ use rocksdb::{
     TablePropertiesCollector, TablePropertiesCollectorFactory, TitanBlobIndex, TitanDBOptions,
     UserCollectedProperties, Writable, DB,
 };
+use rand::Rng;
 
 fn encode_u32(x: u32) -> Vec<u8> {
     let mut w = Vec::new();
@@ -149,4 +150,18 @@ fn test_titandb() {
 
     let num_entries = n as u32 * max_value_size as u32;
     check_table_properties(&db, num_entries / 2, num_entries);
+}
+
+#[test]
+fn test_titan_blob_index() {
+    let mut index = TitanBlobIndex::default();
+    let mut rng = rand::thread_rng();
+    index.file_number = rng.gen();
+    index.blob_size = rng.gen();
+    index.blob_offset = rng.gen();
+    let value = TitanBlobIndex::encode_to(&index);
+    let index2 = TitanBlobIndex::decode_from(&value).unwrap();
+    assert_eq!(index2.file_number, index.file_number);
+    assert_eq!(index2.blob_size, index.blob_size);
+    assert_eq!(index2.blob_offset, index.blob_offset);
 }

@@ -1825,7 +1825,7 @@ extern "C" {
     pub fn ctitandb_encode_blob_index(
         index: &DBTitanBlobIndex,
         value: *mut *mut u8,
-        value_size: u64,
+        value_size: *mut u64,
     );
 
     pub fn ctitandb_options_set_disable_background_gc(opts: *mut DBTitanDBOptions, disable: bool);

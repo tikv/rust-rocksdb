@@ -8,6 +8,8 @@ use std::os::raw::c_double;
 use std::os::raw::c_int;
 use std::os::raw::c_uchar;
 use std::ptr;
+use std::slice;
+use std::ffi::c_void;
 
 pub struct TitanDBOptions {
     pub inner: *mut DBTitanDBOptions,
@@ -141,11 +143,13 @@ impl TitanBlobIndex {
 
     pub fn encode_to(index: &TitanBlobIndex) -> Vec<u8> {
         let mut value = ptr::null_mut();
-        let value_size: u64 = 0;
+        let mut value_size: u64 = 0;
         unsafe {
-            ctitandb_encode_blob_index(&index.inner, &mut value, value_size);
-
-            Vec::from_raw_parts(value, value_size as usize, value_size as usize)
+            ctitandb_encode_blob_index(&index.inner, &mut value, &mut value_size);
+            let slice = slice::from_raw_parts(value, value_size as usize);
+            let vec = slice.to_vec();
+            libc::free(value as *mut c_void);
+            vec
         }
     }
 }

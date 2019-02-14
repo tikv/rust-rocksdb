@@ -3,6 +3,7 @@ use std::ops::Deref;
 
 use crocksdb_ffi::{self, DBCompressionType, DBTitanBlobIndex, DBTitanDBOptions};
 use librocksdb_sys::ctitandb_encode_blob_index;
+use std::ops::DerefMut;
 use std::os::raw::c_double;
 use std::os::raw::c_int;
 use std::os::raw::c_uchar;
@@ -153,5 +154,11 @@ impl Deref for TitanBlobIndex {
     type Target = DBTitanBlobIndex;
     fn deref(&self) -> &Self::Target {
         &self.inner
+    }
+}
+
+impl DerefMut for TitanBlobIndex {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.inner
     }
 }

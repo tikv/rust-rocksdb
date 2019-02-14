@@ -16,12 +16,12 @@ use std::collections::HashMap;
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use tempdir::TempDir;
 
+use rand::Rng;
 use rocksdb::{
     ColumnFamilyOptions, DBCompressionType, DBEntryType, DBOptions, SeekKey,
     TablePropertiesCollector, TablePropertiesCollectorFactory, TitanBlobIndex, TitanDBOptions,
     UserCollectedProperties, Writable, DB,
 };
-use rand::Rng;
 
 fn encode_u32(x: u32) -> Vec<u8> {
     let mut w = Vec::new();

@@ -65,7 +65,7 @@ impl TablePropertiesCollector for TitanCollector {
         self.num_entries += 1;
         if let DBEntryType::BlobIndex = entry_type {
             self.num_blobs += 1;
-            let index = TitanBlobIndex::decode_from(value).unwrap();
+            let index = TitanBlobIndex::decode(value).unwrap();
             assert!(index.file_number > 0);
             assert!(index.blob_size > 0);
         }
@@ -159,8 +159,8 @@ fn test_titan_blob_index() {
     index.file_number = rng.gen();
     index.blob_size = rng.gen();
     index.blob_offset = rng.gen();
-    let value = TitanBlobIndex::encode_to(&index);
-    let index2 = TitanBlobIndex::decode_from(&value).unwrap();
+    let value = index.encode();
+    let index2 = TitanBlobIndex::decode(&value).unwrap();
     assert_eq!(index2.file_number, index.file_number);
     assert_eq!(index2.blob_size, index.blob_size);
     assert_eq!(index2.blob_offset, index.blob_offset);

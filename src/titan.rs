@@ -129,7 +129,7 @@ pub struct TitanBlobIndex {
 }
 
 impl TitanBlobIndex {
-    pub fn decode_from(value: &[u8]) -> Result<Self, String> {
+    pub fn decode(value: &[u8]) -> Result<Self, String> {
         let mut index = Self::default();
         unsafe {
             ffi_try!(ctitandb_decode_blob_index(
@@ -141,11 +141,11 @@ impl TitanBlobIndex {
         Ok(index)
     }
 
-    pub fn encode_to(index: &TitanBlobIndex) -> Vec<u8> {
+    pub fn encode(&self) -> Vec<u8> {
         let mut value = ptr::null_mut();
         let mut value_size: u64 = 0;
         unsafe {
-            ctitandb_encode_blob_index(&index.inner, &mut value, &mut value_size);
+            ctitandb_encode_blob_index(&self.inner, &mut value, &mut value_size);
             let slice = slice::from_raw_parts(value, value_size as usize);
             let vec = slice.to_vec();
             libc::free(value as *mut c_void);

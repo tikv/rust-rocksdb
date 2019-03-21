@@ -51,6 +51,8 @@
 
 #include <stdlib.h>
 
+#include <limits>
+
 #if !defined(ROCKSDB_MAJOR) || !defined(ROCKSDB_MINOR) || !defined(ROCKSDB_PATCH)
 #error Only rocksdb 5.7.3+ is supported.
 #endif
@@ -4314,9 +4316,11 @@ crocksdb_get_all_key_versions(crocksdb_t *db, const char *begin_key,
                               size_t begin_keylen, const char *end_key,
                               size_t end_keylen, char **errptr) {
   crocksdb_keyversions_t *result = new crocksdb_keyversions_t;
+  constexpr size_t kMaxNumKeys = std::numeric_limits<size_t>::max();
   SaveError(errptr,
             GetAllKeyVersions(db->rep, Slice(begin_key, begin_keylen),
-                              Slice(end_key, end_keylen), &result->rep));
+                              Slice(end_key, end_keylen), kMaxNumKeys,
+                              &result->rep));
   return result;
 }
 

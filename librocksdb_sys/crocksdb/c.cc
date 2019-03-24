@@ -161,6 +161,8 @@ using rocksdb::IOStatsContext;
 using rocksdb::BottommostLevelCompaction;
 using rocksdb::LDBTool;
 
+using rocksdb::kMaxSequenceNumber;
+
 using rocksdb::titandb::BlobIndex;
 using rocksdb::titandb::TitanCFDescriptor;
 using rocksdb::titandb::TitanCFOptions;
@@ -4375,11 +4377,13 @@ struct ExternalSstFileModifier {
     handle_->GetDescriptor(&desc);
     auto cfd = reinterpret_cast<ColumnFamilyHandleImpl*>(handle_)->cfd();
     auto ioptions = *cfd->ioptions();
+    auto table_opt = TableReaderOptions(
+        ioptions, desc.options.prefix_extractor.get(), env_options_,
+        cfd->internal_comparator());
+    // Get around global seqno check.
+    table_opt.largest_seqno = kMaxSequenceNumber;
     status = ioptions.table_factory->NewTableReader(
-        TableReaderOptions(ioptions,
-                           desc.options.prefix_extractor.get(),
-                           env_options_, cfd->internal_comparator()),
-        std::move(sst_file_reader), file_size, &table_reader_);
+        table_opt, std::move(sst_file_reader), file_size, &table_reader_);
     return status;
   }
 

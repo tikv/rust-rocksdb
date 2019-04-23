@@ -330,11 +330,17 @@ extern "C" {
     pub fn crocksdb_lru_cache_options_destroy(opt: *mut DBLRUCacheOptions);
     pub fn crocksdb_lru_cache_options_set_capacity(opt: *mut DBLRUCacheOptions, capacity: size_t);
     pub fn crocksdb_lru_cache_options_set_num_shard_bits(
-        opt: *mut DBLRUCacheOptions, num_shard_bits: c_int);
+        opt: *mut DBLRUCacheOptions,
+        num_shard_bits: c_int,
+    );
     pub fn crocksdb_lru_cache_options_set_strict_capacity_limit(
-        opt: *mut DBLRUCacheOptions, strict_capacity_limit: bool);
+        opt: *mut DBLRUCacheOptions,
+        strict_capacity_limit: bool,
+    );
     pub fn crocksdb_lru_cache_options_set_high_pri_pool_ratio(
-        opt: *mut DBLRUCacheOptions, high_pri_pool_ratio: c_double);
+        opt: *mut DBLRUCacheOptions,
+        high_pri_pool_ratio: c_double,
+    );
     pub fn crocksdb_cache_create_lru(opt: *mut DBLRUCacheOptions) -> *mut DBCache;
     pub fn crocksdb_cache_destroy(cache: *mut DBCache);
 

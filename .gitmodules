@@ -2,3 +2,6 @@
 	path = librocksdb_sys/rocksdb
 	url = https://github.com/pingcap/rocksdb.git
 	branch = tikv-3.0
+[submodule "librocksdb_sys/libtitan_sys/titan"]
+	path = librocksdb_sys/libtitan_sys/titan
+	url = git@github.com:pingcap/titan.git

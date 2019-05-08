@@ -5,6 +5,8 @@ fn main() {
     let cur_dir = std::env::current_dir().unwrap();
     let dst = cmake::Config::new("titan")
         .define("ROCKSDB_DIR", cur_dir.join("..").join("rocksdb"))
+        .define("WITH_TITAN_TESTS", "OFF")
+        .define("WITH_TITAN_TOOLS", "OFF")
         .register_dep("Z")
         .define("WITH_ZLIB", "ON")
         .register_dep("BZIP2")

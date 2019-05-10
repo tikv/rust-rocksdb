@@ -283,7 +283,7 @@ pub enum DBTitanDBBlobRunMode {
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 #[repr(C)]
-pub enum  IndexType{
+pub enum IndexType {
     BinarySearch = 0,
     HashSearch = 1,
     TwoLevelIndexSearch = 2,

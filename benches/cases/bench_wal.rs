@@ -16,7 +16,7 @@ use super::tempdir::TempDir;
 
 use super::test::Bencher;
 
-fn run_bench_wal(b: &mut Bencher, name: &str, mut opts: DBOptions,  wopts: WriteOptions) {
+fn run_bench_wal(b: &mut Bencher, name: &str, mut opts: DBOptions, wopts: WriteOptions) {
     let path = TempDir::new(name).expect("");
     let path_str = path.path().to_str().unwrap();
     opts.create_if_missing(true);
@@ -65,7 +65,7 @@ fn bench_wal_without_recycle_log(b: &mut Bencher) {
 
 #[bench]
 fn bench_wal_no_sync(b: &mut Bencher) {
-    let  opts = DBOptions::new();
+    let opts = DBOptions::new();
     let mut wopts = WriteOptions::new();
     wopts.set_sync(false);
 
@@ -74,7 +74,7 @@ fn bench_wal_no_sync(b: &mut Bencher) {
 
 #[bench]
 fn bench_wal_disalbe_wal(b: &mut Bencher) {
-    let  opts = DBOptions::new();
+    let opts = DBOptions::new();
     let mut wopts = WriteOptions::new();
     wopts.disable_wal(true);
 

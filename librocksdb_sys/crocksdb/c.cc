@@ -5105,7 +5105,7 @@ void ctitandb_options_set_sample_ratio(ctitandb_options_t* options,
 }
 
 void ctitandb_options_set_blob_run_mode(ctitandb_options_t* options,
-                                       int mode) {
+                                        int mode) {
   options->rep.blob_run_mode = static_cast<TitanBlobRunMode>(mode);
 }
 

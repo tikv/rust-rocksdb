@@ -272,6 +272,14 @@ pub enum DBRateLimiterMode {
     AllIo = 3,
 }
 
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[repr(C)]
+pub enum DBTitanDBBlobRunMode {
+    Normal = 0,
+    ReadOnly = 1,
+    Fallback = 2,
+}
+
 pub fn error_message(ptr: *mut c_char) -> String {
     let c_str = unsafe { CStr::from_ptr(ptr) };
     let s = format!("{}", c_str.to_string_lossy());
@@ -317,6 +325,7 @@ extern "C" {
     pub fn crocksdb_options_create() -> *mut Options;
     pub fn crocksdb_options_copy(opts: *const Options) -> *mut Options;
     pub fn crocksdb_options_destroy(opts: *mut Options);
+    pub fn crocksdb_options_set_paranoid_checks(opts: *mut Options, _: u8);
     pub fn crocksdb_column_family_descriptor_destroy(cf_desc: *mut ColumnFamilyDescriptor);
     pub fn crocksdb_name_from_column_family_descriptor(
         cf_descs: *const ColumnFamilyDescriptor,
@@ -1850,6 +1859,7 @@ extern "C" {
     pub fn ctitandb_options_set_discardable_ratio(opts: *mut DBTitanDBOptions, ratio: f64);
     pub fn ctitandb_options_set_sample_ratio(opts: *mut DBTitanDBOptions, ratio: f64);
     pub fn ctitandb_options_set_merge_small_file_threshold(opts: *mut DBTitanDBOptions, size: u64);
+    pub fn ctitandb_options_set_blob_run_mode(opts: *mut DBTitanDBOptions, t: DBTitanDBBlobRunMode);
 }
 
 #[cfg(test)]

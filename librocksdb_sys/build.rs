@@ -83,9 +83,10 @@ fn build_rocksdb() -> Build {
     if cfg!(feature = "sse") {
         cfg.define("FORCE_SSE42", "ON");
     }
+    let zlib_dir = env::var("DEP_Z_ROOT").unwrap();
     let dst = cfg
-        .register_dep("Z")
-        .define("WITH_ZLIB", "ON")
+        .cxxflag("-DZLIB")
+        .cxxflag(format!("-I{}/include", zlib_dir))
         .register_dep("BZIP2")
         .define("WITH_BZ2", "ON")
         .register_dep("LZ4")
@@ -95,6 +96,7 @@ fn build_rocksdb() -> Build {
         .register_dep("SNAPPY")
         .define("WITH_SNAPPY", "ON")
         .build_target("rocksdb")
+        .very_verbose(true)
         .build();
     let build_dir = format!("{}/build", dst.display());
     if cfg!(target_os = "windows") {

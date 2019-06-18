@@ -108,6 +108,7 @@ fn test_titandb() {
     tdb_opts.set_min_blob_size(max_value_size / 2 + 1);
     tdb_opts.set_blob_file_compression(DBCompressionType::No);
     tdb_opts.set_disable_background_gc(true);
+    tdb_opts.set_purge_obsolete_files_period(10);
 
     let mut opts = DBOptions::new();
     opts.create_if_missing(true);

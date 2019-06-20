@@ -5068,12 +5068,12 @@ void ctitandb_options_set_min_gc_batch_size(ctitandb_options_t* options,
 }
 
 void ctitandb_options_set_blob_file_discardable_ratio(
-    ctitandb_options_t* options, float ratio) {
+    ctitandb_options_t* options, double ratio) {
   options->rep.blob_file_discardable_ratio = ratio;
 }
 
 void ctitandb_options_set_sample_file_size_ratio(ctitandb_options_t* options,
-                                                 float ratio) {
+                                                 double ratio) {
   options->rep.sample_file_size_ratio = ratio;
 }
 
@@ -5087,6 +5087,11 @@ void ctitandb_options_set_max_background_gc(ctitandb_options_t* options,
   options->rep.max_background_gc = size;
 }
 
+void ctitandb_options_set_purge_obsolete_files_period(ctitandb_options_t* options, 
+                                                      unsigned int period) {
+  options->rep.purge_obsolete_files_period = period;
+}
+
 void ctitandb_options_set_blob_cache(ctitandb_options_t* options,
                                      crocksdb_cache_t* cache) {
   if (cache) {
@@ -5095,12 +5100,12 @@ void ctitandb_options_set_blob_cache(ctitandb_options_t* options,
 }
 
 void ctitandb_options_set_discardable_ratio(ctitandb_options_t* options,
-                                            float ratio) {
+                                            double ratio) {
   options->rep.blob_file_discardable_ratio = ratio;
 }
 
 void ctitandb_options_set_sample_ratio(ctitandb_options_t* options,
-                                       float ratio) {
+                                       double ratio) {
   options->rep.sample_file_size_ratio = ratio;
 }
 

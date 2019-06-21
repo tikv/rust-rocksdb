@@ -20,7 +20,7 @@ use rand::Rng;
 use rocksdb::{
     ColumnFamilyOptions, DBCompressionType, DBEntryType, DBOptions, SeekKey,
     TablePropertiesCollector, TablePropertiesCollectorFactory, TitanBlobIndex, TitanDBOptions,
-    UserCollectedProperties, Writable, DB,
+    UserCollectedProperties, Writable, DB, ReadOptions
 };
 
 fn encode_u32(x: u32) -> Vec<u8> {
@@ -145,6 +145,21 @@ fn test_titandb() {
             assert!(iter.valid());
             assert_eq!(iter.key(), &[k]);
             assert_eq!(iter.value(), v.as_slice());
+            iter.next();
+        }
+    }
+
+    let mut readopts = ReadOptions::new();
+    readopts.set_titan_key_only(true);
+    iter = db.iter_opt(readopts);
+    iter.seek(SeekKey::Start);
+    for i in 0..n {
+        for j in 0..n {
+            let k = (i * n + j) as u8;
+            let v = vec![k; (j + 1) as usize];
+            assert_eq!(db.get(&[k]).unwrap().unwrap(), &v);
+            assert!(iter.valid());
+            assert_eq!(iter.key(), &[k]);
             iter.next();
         }
     }

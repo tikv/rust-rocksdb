@@ -170,6 +170,7 @@ using rocksdb::titandb::TitanCFOptions;
 using rocksdb::titandb::TitanDB;
 using rocksdb::titandb::TitanDBOptions;
 using rocksdb::titandb::TitanOptions;
+using rocksdb::titandb::TitanReadOptions;
 using rocksdb::titandb::TitanBlobRunMode;
 
 using std::shared_ptr;
@@ -5112,6 +5113,80 @@ void ctitandb_options_set_sample_ratio(ctitandb_options_t* options,
 void ctitandb_options_set_blob_run_mode(ctitandb_options_t* options,
                                         int mode) {
   options->rep.blob_run_mode = static_cast<TitanBlobRunMode>(mode);
+}
+
+/* TitanReadOptions */
+struct ctitandb_readoptions_t {
+  TitanReadOptions rep;
+};
+
+ctitandb_readoptions_t* ctitandb_readoptions_create() { 
+  return new ctitandb_readoptions_t; 
+}
+
+void ctitandb_readoptions_destroy(ctitandb_readoptions_t* opts) { 
+  delete opts; 
+}
+
+uint64_t ctitandb_readoptions_key_only(ctitandb_readoptions_t* opts) {
+  return opts->rep.key_only;
+}
+
+void ctitandb_readoptions_set_key_only(ctitandb_readoptions_t* opts,
+                                        bool v) {
+  opts->rep.key_only = v;
+}
+
+crocksdb_iterator_t* ctitandb_create_iterator(
+    crocksdb_t* db,
+    const crocksdb_readoptions_t* options,
+    const ctitandb_readoptions_t* titan_options) {
+  crocksdb_iterator_t* result = new crocksdb_iterator_t;
+  if (titan_options == nullptr) {
+    result->rep = db->rep->NewIterator(options->rep);
+  } else {
+    *(ReadOptions*)&titan_options->rep = options->rep;
+    result->rep = ((TitanDB*)db->rep)->NewIterator(titan_options->rep);
+  }
+  return result;
+}
+
+crocksdb_iterator_t* ctitandb_create_iterator_cf(
+    crocksdb_t* db,
+    const crocksdb_readoptions_t* options,
+    const ctitandb_readoptions_t* titan_options,
+    crocksdb_column_family_handle_t* column_family) {
+  crocksdb_iterator_t* result = new crocksdb_iterator_t;
+  *(ReadOptions*)&titan_options->rep = options->rep;
+  result->rep = db->rep->NewIterator(options->rep, column_family->rep);
+  return result;
+}
+
+void ctitandb_create_iterators(
+    crocksdb_t *db,
+    crocksdb_readoptions_t* options,
+    ctitandb_readoptions_t* titan_options,
+    crocksdb_column_family_handle_t** column_families,
+    crocksdb_iterator_t** iterators,
+    size_t size,
+    char** errptr) {
+  std::vector<ColumnFamilyHandle*> column_families_vec;
+  for (size_t i = 0; i < size; i++) {
+    column_families_vec.push_back(column_families[i]->rep);
+  }
+
+  std::vector<Iterator*> res;
+  *(ReadOptions*)&titan_options->rep = options->rep;
+  Status status = db->rep->NewIterators(titan_options->rep, column_families_vec, &res);
+  assert(res.size() == size);
+  if (SaveError(errptr, status)) {
+    return;
+  }
+
+  for (size_t i = 0; i < size; i++) {
+    iterators[i] = new crocksdb_iterator_t;
+    iterators[i]->rep = res[i];
+  }
 }
 
 }  // end extern "C"

@@ -85,6 +85,7 @@ mod generated;
 pub use generated::*;
 
 pub enum DBTitanDBOptions {}
+pub enum DBTitanReadOptions {}
 
 #[derive(Clone, Debug, Default)]
 #[repr(C)]
@@ -1861,6 +1862,23 @@ extern "C" {
     pub fn ctitandb_options_set_sample_ratio(opts: *mut DBTitanDBOptions, ratio: f64);
     pub fn ctitandb_options_set_merge_small_file_threshold(opts: *mut DBTitanDBOptions, size: u64);
     pub fn ctitandb_options_set_blob_run_mode(opts: *mut DBTitanDBOptions, t: DBTitanDBBlobRunMode);
+
+    pub fn ctitandb_readoptions_set_key_only(opts: *mut DBTitanReadOptions, v: bool);
+
+    pub fn ctitandb_readoptions_create() -> *mut DBTitanReadOptions;
+    pub fn ctitandb_readoptions_destroy(readopts: *mut DBTitanReadOptions);
+
+    pub fn ctitandb_create_iterator(
+        db: *mut DBInstance,
+        readopts: *const DBReadOptions,
+        titan_readopts: *const DBTitanReadOptions,
+    ) -> *mut DBIterator;
+    pub fn ctitandb_create_iterator_cf(
+        db: *mut DBInstance,
+        readopts: *const DBReadOptions,
+        titan_readopts: *const DBTitanReadOptions,
+        cf_handle: *mut DBCFHandle,
+    ) -> *mut DBIterator;
 }
 
 #[cfg(test)]

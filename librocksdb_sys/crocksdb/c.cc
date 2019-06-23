@@ -5157,8 +5157,12 @@ crocksdb_iterator_t* ctitandb_create_iterator_cf(
     const ctitandb_readoptions_t* titan_options,
     crocksdb_column_family_handle_t* column_family) {
   crocksdb_iterator_t* result = new crocksdb_iterator_t;
-  *(ReadOptions*)&titan_options->rep = options->rep;
-  result->rep = db->rep->NewIterator(options->rep, column_family->rep);
+  if (titan_options == nullptr) {
+    result->rep = db->rep->NewIterator(options->rep, column_family->rep);
+  } else {
+    *(ReadOptions*)&titan_options->rep = options->rep;
+    result->rep = ((TitanDB*)db->rep)->NewIterator(titan_options->rep, column_family->rep);
+  }
   return result;
 }
 
@@ -5176,8 +5180,13 @@ void ctitandb_create_iterators(
   }
 
   std::vector<Iterator*> res;
-  *(ReadOptions*)&titan_options->rep = options->rep;
-  Status status = db->rep->NewIterators(titan_options->rep, column_families_vec, &res);
+  Status status;
+  if (titan_options == nullptr) {
+    status = db->rep->NewIterators(options->rep, column_families_vec, &res);
+  } else {
+    *(ReadOptions*)&titan_options->rep = options->rep;
+    status = ((TitanDB*)db->rep)->NewIterators(titan_options->rep, column_families_vec, &res);
+  }
   assert(res.size() == size);
   if (SaveError(errptr, status)) {
     return;

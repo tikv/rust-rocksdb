@@ -5146,7 +5146,7 @@ crocksdb_iterator_t* ctitandb_create_iterator(
     result->rep = db->rep->NewIterator(options->rep);
   } else {
     *(ReadOptions*)&titan_options->rep = options->rep;
-    result->rep = ((TitanDB*)db->rep)->NewIterator(titan_options->rep);
+    result->rep = static_cast<TitanDB*>(db->rep)->NewIterator(titan_options->rep);
   }
   return result;
 }
@@ -5161,7 +5161,7 @@ crocksdb_iterator_t* ctitandb_create_iterator_cf(
     result->rep = db->rep->NewIterator(options->rep, column_family->rep);
   } else {
     *(ReadOptions*)&titan_options->rep = options->rep;
-    result->rep = ((TitanDB*)db->rep)->NewIterator(titan_options->rep, column_family->rep);
+    result->rep = static_cast<TitanDB*>(db->rep)->NewIterator(titan_options->rep, column_family->rep);
   }
   return result;
 }
@@ -5185,7 +5185,7 @@ void ctitandb_create_iterators(
     status = db->rep->NewIterators(options->rep, column_families_vec, &res);
   } else {
     *(ReadOptions*)&titan_options->rep = options->rep;
-    status = ((TitanDB*)db->rep)->NewIterators(titan_options->rep, column_families_vec, &res);
+    status = static_cast<TitanDB*>(db->rep)->NewIterators(titan_options->rep, column_families_vec, &res);
   }
   assert(res.size() == size);
   if (SaveError(errptr, status)) {

@@ -164,6 +164,22 @@ fn test_titandb() {
         }
     }
 
+    let cf_handle = db.cf_handle("default").unwrap();
+    readopts = ReadOptions::new();
+    readopts.set_titan_key_only(true);
+    iter = db.iter_cf_opt(&cf_handle, readopts);
+    iter.seek(SeekKey::Start);
+    for i in 0..n {
+        for j in 0..n {
+            let k = (i * n + j) as u8;
+            let v = vec![k; (j + 1) as usize];
+            assert_eq!(db.get(&[k]).unwrap().unwrap(), &v);
+            assert!(iter.valid());
+            assert_eq!(iter.key(), &[k]);
+            iter.next();
+        }
+    }
+
     let num_entries = n as u32 * max_value_size as u32;
     check_table_properties(&db, num_entries / 2, num_entries);
 }

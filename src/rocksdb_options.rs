@@ -271,8 +271,6 @@ impl Default for ReadOptions {
         unsafe {
             let opts = crocksdb_ffi::crocksdb_readoptions_create();
             assert!(!opts.is_null(), "Unable to create rocksdb read options");
-            // let titan_opts = crocksdb_ffi::ctitandb_readoptions_create();
-            // assert!(!opts.is_null(), "Unable to create rocksdb read options");
             ReadOptions {
                 inner: opts,
                 lower_bound: vec![],

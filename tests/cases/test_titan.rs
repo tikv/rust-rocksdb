@@ -18,9 +18,9 @@ use tempdir::TempDir;
 
 use rand::Rng;
 use rocksdb::{
-    ColumnFamilyOptions, DBCompressionType, DBEntryType, DBOptions, SeekKey,
+    ColumnFamilyOptions, DBCompressionType, DBEntryType, DBOptions, ReadOptions, SeekKey,
     TablePropertiesCollector, TablePropertiesCollectorFactory, TitanBlobIndex, TitanDBOptions,
-    UserCollectedProperties, Writable, DB, ReadOptions
+    UserCollectedProperties, Writable, DB,
 };
 
 fn encode_u32(x: u32) -> Vec<u8> {

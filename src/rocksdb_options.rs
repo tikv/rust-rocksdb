@@ -257,7 +257,7 @@ pub struct ReadOptions {
 
 impl Drop for ReadOptions {
     fn drop(&mut self) {
-        unsafe { 
+        unsafe {
             crocksdb_ffi::crocksdb_readoptions_destroy(self.inner);
             if !self.titan_inner.is_null() {
                 crocksdb_ffi::ctitandb_readoptions_destroy(self.titan_inner);
@@ -275,7 +275,7 @@ impl Default for ReadOptions {
                 inner: opts,
                 lower_bound: vec![],
                 upper_bound: vec![],
-                titan_inner: ptr::null_mut::<DBTitanReadOptions>()
+                titan_inner: ptr::null_mut::<DBTitanReadOptions>(),
             }
         }
     }

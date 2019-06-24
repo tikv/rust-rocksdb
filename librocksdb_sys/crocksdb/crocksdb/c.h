@@ -2051,7 +2051,7 @@ extern C_ROCKSDB_LIBRARY_API ctitandb_readoptions_t* ctitandb_readoptions_create
 
 extern C_ROCKSDB_LIBRARY_API void ctitandb_readoptions_destroy(ctitandb_readoptions_t* opts);
 
-extern C_ROCKSDB_LIBRARY_API uint64_t ctitandb_readoptions_key_only(ctitandb_readoptions_t* opts);
+extern C_ROCKSDB_LIBRARY_API bool ctitandb_readoptions_key_only(ctitandb_readoptions_t* opts);
 
 extern C_ROCKSDB_LIBRARY_API void ctitandb_readoptions_set_key_only(ctitandb_readoptions_t* opts,
                                         bool v);

@@ -1075,7 +1075,7 @@ void crocksdb_create_iterators(
     crocksdb_iterator_t** iterators,
     size_t size,
     char** errptr) {
-  std::vector<ColumnFamilyHandle*> column_families_vec;
+  std::vector<ColumnFamilyHandle*> column_families_vec(size);
   for (size_t i = 0; i < size; i++) {
     column_families_vec.push_back(column_families[i]->rep);
   }
@@ -5128,7 +5128,7 @@ void ctitandb_readoptions_destroy(ctitandb_readoptions_t* opts) {
   delete opts; 
 }
 
-uint64_t ctitandb_readoptions_key_only(ctitandb_readoptions_t* opts) {
+bool ctitandb_readoptions_key_only(ctitandb_readoptions_t* opts) {
   return opts->rep.key_only;
 }
 
@@ -5174,7 +5174,7 @@ void ctitandb_create_iterators(
     crocksdb_iterator_t** iterators,
     size_t size,
     char** errptr) {
-  std::vector<ColumnFamilyHandle*> column_families_vec;
+  std::vector<ColumnFamilyHandle*> column_families_vec(size);
   for (size_t i = 0; i < size; i++) {
     column_families_vec.push_back(column_families[i]->rep);
   }

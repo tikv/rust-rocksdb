@@ -1082,10 +1082,13 @@ void crocksdb_create_iterators(
 
   std::vector<Iterator*> res;
   Status status = db->rep->NewIterators(opts->rep, column_families_vec, &res);
-  assert(res.size() == size);
   if (SaveError(errptr, status)) {
+    for (size_t i = 0; i < res.size(); i++) {
+      delete res[i];
+    }
     return;
   }
+  assert(res.size() == size);
 
   for (size_t i = 0; i < size; i++) {
     iterators[i] = new crocksdb_iterator_t;
@@ -5187,10 +5190,13 @@ void ctitandb_create_iterators(
     *(ReadOptions*)&titan_options->rep = options->rep;
     status = static_cast<TitanDB*>(db->rep)->NewIterators(titan_options->rep, column_families_vec, &res);
   }
-  assert(res.size() == size);
   if (SaveError(errptr, status)) {
+    for (size_t i = 0; i < res.size(); i++) {
+      delete res[i];
+    }
     return;
   }
+  assert(res.size() == size);
 
   for (size_t i = 0; i < size; i++) {
     iterators[i] = new crocksdb_iterator_t;

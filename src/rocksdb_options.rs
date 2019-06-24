@@ -399,11 +399,11 @@ impl ReadOptions {
         }
     }
 
-    pub unsafe fn get_inner(&self) -> *const DBReadOptions {
+    pub fn get_inner(&self) -> *const DBReadOptions {
         self.inner
     }
 
-    pub unsafe fn get_titan_inner(&self) -> *const DBTitanReadOptions {
+    pub fn get_titan_inner(&self) -> *const DBTitanReadOptions {
         self.titan_inner
     }
 

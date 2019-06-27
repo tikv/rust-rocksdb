@@ -1830,7 +1830,7 @@ extern "C" {
         db: *mut DBInstance,
         titan_column_family_options: *const DBTitanDBOptions,
         column_family_name: *const c_char,
-        err: *mut *mut c_char
+        err: *mut *mut c_char,
     ) -> *mut DBCFHandle;
 
     pub fn ctitandb_options_create() -> *mut DBTitanDBOptions;

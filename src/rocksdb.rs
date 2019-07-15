@@ -1227,7 +1227,7 @@ impl DB {
     ) -> Result<(), String> {
         unsafe {
             if self.is_titan() {
-            ffi_try!(ctitandb_delete_files_in_range_cf(
+                ffi_try!(ctitandb_delete_files_in_range_cf(
                     self.inner,
                     cf.inner,
                     start_key.as_ptr(),

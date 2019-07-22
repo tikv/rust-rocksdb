@@ -170,6 +170,7 @@ using rocksdb::titandb::TitanCFOptions;
 using rocksdb::titandb::TitanDB;
 using rocksdb::titandb::TitanDBOptions;
 using rocksdb::titandb::TitanOptions;
+using rocksdb::titandb::TitanReadOptions;
 using rocksdb::titandb::TitanBlobRunMode;
 
 using std::shared_ptr;
@@ -1074,17 +1075,20 @@ void crocksdb_create_iterators(
     crocksdb_iterator_t** iterators,
     size_t size,
     char** errptr) {
-  std::vector<ColumnFamilyHandle*> column_families_vec;
+  std::vector<ColumnFamilyHandle*> column_families_vec(size);
   for (size_t i = 0; i < size; i++) {
     column_families_vec.push_back(column_families[i]->rep);
   }
 
   std::vector<Iterator*> res;
   Status status = db->rep->NewIterators(opts->rep, column_families_vec, &res);
-  assert(res.size() == size);
   if (SaveError(errptr, status)) {
+    for (size_t i = 0; i < res.size(); i++) {
+      delete res[i];
+    }
     return;
   }
+  assert(res.size() == size);
 
   for (size_t i = 0; i < size; i++) {
     iterators[i] = new crocksdb_iterator_t;
@@ -1685,6 +1689,11 @@ void crocksdb_block_based_options_destroy(
   delete options;
 }
 
+void crocksdb_block_based_options_set_metadata_block_size(
+    crocksdb_block_based_table_options_t* options, size_t block_size) {
+  options->rep.metadata_block_size = block_size;
+}
+
 void crocksdb_block_based_options_set_block_size(
     crocksdb_block_based_table_options_t* options, size_t block_size) {
   options->rep.block_size = block_size;
@@ -1748,9 +1757,19 @@ void crocksdb_block_based_options_set_hash_index_allow_collision(
   options->rep.hash_index_allow_collision = v;
 }
 
+void crocksdb_block_based_options_set_partition_filters(
+    crocksdb_block_based_table_options_t* options, unsigned char v) {
+  options->rep.partition_filters = v;
+}
+
 void crocksdb_block_based_options_set_cache_index_and_filter_blocks(
     crocksdb_block_based_table_options_t* options, unsigned char v) {
   options->rep.cache_index_and_filter_blocks = v;
+}
+
+void crocksdb_block_based_options_set_pin_top_level_index_and_filter(
+    crocksdb_block_based_table_options_t* options, unsigned char v) {
+  options->rep.pin_top_level_index_and_filter = v;
 }
 
 void crocksdb_block_based_options_set_cache_index_and_filter_blocks_with_high_priority(
@@ -4954,6 +4973,9 @@ struct ctitandb_options_t {
   TitanOptions rep;
 };
 
+// TODO: Simplify the API by merging db_options into tdb_options, and
+// column_family_options into titan_column_family_options, since the later
+// of the pairs already contain the former.
 crocksdb_t* ctitandb_open_column_families(
     const char* name, const crocksdb_options_t* db_options,
     const ctitandb_options_t* tdb_options, int num_column_families,
@@ -4987,6 +5009,26 @@ crocksdb_t* ctitandb_open_column_families(
   crocksdb_t* result = new crocksdb_t;
   result->rep = db;
   return result;
+}
+
+// Caller should make sure `db` is created from ctitandb_open_column_families.
+//
+// TODO: ctitandb_open_column_family should return a ctitandb_t. Caller can
+// use ctitandb_t for titan specific functions.
+crocksdb_column_family_handle_t* ctitandb_create_column_family(
+    crocksdb_t* db,
+    const ctitandb_options_t* titan_column_family_options,
+    const char* column_family_name,
+    char** errptr) {
+  // Blindly cast db into TitanDB.
+  TitanDB* titan_db = reinterpret_cast<TitanDB*>(db->rep);
+  crocksdb_column_family_handle_t* handle = new crocksdb_column_family_handle_t;
+  SaveError(errptr,
+      titan_db->CreateColumnFamily(
+          TitanCFDescriptor(std::string(column_family_name),
+                            titan_column_family_options->rep),
+          &(handle->rep)));
+  return handle;
 }
 
 /* TitanDBOptions */
@@ -5068,12 +5110,12 @@ void ctitandb_options_set_min_gc_batch_size(ctitandb_options_t* options,
 }
 
 void ctitandb_options_set_blob_file_discardable_ratio(
-    ctitandb_options_t* options, float ratio) {
+    ctitandb_options_t* options, double ratio) {
   options->rep.blob_file_discardable_ratio = ratio;
 }
 
 void ctitandb_options_set_sample_file_size_ratio(ctitandb_options_t* options,
-                                                 float ratio) {
+                                                 double ratio) {
   options->rep.sample_file_size_ratio = ratio;
 }
 
@@ -5087,6 +5129,11 @@ void ctitandb_options_set_max_background_gc(ctitandb_options_t* options,
   options->rep.max_background_gc = size;
 }
 
+void ctitandb_options_set_purge_obsolete_files_period(ctitandb_options_t* options, 
+                                                      unsigned int period) {
+  options->rep.purge_obsolete_files_period = period;
+}
+
 void ctitandb_options_set_blob_cache(ctitandb_options_t* options,
                                      crocksdb_cache_t* cache) {
   if (cache) {
@@ -5095,18 +5142,104 @@ void ctitandb_options_set_blob_cache(ctitandb_options_t* options,
 }
 
 void ctitandb_options_set_discardable_ratio(ctitandb_options_t* options,
-                                            float ratio) {
+                                            double ratio) {
   options->rep.blob_file_discardable_ratio = ratio;
 }
 
 void ctitandb_options_set_sample_ratio(ctitandb_options_t* options,
-                                       float ratio) {
+                                       double ratio) {
   options->rep.sample_file_size_ratio = ratio;
 }
 
 void ctitandb_options_set_blob_run_mode(ctitandb_options_t* options,
                                         int mode) {
   options->rep.blob_run_mode = static_cast<TitanBlobRunMode>(mode);
+}
+
+/* TitanReadOptions */
+struct ctitandb_readoptions_t {
+  TitanReadOptions rep;
+};
+
+ctitandb_readoptions_t* ctitandb_readoptions_create() { 
+  return new ctitandb_readoptions_t; 
+}
+
+void ctitandb_readoptions_destroy(ctitandb_readoptions_t* opts) { 
+  delete opts; 
+}
+
+bool ctitandb_readoptions_key_only(ctitandb_readoptions_t* opts) {
+  return opts->rep.key_only;
+}
+
+void ctitandb_readoptions_set_key_only(ctitandb_readoptions_t* opts,
+                                        bool v) {
+  opts->rep.key_only = v;
+}
+
+crocksdb_iterator_t* ctitandb_create_iterator(
+    crocksdb_t* db,
+    const crocksdb_readoptions_t* options,
+    const ctitandb_readoptions_t* titan_options) {
+  crocksdb_iterator_t* result = new crocksdb_iterator_t;
+  if (titan_options == nullptr) {
+    result->rep = db->rep->NewIterator(options->rep);
+  } else {
+    *(ReadOptions*)&titan_options->rep = options->rep;
+    result->rep = static_cast<TitanDB*>(db->rep)->NewIterator(titan_options->rep);
+  }
+  return result;
+}
+
+crocksdb_iterator_t* ctitandb_create_iterator_cf(
+    crocksdb_t* db,
+    const crocksdb_readoptions_t* options,
+    const ctitandb_readoptions_t* titan_options,
+    crocksdb_column_family_handle_t* column_family) {
+  crocksdb_iterator_t* result = new crocksdb_iterator_t;
+  if (titan_options == nullptr) {
+    result->rep = db->rep->NewIterator(options->rep, column_family->rep);
+  } else {
+    *(ReadOptions*)&titan_options->rep = options->rep;
+    result->rep = static_cast<TitanDB*>(db->rep)->NewIterator(titan_options->rep, column_family->rep);
+  }
+  return result;
+}
+
+void ctitandb_create_iterators(
+    crocksdb_t *db,
+    crocksdb_readoptions_t* options,
+    ctitandb_readoptions_t* titan_options,
+    crocksdb_column_family_handle_t** column_families,
+    crocksdb_iterator_t** iterators,
+    size_t size,
+    char** errptr) {
+  std::vector<ColumnFamilyHandle*> column_families_vec(size);
+  for (size_t i = 0; i < size; i++) {
+    column_families_vec.push_back(column_families[i]->rep);
+  }
+
+  std::vector<Iterator*> res;
+  Status status;
+  if (titan_options == nullptr) {
+    status = db->rep->NewIterators(options->rep, column_families_vec, &res);
+  } else {
+    *(ReadOptions*)&titan_options->rep = options->rep;
+    status = static_cast<TitanDB*>(db->rep)->NewIterators(titan_options->rep, column_families_vec, &res);
+  }
+  if (SaveError(errptr, status)) {
+    for (size_t i = 0; i < res.size(); i++) {
+      delete res[i];
+    }
+    return;
+  }
+  assert(res.size() == size);
+
+  for (size_t i = 0; i < size; i++) {
+    iterators[i] = new crocksdb_iterator_t;
+    iterators[i]->rep = res[i];
+  }
 }
 
 }  // end extern "C"

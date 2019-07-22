@@ -85,6 +85,7 @@ mod generated;
 pub use generated::*;
 
 pub enum DBTitanDBOptions {}
+pub enum DBTitanReadOptions {}
 
 #[derive(Clone, Debug, Default)]
 #[repr(C)]
@@ -280,6 +281,14 @@ pub enum DBTitanDBBlobRunMode {
     Fallback = 2,
 }
 
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[repr(C)]
+pub enum IndexType {
+    BinarySearch = 0,
+    HashSearch = 1,
+    TwoLevelIndexSearch = 2,
+}
+
 pub fn error_message(ptr: *mut c_char) -> String {
     let c_str = unsafe { CStr::from_ptr(ptr) };
     let s = format!("{}", c_str.to_string_lossy());
@@ -355,6 +364,10 @@ extern "C" {
 
     pub fn crocksdb_block_based_options_create() -> *mut DBBlockBasedTableOptions;
     pub fn crocksdb_block_based_options_destroy(opts: *mut DBBlockBasedTableOptions);
+    pub fn crocksdb_block_based_options_set_metadata_block_size(
+        block_options: *mut DBBlockBasedTableOptions,
+        block_size: size_t,
+    );
     pub fn crocksdb_block_based_options_set_block_size(
         block_options: *mut DBBlockBasedTableOptions,
         block_size: size_t,
@@ -367,7 +380,23 @@ extern "C" {
         block_options: *mut DBBlockBasedTableOptions,
         block_restart_interval: c_int,
     );
+    pub fn crocksdb_block_based_options_set_index_type(
+        block_options: *mut DBBlockBasedTableOptions,
+        v: IndexType,
+    );
+    pub fn crocksdb_block_based_options_set_hash_index_allow_collision(
+        block_options: *mut DBBlockBasedTableOptions,
+        v: c_uchar,
+    );
+    pub fn crocksdb_block_based_options_set_partition_filters(
+        block_options: *mut DBBlockBasedTableOptions,
+        v: c_uchar,
+    );
     pub fn crocksdb_block_based_options_set_cache_index_and_filter_blocks(
+        block_options: *mut DBBlockBasedTableOptions,
+        v: c_uchar,
+    );
+    pub fn crocksdb_block_based_options_set_pin_top_level_index_and_filter(
         block_options: *mut DBBlockBasedTableOptions,
         v: c_uchar,
     );
@@ -1825,6 +1854,13 @@ extern "C" {
         err: *mut *mut c_char,
     ) -> *mut DBInstance;
 
+    pub fn ctitandb_create_column_family(
+        db: *mut DBInstance,
+        titan_column_family_options: *const DBTitanDBOptions,
+        column_family_name: *const c_char,
+        err: *mut *mut c_char,
+    ) -> *mut DBCFHandle;
+
     pub fn ctitandb_options_create() -> *mut DBTitanDBOptions;
     pub fn ctitandb_options_destroy(opts: *mut DBTitanDBOptions);
     pub fn ctitandb_options_copy(opts: *mut DBTitanDBOptions) -> *mut DBTitanDBOptions;
@@ -1853,6 +1889,10 @@ extern "C" {
 
     pub fn ctitandb_options_set_disable_background_gc(opts: *mut DBTitanDBOptions, disable: bool);
     pub fn ctitandb_options_set_max_background_gc(opts: *mut DBTitanDBOptions, size: i32);
+    pub fn ctitandb_options_set_purge_obsolete_files_period(
+        opts: *mut DBTitanDBOptions,
+        period: usize,
+    );
     pub fn ctitandb_options_set_min_gc_batch_size(opts: *mut DBTitanDBOptions, size: u64);
     pub fn ctitandb_options_set_max_gc_batch_size(opts: *mut DBTitanDBOptions, size: u64);
     pub fn ctitandb_options_set_blob_cache(opts: *mut DBTitanDBOptions, cache: *mut DBCache);
@@ -1860,6 +1900,23 @@ extern "C" {
     pub fn ctitandb_options_set_sample_ratio(opts: *mut DBTitanDBOptions, ratio: f64);
     pub fn ctitandb_options_set_merge_small_file_threshold(opts: *mut DBTitanDBOptions, size: u64);
     pub fn ctitandb_options_set_blob_run_mode(opts: *mut DBTitanDBOptions, t: DBTitanDBBlobRunMode);
+
+    pub fn ctitandb_readoptions_set_key_only(opts: *mut DBTitanReadOptions, v: bool);
+
+    pub fn ctitandb_readoptions_create() -> *mut DBTitanReadOptions;
+    pub fn ctitandb_readoptions_destroy(readopts: *mut DBTitanReadOptions);
+
+    pub fn ctitandb_create_iterator(
+        db: *mut DBInstance,
+        readopts: *const DBReadOptions,
+        titan_readopts: *const DBTitanReadOptions,
+    ) -> *mut DBIterator;
+    pub fn ctitandb_create_iterator_cf(
+        db: *mut DBInstance,
+        readopts: *const DBReadOptions,
+        titan_readopts: *const DBTitanReadOptions,
+        cf_handle: *mut DBCFHandle,
+    ) -> *mut DBIterator;
 }
 
 #[cfg(test)]

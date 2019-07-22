@@ -91,9 +91,6 @@ fn build_rocksdb() -> Build {
             zlib_path
         }
     });
-    for e in env::vars() {
-        println!("{:?}", e);
-    }
     let dst = cfg
         .register_dep("Z")
         .define("WITH_ZLIB", "ON")

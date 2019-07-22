@@ -71,11 +71,6 @@ fn link_cpp(build: &mut Build) {
 }
 
 fn build_rocksdb() -> Build {
-    let mut build = Build::new();
-    for e in env::vars() {
-        println!("{:?}", e);
-    }
-
     let mut cfg = Config::new("rocksdb");
     if cfg!(feature = "portable") {
         cfg.define("PORTABLE", "ON");
@@ -83,10 +78,22 @@ fn build_rocksdb() -> Build {
     if cfg!(feature = "sse") {
         cfg.define("FORCE_SSE42", "ON");
     }
-    let zlib_dir = env::var("DEP_Z_ROOT").unwrap();
+    // RocksDB cmake script expect libz.a being under ${DEP_Z_ROOT}/lib, but libz-sys crate put it
+    // under ${DEP_Z_ROOT}/build. Append the path to CMAKE_PREFIX_PATH to get around it.
+    env::set_var("CMAKE_PREFIX_PATH", {
+        let zlib_path = format!("{}/build", env::var("DEP_Z_ROOT").unwrap());
+        if let Ok(prefix_path) = env::var("CMAKE_PREFIX_PATH") {
+            format!("{};{}", prefix_path, zlib_path)
+        } else {
+            zlib_path
+        }
+    });
+    for e in env::vars() {
+        println!("{:?}", e);
+    }
     let dst = cfg
-        .cxxflag("-DZLIB")
-        .cxxflag(format!("-I{}/include", zlib_dir))
+        .register_dep("Z")
+        .define("WITH_ZLIB", "ON")
         .register_dep("BZIP2")
         .define("WITH_BZ2", "ON")
         .register_dep("LZ4")
@@ -99,6 +106,7 @@ fn build_rocksdb() -> Build {
         .very_verbose(true)
         .build();
     let build_dir = format!("{}/build", dst.display());
+    let mut build = Build::new();
     if cfg!(target_os = "windows") {
         let profile = match &*env::var("PROFILE").unwrap_or("debug".to_owned()) {
             "bench" | "release" => "Release",

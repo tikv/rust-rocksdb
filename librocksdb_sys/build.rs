@@ -73,7 +73,7 @@ fn link_cpp(build: &mut Build) {
 fn build_rocksdb() -> Build {
     let mut cfg = Config::new("rocksdb");
     if cfg!(feature = "jemalloc") {
-        cfg.define("WITH_JEMALLOC", "ON");
+        cfg.register_dep("JEMALLOC").define("WITH_JEMALLOC", "ON");
     }
     if cfg!(feature = "portable") {
         cfg.define("PORTABLE", "ON");
@@ -92,6 +92,7 @@ fn build_rocksdb() -> Build {
         }
     });
     let dst = cfg
+        .define("WITH_GFLAGS", "OFF")
         .register_dep("Z")
         .define("WITH_ZLIB", "ON")
         .register_dep("BZIP2")

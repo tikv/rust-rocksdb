@@ -3331,6 +3331,14 @@ void crocksdb_lru_cache_options_set_high_pri_pool_ratio(
   opt->rep.high_pri_pool_ratio = high_pri_pool_ratio;
 }
 
+void crocksdb_lru_cache_options_set_no_dump_allocator(
+    crocksdb_lru_cache_options_t* opt) {
+    std::shared_ptr<rocksdb::MemoryAllocator> allocator;
+    rocksdb::JemallocAllocatorOptions options;
+    rocksdb::NewJemallocNodumpAllocator(options, &allocator);
+    opt->rep.memory_allocator = allocator;
+}
+
 crocksdb_cache_t* crocksdb_cache_create_lru(crocksdb_lru_cache_options_t* opt) {
   crocksdb_cache_t* c = new crocksdb_cache_t;
   c->rep = NewLRUCache(opt->rep);

@@ -319,6 +319,21 @@ fn test_set_lru_cache() {
 }
 
 #[test]
+fn test_set_no_dump_lru_cache() {
+    let path = TempDir::new("_rust_rocksdb_set_set_no_dump_lru_cache").expect("");
+    let mut opts = DBOptions::new();
+    let mut cf_opts = ColumnFamilyOptions::new();
+    opts.create_if_missing(true);
+    let mut block_opts = BlockBasedOptions::new();
+    let mut cache_opts = LRUCacheOptions::new();
+    cache_opts.set_no_dump_allocator();
+    cache_opts.set_capacity(8388608);
+    block_opts.set_block_cache(&Cache::new_lru_cache(cache_opts));
+    cf_opts.set_block_based_table_factory(&block_opts);
+    DB::open_cf(opts, path.path().to_str().unwrap(), vec!["default"]).unwrap();
+}
+
+#[test]
 fn test_set_cache_index_and_filter_blocks_with_high_priority() {
     let path = TempDir::new("_rust_rocksdb_set_cache_and_index_with_high_priority").expect("");
     let mut opts = DBOptions::new();

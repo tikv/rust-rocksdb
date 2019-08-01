@@ -1877,6 +1877,12 @@ impl LRUCacheOptions {
             );
         }
     }
+
+    pub fn set_no_dump_allocator(&mut self) {
+        unsafe {
+            crocksdb_ffi::crocksdb_lru_cache_options_set_no_dump_allocator(self.inner);
+        }
+    }
 }
 
 impl Drop for LRUCacheOptions {

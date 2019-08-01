@@ -1336,6 +1336,8 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_lru_cache_options_set_strict_capacity
     crocksdb_lru_cache_options_t*, bool);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_lru_cache_options_set_high_pri_pool_ratio(
     crocksdb_lru_cache_options_t*, double);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_lru_cache_options_set_no_dump_allocator(
+    crocksdb_lru_cache_options_t*);
 extern C_ROCKSDB_LIBRARY_API crocksdb_cache_t* crocksdb_cache_create_lru(
     crocksdb_lru_cache_options_t*);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_cache_destroy(crocksdb_cache_t* cache);

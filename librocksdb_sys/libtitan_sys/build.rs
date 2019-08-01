@@ -36,6 +36,7 @@ fn main() {
         .define("WITH_ZSTD", "ON")
         .register_dep("SNAPPY")
         .define("WITH_SNAPPY", "ON")
+        .define("WITH_JEMALLOC", "ON")
         .build_target("titan")
         .very_verbose(true)
         .build();

@@ -19,6 +19,11 @@ use cmake::Config;
 use std::path::PathBuf;
 use std::{env, str};
 
+// On these platforms jemalloc-sys will use a prefixed jemalloc which cannot be linked together
+// with RocksDB.
+// See https://github.com/gnzlbg/jemallocator/blob/bfc89192971e026e6423d9ee5aaa02bc56585c58/jemalloc-sys/build.rs#L45
+const NO_JEMALLOC_TARGETS: &[&str] = &["android", "dragonfly", "musl", "darwin"];
+
 fn main() {
     let mut build = build_rocksdb();
 
@@ -71,19 +76,29 @@ fn link_cpp(build: &mut Build) {
 }
 
 fn build_rocksdb() -> Build {
-    let mut build = Build::new();
-    for e in env::vars() {
-        println!("{:?}", e);
-    }
-
+    let target = env::var("TARGET").expect("TARGET was not set");
     let mut cfg = Config::new("rocksdb");
+    if cfg!(feature = "jemalloc") && NO_JEMALLOC_TARGETS.iter().all(|i| !target.contains(i)) {
+        cfg.register_dep("JEMALLOC").define("WITH_JEMALLOC", "ON");
+    }
     if cfg!(feature = "portable") {
         cfg.define("PORTABLE", "ON");
     }
     if cfg!(feature = "sse") {
         cfg.define("FORCE_SSE42", "ON");
     }
+    // RocksDB cmake script expect libz.a being under ${DEP_Z_ROOT}/lib, but libz-sys crate put it
+    // under ${DEP_Z_ROOT}/build. Append the path to CMAKE_PREFIX_PATH to get around it.
+    env::set_var("CMAKE_PREFIX_PATH", {
+        let zlib_path = format!("{}/build", env::var("DEP_Z_ROOT").unwrap());
+        if let Ok(prefix_path) = env::var("CMAKE_PREFIX_PATH") {
+            format!("{};{}", prefix_path, zlib_path)
+        } else {
+            zlib_path
+        }
+    });
     let dst = cfg
+        .define("WITH_GFLAGS", "OFF")
         .register_dep("Z")
         .define("WITH_ZLIB", "ON")
         .register_dep("BZIP2")
@@ -95,8 +110,10 @@ fn build_rocksdb() -> Build {
         .register_dep("SNAPPY")
         .define("WITH_SNAPPY", "ON")
         .build_target("rocksdb")
+        .very_verbose(true)
         .build();
     let build_dir = format!("{}/build", dst.display());
+    let mut build = Build::new();
     if cfg!(target_os = "windows") {
         let profile = match &*env::var("PROFILE").unwrap_or("debug".to_owned()) {
             "bench" | "release" => "Release",

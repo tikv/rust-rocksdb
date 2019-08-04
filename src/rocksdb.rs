@@ -18,6 +18,7 @@ use crocksdb_ffi::{
     DBWriteBatch,
 };
 use libc::{self, c_char, c_int, c_void, size_t};
+use librocksdb_sys::DBMemoryAllocator;
 use metadata::ColumnFamilyMetaData;
 use rocksdb_options::{
     CColumnFamilyDescriptor, ColumnFamilyDescriptor, ColumnFamilyOptions, CompactOptions,
@@ -2336,6 +2337,28 @@ impl Drop for Cache {
     fn drop(&mut self) {
         unsafe {
             crocksdb_ffi::crocksdb_cache_destroy(self.inner);
+        }
+    }
+}
+
+pub struct MemoryAllocator {
+    pub inner: *mut DBMemoryAllocator,
+}
+
+impl MemoryAllocator {
+    pub fn new_jemalloc_memory_allocator() -> MemoryAllocator {
+        unsafe {
+            MemoryAllocator {
+                inner: crocksdb_ffi::crocksdb_jemalloc_nodump_allocator_create(),
+            }
+        }
+    }
+}
+
+impl Drop for MemoryAllocator {
+    fn drop(&mut self) {
+        unsafe {
+            crocksdb_ffi::crocksdb_memory_allocator_destroy(self.inner);
         }
     }
 }

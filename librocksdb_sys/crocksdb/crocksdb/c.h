@@ -1326,7 +1326,7 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_flushoptions_set_allow_write_stall(
 /* Memory allocator */
 
 extern C_ROCKSDB_LIBRARY_API crocksdb_memory_allocator_t*
-crocksdb_jemalloc_nodump_allocator_create();
+crocksdb_jemalloc_nodump_allocator_create(char** errptr);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_memory_allocator_destroy(crocksdb_memory_allocator_t*);
 
 /* Cache */

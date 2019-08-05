@@ -2346,11 +2346,13 @@ pub struct MemoryAllocator {
 }
 
 impl MemoryAllocator {
-    pub fn new_jemalloc_memory_allocator() -> MemoryAllocator {
+    #[cfg(feature = "jemalloc")]
+    pub fn new_jemalloc_memory_allocator() -> Result<MemoryAllocator, String> {
         unsafe {
-            MemoryAllocator {
-                inner: crocksdb_ffi::crocksdb_jemalloc_nodump_allocator_create(),
-            }
+            let allocator = MemoryAllocator {
+                inner: ffi_try!(crocksdb_ffi::crocksdb_jemalloc_nodump_allocator_create()),
+            };
+            Ok(allocator)
         }
     }
 }

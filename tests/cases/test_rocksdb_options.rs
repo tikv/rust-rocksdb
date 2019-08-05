@@ -319,6 +319,7 @@ fn test_set_lru_cache() {
     DB::open_cf(opts, path.path().to_str().unwrap(), vec!["default"]).unwrap();
 }
 
+#[cfg(feature = "jemalloc")]
 #[test]
 fn test_set_jemalloc_nodump_allocator_for_lru_cache() {
     let path = TempDir::new("_rust_rocksdb_set_jemalloc_nodump_allocator").expect("");
@@ -327,7 +328,7 @@ fn test_set_jemalloc_nodump_allocator_for_lru_cache() {
     opts.create_if_missing(true);
     let mut block_opts = BlockBasedOptions::new();
     let mut cache_opts = LRUCacheOptions::new();
-    cache_opts.set_memory_allocator(MemoryAllocator::new_jemalloc_memory_allocator());
+    cache_opts.set_memory_allocator(MemoryAllocator::new_jemalloc_memory_allocator().unwrap());
     cache_opts.set_capacity(8388608);
     block_opts.set_block_cache(&Cache::new_lru_cache(cache_opts));
     cf_opts.set_block_based_table_factory(&block_opts);

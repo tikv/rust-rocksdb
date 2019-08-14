@@ -194,7 +194,12 @@ extern "C" fn on_flush_completed(
     _: *mut DBInstance,
     info: *const DBFlushJobInfo,
 ) {
-    let (ctx, info) = unsafe { (&*(ctx as *mut Box<dyn EventListener>), mem::transmute(&*info)) };
+    let (ctx, info) = unsafe {
+        (
+            &*(ctx as *mut Box<dyn EventListener>),
+            mem::transmute(&*info),
+        )
+    };
     ctx.on_flush_completed(info);
 }
 
@@ -203,7 +208,12 @@ extern "C" fn on_compaction_completed(
     _: *mut DBInstance,
     info: *const DBCompactionJobInfo,
 ) {
-    let (ctx, info) = unsafe { (&*(ctx as *mut Box<dyn EventListener>), mem::transmute(&*info)) };
+    let (ctx, info) = unsafe {
+        (
+            &*(ctx as *mut Box<dyn EventListener>),
+            mem::transmute(&*info),
+        )
+    };
     ctx.on_compaction_completed(info);
 }
 
@@ -212,12 +222,22 @@ extern "C" fn on_external_file_ingested(
     _: *mut DBInstance,
     info: *const DBIngestionInfo,
 ) {
-    let (ctx, info) = unsafe { (&*(ctx as *mut Box<dyn EventListener>), mem::transmute(&*info)) };
+    let (ctx, info) = unsafe {
+        (
+            &*(ctx as *mut Box<dyn EventListener>),
+            mem::transmute(&*info),
+        )
+    };
     ctx.on_external_file_ingested(info);
 }
 
 extern "C" fn on_stall_conditions_changed(ctx: *mut c_void, info: *const DBWriteStallInfo) {
-    let (ctx, info) = unsafe { (&*(ctx as *mut Box<dyn EventListener>), mem::transmute(&*info)) };
+    let (ctx, info) = unsafe {
+        (
+            &*(ctx as *mut Box<dyn EventListener>),
+            mem::transmute(&*info),
+        )
+    };
     ctx.on_stall_conditions_changed(info);
 }
 

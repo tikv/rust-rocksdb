@@ -40,8 +40,8 @@
 
 #include "db/column_family.h"
 #include "table/sst_file_writer_collectors.h"
+#include "table/block_based/block_based_table_factory.h"
 #include "table/table_reader.h"
-#include "table/block_based_table_factory.h"
 #include "util/file_reader_writer.h"
 #include "util/coding.h"
 
@@ -3807,11 +3807,6 @@ crocksdb_fifo_compaction_options_t* crocksdb_fifo_compaction_options_create() {
 void crocksdb_fifo_compaction_options_set_max_table_files_size(
     crocksdb_fifo_compaction_options_t* fifo_opts, uint64_t size) {
   fifo_opts->rep.max_table_files_size = size;
-}
-
-void crocksdb_fifo_compaction_options_set_ttl(
-    crocksdb_fifo_compaction_options_t* fifo_opts, uint64_t ttl) {
-  fifo_opts->rep.ttl = ttl;
 }
 
 void crocksdb_fifo_compaction_options_set_allow_compaction(

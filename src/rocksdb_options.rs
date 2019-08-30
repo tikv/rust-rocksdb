@@ -40,6 +40,7 @@ use table_properties_collector_factory::{
     new_table_properties_collector_factory, TablePropertiesCollectorFactory,
 };
 use titan::TitanDBOptions;
+use std::ptr::null;
 
 #[derive(Default, Debug)]
 pub struct HistogramData {
@@ -1065,6 +1066,22 @@ impl DBOptions {
             crocksdb_ffi::crocksdb_options_set_paranoid_checks(self.inner, enable as u8);
         }
     }
+
+    pub fn set_doubly_skiplist(&self) {
+        unsafe {
+            crocksdb_ffi::crocksdb_options_set_doubly_skip_list_rep(self.inner);
+        }
+    }
+
+    pub fn get_memtable_name(&self) -> Option<&str> {
+        unsafe {
+            let memtable_name = crocksdb_ffi::crocksdb_options_get_memtable_factory_name(self.inner);
+            if memtable_name.is_null() {
+                return None;
+            }
+            Some(CStr::from_ptr(memtable_name).to_str().unwrap())
+        }
+    }
 }
 
 pub struct ColumnFamilyOptions {
@@ -1548,6 +1565,22 @@ impl ColumnFamilyOptions {
     pub fn set_vector_memtable_factory(&mut self, reserved_bytes: u64) {
         unsafe {
             crocksdb_ffi::crocksdb_options_set_vector_memtable_factory(self.inner, reserved_bytes);
+        }
+    }
+
+    pub fn set_doubly_skiplist(&self) {
+        unsafe {
+            crocksdb_ffi::crocksdb_options_set_doubly_skip_list_rep(self.inner);
+        }
+    }
+
+    pub fn get_memtable_factory_name(&self) -> Option<&str> {
+        unsafe {
+            let memtable_name = crocksdb_ffi::crocksdb_options_get_memtable_factory_name(self.inner);
+            if memtable_name.is_null() {
+                return None;
+            }
+            Some(CStr::from_ptr(memtable_name).to_str().unwrap())
         }
     }
 }

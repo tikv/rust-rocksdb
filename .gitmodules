@@ -4,6 +4,6 @@
 	branch = 6.4.tikv
 [submodule "titan"]
 	path = librocksdb_sys/libtitan_sys/titan
-  url = https://github.com/yiwu-arbug/titan.git
-  branch = upgrade_6.4
+	url = https://github.com/yiwu-arbug/titan.git
+	branch = upgrade_6.4
 

@@ -1131,10 +1131,6 @@ extern "C" {
         fifo_opts: *mut DBFifoCompactionOptions,
         size: uint64_t,
     );
-    pub fn crocksdb_fifo_compaction_options_set_ttl(
-        fifo_opts: *mut DBFifoCompactionOptions,
-        ttl: uint64_t,
-    );
     pub fn crocksdb_fifo_compaction_options_set_allow_compaction(
         fifo_opts: *mut DBFifoCompactionOptions,
         allow_compaction: bool,

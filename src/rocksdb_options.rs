@@ -34,13 +34,13 @@ use std::ffi::{CStr, CString};
 use std::mem;
 use std::path::Path;
 use std::ptr;
+use std::ptr::null;
 use std::sync::Arc;
 use table_filter::{destroy_table_filter, table_filter, TableFilter};
 use table_properties_collector_factory::{
     new_table_properties_collector_factory, TablePropertiesCollectorFactory,
 };
 use titan::TitanDBOptions;
-use std::ptr::null;
 
 #[derive(Default, Debug)]
 pub struct HistogramData {
@@ -1075,7 +1075,8 @@ impl DBOptions {
 
     pub fn get_memtable_name(&self) -> Option<&str> {
         unsafe {
-            let memtable_name = crocksdb_ffi::crocksdb_options_get_memtable_factory_name(self.inner);
+            let memtable_name =
+                crocksdb_ffi::crocksdb_options_get_memtable_factory_name(self.inner);
             if memtable_name.is_null() {
                 return None;
             }
@@ -1576,7 +1577,8 @@ impl ColumnFamilyOptions {
 
     pub fn get_memtable_factory_name(&self) -> Option<&str> {
         unsafe {
-            let memtable_name = crocksdb_ffi::crocksdb_options_get_memtable_factory_name(self.inner);
+            let memtable_name =
+                crocksdb_ffi::crocksdb_options_get_memtable_factory_name(self.inner);
             if memtable_name.is_null() {
                 return None;
             }

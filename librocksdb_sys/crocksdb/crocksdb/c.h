@@ -2066,6 +2066,9 @@ extern C_ROCKSDB_LIBRARY_API void ctitandb_options_set_purge_obsolete_files_peri
 extern C_ROCKSDB_LIBRARY_API void ctitandb_options_set_blob_cache(
     ctitandb_options_t* options, crocksdb_cache_t* cache);
 
+extern C_ROCKSDB_LIBRARY_API size_t ctitandb_options_get_blob_cache_usage(
+    ctitandb_options_t *opt);
+
 extern C_ROCKSDB_LIBRARY_API void ctitandb_options_set_discardable_ratio(
     ctitandb_options_t* options, double ratio);
 

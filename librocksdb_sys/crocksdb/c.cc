@@ -5172,6 +5172,13 @@ void ctitandb_options_set_blob_cache(ctitandb_options_t* options,
   }
 }
 
+size_t ctitandb_options_get_blob_cache_usage(ctitandb_options_t *opt) {
+  if (opt && opt->rep.blob_cache != nullptr) {
+    return opt->rep.blob_cache->GetUsage();
+  }
+  return 0;
+}
+
 void ctitandb_options_set_discardable_ratio(ctitandb_options_t* options,
                                             double ratio) {
   options->rep.blob_file_discardable_ratio = ratio;

@@ -1563,6 +1563,14 @@ impl DB {
         self.get_options_cf(cf).get_block_cache_usage()
     }
 
+    pub fn get_blob_cache_usage(&self) -> u64 {
+        self.get_options().get_blob_cache_usage()
+    }
+
+    pub fn get_blob_cache_usage_cf(&self, cf: &CFHandle) -> u64 {
+        self.get_options_cf(cf).get_blob_cache_usage()
+    }
+
     pub fn get_properties_of_all_tables(&self) -> Result<TablePropertiesCollection, String> {
         unsafe {
             let props = ffi_try!(crocksdb_get_properties_of_all_tables(self.inner));

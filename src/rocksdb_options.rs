@@ -34,7 +34,6 @@ use std::ffi::{CStr, CString};
 use std::mem;
 use std::path::Path;
 use std::ptr;
-use std::ptr::null;
 use std::sync::Arc;
 use table_filter::{destroy_table_filter, table_filter, TableFilter};
 use table_properties_collector_factory::{
@@ -1541,6 +1540,10 @@ impl ColumnFamilyOptions {
 
     pub fn get_block_cache_usage(&self) -> u64 {
         unsafe { crocksdb_ffi::crocksdb_options_get_block_cache_usage(self.inner) as u64 }
+    }
+
+    pub fn get_blob_cache_usage(&self) -> u64 {
+        unsafe { crocksdb_ffi::ctitandb_options_get_blob_cache_usage(self.titan_inner) as u64 }
     }
 
     pub fn set_block_cache_capacity(&self, capacity: u64) -> Result<(), String> {

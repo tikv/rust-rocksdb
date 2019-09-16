@@ -15,7 +15,7 @@
 use crocksdb_ffi::{
     self, DBBackupEngine, DBCFHandle, DBCache, DBCompressionType, DBEnv, DBInstance,
     DBPinnableSlice, DBSequentialFile, DBStatisticsHistogramType, DBStatisticsTickerType,
-    DBWriteBatch,
+    DBTitanDBOptions, DBWriteBatch,
 };
 use libc::{self, c_char, c_int, c_void, size_t};
 use librocksdb_sys::DBMemoryAllocator;
@@ -1410,14 +1410,24 @@ impl DB {
         let cf = self.cf_handle("default").unwrap();
         unsafe {
             let inner = crocksdb_ffi::crocksdb_get_options_cf(self.inner, cf.inner);
-            ColumnFamilyOptions::from_raw(inner)
+            let titan_inner = if self.is_titan() {
+                crocksdb_ffi::ctitandb_get_titan_options_cf(self.inner, cf.inner)
+            } else {
+                ptr::null_mut::<DBTitanDBOptions>()
+            };
+            ColumnFamilyOptions::from_raw(inner, titan_inner)
         }
     }
 
     pub fn get_options_cf(&self, cf: &CFHandle) -> ColumnFamilyOptions {
         unsafe {
             let inner = crocksdb_ffi::crocksdb_get_options_cf(self.inner, cf.inner);
-            ColumnFamilyOptions::from_raw(inner)
+            let titan_inner = if self.is_titan() {
+                crocksdb_ffi::ctitandb_get_titan_options_cf(self.inner, cf.inner)
+            } else {
+                ptr::null_mut::<DBTitanDBOptions>()
+            };
+            ColumnFamilyOptions::from_raw(inner, titan_inner)
         }
     }
 

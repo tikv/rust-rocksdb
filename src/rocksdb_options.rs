@@ -1145,14 +1145,17 @@ impl ColumnFamilyOptions {
         ColumnFamilyOptions::default()
     }
 
-    pub unsafe fn from_raw(inner: *mut Options) -> ColumnFamilyOptions {
+    pub unsafe fn from_raw(
+        inner: *mut Options,
+        titan_inner: *mut DBTitanDBOptions,
+    ) -> ColumnFamilyOptions {
         assert!(
             !inner.is_null(),
             "could not new rocksdb options with null inner"
         );
         ColumnFamilyOptions {
             inner,
-            titan_inner: ptr::null_mut::<DBTitanDBOptions>(),
+            titan_inner,
             env: None,
             filter: None,
         }
@@ -1560,6 +1563,20 @@ impl ColumnFamilyOptions {
         unsafe { crocksdb_ffi::crocksdb_options_get_block_cache_capacity(self.inner) as u64 }
     }
 
+    pub fn set_blob_cache_capacity(&self, capacity: u64) -> Result<(), String> {
+        unsafe {
+            ffi_try!(ctitandb_options_set_blob_cache_capacity(
+                self.titan_inner,
+                capacity as usize
+            ));
+            Ok(())
+        }
+    }
+
+    pub fn get_blob_cache_capacity(&self) -> u64 {
+        unsafe { crocksdb_ffi::ctitandb_options_get_blob_cache_capacity(self.titan_inner) as u64 }
+    }
+
     pub fn set_fifo_compaction_options(&mut self, fifo_opts: FifoCompactionOptions) {
         unsafe {
             crocksdb_ffi::crocksdb_options_set_fifo_compaction_options(self.inner, fifo_opts.inner);
@@ -1656,7 +1673,7 @@ impl CColumnFamilyDescriptor {
         unsafe {
             let raw_cf_options =
                 crocksdb_ffi::crocksdb_options_from_column_family_descriptor(self.inner);
-            ColumnFamilyOptions::from_raw(raw_cf_options)
+            ColumnFamilyOptions::from_raw(raw_cf_options, ptr::null_mut())
         }
     }
 }

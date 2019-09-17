@@ -5193,7 +5193,7 @@ void ctitandb_options_set_blob_cache_capacity(ctitandb_options_t* opt, size_t ca
   if (opt && opt->rep.blob_cache != nullptr) {
     return opt->rep.blob_cache->SetCapacity(capacity);
   } else {
-    s = Status::InvalidArgument("failed to get Titan options");
+    s = Status::InvalidArgument("Blob cache was disabled.");
   }
   SaveError(errptr, s);
 }

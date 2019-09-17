@@ -314,7 +314,7 @@ fn test_get_blob_cache_usage() {
 
 #[test]
 fn test_blob_cache_capacity() {
-    let path = TempDir::new("_rust_rocksdb_set_and_get_block_cache_capacity").expect("");
+    let path = TempDir::new("_rust_rocksdb_set_and_get_blob_cache_capacity").expect("");
     let tdb_path = path.path().join("titandb");
     let mut tdb_opts = TitanDBOptions::new();
     tdb_opts.set_dirname(tdb_path.to_str().unwrap());

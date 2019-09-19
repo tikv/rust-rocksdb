@@ -34,7 +34,6 @@ use std::ffi::{CStr, CString};
 use std::mem;
 use std::path::Path;
 use std::ptr;
-use std::ptr::null;
 use std::sync::Arc;
 use table_filter::{destroy_table_filter, table_filter, TableFilter};
 use table_properties_collector_factory::{

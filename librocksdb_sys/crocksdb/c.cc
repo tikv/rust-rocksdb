@@ -5155,9 +5155,9 @@ void ctitandb_options_set_max_background_gc(ctitandb_options_t* options,
   options->rep.max_background_gc = size;
 }
 
-void ctitandb_options_set_purge_obsolete_files_period(ctitandb_options_t* options,
-                                                      unsigned int period) {
-  options->rep.purge_obsolete_files_period = period;
+void ctitandb_options_set_purge_obsolete_files_period_sec(
+    ctitandb_options_t* options, unsigned int period) {
+  options->rep.purge_obsolete_files_period_sec = period;
 }
 
 void ctitandb_options_set_blob_cache(ctitandb_options_t* options,

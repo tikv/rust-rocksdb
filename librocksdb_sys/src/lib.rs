@@ -1883,7 +1883,7 @@ extern "C" {
 
     pub fn ctitandb_options_set_disable_background_gc(opts: *mut DBTitanDBOptions, disable: bool);
     pub fn ctitandb_options_set_max_background_gc(opts: *mut DBTitanDBOptions, size: i32);
-    pub fn ctitandb_options_set_purge_obsolete_files_period(
+    pub fn ctitandb_options_set_purge_obsolete_files_period_sec(
         opts: *mut DBTitanDBOptions,
         period: usize,
     );

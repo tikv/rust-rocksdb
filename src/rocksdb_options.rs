@@ -1504,6 +1504,12 @@ impl ColumnFamilyOptions {
         }
     }
 
+    pub fn set_force_consistency_checks(&mut self, v: bool) {
+        unsafe {
+            crocksdb_ffi::crocksdb_options_set_force_consistency_checks(self.inner, v);
+        }
+    }
+
     pub fn get_block_cache_usage(&self) -> u64 {
         unsafe { crocksdb_ffi::crocksdb_options_get_block_cache_usage(self.inner) as u64 }
     }

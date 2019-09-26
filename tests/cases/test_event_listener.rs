@@ -120,7 +120,7 @@ impl EventListener for StallEventCounter {
         }
     }
 }
- 
+
 #[derive(Default, Clone)]
 struct BackgroundErrorCounter {
     background_error: Arc<AtomicUsize>,
@@ -131,7 +131,7 @@ impl EventListener for BackgroundErrorCounter {
         self.background_error.fetch_add(1, Ordering::SeqCst);
     }
 }
- 
+
 #[test]
 fn test_event_listener_stall_conditions_changed() {
     let path = TempDir::new("_rust_rocksdb_event_listener_stall_conditions").expect("");

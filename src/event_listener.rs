@@ -238,13 +238,15 @@ extern "C" fn on_background_error(
     reason: DBBackgroundErrorReason,
     status: *mut DBStatusPtr,
 ) {
-    fn get_error(status: *mut DBStatusPtr) -> Result<(), String> {
-        unsafe {
-            ffi_try!(crocksdb_status_ptr_get_error(status));
-        }
-        Ok(())
+    let (ctx, result) = unsafe {
+        (
+            &*(ctx as *mut Box<dyn EventListener>),
+            || -> Result<(), String> {
+                ffi_try!(crocksdb_status_ptr_get_error(status));
+                Ok(())
+            }(),
+        )
     };
-    let (ctx, result) = unsafe { (&*(ctx as *mut Box<dyn EventListener>), get_error(status)) };
     ctx.on_background_error(reason, result);
 }
 

@@ -13,7 +13,7 @@
 // limitations under the License.
 
 use crocksdb_ffi::{
-    self, DBBackupEngine, DBCFHandle, DBCache, DBCompressionType, DBEnv, DBInstance,
+    self, DBBackupEngine, DBCFHandle, DBCache, DBCompressionType, DBEnv, DBIOStallInfo, DBInstance,
     DBPinnableSlice, DBSequentialFile, DBStatisticsHistogramType, DBStatisticsTickerType,
     DBTitanDBOptions, DBWriteBatch,
 };
@@ -85,6 +85,48 @@ fn build_cstring_list(str_list: &[&str]) -> Vec<CString> {
         .into_iter()
         .map(|s| CString::new(s.as_bytes()).unwrap())
         .collect()
+}
+
+pub struct IOStallInfo {
+    inner: *mut DBIOStallInfo,
+}
+
+impl Drop for IOStallInfo {
+    fn drop(&mut self) {
+        unsafe {
+            crocksdb_ffi::crocksdb_destroy_iostalls_info(self.inner);
+        }
+    }
+}
+
+impl IOStallInfo {
+    pub fn new() -> IOStallInfo {
+        unsafe {
+            IOStallInfo {
+                inner: crocksdb_ffi::crocksdb_create_iostalls_info(),
+            }
+        }
+    }
+
+    pub fn get_property_value(&self, property: &str) -> String {
+        let propname = CString::new(property.as_bytes()).unwrap();
+        unsafe {
+            let value =
+                crocksdb_ffi::crocksdb_get_iostalls_property_value(self.inner, propname.as_ptr());
+            return CStr::from_ptr(value).to_str().unwrap().to_owned();
+        }
+    }
+
+    pub fn get_property_int_value(&self, property: &str) -> u64 {
+        let propname = CString::new(property.as_bytes()).unwrap();
+        unsafe {
+            let value = crocksdb_ffi::crocksdb_get_iostalls_property_int_value(
+                self.inner,
+                propname.as_ptr(),
+            );
+            return value as u64;
+        }
+    }
 }
 
 pub struct DB {
@@ -1383,6 +1425,12 @@ impl DB {
         unsafe {
             let inner = crocksdb_ffi::crocksdb_get_db_options(self.inner);
             DBOptions::from_raw(inner)
+        }
+    }
+
+    pub fn get_iostall_info(&self, cf: &CFHandle, info: &mut IOStallInfo) -> bool {
+        unsafe {
+            return crocksdb_ffi::crocksdb_get_iostalls_info_cf(self.inner, cf.inner, info.inner);
         }
     }
 

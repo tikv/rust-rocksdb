@@ -146,6 +146,7 @@ typedef struct crocksdb_perf_context_t crocksdb_perf_context_t;
 typedef struct crocksdb_iostats_context_t crocksdb_iostats_context_t;
 typedef struct crocksdb_writestallinfo_t crocksdb_writestallinfo_t;
 typedef struct crocksdb_writestallcondition_t crocksdb_writestallcondition_t;
+typedef struct crocksdb_iostallinfo_t crocksdb_iostallinfo_t;
 
 typedef enum crocksdb_table_property_t {
   kDataSize = 1,
@@ -397,6 +398,21 @@ crocksdb_get_snapshot_sequence_number(const crocksdb_snapshot_t* snapshot);
 
 /* Returns NULL if property name is unknown.
    Else returns a pointer to a malloc()-ed null-terminated value. */
+extern C_ROCKSDB_LIBRARY_API crocksdb_iostallinfo_t* crocksdb_create_iostalls_info();
+
+extern C_ROCKSDB_LIBRARY_API void crocksdb_destroy_iostalls_info(crocksdb_iostallinfo_t* info);
+
+extern C_ROCKSDB_LIBRARY_API bool crocksdb_get_iostalls_info_cf(
+    crocksdb_t* db, crocksdb_column_family_handle_t* column_family,
+    crocksdb_iostallinfo_t* data);
+
+extern C_ROCKSDB_LIBRARY_API char* crocksdb_get_iostalls_property_value(
+    crocksdb_iostallinfo_t* info,
+    const char* propname);
+
+extern C_ROCKSDB_LIBRARY_API uint64_t crocksdb_get_iostalls_property_int_value(
+    crocksdb_iostallinfo_t* info, const char* propname);
+
 extern C_ROCKSDB_LIBRARY_API char* crocksdb_property_value(crocksdb_t* db,
                                                         const char* propname);
 

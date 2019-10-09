@@ -75,6 +75,7 @@ pub enum DBPerfContext {}
 pub enum DBIOStatsContext {}
 pub enum DBWriteStallInfo {}
 pub enum DBStatusPtr {}
+pub enum DBIOStallInfo {}
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 #[repr(C)]
@@ -1206,6 +1207,21 @@ extern "C" {
         include_end: bool,
         errptr: *mut *mut c_char,
     );
+    pub fn crocksdb_create_iostalls_info() -> *mut DBIOStallInfo;
+    pub fn crocksdb_destroy_iostalls_info(info: *mut DBIOStallInfo);
+    pub fn crocksdb_get_iostalls_info_cf(
+        db: *mut DBInstance,
+        cf: *mut DBCFHandle,
+        info: *mut DBIOStallInfo) -> bool;
+
+    pub fn crocksdb_get_iostalls_property_value(
+        info: *const DBIOStallInfo,
+        propname: *const c_char) -> *mut c_char;
+
+     pub fn crocksdb_get_iostalls_property_int_value(
+        info: *const DBIOStallInfo,
+        propname: *const c_char) -> uint64_t;
+
     pub fn crocksdb_property_value(db: *mut DBInstance, propname: *const c_char) -> *mut c_char;
     pub fn crocksdb_property_value_cf(
         db: *mut DBInstance,

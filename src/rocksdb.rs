@@ -1428,9 +1428,13 @@ impl DB {
         }
     }
 
-    pub fn get_iostall_info(&self, cf: &CFHandle, info: &mut IOStallInfo) -> bool {
+    pub fn get_iostall_info(&self, cf: &CFHandle) -> Option<IOStallInfo> {
         unsafe {
-            return crocksdb_ffi::crocksdb_get_iostalls_info_cf(self.inner, cf.inner, info.inner);
+            let info = IOStallInfo::new();
+            if !crocksdb_ffi::crocksdb_get_iostalls_info_cf(self.inner, cf.inner, info.inner) {
+                return None;
+            }
+            Some(info)
         }
     }
 

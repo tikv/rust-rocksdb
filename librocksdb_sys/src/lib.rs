@@ -1212,15 +1212,18 @@ extern "C" {
     pub fn crocksdb_get_iostalls_info_cf(
         db: *mut DBInstance,
         cf: *mut DBCFHandle,
-        info: *mut DBIOStallInfo) -> bool;
+        info: *mut DBIOStallInfo,
+    ) -> bool;
 
     pub fn crocksdb_get_iostalls_property_value(
         info: *const DBIOStallInfo,
-        propname: *const c_char) -> *mut c_char;
+        propname: *const c_char,
+    ) -> *mut c_char;
 
-     pub fn crocksdb_get_iostalls_property_int_value(
+    pub fn crocksdb_get_iostalls_property_int_value(
         info: *const DBIOStallInfo,
-        propname: *const c_char) -> uint64_t;
+        propname: *const c_char,
+    ) -> uint64_t;
 
     pub fn crocksdb_property_value(db: *mut DBInstance, propname: *const c_char) -> *mut c_char;
     pub fn crocksdb_property_value_cf(

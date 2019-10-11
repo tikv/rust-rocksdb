@@ -13,7 +13,7 @@
 // limitations under the License.
 
 use crocksdb_ffi::{
-    self, DBBackupEngine, DBCFHandle, DBCache, DBCompressionType, DBEnv, DBMapProperty, DBInstance,
+    self, DBBackupEngine, DBCFHandle, DBCache, DBCompressionType, DBEnv, DBInstance, DBMapProperty,
     DBPinnableSlice, DBSequentialFile, DBStatisticsHistogramType, DBStatisticsTickerType,
     DBTitanDBOptions, DBWriteBatch,
 };
@@ -111,8 +111,7 @@ impl MapProperty {
     pub fn get_property_value(&self, property: &str) -> String {
         let propname = CString::new(property.as_bytes()).unwrap();
         unsafe {
-            let value =
-                crocksdb_ffi::crocksdb_map_property_value(self.inner, propname.as_ptr());
+            let value = crocksdb_ffi::crocksdb_map_property_value(self.inner, propname.as_ptr());
             return CStr::from_ptr(value).to_str().unwrap().to_owned();
         }
     }
@@ -120,10 +119,8 @@ impl MapProperty {
     pub fn get_property_int_value(&self, property: &str) -> u64 {
         let propname = CString::new(property.as_bytes()).unwrap();
         unsafe {
-            let value = crocksdb_ffi::crocksdb_map_property_int_value(
-                self.inner,
-                propname.as_ptr(),
-            );
+            let value =
+                crocksdb_ffi::crocksdb_map_property_int_value(self.inner, propname.as_ptr());
             return value as u64;
         }
     }
@@ -1432,7 +1429,12 @@ impl DB {
         unsafe {
             let info = MapProperty::new();
             let cname = CString::new(name.as_bytes()).unwrap();
-            if !crocksdb_ffi::crocksdb_get_map_property_cf(self.inner, cf.inner, cname.as_ptr(), info.inner) {
+            if !crocksdb_ffi::crocksdb_get_map_property_cf(
+                self.inner,
+                cf.inner,
+                cname.as_ptr(),
+                info.inner,
+            ) {
                 return None;
             }
             Some(info)

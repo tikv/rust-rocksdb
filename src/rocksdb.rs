@@ -13,7 +13,7 @@
 // limitations under the License.
 
 use crocksdb_ffi::{
-    self, DBBackupEngine, DBCFHandle, DBCache, DBCompressionType, DBEnv, DBIOStallInfo, DBInstance,
+    self, DBBackupEngine, DBCFHandle, DBCache, DBCompressionType, DBEnv, DBMapProperty, DBInstance,
     DBPinnableSlice, DBSequentialFile, DBStatisticsHistogramType, DBStatisticsTickerType,
     DBTitanDBOptions, DBWriteBatch,
 };
@@ -87,23 +87,23 @@ fn build_cstring_list(str_list: &[&str]) -> Vec<CString> {
         .collect()
 }
 
-pub struct IOStallInfo {
-    inner: *mut DBIOStallInfo,
+pub struct MapProperty {
+    inner: *mut DBMapProperty,
 }
 
-impl Drop for IOStallInfo {
+impl Drop for MapProperty {
     fn drop(&mut self) {
         unsafe {
-            crocksdb_ffi::crocksdb_destroy_iostalls_info(self.inner);
+            crocksdb_ffi::crocksdb_destroy_map_property(self.inner);
         }
     }
 }
 
-impl IOStallInfo {
-    pub fn new() -> IOStallInfo {
+impl MapProperty {
+    pub fn new() -> MapProperty {
         unsafe {
-            IOStallInfo {
-                inner: crocksdb_ffi::crocksdb_create_iostalls_info(),
+            MapProperty {
+                inner: crocksdb_ffi::crocksdb_create_map_property(),
             }
         }
     }
@@ -112,7 +112,7 @@ impl IOStallInfo {
         let propname = CString::new(property.as_bytes()).unwrap();
         unsafe {
             let value =
-                crocksdb_ffi::crocksdb_get_iostalls_property_value(self.inner, propname.as_ptr());
+                crocksdb_ffi::crocksdb_map_property_value(self.inner, propname.as_ptr());
             return CStr::from_ptr(value).to_str().unwrap().to_owned();
         }
     }
@@ -120,7 +120,7 @@ impl IOStallInfo {
     pub fn get_property_int_value(&self, property: &str) -> u64 {
         let propname = CString::new(property.as_bytes()).unwrap();
         unsafe {
-            let value = crocksdb_ffi::crocksdb_get_iostalls_property_int_value(
+            let value = crocksdb_ffi::crocksdb_map_property_int_value(
                 self.inner,
                 propname.as_ptr(),
             );
@@ -1428,10 +1428,11 @@ impl DB {
         }
     }
 
-    pub fn get_iostall_info(&self, cf: &CFHandle) -> Option<IOStallInfo> {
+    pub fn get_map_property_cf(&self, cf: &CFHandle, name: &str) -> Option<MapProperty> {
         unsafe {
-            let info = IOStallInfo::new();
-            if !crocksdb_ffi::crocksdb_get_iostalls_info_cf(self.inner, cf.inner, info.inner) {
+            let info = MapProperty::new();
+            let cname = CString::new(name.as_bytes()).unwrap();
+            if !crocksdb_ffi::crocksdb_get_map_property_cf(self.inner, cf.inner, cname.as_ptr(), info.inner) {
                 return None;
             }
             Some(info)
@@ -3162,5 +3163,19 @@ mod test {
         db.put(b"key", b"value").unwrap();
         let seq2 = db.get_latest_sequence_number();
         assert!(seq2 > seq1);
+    }
+
+    #[test]
+    fn test_map_property() {
+        let path = TempDir::new("_rust_rocksdb_get_map_property").expect("");
+        let dbpath = path.path().to_str().unwrap().clone();
+
+        let mut opts = DBOptions::new();
+        opts.create_if_missing(true);
+        let mut db = DB::open(opts, dbpath).unwrap();
+
+        let cf_handle = db.cf_handle("default").unwrap();
+        let mp = db.get_map_property_cf(cf_handle, "rocksdb.cfstats");
+        assert!(mp.is_some());
     }
 }

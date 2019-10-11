@@ -267,7 +267,7 @@ struct crocksdb_compaction_options_t {
   CompactionOptions rep;
 };
 
-struct crocksdb_iostallinfo_t {
+struct crocksdb_map_property_t {
   std::map<std::string, std::string> rep;
 };
 
@@ -1131,23 +1131,24 @@ uint64_t crocksdb_get_snapshot_sequence_number(
   return snapshot->rep->GetSequenceNumber();
 }
 
-crocksdb_iostallinfo_t* crocksdb_create_iostalls_info() {
-  return new crocksdb_iostallinfo_t;
+crocksdb_map_property_t* crocksdb_create_map_property() {
+  return new crocksdb_map_property_t;
 }
 
-void crocksdb_destroy_iostalls_info(crocksdb_iostallinfo_t* info) {
+void crocksdb_destroy_map_property(crocksdb_map_property_t* info) {
   delete info;
 }
 
-bool crocksdb_get_iostalls_info_cf(
+bool crocksdb_get_map_property_cf(
     crocksdb_t* db,
     crocksdb_column_family_handle_t* column_family,
-    crocksdb_iostallinfo_t* info) {
-  return db->rep->GetMapProperty(column_family->rep, DB::Properties::kCFStats, &info->rep);
+    const char* property,
+    crocksdb_map_property_t* info) {
+  return db->rep->GetMapProperty(column_family->rep, property, &info->rep);
 }
 
-char* crocksdb_get_iostalls_property_value(
-    crocksdb_iostallinfo_t* info,
+char* crocksdb_map_property_value(
+    crocksdb_map_property_t* info,
     const char* propname) {
   auto iter = info->rep.find(std::string(propname));
   if (iter != info->rep.end()) {
@@ -1157,8 +1158,8 @@ char* crocksdb_get_iostalls_property_value(
   }
 }
 
-uint64_t crocksdb_get_iostalls_property_int_value(
-    crocksdb_iostallinfo_t* info,
+uint64_t crocksdb_map_property_int_value(
+    crocksdb_map_property_t* info,
     const char* propname) {
   auto iter = info->rep.find(std::string(propname));
   if (iter != info->rep.end()) {

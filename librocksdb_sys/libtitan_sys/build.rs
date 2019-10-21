@@ -22,6 +22,12 @@ fn main() {
     if cfg!(feature = "sse") {
         cfg.define("FORCE_SSE42", "ON");
     }
+    if cfg!(feature = "update_titan") {
+        Command::new("make")
+            .args(&["update_titan"])
+            .status()
+            .expect("failed to make!");
+    }
     let dst = cfg
         .define("ROCKSDB_DIR", cur_dir.join("..").join("rocksdb"))
         .define("WITH_TITAN_TESTS", "OFF")

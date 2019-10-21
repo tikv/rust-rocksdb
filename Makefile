@@ -14,3 +14,5 @@ clean:
 	@cargo clean
 	@cd librocksdb_sys && cargo clean
 
+update_titan:
+	@git submodule update --remote librocksdb_sys/libtitan_sys/titan

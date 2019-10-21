@@ -2,6 +2,7 @@ extern crate cc;
 extern crate cmake;
 
 use std::env;
+use std::process::Command;
 
 fn main() {
     // RocksDB cmake script expect libz.a being under ${DEP_Z_ROOT}/lib, but libz-sys crate put it

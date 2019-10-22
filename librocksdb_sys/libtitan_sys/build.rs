@@ -28,7 +28,7 @@ fn main() {
             .current_dir("../..")
             .args(&["update_titan"])
             .status()
-            .expect("failed to make!");
+            .expect("failed to update titan!");
     }
     let dst = cfg
         .define("ROCKSDB_DIR", cur_dir.join("..").join("rocksdb"))

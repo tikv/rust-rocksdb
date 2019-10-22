@@ -25,6 +25,7 @@ fn main() {
     }
     if cfg!(feature = "update_titan") {
         Command::new("make")
+            .current_dir("../..")
             .args(&["update_titan"])
             .status()
             .expect("failed to make!");

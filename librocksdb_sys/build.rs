@@ -99,6 +99,7 @@ fn build_rocksdb() -> Build {
         }
     });
     let dst = cfg
+        .cxxflag("-DROCKSDB_DEFAULT_TO_ADAPTIVE_MUTEX")
         .define("WITH_GFLAGS", "OFF")
         .register_dep("Z")
         .define("WITH_ZLIB", "ON")
@@ -143,6 +144,7 @@ fn build_rocksdb() -> Build {
     // Adding rocksdb specific compile macros.
     // TODO: should make sure crocksdb compile options is the same as rocksdb and titan.
     build.define("ROCKSDB_SUPPORT_THREAD_LOCAL", None);
+    build.define("ROCKSDB_DEFAULT_TO_ADAPTIVE_MUTEX", None);
 
     println!("cargo:rustc-link-lib=static=rocksdb");
     println!("cargo:rustc-link-lib=static=titan");

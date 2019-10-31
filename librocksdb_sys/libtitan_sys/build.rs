@@ -23,6 +23,7 @@ fn main() {
         cfg.define("FORCE_SSE42", "ON");
     }
     let dst = cfg
+        .cxxflag("-DROCKSDB_DEFAULT_TO_ADAPTIVE_MUTEX")
         .define("ROCKSDB_DIR", cur_dir.join("..").join("rocksdb"))
         .define("WITH_TITAN_TESTS", "OFF")
         .define("WITH_TITAN_TOOLS", "OFF")

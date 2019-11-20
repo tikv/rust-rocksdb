@@ -56,6 +56,10 @@ use std::process::Command;
 use std::time::SystemTime;
 use std::fs;
 
+extern crate log;
+extern crate simple_logging;
+use log::{LevelFilter, info, warn};
+
 #[derive(Default, Debug)]
 pub struct HistogramData {
     pub median: f64,
@@ -349,8 +353,9 @@ impl AutoLimiter{
     }
 
     pub fn new(_history: u64, _interval: u64, _horizon: u64, _lowerrio: u64, _lowerwio: u64) -> AutoLimiter {
-        let writebw = read_upperio("./writebw.txt".to_string());
-        let readbw = read_upperio("./readbw.txt".to_string());
+        //  deploy/data/writebw.txt
+        let writebw = read_upperio("../data/writebw.txt".to_string());
+        let readbw = read_upperio("../data/readbw.txt".to_string());
         AutoLimiter{
             //inner: RateLimiter::new_with_auto_tuned(bytes_per_sec as i64, REFILL_PERIOD, FARENESS, DBRateLimiterMode::AllIo, true),
             history: _history,

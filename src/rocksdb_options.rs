@@ -41,6 +41,20 @@ use table_properties_collector_factory::{
 };
 use titan::TitanDBOptions;
 
+use rusty_machine::linalg::Matrix;
+use rusty_machine::linalg::Vector;
+use rusty_machine::learning::lin_reg::LinRegressor;
+use rusty_machine::prelude::SupModel;
+
+use std::{thread, time};
+use std::str::FromStr;
+use std::f64;
+use partial_min_max::{min, max};
+use std::process::Command;
+use std::time::SystemTime;
+use std::fs;
+use std::ptr;
+
 #[derive(Default, Debug)]
 pub struct HistogramData {
     pub median: f64,
@@ -182,6 +196,169 @@ impl BlockBasedOptions {
             crocksdb_ffi::crocksdb_block_based_options_set_read_amp_bytes_per_bit(
                 self.inner, v as c_int,
             )
+        }
+    }
+}
+
+pub struct AutoLimiter{
+    history: u64,
+    interval: u64,
+    horizon: u64,
+    upperwio: u64,    //maximum writeIO of the current platform(tested by fio) in Bytes
+    upperrio: u64,    //maximum readIO of the current platform(tested by fio) in Bytes
+    lowerwio: u64,    //minimum readIO of the current platform(tested by fio) in Bytes
+    lowerrio: u64,    //minimum readIO of the current platform(tested by fio) in Bytes
+    //inner: RateLimiter,
+}
+
+fn read_upperio(filename: String) -> u64{
+    let mut filetext = fs::read_to_string(filename).unwrap();
+    filetext = filetext.replace("\n", "");
+    let upperio = filetext.parse().unwrap();
+    upperio
+}
+
+impl AutoLimiter{
+
+    fn get_mbps(&self, sttime: u64, entime: u64) -> f64 {
+        /*
+        Get bytes_read data from prometheus backend
+        TODO: get this data directly from RocksDB stat
+        Input:
+            sttime and entime are represented in Unix Timestamp
+        Output:
+            the result (bytes_read in Bytes) is the mean value from sttime to entime
+        */
+        let s_sttime = sttime.to_string();
+        let s_entime = entime.to_string();
+        let curlstr = format!("http://127.0.0.1:9090/api/v1/query_range?query=sum(rate(tikv_engine_flow_bytes%7Binstance%3D~%22.*%22%2C%20db%3D%22kv%22%2C%20type%3D~%22bytes_read%22%7D%5B1m%5D))&start={}&end={}&step=1", s_sttime, s_entime).to_string();
+        //println!("{}", curlstr);
+        let result = Command::new("curl").arg(curlstr).output().unwrap();
+        let sr = String::from_utf8(result.stdout).unwrap();
+        let parsed = json::parse(&sr).unwrap();
+        let calc=&parsed["data"]["result"][0]["values"];
+        let lc=calc.len();
+        let mut ret=0.0;
+        let mut cnt=0.0;
+        for i in (0..lc){
+            let tmp=&calc[i][1].as_str().unwrap();
+            let ftmp=f64::from_str(tmp).unwrap();
+            ret+=ftmp;
+            cnt+=1.0;
+        }
+        println!("get_mbps:: {} - {}", ret, cnt);
+        ret = ret/cnt;
+        //cnt==0.0 means no value in this time period(maybe because TiKV is closed)
+        if(cnt==0.0){
+            ret=0.0;
+        }
+        ret          //Bytes/s
+    }
+
+    fn linreg(&self, dx: &Vec<f64>, dy: &Vec<f64>, dt: &Vec<f64>) -> (Vec<f64>) {
+        /*
+        Linear Regression Model
+        TODO: We can choose some other functions for longer predicting period later.
+        Input:
+            dx/dy: x/y of training set
+            dt: x of predicting set
+        Return:
+            predicted y
+        */
+        let mut lin_mod = LinRegressor::default();
+        let sx = dy.len();
+        let st = dt.len();
+        let train_X = Matrix::new(sx, 1, dx.to_vec());
+        let train_y = Vector::new(dy.to_vec());
+        let pred_X = Matrix::new(st, 1, dt.to_vec());
+        lin_mod.train(&train_X, &train_y).unwrap();
+        //let parameters = lin_mod.parameters().unwrap();
+        let pred_y = lin_mod.predict(&pred_X).unwrap();
+        let mut pred_y_vec = pred_y.into_vec();
+        for i in 0..pred_y_vec.len() {
+            let mut tmp = pred_y_vec[i];
+            // prevent NaN/0 output by setting lower/upper bound
+            tmp = min(tmp, self.upperrio as f64);
+            tmp = max(tmp, self.lowerrio as f64);
+            pred_y_vec[i] = tmp;
+        }
+        pred_y_vec
+    }
+
+    fn get_recommendation_read(&self, history: u64, interval: u64, horizon: u64) -> (Vec<f64>) {
+        /*
+        Get prediction of read flow in the future
+        Input:
+            history: how many data points in the past will be used to train the model
+            interval: each data points represent 'interval' minutes read flow
+            horizon: how many data points to be predicted in the future
+        Output:
+            Vec<f64> of size==horizon: predicted value with time length==horizon
+        */
+        let mut history_X: Vec<f64>=Vec::new();
+        let mut history_y: Vec<f64>=Vec::new();
+        let mut predict_X: Vec<f64>=Vec::new();
+        let current_time = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs();
+        //training data period: train-time ~ current_time
+        let train_time = current_time - 60*interval*history;
+        //predicting data period: current_time ~ predict_time
+        let predict_time = current_time + 60*interval*horizon;
+        println!("get_recommendation_read:: {} {} {}", train_time, current_time, predict_time);
+        for i in 0..history{
+            let datapoint_start = train_time+60*interval*i;
+            let datapoint_end = datapoint_start+60*interval;
+            let datapoint_val = self.get_mbps(datapoint_start, datapoint_end);
+            history_X.push(i as f64);
+            history_y.push(datapoint_val);
+            println!("get_recommendation_read:: {} {} {} {}", i, datapoint_start, datapoint_end, datapoint_val);
+        }
+        for i in 0..horizon{
+            let datapoint_start = current_time+60*interval*i;
+            let datapoint_end = datapoint_start+60*interval;
+            predict_X.push((i+history) as f64);
+            println!("get_recommendation_read:: {} {} {}", i+history, datapoint_start, datapoint_end);
+        }
+        let predict_y = self.linreg(&history_X, &history_y, &predict_X);
+        for i in &predict_y{
+            println!("get_recommendation_read:: {}", i);
+        }
+        predict_y
+    }
+
+    fn get_recommendation_limit(&self, pred_rio: &Vec<f64>) -> i64{
+        /*
+        Get recommendation of rate limiter
+        Input:
+            pred_rio: Vec<f64>, predicted readIO from get_recommendation_read()
+        Output:
+            i64: recommended rate_bytes_per_sec for writeIO, which equals to upperwio-mean(pred_rio)
+        */
+        let mut sum: f64 = 0.0;
+        for i in pred_rio{
+            sum += i;
+        }
+        sum = sum / pred_rio.len() as f64;
+        let mut rec = self.upperwio - (sum as u64);
+        rec = max(rec, self.lowerwio);
+        println!("get_recommendation_limit:: sum--{}--", sum);
+        println!("get_recommendation_limit:: rec--{}--", rec);
+        println!("get_recommendation_limit:: uw--{}--", self.upperwio);
+        println!("get_recommendation_limit:: ur--{}--", self.upperrio);
+        rec as i64
+    }
+
+    pub fn new(_history: u64, _interval: u64, _horizon: u64, _lowerrio: u64, _lowerwio: u64) -> AutoLimiter {
+        let writebw = read_upperio("./writebw.txt".to_string());
+        let readbw = read_upperio("./readbw.txt".to_string());
+        AutoLimiter{
+            //inner: RateLimiter::new_with_auto_tuned(bytes_per_sec as i64, REFILL_PERIOD, FARENESS, DBRateLimiterMode::AllIo, true),
+            history: _history,
+            interval: _interval,
+            horizon: _horizon,
+            lowerrio: _lowerrio,
+            upperrio: readbw,
+            lowerwio: _lowerwio,
+            upperwio: writebw
         }
     }
 }

@@ -41,15 +41,17 @@ use table_properties_collector_factory::{
 };
 use titan::TitanDBOptions;
 
-use rusty_machine::linalg::Matrix;
-use rusty_machine::linalg::Vector;
-use rusty_machine::learning::lin_reg::LinRegressor;
-use rusty_machine::prelude::SupModel;
+extern crate rusty_machine;
+extern crate partial_min_max;
+use rocksdb_options::rusty_machine::linalg::Matrix;
+use rocksdb_options::rusty_machine::linalg::Vector;
+use rocksdb_options::rusty_machine::learning::lin_reg::LinRegressor;
+use rocksdb_options::rusty_machine::prelude::SupModel;
 
 use std::{thread, time};
 use std::str::FromStr;
 use std::f64;
-use partial_min_max::{min, max};
+use self::partial_min_max::{min, max};
 use std::process::Command;
 use std::time::SystemTime;
 use std::fs;

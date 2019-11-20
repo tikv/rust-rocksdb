@@ -5168,11 +5168,13 @@ crocksdb_t* ctitandb_open_column_families(
 // use ctitandb_t for titan specific functions.
 crocksdb_column_family_handle_t* ctitandb_create_column_family(
     crocksdb_t* db,
+    const crocksdb_options_t* column_family_options,
     const ctitandb_options_t* titan_column_family_options,
     const char* column_family_name,
     char** errptr) {
   // Blindly cast db into TitanDB.
   TitanDB* titan_db = reinterpret_cast<TitanDB*>(db->rep);
+  *(ColumnFamilyOptions*)&titan_column_family_options->rep = column_family_options->rep;
   crocksdb_column_family_handle_t* handle = new crocksdb_column_family_handle_t;
   SaveError(errptr,
       titan_db->CreateColumnFamily(

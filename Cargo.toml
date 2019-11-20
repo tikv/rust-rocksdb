@@ -24,6 +24,9 @@ valgrind = []
 [dependencies]
 libc = "0.2.11"
 crc = "1.2"
+json="0.12.0"
+rusty-machine="0.5.4"
+partial-min-max = "0.3.0"
 
 [dependencies.librocksdb_sys]
 path = "librocksdb_sys"

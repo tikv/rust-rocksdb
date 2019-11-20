@@ -53,7 +53,6 @@ use partial_min_max::{min, max};
 use std::process::Command;
 use std::time::SystemTime;
 use std::fs;
-use std::ptr;
 
 #[derive(Default, Debug)]
 pub struct HistogramData {

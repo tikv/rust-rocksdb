@@ -58,7 +58,7 @@ use std::fs;
 
 extern crate log;
 extern crate simple_logging;
-use log::{LevelFilter, info, warn};
+use self::log::{LevelFilter, info, warn};
 
 #[derive(Default, Debug)]
 pub struct HistogramData {

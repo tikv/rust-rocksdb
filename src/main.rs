@@ -13,7 +13,6 @@
 // limitations under the License.
 //
 
-extern crate rocksdb;
 use rocksdb::{ColumnFamilyOptions, DBOptions, MergeOperands, Writable, DB};
 
 // fn snapshot_test() {

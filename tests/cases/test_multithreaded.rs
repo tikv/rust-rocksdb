@@ -11,9 +11,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use rocksdb::{Writable, DB};
 use std::sync::Arc;
 use std::thread;
+
+use rocksdb::{Writable, DB};
 use tempdir::TempDir;
 
 const N: usize = 100_000;

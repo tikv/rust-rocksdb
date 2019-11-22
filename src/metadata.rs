@@ -11,11 +11,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crocksdb_ffi::{self, DBColumnFamilyMetaData, DBLevelMetaData, DBSstFileMetaData};
 use std::ffi::CStr;
 use std::slice;
 
 use libc::size_t;
+
+use crate::crocksdb_ffi::{self, DBColumnFamilyMetaData, DBLevelMetaData, DBSstFileMetaData};
 
 pub struct ColumnFamilyMetaData {
     inner: *mut DBColumnFamilyMetaData,
@@ -23,7 +24,7 @@ pub struct ColumnFamilyMetaData {
 
 impl ColumnFamilyMetaData {
     pub fn from_ptr(inner: *mut DBColumnFamilyMetaData) -> ColumnFamilyMetaData {
-        ColumnFamilyMetaData { inner: inner }
+        ColumnFamilyMetaData { inner }
     }
 
     pub fn get_levels(&self) -> Vec<LevelMetaData> {

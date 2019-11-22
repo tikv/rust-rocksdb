@@ -1,7 +1,9 @@
-use crocksdb_ffi::{self, DBCompactionFilter};
-use libc::{c_char, c_int, c_void, size_t};
 use std::ffi::CString;
 use std::slice;
+
+use libc::{c_char, c_int, c_void, size_t};
+
+use crate::crocksdb_ffi::{self, DBCompactionFilter};
 
 /// `CompactionFilter` allows an application to modify/delete a key-value at
 /// the time of compaction.

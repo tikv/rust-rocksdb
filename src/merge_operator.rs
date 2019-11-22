@@ -13,11 +13,12 @@
 // limitations under the License.
 //
 
-use libc::{self, c_char, c_int, c_void, size_t};
 use std::ffi::CString;
 use std::mem;
 use std::ptr;
 use std::slice;
+
+use libc::{self, c_char, c_int, c_void, size_t};
 
 pub type MergeFn = fn(&[u8], Option<&[u8]>, &mut MergeOperands) -> Vec<u8>;
 
@@ -110,8 +111,8 @@ impl MergeOperands {
     ) -> MergeOperands {
         assert!(num_operands >= 0);
         MergeOperands {
-            operands_list: operands_list,
-            operands_list_len: operands_list_len,
+            operands_list,
+            operands_list_len,
             num_operands: num_operands as usize,
             cursor: 0,
         }
@@ -149,10 +150,11 @@ impl<'a> Iterator for &'a mut MergeOperands {
 
 #[cfg(test)]
 mod test {
-    use super::*;
-    use rocksdb::{DBVector, Writable, DB};
-    use rocksdb_options::{ColumnFamilyOptions, DBOptions};
     use tempdir::TempDir;
+
+    use super::*;
+    use crate::rocksdb::{DBVector, Writable, DB};
+    use crate::rocksdb_options::{ColumnFamilyOptions, DBOptions};
 
     #[allow(unused_variables)]
     #[allow(dead_code)]

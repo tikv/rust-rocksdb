@@ -11,12 +11,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crocksdb_ffi::{self, DBEntryType, DBTablePropertiesCollector, DBUserCollectedProperties};
-use libc::{c_char, c_int, c_void, size_t};
 use std::collections::HashMap;
 use std::ffi::CString;
 use std::mem;
 use std::slice;
+
+use libc::{c_char, c_int, c_void, size_t};
+
+use crate::crocksdb_ffi::{
+    self, DBEntryType, DBTablePropertiesCollector, DBUserCollectedProperties,
+};
 
 /// `TablePropertiesCollector` provides the mechanism for users to collect
 /// their own properties that they are interested in. This class is essentially
@@ -42,7 +46,7 @@ impl TablePropertiesCollectorHandle {
     fn new(name: &str, rep: Box<dyn TablePropertiesCollector>) -> TablePropertiesCollectorHandle {
         TablePropertiesCollectorHandle {
             name: CString::new(name).unwrap(),
-            rep: rep,
+            rep,
         }
     }
 }

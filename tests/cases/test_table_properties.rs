@@ -11,14 +11,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
+use std::collections::HashMap;
+use std::fmt;
+
 use rocksdb::{
     ColumnFamilyOptions, DBEntryType, DBOptions, Range, ReadOptions, SeekKey, TableFilter,
     TableProperties, TablePropertiesCollection, TablePropertiesCollector,
     TablePropertiesCollectorFactory, UserCollectedProperties, Writable, DB,
 };
-use std::collections::HashMap;
-use std::fmt;
 use tempdir::TempDir;
 
 enum Props {
@@ -29,13 +29,13 @@ enum Props {
 }
 
 fn encode_u32(x: u32) -> Vec<u8> {
-    let mut w = Vec::new();
-    w.write_u32::<LittleEndian>(x).unwrap();
-    w
+    x.to_le_bytes().to_vec()
 }
 
-fn decode_u32(mut x: &[u8]) -> u32 {
-    x.read_u32::<LittleEndian>().unwrap()
+fn decode_u32(x: &[u8]) -> u32 {
+    let mut dst = [0u8; 4];
+    dst.copy_from_slice(&x[..4]);
+    u32::from_le_bytes(dst)
 }
 
 struct ExampleCollector {
@@ -219,9 +219,7 @@ struct BigTableFilter {
 
 impl BigTableFilter {
     pub fn new(max_entries: u64) -> BigTableFilter {
-        BigTableFilter {
-            max_entries: max_entries,
-        }
+        BigTableFilter { max_entries }
     }
 }
 

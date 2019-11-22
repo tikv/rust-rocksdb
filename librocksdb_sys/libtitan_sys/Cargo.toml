@@ -2,6 +2,7 @@
 name = "libtitan_sys"
 version = "0.0.1"
 build = "build.rs"
+edition = "2018"
 links = "titan"
 
 [dependencies]

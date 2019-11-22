@@ -1,15 +1,15 @@
 use std::ffi::{CStr, CString};
-use std::ops::Deref;
-
-use crocksdb_ffi::{self, DBCompressionType, DBTitanBlobIndex, DBTitanDBOptions};
-use librocksdb_sys::{ctitandb_encode_blob_index, DBTitanDBBlobRunMode};
-use rocksdb::Cache;
-use rocksdb_options::LRUCacheOptions;
-use std::ops::DerefMut;
-use std::os::raw::c_double;
-use std::os::raw::c_int;
+use std::ops::{Deref, DerefMut};
+use std::os::raw::{c_double, c_int};
 use std::ptr;
 use std::slice;
+
+use crate::crocksdb_ffi::{
+    self, ctitandb_encode_blob_index, DBCompressionType, DBTitanBlobIndex, DBTitanDBBlobRunMode,
+    DBTitanDBOptions,
+};
+use crate::rocksdb::Cache;
+use crate::rocksdb_options::LRUCacheOptions;
 
 pub struct TitanDBOptions {
     pub inner: *mut DBTitanDBOptions,

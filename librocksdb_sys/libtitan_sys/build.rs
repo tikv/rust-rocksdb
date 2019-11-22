@@ -1,6 +1,3 @@
-extern crate cc;
-extern crate cmake;
-
 use std::env;
 
 fn main() {
@@ -14,7 +11,7 @@ fn main() {
             zlib_path
         }
     });
-    let cur_dir = std::env::current_dir().unwrap();
+    let cur_dir = env::current_dir().unwrap();
     let mut cfg = cmake::Config::new("titan");
     if cfg!(feature = "portable") {
         cfg.define("PORTABLE", "ON");

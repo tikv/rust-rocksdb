@@ -11,13 +11,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-extern crate cc;
-extern crate cmake;
+use std::path::PathBuf;
+use std::{env, str};
 
 use cc::Build;
 use cmake::Config;
-use std::path::PathBuf;
-use std::{env, str};
 
 // On these platforms jemalloc-sys will use a prefixed jemalloc which cannot be linked together
 // with RocksDB.

@@ -11,10 +11,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use super::rocksdb::{ColumnFamilyOptions, DBOptions, WriteOptions, DB};
-use super::tempdir::TempDir;
+use rocksdb::{ColumnFamilyOptions, DBOptions, WriteOptions, DB};
+use tempdir::TempDir;
 
-use super::test::Bencher;
+use test::Bencher;
 
 fn run_bench_wal(b: &mut Bencher, name: &str, mut opts: DBOptions, wopts: WriteOptions) {
     let path = TempDir::new(name).expect("");

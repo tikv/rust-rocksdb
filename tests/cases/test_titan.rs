@@ -14,9 +14,6 @@
 use std::collections::HashMap;
 use std::ops;
 
-use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
-use tempdir::TempDir;
-
 use rand::Rng;
 use rocksdb::{
     CFHandle, ColumnFamilyOptions, CompactOptions, DBBottommostLevelCompaction, DBCompressionType,
@@ -24,15 +21,16 @@ use rocksdb::{
     TablePropertiesCollectorFactory, TitanBlobIndex, TitanDBOptions, UserCollectedProperties,
     Writable, DB,
 };
+use tempdir::TempDir;
 
 fn encode_u32(x: u32) -> Vec<u8> {
-    let mut w = Vec::new();
-    w.write_u32::<LittleEndian>(x).unwrap();
-    w
+    x.to_le_bytes().to_vec()
 }
 
-fn decode_u32(mut x: &[u8]) -> u32 {
-    x.read_u32::<LittleEndian>().unwrap()
+fn decode_u32(x: &[u8]) -> u32 {
+    let mut dst = [0u8; 4];
+    dst.copy_from_slice(&x[..4]);
+    u32::from_le_bytes(dst)
 }
 
 #[derive(Default)]

@@ -11,7 +11,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use rocksdb::*;
+use rocksdb::{
+    BlockBasedOptions, ColumnFamilyOptions, DBOptions, SeekKey, SliceTransform, WriteOptions, DB,
+};
 use tempdir::TempDir;
 
 struct FixedPrefixTransform {
@@ -94,6 +96,6 @@ fn test_prefix_extractor_compatibility() {
             key_count = key_count + 1;
             iter.next();
         }
-        assert!(key_count == 9);
+        assert_eq!(key_count, 9);
     }
 }

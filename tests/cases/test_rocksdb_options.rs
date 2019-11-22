@@ -11,6 +11,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::path::Path;
+use std::sync::Arc;
+use std::thread;
+use std::time::Duration;
+
 use rocksdb::crocksdb_ffi::{
     CompactionPriority, DBCompressionType, DBInfoLogLevel as InfoLogLevel, DBRateLimiterMode,
     DBStatisticsHistogramType as HistogramType, DBStatisticsTickerType as TickerType,
@@ -20,10 +25,6 @@ use rocksdb::{
     FifoCompactionOptions, IndexType, LRUCacheOptions, ReadOptions, SeekKey, SliceTransform,
     Writable, WriteOptions, DB,
 };
-use std::path::Path;
-use std::sync::Arc;
-use std::thread;
-use std::time::Duration;
 use tempdir::TempDir;
 
 #[test]
@@ -321,6 +322,7 @@ fn test_set_lru_cache() {
 #[cfg(feature = "jemalloc")]
 #[test]
 fn test_set_jemalloc_nodump_allocator_for_lru_cache() {
+    use rocksdb::MemoryAllocator;
     let path = TempDir::new("_rust_rocksdb_set_jemalloc_nodump_allocator").expect("");
     let mut opts = DBOptions::new();
     let mut cf_opts = ColumnFamilyOptions::new();
@@ -707,7 +709,7 @@ fn test_read_options() {
         key_count = key_count + 1;
         iter.next();
     }
-    assert!(key_count == 3);
+    assert_eq!(key_count, 3);
 }
 
 #[test]

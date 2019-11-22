@@ -13,10 +13,11 @@
 // limitations under the License.
 //
 
-use libc::{c_char, c_int, c_void, size_t};
 use std::ffi::CString;
 use std::mem;
 use std::slice;
+
+use libc::{c_char, c_int, c_void, size_t};
 
 pub struct ComparatorCallback {
     pub name: CString,

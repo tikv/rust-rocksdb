@@ -11,10 +11,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crocksdb_ffi::DBTableProperties;
-use libc::{c_int, c_void};
 use std::mem;
-use table_properties::TableProperties;
+
+use libc::{c_int, c_void};
+
+use crate::crocksdb_ffi::DBTableProperties;
+use crate::table_properties::TableProperties;
 
 pub trait TableFilter {
     // A callback to determine whether relevant keys for this scan exist in a

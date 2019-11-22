@@ -11,9 +11,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crc::crc32::{self, Digest, Hasher32};
-use rocksdb::*;
 use std::fs;
+
+use crc::crc32::{self, Digest, Hasher32};
+use rocksdb::{
+    CFHandle, ColumnFamilyOptions, DBOptions, EnvOptions, IngestExternalFileOptions, SeekKey,
+    SliceTransform, SstFileWriter, Writable, WriteBatch, DB,
+};
 use tempdir::TempDir;
 
 fn gen_sst(opt: ColumnFamilyOptions, cf: Option<&CFHandle>, path: &str) {
@@ -601,9 +605,7 @@ pub struct FixedSuffixSliceTransform {
 
 impl FixedSuffixSliceTransform {
     pub fn new(suffix_len: usize) -> FixedSuffixSliceTransform {
-        FixedSuffixSliceTransform {
-            suffix_len: suffix_len,
-        }
+        FixedSuffixSliceTransform { suffix_len }
     }
 }
 

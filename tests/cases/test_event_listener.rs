@@ -11,11 +11,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use cases::test_ingest_external_file::gen_sst;
-use rocksdb::*;
 use std::sync::atomic::*;
 use std::sync::Arc;
+
+use rocksdb::{
+    ColumnFamilyOptions, CompactionJobInfo, CompactionReason, DBBackgroundErrorReason, DBOptions,
+    EventListener, FlushJobInfo, IngestExternalFileOptions, IngestionInfo, Writable,
+    WriteStallCondition, WriteStallInfo, DB,
+};
 use tempdir::TempDir;
+
+use crate::cases::test_ingest_external_file::gen_sst;
 
 #[derive(Default, Clone)]
 struct EventCounter {

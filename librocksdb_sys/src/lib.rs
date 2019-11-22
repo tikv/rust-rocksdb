@@ -14,13 +14,11 @@
 //
 
 extern crate bzip2_sys;
-extern crate libc;
-#[cfg(test)]
-extern crate tempdir;
 
-use libc::{c_char, c_double, c_int, c_uchar, c_void, size_t};
 use std::ffi::CStr;
 use std::fmt;
+
+use libc::{c_char, c_double, c_int, c_uchar, c_void, size_t};
 
 pub enum Options {}
 pub enum ColumnFamilyDescriptor {}
@@ -2040,11 +2038,13 @@ extern "C" {
 
 #[cfg(test)]
 mod test {
-    use super::*;
-    use libc::{self, c_void};
     use std::ffi::{CStr, CString};
     use std::{fs, ptr, slice};
+
+    use libc::{self, c_void};
     use tempdir::TempDir;
+
+    use super::*;
 
     #[test]
     fn internal() {

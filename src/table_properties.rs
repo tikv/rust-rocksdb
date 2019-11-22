@@ -11,14 +11,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crocksdb_ffi::{
-    self, DBTableProperties, DBTablePropertiesCollection, DBTablePropertiesCollectionIterator,
-    DBTableProperty, DBUserCollectedProperties, DBUserCollectedPropertiesIterator,
-};
-use libc::size_t;
 use std::marker::PhantomData;
 use std::ops::{Deref, Index};
 use std::{mem, slice, str};
+
+use libc::size_t;
+
+use crate::crocksdb_ffi::{
+    self, DBTableProperties, DBTablePropertiesCollection, DBTablePropertiesCollectionIterator,
+    DBTableProperty, DBUserCollectedProperties, DBUserCollectedPropertiesIterator,
+};
 
 pub struct TablePropertiesCollectionView(DBTablePropertiesCollection);
 

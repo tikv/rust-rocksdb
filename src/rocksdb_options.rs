@@ -13,9 +13,17 @@
 // limitations under the License.
 //
 
-use compaction_filter::{new_compaction_filter, CompactionFilter, CompactionFilterHandle};
-use comparator::{self, compare_callback, ComparatorCallback};
-use crocksdb_ffi::{
+use std::ffi::{CStr, CString};
+use std::mem;
+use std::path::Path;
+use std::ptr;
+use std::sync::Arc;
+
+use libc::{self, c_double, c_int, c_uchar, c_void, size_t};
+
+use crate::compaction_filter::{new_compaction_filter, CompactionFilter, CompactionFilterHandle};
+use crate::comparator::{self, compare_callback, ComparatorCallback};
+use crate::crocksdb_ffi::{
     self, DBBlockBasedTableOptions, DBBottommostLevelCompaction, DBCompactOptions,
     DBCompactionOptions, DBCompressionType, DBFifoCompactionOptions, DBFlushOptions,
     DBInfoLogLevel, DBInstance, DBLRUCacheOptions, DBRateLimiter, DBRateLimiterMode, DBReadOptions,
@@ -23,23 +31,19 @@ use crocksdb_ffi::{
     DBStatisticsTickerType, DBTitanDBOptions, DBTitanReadOptions, DBWriteOptions, IndexType,
     Options,
 };
-use event_listener::{new_event_listener, EventListener};
-use libc::{self, c_double, c_int, c_uchar, c_void, size_t};
-use merge_operator::MergeFn;
-use merge_operator::{self, full_merge_callback, partial_merge_callback, MergeOperatorCallback};
-use rocksdb::Env;
-use rocksdb::{Cache, MemoryAllocator};
-use slice_transform::{new_slice_transform, SliceTransform};
-use std::ffi::{CStr, CString};
-use std::mem;
-use std::path::Path;
-use std::ptr;
-use std::sync::Arc;
-use table_filter::{destroy_table_filter, table_filter, TableFilter};
-use table_properties_collector_factory::{
+use crate::event_listener::{new_event_listener, EventListener};
+use crate::merge_operator::MergeFn;
+use crate::merge_operator::{
+    self, full_merge_callback, partial_merge_callback, MergeOperatorCallback,
+};
+use crate::rocksdb::Env;
+use crate::rocksdb::{Cache, MemoryAllocator};
+use crate::slice_transform::{new_slice_transform, SliceTransform};
+use crate::table_filter::{destroy_table_filter, table_filter, TableFilter};
+use crate::table_properties_collector_factory::{
     new_table_properties_collector_factory, TablePropertiesCollectorFactory,
 };
-use titan::TitanDBOptions;
+use crate::titan::TitanDBOptions;
 
 #[derive(Default, Debug)]
 pub struct HistogramData {
@@ -679,7 +683,7 @@ impl DBOptions {
 
     pub unsafe fn from_raw(inner: *mut Options) -> DBOptions {
         DBOptions {
-            inner: inner,
+            inner,
             env: None,
             titan_inner: ptr::null_mut::<DBTitanDBOptions>(),
         }
@@ -1274,7 +1278,7 @@ impl ColumnFamilyOptions {
     pub fn add_merge_operator(&mut self, name: &str, merge_fn: MergeFn) {
         let cb = Box::new(MergeOperatorCallback {
             name: CString::new(name.as_bytes()).unwrap(),
-            merge_fn: merge_fn,
+            merge_fn,
         });
 
         unsafe {
@@ -1674,7 +1678,7 @@ impl CColumnFamilyDescriptor {
         CColumnFamilyDescriptor { inner }
     }
 
-    pub fn name<'a>(&'a self) -> &'a str {
+    pub fn name(&self) -> &str {
         unsafe {
             let raw_cf_name = crocksdb_ffi::crocksdb_name_from_column_family_descriptor(self.inner);
             CStr::from_ptr(raw_cf_name).to_str().unwrap()

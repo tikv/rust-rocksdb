@@ -13,12 +13,8 @@
 // limitations under the License.
 //
 
-extern crate core;
-extern crate libc;
 #[macro_use]
 pub extern crate librocksdb_sys;
-#[cfg(test)]
-extern crate tempdir;
 
 pub use compaction_filter::CompactionFilter;
 pub use event_listener::{

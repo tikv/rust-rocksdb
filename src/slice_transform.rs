@@ -11,10 +11,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crocksdb_ffi::{self, DBSliceTransform};
-use libc::{c_char, c_void, size_t};
 use std::ffi::CString;
 use std::slice;
+
+use libc::{c_char, c_void, size_t};
+
+use crate::crocksdb_ffi::{self, DBSliceTransform};
 
 // `SliceTranform` is a generic pluggable way of transforming one string
 // mainly used for prefix blooms.

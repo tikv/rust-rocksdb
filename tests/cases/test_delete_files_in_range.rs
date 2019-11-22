@@ -13,8 +13,11 @@
 
 use std::ops;
 
-use rand::{self, Rng};
-use rocksdb::*;
+use rand::{self, RngCore};
+use rocksdb::{
+    CFHandle, ColumnFamilyOptions, CompactOptions, DBBottommostLevelCompaction, DBOptions, Range,
+    SeekKey, Writable, DB,
+};
 use tempdir::TempDir;
 
 fn initial_data(path: &str) -> DB {

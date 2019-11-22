@@ -11,8 +11,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use rocksdb::*;
-use rocksdb::{DBStatisticsHistogramType as HistogramType, DBStatisticsTickerType as TickerType};
+use rocksdb::{
+    DBOptions, DBStatisticsHistogramType as HistogramType, DBStatisticsTickerType as TickerType,
+    WriteOptions, DB,
+};
 use tempdir::TempDir;
 
 #[test]

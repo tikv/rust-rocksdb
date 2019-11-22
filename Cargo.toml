@@ -2,6 +2,7 @@
 name = "rocksdb"
 description = "A Rust wrapper for Facebook's RocksDB embeddable database."
 version = "0.3.0"
+edition = "2018"
 authors = ["Tyler Neely <t@jujit.su>", "David Greenberg <dsg123456789@gmail.com>"]
 license = "Apache-2.0"
 keywords = ["database", "embedded", "LSM-tree", "persistence"]
@@ -23,12 +24,11 @@ valgrind = []
 
 [dependencies]
 libc = "0.2.11"
-crc = "1.2"
 
 [dependencies.librocksdb_sys]
 path = "librocksdb_sys"
 
 [dev-dependencies]
-byteorder = "1.0.0"
-rand = "0.3"
+rand = "0.7"
+crc = "1.8"
 tempdir = "0.3"

@@ -11,10 +11,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crocksdb_ffi::{self, DBTablePropertiesCollector, DBTablePropertiesCollectorFactory};
-use libc::{c_char, c_void};
 use std::ffi::CString;
-use table_properties_collector::{new_table_properties_collector, TablePropertiesCollector};
+
+use libc::{c_char, c_void};
+
+use crate::crocksdb_ffi::{self, DBTablePropertiesCollector, DBTablePropertiesCollectorFactory};
+use crate::table_properties_collector::{new_table_properties_collector, TablePropertiesCollector};
 
 /// Constructs `TablePropertiesCollector`.
 /// Internals create a new `TablePropertiesCollector` for each new table.
@@ -35,7 +37,7 @@ impl TablePropertiesCollectorFactoryHandle {
     ) -> TablePropertiesCollectorFactoryHandle {
         TablePropertiesCollectorFactoryHandle {
             name: CString::new(name).unwrap(),
-            rep: rep,
+            rep,
         }
     }
 }

@@ -11,7 +11,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crocksdb_ffi::{self, DBEntryType, DBTablePropertiesCollector, DBUserCollectedProperties};
+use crocksdb_ffi::{
+    self, crocksdb_table_properties_collector_t, crocksdb_user_collected_properties_t, DBEntryType,
+};
 use libc::{c_char, c_int, c_void, size_t};
 use std::collections::HashMap;
 use std::ffi::CString;
@@ -26,7 +28,7 @@ use std::slice;
 /// TablePropertiesCollector object per table and then call it sequentially
 pub trait TablePropertiesCollector {
     /// Will be called when a new key/value pair is inserted into the table.
-    fn add(&mut self, key: &[u8], value: &[u8], entry_type: DBEntryType, seq: u64, file_size: u64);
+    fn add(&mut self, key: &[i8], value: &[i8], entry_type: DBEntryType, seq: u64, file_size: u64);
 
     /// Will be called when a table has already been built and is ready for
     /// writing the properties block.
@@ -62,9 +64,9 @@ extern "C" fn destruct(handle: *mut c_void) {
 
 pub extern "C" fn add(
     handle: *mut c_void,
-    key: *const u8,
+    key: *const i8,
     key_len: size_t,
-    value: *const u8,
+    value: *const i8,
     value_len: size_t,
     entry_type: c_int,
     seq: u64,
@@ -80,15 +82,15 @@ pub extern "C" fn add(
     }
 }
 
-pub extern "C" fn finish(handle: *mut c_void, props: *mut DBUserCollectedProperties) {
+pub extern "C" fn finish(handle: *mut c_void, props: *mut crocksdb_user_collected_properties_t) {
     unsafe {
         let handle = &mut *(handle as *mut TablePropertiesCollectorHandle);
         for (key, value) in handle.rep.finish() {
             crocksdb_ffi::crocksdb_user_collected_properties_add(
                 props,
-                key.as_ptr(),
+                key.as_ptr() as *const i8,
                 key.len(),
-                value.as_ptr(),
+                value.as_ptr() as *const i8,
                 value.len(),
             );
         }
@@ -98,13 +100,13 @@ pub extern "C" fn finish(handle: *mut c_void, props: *mut DBUserCollectedPropert
 pub unsafe fn new_table_properties_collector(
     cname: &str,
     collector: Box<dyn TablePropertiesCollector>,
-) -> *mut DBTablePropertiesCollector {
+) -> *mut crocksdb_table_properties_collector_t {
     let handle = TablePropertiesCollectorHandle::new(cname, collector);
     crocksdb_ffi::crocksdb_table_properties_collector_create(
         Box::into_raw(Box::new(handle)) as *mut c_void,
-        name,
-        destruct,
-        add,
-        finish,
+        Some(name),
+        Some(destruct),
+        Some(add),
+        Some(finish),
     )
 }

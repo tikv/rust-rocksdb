@@ -12,9 +12,10 @@
 // limitations under the License.
 
 use crocksdb_ffi::{
-    self, CompactionReason, DBBackgroundErrorReason, DBCompactionJobInfo, DBEventListener,
-    DBFlushJobInfo, DBIngestionInfo, DBInstance, DBStatusPtr, DBWriteStallInfo,
-    WriteStallCondition,
+    self, crocksdb_backgrounderrorreason_t, crocksdb_compaction_reason_t,
+    crocksdb_compactionjobinfo_t, crocksdb_eventlistener_t, crocksdb_externalfileingestioninfo_t,
+    crocksdb_flushjobinfo_t, crocksdb_status_ptr_t, crocksdb_t, crocksdb_writestallcondition_t,
+    crocksdb_writestallinfo_t,
 };
 use libc::c_void;
 use std::path::Path;
@@ -31,7 +32,7 @@ macro_rules! fetch_str {
 }
 
 #[repr(transparent)]
-pub struct FlushJobInfo(DBFlushJobInfo);
+pub struct FlushJobInfo(crocksdb_flushjobinfo_t);
 
 impl FlushJobInfo {
     pub fn cf_name(&self) -> &str {
@@ -51,16 +52,16 @@ impl FlushJobInfo {
     }
 
     pub fn triggered_writes_slowdown(&self) -> bool {
-        unsafe { crocksdb_ffi::crocksdb_flushjobinfo_triggered_writes_slowdown(&self.0) }
+        unsafe { crocksdb_ffi::crocksdb_flushjobinfo_triggered_writes_slowdown(&self.0) != 0 }
     }
 
     pub fn triggered_writes_stop(&self) -> bool {
-        unsafe { crocksdb_ffi::crocksdb_flushjobinfo_triggered_writes_stop(&self.0) }
+        unsafe { crocksdb_ffi::crocksdb_flushjobinfo_triggered_writes_stop(&self.0) != 0 }
     }
 }
 
 #[repr(transparent)]
-pub struct CompactionJobInfo(DBCompactionJobInfo);
+pub struct CompactionJobInfo(crocksdb_compactionjobinfo_t);
 
 impl CompactionJobInfo {
     pub fn status(&self) -> Result<(), String> {
@@ -125,13 +126,13 @@ impl CompactionJobInfo {
         unsafe { crocksdb_ffi::crocksdb_compactionjobinfo_total_output_bytes(&self.0) }
     }
 
-    pub fn compaction_reason(&self) -> CompactionReason {
-        unsafe { crocksdb_ffi::crocksdb_compactionjobinfo_compaction_reason(&self.0) }
+    pub fn compaction_reason(&self) -> crocksdb_compaction_reason_t {
+        unsafe { *crocksdb_ffi::crocksdb_compactionjobinfo_compaction_reason(&self.0) }
     }
 }
 
 #[repr(transparent)]
-pub struct IngestionInfo(DBIngestionInfo);
+pub struct IngestionInfo(crocksdb_externalfileingestioninfo_t);
 
 impl IngestionInfo {
     pub fn cf_name(&self) -> &str {
@@ -156,16 +157,16 @@ impl IngestionInfo {
 }
 
 #[repr(transparent)]
-pub struct WriteStallInfo(DBWriteStallInfo);
+pub struct WriteStallInfo(crocksdb_writestallinfo_t);
 
 impl WriteStallInfo {
     pub fn cf_name(&self) -> &str {
         unsafe { fetch_str!(crocksdb_writestallinfo_cf_name(&self.0)) }
     }
-    pub fn cur(&self) -> WriteStallCondition {
+    pub fn cur(&self) -> crocksdb_writestallcondition_t {
         unsafe { *crocksdb_ffi::crocksdb_writestallinfo_cur(&self.0) }
     }
-    pub fn prev(&self) -> WriteStallCondition {
+    pub fn prev(&self) -> crocksdb_writestallcondition_t {
         unsafe { *crocksdb_ffi::crocksdb_writestallinfo_prev(&self.0) }
     }
 }
@@ -183,7 +184,7 @@ pub trait EventListener: Send + Sync {
     fn on_flush_completed(&self, _: &FlushJobInfo) {}
     fn on_compaction_completed(&self, _: &CompactionJobInfo) {}
     fn on_external_file_ingested(&self, _: &IngestionInfo) {}
-    fn on_background_error(&self, _: DBBackgroundErrorReason, _: Result<(), String>) {}
+    fn on_background_error(&self, _: crocksdb_backgrounderrorreason_t, _: Result<(), String>) {}
     fn on_stall_conditions_changed(&self, _: &WriteStallInfo) {}
 }
 
@@ -197,8 +198,8 @@ extern "C" fn destructor(ctx: *mut c_void) {
 // TODO: refactor DB implement so that we can convert DBInstance to DB.
 extern "C" fn on_flush_completed(
     ctx: *mut c_void,
-    _: *mut DBInstance,
-    info: *const DBFlushJobInfo,
+    _: *mut crocksdb_t,
+    info: *const crocksdb_flushjobinfo_t,
 ) {
     let (ctx, info) = unsafe {
         (
@@ -211,8 +212,8 @@ extern "C" fn on_flush_completed(
 
 extern "C" fn on_compaction_completed(
     ctx: *mut c_void,
-    _: *mut DBInstance,
-    info: *const DBCompactionJobInfo,
+    _: *mut crocksdb_t,
+    info: *const crocksdb_compactionjobinfo_t,
 ) {
     let (ctx, info) = unsafe {
         (
@@ -225,8 +226,8 @@ extern "C" fn on_compaction_completed(
 
 extern "C" fn on_external_file_ingested(
     ctx: *mut c_void,
-    _: *mut DBInstance,
-    info: *const DBIngestionInfo,
+    _: *mut crocksdb_t,
+    info: *const crocksdb_externalfileingestioninfo_t,
 ) {
     let (ctx, info) = unsafe {
         (
@@ -239,8 +240,8 @@ extern "C" fn on_external_file_ingested(
 
 extern "C" fn on_background_error(
     ctx: *mut c_void,
-    reason: DBBackgroundErrorReason,
-    status: *mut DBStatusPtr,
+    reason: crocksdb_backgrounderrorreason_t,
+    status: *mut crocksdb_status_ptr_t,
 ) {
     let (ctx, result) = unsafe {
         (
@@ -254,7 +255,10 @@ extern "C" fn on_background_error(
     ctx.on_background_error(reason, result);
 }
 
-extern "C" fn on_stall_conditions_changed(ctx: *mut c_void, info: *const DBWriteStallInfo) {
+extern "C" fn on_stall_conditions_changed(
+    ctx: *mut c_void,
+    info: *const crocksdb_writestallinfo_t,
+) {
     let (ctx, info) = unsafe {
         (
             &*(ctx as *mut Box<dyn EventListener>),
@@ -264,17 +268,17 @@ extern "C" fn on_stall_conditions_changed(ctx: *mut c_void, info: *const DBWrite
     ctx.on_stall_conditions_changed(info);
 }
 
-pub fn new_event_listener<L: EventListener>(l: L) -> *mut DBEventListener {
+pub fn new_event_listener<L: EventListener>(l: L) -> *mut crocksdb_eventlistener_t {
     let p: Box<dyn EventListener> = Box::new(l);
     unsafe {
         crocksdb_ffi::crocksdb_eventlistener_create(
             Box::into_raw(Box::new(p)) as *mut c_void,
-            destructor,
-            on_flush_completed,
-            on_compaction_completed,
-            on_external_file_ingested,
-            on_background_error,
-            on_stall_conditions_changed,
+            Some(destructor),
+            Some(on_flush_completed),
+            Some(on_compaction_completed),
+            Some(on_external_file_ingested),
+            Some(on_background_error),
+            Some(on_stall_conditions_changed),
         )
     }
 }

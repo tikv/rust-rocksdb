@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crocksdb_ffi::DBTableProperties;
+use crocksdb_ffi::crocksdb_table_properties_t;
 use libc::{c_int, c_void};
 use table_properties::TableProperties;
 
@@ -24,7 +24,10 @@ pub trait TableFilter {
     fn table_filter(&self, props: &TableProperties) -> bool;
 }
 
-pub extern "C" fn table_filter(ctx: *mut c_void, props: *const DBTableProperties) -> c_int {
+pub extern "C" fn table_filter(
+    ctx: *mut c_void,
+    props: *const crocksdb_table_properties_t,
+) -> c_int {
     unsafe {
         let filter = &*(ctx as *mut Box<dyn TableFilter>);
         let props = &*(props as *const TableProperties);

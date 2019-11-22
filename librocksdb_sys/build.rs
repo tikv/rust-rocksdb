@@ -11,6 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+extern crate bindgen;
 extern crate cc;
 extern crate cmake;
 
@@ -133,6 +134,17 @@ fn build_rocksdb() -> Build {
     } else if cfg!(target_os = "freebsd") {
         build.define("OS_FREEBSD", None);
     }
+
+    let bindings = bindgen::Builder::default()
+        .header("crocksdb/crocksdb/c.h")
+        .ctypes_prefix("libc")
+        .generate()
+        .expect("unable to generate rocksdb bindings");
+
+    let out_path = PathBuf::from(env::var("OUT_DIR").unwrap());
+    bindings
+        .write_to_file(out_path.join("bindings.rs"))
+        .expect("unable to write rocksdb bindings");
 
     let cur_dir = env::current_dir().unwrap();
     build.include(cur_dir.join("rocksdb").join("include"));

@@ -13,12 +13,12 @@
 // limitations under the License.
 
 use crocksdb_ffi::{
-    self, DBBackupEngine, DBCFHandle, DBCache, DBCompressionType, DBEnv, DBInstance, DBMapProperty,
-    DBPinnableSlice, DBSequentialFile, DBStatisticsHistogramType, DBStatisticsTickerType,
-    DBTitanDBOptions, DBWriteBatch,
+    self, crocksdb_backup_engine_t, crocksdb_cache_t, crocksdb_column_family_handle_t,
+    crocksdb_env_t, crocksdb_map_property_t, crocksdb_memory_allocator_t, crocksdb_pinnableslice_t,
+    crocksdb_sequential_file_t, crocksdb_t, crocksdb_writebatch_t, ctitandb_options_t,
+    DBStatisticsHistogramType, DBStatisticsTickerType,
 };
 use libc::{self, c_char, c_int, c_void, size_t};
-use librocksdb_sys::DBMemoryAllocator;
 use metadata::ColumnFamilyMetaData;
 use rocksdb_options::{
     CColumnFamilyDescriptor, ColumnFamilyDescriptor, ColumnFamilyOptions, CompactOptions,
@@ -41,9 +41,11 @@ use std::{fs, ptr, slice};
 
 use table_properties::{TableProperties, TablePropertiesCollection};
 use titan::TitanDBOptions;
+use util::opt_bytes_to_ptr;
+use DBCompressionType;
 
 pub struct CFHandle {
-    inner: *mut DBCFHandle,
+    inner: *mut crocksdb_column_family_handle_t,
 }
 
 impl CFHandle {
@@ -98,7 +100,7 @@ fn build_cstring_list(str_list: &[&str]) -> Vec<CString> {
 }
 
 pub struct MapProperty {
-    inner: *mut DBMapProperty,
+    inner: *mut crocksdb_map_property_t,
 }
 
 impl Drop for MapProperty {
@@ -137,7 +139,7 @@ impl MapProperty {
 }
 
 pub struct DB {
-    inner: *mut DBInstance,
+    inner: *mut crocksdb_t,
     cfs: BTreeMap<String, CFHandle>,
     path: String,
     opts: DBOptions,
@@ -161,7 +163,7 @@ impl DB {
 }
 
 pub struct WriteBatch {
-    inner: *mut DBWriteBatch,
+    inner: *mut crocksdb_writebatch_t,
 }
 
 unsafe impl Send for WriteBatch {}
@@ -174,7 +176,7 @@ pub struct Snapshot<D: Deref<Target = DB>> {
 pub struct DBIterator<D> {
     _db: D,
     _readopts: ReadOptions,
-    inner: *mut crocksdb_ffi::DBIterator,
+    inner: *mut crocksdb_ffi::crocksdb_iterator_t,
 }
 
 pub enum SeekKey<'a> {
@@ -241,9 +243,11 @@ impl<D> DBIterator<D> {
             match key {
                 SeekKey::Start => crocksdb_ffi::crocksdb_iter_seek_to_first(self.inner),
                 SeekKey::End => crocksdb_ffi::crocksdb_iter_seek_to_last(self.inner),
-                SeekKey::Key(key) => {
-                    crocksdb_ffi::crocksdb_iter_seek(self.inner, key.as_ptr(), key.len() as size_t)
-                }
+                SeekKey::Key(key) => crocksdb_ffi::crocksdb_iter_seek(
+                    self.inner,
+                    key.as_ptr() as *const i8,
+                    key.len() as size_t,
+                ),
             }
         }
         self.valid()
@@ -256,7 +260,7 @@ impl<D> DBIterator<D> {
                 SeekKey::End => crocksdb_ffi::crocksdb_iter_seek_to_last(self.inner),
                 SeekKey::Key(key) => crocksdb_ffi::crocksdb_iter_seek_for_prev(
                     self.inner,
-                    key.as_ptr(),
+                    key.as_ptr() as *const i8,
                     key.len() as size_t,
                 ),
             }
@@ -286,7 +290,7 @@ impl<D> DBIterator<D> {
         let key_len_ptr: *mut size_t = &mut key_len;
         unsafe {
             let key_ptr = crocksdb_ffi::crocksdb_iter_key(self.inner, key_len_ptr);
-            slice::from_raw_parts(key_ptr, key_len as usize)
+            slice::from_raw_parts(key_ptr as *const u8, key_len as usize)
         }
     }
 
@@ -297,7 +301,7 @@ impl<D> DBIterator<D> {
         let val_len_ptr: *mut size_t = &mut val_len;
         unsafe {
             let val_ptr = crocksdb_ffi::crocksdb_iter_value(self.inner, val_len_ptr);
-            slice::from_raw_parts(val_ptr, val_len as usize)
+            slice::from_raw_parts(val_ptr as *const u8, val_len as usize)
         }
     }
 
@@ -311,7 +315,7 @@ impl<D> DBIterator<D> {
     }
 
     pub fn valid(&self) -> Result<bool, String> {
-        let valid = unsafe { crocksdb_ffi::crocksdb_iter_valid(self.inner) };
+        let valid = unsafe { crocksdb_ffi::crocksdb_iter_valid(self.inner) != 0 };
         if !valid {
             self.status()?;
         }
@@ -537,6 +541,7 @@ impl DB {
         DB::open_cf_internal(opts, path, cfds, &[], Some(error_if_log_file_exist))
     }
 
+    #[allow(tyvar_behind_raw_pointer)]
     fn open_cf_internal<'a, T>(
         opts: DBOptions,
         path: &str,
@@ -574,7 +579,7 @@ impl DB {
         let cf_handles: Vec<_> = vec![ptr::null_mut(); cf_names.len()];
         let cf_options: Vec<_> = options
             .iter()
-            .map(|x| x.inner as *const crocksdb_ffi::Options)
+            .map(|x| x.inner as *const crocksdb_ffi::crocksdb_options_t)
             .collect();
         let titan_cf_options: Vec<_> = options
             .iter()
@@ -597,10 +602,12 @@ impl DB {
             let db_options = opts.inner;
             let db_path = cpath.as_ptr();
             let db_cfs_count = cf_names.len() as c_int;
-            let db_cf_ptrs = cf_names.as_ptr();
-            let db_cf_opts = cf_options.as_ptr();
-            let titan_cf_opts = titan_cf_options.as_ptr();
-            let db_cf_handles = cf_handles.as_ptr();
+            let db_cf_ptrs = cf_names.as_ptr() as *mut *const i8;
+            let db_cf_opts = cf_options.as_ptr() as *mut *const librocksdb_sys::crocksdb_options_t;
+            let titan_cf_opts =
+                titan_cf_options.as_ptr() as *mut *const librocksdb_sys::ctitandb_options_t;
+            let db_cf_handles =
+                cf_handles.as_ptr() as *mut *mut librocksdb_sys::crocksdb_column_family_handle_t;
 
             let titan_options = opts.titan_inner;
             if !titan_options.is_null() {
@@ -621,7 +628,7 @@ impl DB {
                             db_cf_ptrs,
                             db_cf_opts,
                             db_cf_handles,
-                            flag
+                            flag as u8
                         ))
                     }
                 } else if titan_options.is_null() {
@@ -660,7 +667,7 @@ impl DB {
                         db_cf_ptrs,
                         db_cf_opts,
                         ttl_array,
-                        readonly,
+                        readonly as u8,
                         db_cf_handles
                     ))
                 }
@@ -780,7 +787,7 @@ impl DB {
             let val = ffi_try!(crocksdb_get_pinned(
                 self.inner,
                 readopts.get_inner(),
-                key.as_ptr(),
+                key.as_ptr() as *const i8,
                 key.len() as size_t
             ));
             if val.is_null() {
@@ -806,7 +813,7 @@ impl DB {
                 self.inner,
                 readopts.get_inner(),
                 cf.inner,
-                key.as_ptr(),
+                key.as_ptr() as *const i8,
                 key.len() as size_t
             ));
             if val.is_null() {
@@ -922,9 +929,9 @@ impl DB {
             ffi_try!(crocksdb_put(
                 self.inner,
                 writeopts.inner,
-                key.as_ptr(),
+                key.as_ptr() as *const i8,
                 key.len() as size_t,
-                value.as_ptr(),
+                value.as_ptr() as *const i8,
                 value.len() as size_t
             ));
             Ok(())
@@ -943,9 +950,9 @@ impl DB {
                 self.inner,
                 writeopts.inner,
                 cf.inner,
-                key.as_ptr(),
+                key.as_ptr() as *const i8,
                 key.len() as size_t,
-                value.as_ptr(),
+                value.as_ptr() as *const i8,
                 value.len() as size_t
             ));
             Ok(())
@@ -961,9 +968,9 @@ impl DB {
             ffi_try!(crocksdb_merge(
                 self.inner,
                 writeopts.inner,
-                key.as_ptr(),
+                key.as_ptr() as *const i8,
                 key.len() as size_t,
-                value.as_ptr(),
+                value.as_ptr() as *const i8,
                 value.len() as size_t
             ));
             Ok(())
@@ -981,9 +988,9 @@ impl DB {
                 self.inner,
                 writeopts.inner,
                 cf.inner,
-                key.as_ptr(),
+                key.as_ptr() as *const i8,
                 key.len() as size_t,
-                value.as_ptr(),
+                value.as_ptr() as *const i8,
                 value.len() as size_t
             ));
             Ok(())
@@ -994,7 +1001,7 @@ impl DB {
             ffi_try!(crocksdb_delete(
                 self.inner,
                 writeopts.inner,
-                key.as_ptr(),
+                key.as_ptr() as *const i8,
                 key.len() as size_t
             ));
             Ok(())
@@ -1012,7 +1019,7 @@ impl DB {
                 self.inner,
                 writeopts.inner,
                 cf.inner,
-                key.as_ptr(),
+                key.as_ptr() as *const i8,
                 key.len() as size_t
             ));
             Ok(())
@@ -1024,7 +1031,7 @@ impl DB {
             ffi_try!(crocksdb_single_delete(
                 self.inner,
                 writeopts.inner,
-                key.as_ptr(),
+                key.as_ptr() as *const i8,
                 key.len() as size_t
             ));
             Ok(())
@@ -1042,7 +1049,7 @@ impl DB {
                 self.inner,
                 writeopts.inner,
                 cf.inner,
-                key.as_ptr(),
+                key.as_ptr() as *const i8,
                 key.len() as size_t
             ));
             Ok(())
@@ -1061,9 +1068,9 @@ impl DB {
                 self.inner,
                 writeopts.inner,
                 cf.inner,
-                begin_key.as_ptr(),
+                begin_key.as_ptr() as *const i8,
                 begin_key.len() as size_t,
-                end_key.as_ptr(),
+                end_key.as_ptr() as *const i8,
                 end_key.len() as size_t
             ));
             Ok(())
@@ -1096,7 +1103,7 @@ impl DB {
     /// afterwards.
     pub fn flush_wal(&self, sync: bool) -> Result<(), String> {
         unsafe {
-            ffi_try!(crocksdb_flush_wal(self.inner, sync));
+            ffi_try!(crocksdb_flush_wal(self.inner, sync as u8));
             Ok(())
         }
     }
@@ -1151,9 +1158,9 @@ impl DB {
                 crocksdb_ffi::crocksdb_approximate_sizes(
                     self.inner,
                     n,
-                    start_key_ptr,
+                    start_key_ptr as *const *const i8,
                     start_key_len_ptr,
-                    end_key_ptr,
+                    end_key_ptr as *const *const i8,
                     end_key_len_ptr,
                     size_ptr,
                 )
@@ -1163,9 +1170,9 @@ impl DB {
                     self.inner,
                     cf.inner,
                     n,
-                    start_key_ptr,
+                    start_key_ptr as *const *const i8,
                     start_key_len_ptr,
-                    end_key_ptr,
+                    end_key_ptr as *const *const i8,
                     end_key_len_ptr,
                     size_ptr,
                 )
@@ -1180,9 +1187,9 @@ impl DB {
         unsafe {
             crocksdb_ffi::crocksdb_approximate_memtable_stats(
                 self.inner,
-                range.start_key.as_ptr(),
+                range.start_key.as_ptr() as *const i8,
                 range.start_key.len(),
-                range.end_key.as_ptr(),
+                range.end_key.as_ptr() as *const i8,
                 range.end_key.len(),
                 &mut count,
                 &mut size,
@@ -1198,9 +1205,9 @@ impl DB {
             crocksdb_ffi::crocksdb_approximate_memtable_stats_cf(
                 self.inner,
                 cf.inner,
-                range.start_key.as_ptr(),
+                range.start_key.as_ptr() as *const i8,
                 range.start_key.len(),
-                range.end_key.as_ptr(),
+                range.end_key.as_ptr() as *const i8,
                 range.end_key.len(),
                 &mut count,
                 &mut size,
@@ -1211,9 +1218,15 @@ impl DB {
 
     pub fn compact_range(&self, start_key: Option<&[u8]>, end_key: Option<&[u8]>) {
         unsafe {
-            let (start, s_len) = start_key.map_or((ptr::null(), 0), |k| (k.as_ptr(), k.len()));
-            let (end, e_len) = end_key.map_or((ptr::null(), 0), |k| (k.as_ptr(), k.len()));
-            crocksdb_ffi::crocksdb_compact_range(self.inner, start, s_len, end, e_len);
+            let (_, s_len) = start_key.map_or((ptr::null(), 0), |k| (k.as_ptr(), k.len()));
+            let (_, e_len) = end_key.map_or((ptr::null(), 0), |k| (k.as_ptr(), k.len()));
+            crocksdb_ffi::crocksdb_compact_range(
+                self.inner,
+                opt_bytes_to_ptr(start_key),
+                s_len,
+                opt_bytes_to_ptr(end_key),
+                e_len,
+            );
         }
     }
 
@@ -1224,9 +1237,16 @@ impl DB {
         end_key: Option<&[u8]>,
     ) {
         unsafe {
-            let (start, s_len) = start_key.map_or((ptr::null(), 0), |k| (k.as_ptr(), k.len()));
-            let (end, e_len) = end_key.map_or((ptr::null(), 0), |k| (k.as_ptr(), k.len()));
-            crocksdb_ffi::crocksdb_compact_range_cf(self.inner, cf.inner, start, s_len, end, e_len);
+            let (_, s_len) = start_key.map_or((ptr::null(), 0), |k| (k.as_ptr(), k.len()));
+            let (_, e_len) = end_key.map_or((ptr::null(), 0), |k| (k.as_ptr(), k.len()));
+            crocksdb_ffi::crocksdb_compact_range_cf(
+                self.inner,
+                cf.inner,
+                opt_bytes_to_ptr(start_key),
+                s_len,
+                opt_bytes_to_ptr(end_key),
+                e_len,
+            );
         }
     }
 
@@ -1244,9 +1264,9 @@ impl DB {
                 self.inner,
                 cf.inner,
                 compact_options.inner,
-                start,
+                start as *const i8,
                 s_len,
-                end,
+                end as *const i8,
                 e_len,
             );
         }
@@ -1262,20 +1282,20 @@ impl DB {
             if self.is_titan() {
                 ffi_try!(ctitandb_delete_files_in_range(
                     self.inner,
-                    start_key.as_ptr(),
+                    start_key.as_ptr() as *const i8,
                     start_key.len() as size_t,
-                    end_key.as_ptr(),
+                    end_key.as_ptr() as *const i8,
                     end_key.len() as size_t,
-                    include_end
+                    include_end as u8
                 ));
             } else {
                 ffi_try!(crocksdb_delete_files_in_range(
                     self.inner,
-                    start_key.as_ptr(),
+                    start_key.as_ptr() as *const i8,
                     start_key.len() as size_t,
-                    end_key.as_ptr(),
+                    end_key.as_ptr() as *const i8,
                     end_key.len() as size_t,
-                    include_end
+                    include_end as u8
                 ));
             }
             Ok(())
@@ -1294,21 +1314,21 @@ impl DB {
                 ffi_try!(ctitandb_delete_files_in_range_cf(
                     self.inner,
                     cf.inner,
-                    start_key.as_ptr(),
+                    start_key.as_ptr() as *const i8,
                     start_key.len() as size_t,
-                    end_key.as_ptr(),
+                    end_key.as_ptr() as *const i8,
                     end_key.len() as size_t,
-                    include_end
+                    include_end as u8
                 ));
             } else {
                 ffi_try!(crocksdb_delete_files_in_range_cf(
                     self.inner,
                     cf.inner,
-                    start_key.as_ptr(),
+                    start_key.as_ptr() as *const i8,
                     start_key.len() as size_t,
-                    end_key.as_ptr(),
+                    end_key.as_ptr() as *const i8,
                     end_key.len() as size_t,
-                    include_end
+                    include_end as u8
                 ));
             }
             Ok(())
@@ -1330,23 +1350,23 @@ impl DB {
                 ffi_try!(ctitandb_delete_files_in_ranges_cf(
                     self.inner,
                     cf.inner,
-                    start_keys.as_ptr(),
+                    start_keys.as_ptr() as *const *const i8,
                     start_keys_lens.as_ptr(),
-                    limit_keys.as_ptr(),
+                    limit_keys.as_ptr() as *const *const i8,
                     limit_keys_lens.as_ptr(),
                     ranges.len(),
-                    include_end
+                    include_end as u8
                 ));
             } else {
                 ffi_try!(crocksdb_delete_files_in_ranges_cf(
                     self.inner,
                     cf.inner,
-                    start_keys.as_ptr(),
+                    start_keys.as_ptr() as *const *const i8,
                     start_keys_lens.as_ptr(),
-                    limit_keys.as_ptr(),
+                    limit_keys.as_ptr() as *const *const i8,
                     limit_keys_lens.as_ptr(),
                     ranges.len(),
-                    include_end
+                    include_end as u8
                 ));
             }
         }
@@ -1451,12 +1471,13 @@ impl DB {
         unsafe {
             let info = MapProperty::new();
             let cname = CString::new(name.as_bytes()).unwrap();
-            if !crocksdb_ffi::crocksdb_get_map_property_cf(
+            if crocksdb_ffi::crocksdb_get_map_property_cf(
                 self.inner,
                 cf.inner,
                 cname.as_ptr(),
                 info.inner,
-            ) {
+            ) == 0
+            {
                 return None;
             }
             Some(info)
@@ -1477,8 +1498,8 @@ impl DB {
             let value_ptrs: Vec<_> = value_strs.iter().map(|s| s.as_ptr()).collect();
             ffi_try!(crocksdb_set_db_options(
                 self.inner,
-                name_ptrs.as_ptr() as *const *const c_char,
-                value_ptrs.as_ptr() as *const *const c_char,
+                name_ptrs.as_ptr() as *mut *const i8,
+                value_ptrs.as_ptr() as *mut *const i8,
                 options.len() as size_t
             ));
             Ok(())
@@ -1492,7 +1513,7 @@ impl DB {
             let titan_inner = if self.is_titan() {
                 crocksdb_ffi::ctitandb_get_titan_options_cf(self.inner, cf.inner)
             } else {
-                ptr::null_mut::<DBTitanDBOptions>()
+                ptr::null_mut::<ctitandb_options_t>()
             };
             ColumnFamilyOptions::from_raw(inner, titan_inner)
         }
@@ -1504,7 +1525,7 @@ impl DB {
             let titan_inner = if self.is_titan() {
                 crocksdb_ffi::ctitandb_get_titan_options_cf(self.inner, cf.inner)
             } else {
-                ptr::null_mut::<DBTitanDBOptions>()
+                ptr::null_mut::<ctitandb_options_t>()
             };
             ColumnFamilyOptions::from_raw(inner, titan_inner)
         }
@@ -1525,8 +1546,8 @@ impl DB {
             ffi_try!(crocksdb_set_options_cf(
                 self.inner,
                 cf.inner,
-                name_ptrs.as_ptr() as *const *const c_char,
-                value_ptrs.as_ptr() as *const *const c_char,
+                name_ptrs.as_ptr() as *mut *const i8,
+                value_ptrs.as_ptr() as *mut *const i8,
                 options.len() as size_t
             ));
             Ok(())
@@ -1592,7 +1613,7 @@ impl DB {
                 opt.inner
             ))
         };
-        Ok(has_flush)
+        Ok(has_flush != 0)
     }
 
     pub fn backup_at(&self, path: &str) -> Result<BackupEngine, String> {
@@ -1693,9 +1714,9 @@ impl DB {
                 self.inner,
                 cf.inner,
                 ranges.len() as i32,
-                start_keys.as_ptr(),
+                start_keys.as_ptr() as *const *const i8,
                 start_keys_lens.as_ptr(),
-                limit_keys.as_ptr(),
+                limit_keys.as_ptr() as *const *const i8,
                 limit_keys_lens.as_ptr()
             ));
             Ok(TablePropertiesCollection::from_raw(props))
@@ -1710,23 +1731,23 @@ impl DB {
         unsafe {
             let kvs = ffi_try!(crocksdb_get_all_key_versions(
                 self.inner,
-                start_key.as_ptr(),
+                start_key.as_ptr() as *const i8,
                 start_key.len() as size_t,
-                end_key.as_ptr(),
+                end_key.as_ptr() as *const i8,
                 end_key.len() as size_t
             ));
             let size = crocksdb_ffi::crocksdb_keyversions_count(kvs) as usize;
             let mut key_versions = Vec::with_capacity(size);
             for i in 0..size {
                 key_versions.push(KeyVersion {
-                    key: CStr::from_ptr(crocksdb_ffi::crocksdb_keyversions_key(kvs, i))
+                    key: CStr::from_ptr(crocksdb_ffi::crocksdb_keyversions_key(kvs, i as i32))
                         .to_string_lossy()
                         .into_owned(),
-                    value: CStr::from_ptr(crocksdb_ffi::crocksdb_keyversions_value(kvs, i))
+                    value: CStr::from_ptr(crocksdb_ffi::crocksdb_keyversions_value(kvs, i as i32))
                         .to_string_lossy()
                         .into_owned(),
-                    seq: crocksdb_ffi::crocksdb_keyversions_seq(kvs, i),
-                    value_type: crocksdb_ffi::crocksdb_keyversions_type(kvs, i),
+                    seq: crocksdb_ffi::crocksdb_keyversions_seq(kvs, i as i32),
+                    value_type: crocksdb_ffi::crocksdb_keyversions_type(kvs, i as i32),
                 })
             }
             crocksdb_ffi::crocksdb_keyversions_destroy(kvs);
@@ -1759,7 +1780,7 @@ impl DB {
                 self.inner,
                 cf.inner,
                 opts.inner,
-                input_file_names.as_ptr() as *const *const c_char,
+                input_file_names.as_ptr() as *mut *const i8,
                 input_file_names.len(),
                 output_level
             ));
@@ -1905,9 +1926,9 @@ impl Writable for WriteBatch {
         unsafe {
             crocksdb_ffi::crocksdb_writebatch_put(
                 self.inner,
-                key.as_ptr(),
+                key.as_ptr() as *const i8,
                 key.len() as size_t,
-                value.as_ptr(),
+                value.as_ptr() as *const i8,
                 value.len() as size_t,
             );
             Ok(())
@@ -1919,9 +1940,9 @@ impl Writable for WriteBatch {
             crocksdb_ffi::crocksdb_writebatch_put_cf(
                 self.inner,
                 cf.inner,
-                key.as_ptr(),
+                key.as_ptr() as *const i8,
                 key.len() as size_t,
-                value.as_ptr(),
+                value.as_ptr() as *const i8,
                 value.len() as size_t,
             );
             Ok(())
@@ -1932,9 +1953,9 @@ impl Writable for WriteBatch {
         unsafe {
             crocksdb_ffi::crocksdb_writebatch_merge(
                 self.inner,
-                key.as_ptr(),
+                key.as_ptr() as *const i8,
                 key.len() as size_t,
-                value.as_ptr(),
+                value.as_ptr() as *const i8,
                 value.len() as size_t,
             );
             Ok(())
@@ -1946,9 +1967,9 @@ impl Writable for WriteBatch {
             crocksdb_ffi::crocksdb_writebatch_merge_cf(
                 self.inner,
                 cf.inner,
-                key.as_ptr(),
+                key.as_ptr() as *const i8,
                 key.len() as size_t,
-                value.as_ptr(),
+                value.as_ptr() as *const i8,
                 value.len() as size_t,
             );
             Ok(())
@@ -1957,7 +1978,11 @@ impl Writable for WriteBatch {
 
     fn delete(&self, key: &[u8]) -> Result<(), String> {
         unsafe {
-            crocksdb_ffi::crocksdb_writebatch_delete(self.inner, key.as_ptr(), key.len() as size_t);
+            crocksdb_ffi::crocksdb_writebatch_delete(
+                self.inner,
+                key.as_ptr() as *const i8,
+                key.len() as size_t,
+            );
             Ok(())
         }
     }
@@ -1967,7 +1992,7 @@ impl Writable for WriteBatch {
             crocksdb_ffi::crocksdb_writebatch_delete_cf(
                 self.inner,
                 cf.inner,
-                key.as_ptr(),
+                key.as_ptr() as *const i8,
                 key.len() as size_t,
             );
             Ok(())
@@ -1978,7 +2003,7 @@ impl Writable for WriteBatch {
         unsafe {
             crocksdb_ffi::crocksdb_writebatch_single_delete(
                 self.inner,
-                key.as_ptr(),
+                key.as_ptr() as *const i8,
                 key.len() as size_t,
             );
             Ok(())
@@ -1990,7 +2015,7 @@ impl Writable for WriteBatch {
             crocksdb_ffi::crocksdb_writebatch_single_delete_cf(
                 self.inner,
                 cf.inner,
-                key.as_ptr(),
+                key.as_ptr() as *const i8,
                 key.len() as size_t,
             );
             Ok(())
@@ -2001,9 +2026,9 @@ impl Writable for WriteBatch {
         unsafe {
             crocksdb_ffi::crocksdb_writebatch_delete_range(
                 self.inner,
-                begin_key.as_ptr(),
+                begin_key.as_ptr() as *const i8,
                 begin_key.len(),
-                end_key.as_ptr(),
+                end_key.as_ptr() as *const i8,
                 end_key.len(),
             );
             Ok(())
@@ -2020,9 +2045,9 @@ impl Writable for WriteBatch {
             crocksdb_ffi::crocksdb_writebatch_delete_range_cf(
                 self.inner,
                 cf.inner,
-                begin_key.as_ptr(),
+                begin_key.as_ptr() as *const i8,
                 begin_key.len(),
-                end_key.as_ptr(),
+                end_key.as_ptr() as *const i8,
                 end_key.len(),
             );
             Ok(())
@@ -2030,6 +2055,7 @@ impl Writable for WriteBatch {
     }
 }
 
+pub type DBPinnableSlice = crocksdb_pinnableslice_t;
 pub struct DBVector {
     pinned_slice: *mut DBPinnableSlice,
 }
@@ -2053,7 +2079,7 @@ impl Deref for DBVector {
         let val_len_ptr = &mut val_len as *mut size_t;
         unsafe {
             let val = crocksdb_ffi::crocksdb_pinnableslice_value(self.pinned_slice, val_len_ptr);
-            slice::from_raw_parts(val, val_len)
+            slice::from_raw_parts(val as *const u8, val_len)
         }
     }
 }
@@ -2077,7 +2103,7 @@ impl DBVector {
 }
 
 pub struct BackupEngine {
-    inner: *mut DBBackupEngine,
+    inner: *mut crocksdb_backup_engine_t,
 }
 
 impl BackupEngine {
@@ -2119,7 +2145,7 @@ impl Drop for BackupEngine {
 // SstFileReader is used to read sst files that are generated by DB or
 // SstFileWriter.
 pub struct SstFileReader {
-    inner: *mut crocksdb_ffi::SstFileReader,
+    inner: *mut crocksdb_ffi::crocksdb_sstfilereader_t,
     _opt: ColumnFamilyOptions,
 }
 
@@ -2187,7 +2213,7 @@ impl SstFileReader {
     pub fn read_table_properties<F: FnOnce(&TableProperties)>(&self, mut action: F) {
         extern "C" fn callback<F: FnOnce(&TableProperties)>(
             ctx: *mut c_void,
-            ptr: *const crocksdb_ffi::DBTableProperties,
+            ptr: *const crocksdb_ffi::crocksdb_table_properties_t,
         ) {
             unsafe {
                 let caller = ptr::read(ctx as *mut F);
@@ -2199,7 +2225,7 @@ impl SstFileReader {
             crocksdb_ffi::crocksdb_sstfilereader_read_table_properties(
                 self.inner,
                 &mut action as *mut F as *mut c_void,
-                callback::<F>,
+                Some(callback::<F>),
             );
             mem::forget(action);
         }
@@ -2220,7 +2246,7 @@ impl Drop for SstFileReader {
 /// SstFileWriter is used to create sst files that can be added to database later
 /// All keys in files generated by SstFileWriter will have sequence number = 0
 pub struct SstFileWriter {
-    inner: *mut crocksdb_ffi::SstFileWriter,
+    inner: *mut crocksdb_ffi::crocksdb_sstfilewriter_t,
     _env_opt: EnvOptions,
     _opt: ColumnFamilyOptions,
 }
@@ -2270,9 +2296,9 @@ impl SstFileWriter {
         unsafe {
             ffi_try!(crocksdb_sstfilewriter_put(
                 self.inner,
-                key.as_ptr(),
+                key.as_ptr() as *const i8,
                 key.len(),
-                val.as_ptr(),
+                val.as_ptr() as *const i8,
                 val.len()
             ));
             Ok(())
@@ -2283,9 +2309,9 @@ impl SstFileWriter {
         unsafe {
             ffi_try!(crocksdb_sstfilewriter_merge(
                 self.inner,
-                key.as_ptr(),
+                key.as_ptr() as *const i8,
                 key.len(),
-                val.as_ptr(),
+                val.as_ptr() as *const i8,
                 val.len()
             ));
             Ok(())
@@ -2296,7 +2322,7 @@ impl SstFileWriter {
         unsafe {
             ffi_try!(crocksdb_sstfilewriter_delete(
                 self.inner,
-                key.as_ptr(),
+                key.as_ptr() as *const i8,
                 key.len()
             ));
             Ok(())
@@ -2307,9 +2333,9 @@ impl SstFileWriter {
         unsafe {
             ffi_try!(crocksdb_sstfilewriter_delete_range(
                 self.inner,
-                begin_key.as_ptr(),
+                begin_key.as_ptr() as *const i8,
                 begin_key.len(),
-                end_key.as_ptr(),
+                end_key.as_ptr() as *const i8,
                 end_key.len()
             ));
             Ok(())
@@ -2337,7 +2363,7 @@ impl Drop for SstFileWriter {
 }
 
 pub struct ExternalSstFileInfo {
-    inner: *mut crocksdb_ffi::ExternalSstFileInfo,
+    inner: *mut crocksdb_ffi::crocksdb_externalsstfileinfo_t,
 }
 
 impl ExternalSstFileInfo {
@@ -2353,7 +2379,7 @@ impl ExternalSstFileInfo {
         let mut len: size_t = 0;
         unsafe {
             let ptr = crocksdb_ffi::crocksdb_externalsstfileinfo_file_path(self.inner, &mut len);
-            let bytes = slice::from_raw_parts(ptr, len as usize);
+            let bytes = slice::from_raw_parts(ptr as *const u8, len as usize);
             PathBuf::from(String::from_utf8(bytes.to_owned()).unwrap())
         }
     }
@@ -2362,7 +2388,7 @@ impl ExternalSstFileInfo {
         let mut len: size_t = 0;
         unsafe {
             let ptr = crocksdb_ffi::crocksdb_externalsstfileinfo_smallest_key(self.inner, &mut len);
-            slice::from_raw_parts(ptr, len as usize)
+            slice::from_raw_parts(ptr as *const u8, len as usize)
         }
     }
 
@@ -2370,7 +2396,7 @@ impl ExternalSstFileInfo {
         let mut len: size_t = 0;
         unsafe {
             let ptr = crocksdb_ffi::crocksdb_externalsstfileinfo_largest_key(self.inner, &mut len);
-            slice::from_raw_parts(ptr, len as usize)
+            slice::from_raw_parts(ptr as *const u8, len as usize)
         }
     }
 
@@ -2400,14 +2426,14 @@ pub fn supported_compression() -> Vec<DBCompressionType> {
         let size = crocksdb_ffi::crocksdb_get_supported_compression_number() as usize;
         let mut v: Vec<DBCompressionType> = Vec::with_capacity(size);
         let pv = v.as_mut_ptr();
-        crocksdb_ffi::crocksdb_get_supported_compression(pv, size as size_t);
+        crocksdb_ffi::crocksdb_get_supported_compression(pv as *mut i32, size as size_t);
         v.set_len(size);
         v
     }
 }
 
 pub struct Env {
-    pub inner: *mut DBEnv,
+    pub inner: *mut crocksdb_env_t,
     #[allow(dead_code)]
     base: Option<Arc<Env>>,
 }
@@ -2507,6 +2533,7 @@ impl Drop for Env {
     }
 }
 
+pub type DBSequentialFile = crocksdb_sequential_file_t;
 pub struct SequentialFile {
     inner: *mut DBSequentialFile,
 }
@@ -2531,7 +2558,7 @@ impl io::Read for SequentialFile {
             let size = crocksdb_ffi::crocksdb_sequential_file_read(
                 self.inner,
                 buf.len() as size_t,
-                buf.as_mut_ptr(),
+                buf.as_mut_ptr() as *mut i8,
                 &mut err,
             );
             if !err.is_null() {
@@ -2554,7 +2581,7 @@ impl Drop for SequentialFile {
 }
 
 pub struct Cache {
-    pub inner: *mut DBCache,
+    pub inner: *mut crocksdb_cache_t,
 }
 
 impl Cache {
@@ -2577,7 +2604,7 @@ impl Drop for Cache {
 }
 
 pub struct MemoryAllocator {
-    pub inner: *mut DBMemoryAllocator,
+    pub inner: *mut crocksdb_memory_allocator_t,
 }
 
 impl MemoryAllocator {
@@ -2628,18 +2655,19 @@ pub fn load_latest_options(
     let dbpath = CString::new(dbpath.as_bytes()).map_err(|_| ERR_CONVERT_PATH.to_owned())?;
     let db_options = DBOptions::new();
     unsafe {
-        let raw_cf_descs: *mut *mut crocksdb_ffi::ColumnFamilyDescriptor = ptr::null_mut();
+        let mut raw_cf_descs: *mut *mut crocksdb_ffi::crocksdb_column_family_descriptor =
+            ptr::null_mut();
         let mut cf_descs_len: size_t = 0;
 
         let ok = ffi_try!(crocksdb_load_latest_options(
             dbpath.as_ptr(),
             env.inner,
             db_options.inner,
-            &raw_cf_descs,
+            &mut raw_cf_descs,
             &mut cf_descs_len,
-            ignore_unknown_options
+            ignore_unknown_options as u8
         ));
-        if !ok {
+        if ok == 0 {
             return Ok(None);
         }
         let cf_descs_list = slice::from_raw_parts(raw_cf_descs, cf_descs_len);
@@ -2663,7 +2691,7 @@ pub fn run_ldb_tool(ldb_args: &[String], opts: &DBOptions) {
         let args: Vec<_> = ldb_args_cstrs.iter().map(|s| s.as_ptr()).collect();
         crocksdb_ffi::crocksdb_run_ldb_tool(
             args.len() as i32,
-            args.as_ptr() as *const *const c_char,
+            args.as_ptr() as *mut *mut i8,
             opts.inner,
         );
     }

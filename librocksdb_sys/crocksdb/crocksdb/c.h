@@ -145,8 +145,13 @@ typedef struct crocksdb_compaction_options_t crocksdb_compaction_options_t;
 typedef struct crocksdb_perf_context_t crocksdb_perf_context_t;
 typedef struct crocksdb_iostats_context_t crocksdb_iostats_context_t;
 typedef struct crocksdb_writestallinfo_t crocksdb_writestallinfo_t;
-typedef struct crocksdb_writestallcondition_t crocksdb_writestallcondition_t;
 typedef struct crocksdb_map_property_t crocksdb_map_property_t;
+
+typedef enum crocksdb_writestallcondition_t {
+  Normal = 0,
+  Delayed = 1,
+  Stopped = 2,
+} crocksdb_writestallcondition_t;
 
 typedef enum crocksdb_table_property_t {
   kDataSize = 1,
@@ -181,8 +186,26 @@ typedef enum crocksdb_backgrounderrorreason_t {
   kMemTable = 4,
 } crocksdb_backgrounderrorreason_t;
 
-/* DB operations */
+typedef enum crocksdb_compaction_reason_t {
+  Unknown = 0,
+  LevelL0FilesNum = 1,
+  LevelMaxLevelSize = 2,
+  UniversalSizeAmplification = 3,
+  UniversalSizeRatio = 4,
+  UniversalSortedRunNum = 5,
+  FIFOMaxSize = 6,
+  FIFOReduceNumFiles = 7,
+  FIFOTtl = 8,
+  ManualCompaction = 9,
+  FilesMarkedForCompaction = 10,
+  BottommostFiles = 11,
+  Ttl = 12,
+  Flush = 13,
+  ExternalSstIngestion = 14,
+  NumOfReasons = 15,
+} crocksdb_compaction_reason_t;
 
+/* DB operations */
 extern C_ROCKSDB_LIBRARY_API crocksdb_t* crocksdb_open(
     const crocksdb_options_t* options, const char* name, char** errptr);
 
@@ -755,6 +778,9 @@ crocksdb_compactionjobinfo_total_input_bytes(
     const crocksdb_compactionjobinfo_t* info);
 extern C_ROCKSDB_LIBRARY_API uint64_t
 crocksdb_compactionjobinfo_total_output_bytes(
+    const crocksdb_compactionjobinfo_t* info);
+extern C_ROCKSDB_LIBRARY_API const crocksdb_compaction_reason_t*
+crocksdb_compactionjobinfo_compaction_reason(
     const crocksdb_compactionjobinfo_t* info);
 
 /* External file ingestion info */

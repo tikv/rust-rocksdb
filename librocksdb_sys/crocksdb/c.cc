@@ -233,9 +233,6 @@ struct crocksdb_pinnableslice_t   { PinnableSlice     rep; };
 struct crocksdb_flushjobinfo_t {
   FlushJobInfo rep;
 };
-struct crocksdb_writestallcondition_t {
-  WriteStallCondition rep;
-};
 struct crocksdb_writestallinfo_t {
   WriteStallInfo rep;
 };
@@ -2003,9 +2000,11 @@ uint64_t crocksdb_compactionjobinfo_total_output_bytes(
   return info->rep.stats.total_output_bytes;
 }
 
-CompactionReason crocksdb_compactionjobinfo_compaction_reason(
+const crocksdb_compaction_reason_t*
+crocksdb_compactionjobinfo_compaction_reason(
     const crocksdb_compactionjobinfo_t* info) {
-  return info->rep.compaction_reason;
+  return reinterpret_cast<const crocksdb_compaction_reason_t*>(
+      &info->rep.compaction_reason);
 }
 
 /* ExternalFileIngestionInfo */

@@ -1,4 +1,4 @@
-use crocksdb_ffi::{self, DBCompactionFilter};
+use crocksdb_ffi::{self, crocksdb_compactionfilter_t};
 use libc::{c_char, c_int, c_void, size_t};
 use std::ffi::CString;
 use std::slice;
@@ -37,22 +37,24 @@ extern "C" fn destructor(filter: *mut c_void) {
 extern "C" fn filter(
     filter: *mut c_void,
     level: c_int,
-    key: *const u8,
+    key: *const libc::c_char,
     key_len: size_t,
-    value: *const u8,
+    value: *const libc::c_char,
     value_len: size_t,
-    _: *mut *mut u8,
+    _: *mut *mut libc::c_char,
     _: *mut size_t,
-    value_changed: *mut bool,
-) -> bool {
+    value_changed: *mut u8,
+) -> u8 {
     unsafe {
         let filter = &mut *(filter as *mut CompactionFilterProxy);
-        let key = slice::from_raw_parts(key, key_len);
-        let value = slice::from_raw_parts(value, value_len);
-        *value_changed = false;
-        filter.filter.filter(level as usize, key, value)
+        let key = slice::from_raw_parts(key as *const u8, key_len);
+        let value = slice::from_raw_parts(value as *const u8, value_len);
+        *value_changed = false as u8;
+        filter.filter.filter(level as usize, key, value) as u8
     }
 }
+
+pub type DBCompactionFilter = crocksdb_compactionfilter_t;
 
 pub struct CompactionFilterHandle {
     pub inner: *mut DBCompactionFilter,
@@ -77,10 +79,10 @@ pub unsafe fn new_compaction_filter(
     }));
     let filter = crocksdb_ffi::crocksdb_compactionfilter_create(
         proxy as *mut c_void,
-        destructor,
-        filter,
-        name,
+        Some(destructor),
+        Some(filter),
+        Some(name),
     );
-    crocksdb_ffi::crocksdb_compactionfilter_set_ignore_snapshots(filter, ignore_snapshots);
+    crocksdb_ffi::crocksdb_compactionfilter_set_ignore_snapshots(filter, ignore_snapshots as u8);
     Ok(CompactionFilterHandle { inner: filter })
 }

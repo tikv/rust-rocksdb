@@ -17,11 +17,11 @@ use std::thread;
 use std::time::Duration;
 
 use rocksdb::crocksdb_ffi::{
-    CompactionPriority, DBCompressionType, DBInfoLogLevel as InfoLogLevel, DBRateLimiterMode,
     DBStatisticsHistogramType as HistogramType, DBStatisticsTickerType as TickerType,
 };
 use rocksdb::{
-    BlockBasedOptions, Cache, ColumnFamilyOptions, CompactOptions, DBOptions, Env,
+    BlockBasedOptions, Cache, ColumnFamilyOptions, CompactOptions, CompactionPriority,
+    DBCompressionType, DBInfoLogLevel as InfoLogLevel, DBOptions, DBRateLimiterMode, Env,
     FifoCompactionOptions, IndexType, LRUCacheOptions, ReadOptions, SeekKey, SliceTransform,
     Writable, WriteOptions, DB,
 };

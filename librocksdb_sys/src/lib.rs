@@ -16,11 +16,12 @@
 extern crate bzip2_sys;
 extern crate libc;
 #[cfg(test)]
-extern crate tempdir;
+extern crate tempfile;
 
-use libc::{c_char, c_double, c_int, c_uchar, c_void, size_t};
 use std::ffi::CStr;
 use std::fmt;
+
+use libc::{c_char, c_double, c_int, c_uchar, c_void, size_t};
 
 pub enum Options {}
 pub enum ColumnFamilyDescriptor {}
@@ -2044,7 +2045,10 @@ mod test {
     use libc::{self, c_void};
     use std::ffi::{CStr, CString};
     use std::{fs, ptr, slice};
-    use tempdir::TempDir;
+
+    fn tempdir_with_prefix(prefix: &str) -> tempfile::TempDir {
+        tempfile::Builder::new().prefix(prefix).tempdir().expect()
+    }
 
     #[test]
     fn internal() {
@@ -2055,8 +2059,7 @@ mod test {
             crocksdb_options_increase_parallelism(opts, 0);
             crocksdb_options_optimize_level_style_compaction(opts, 0);
             crocksdb_options_set_create_if_missing(opts, true);
-
-            let rustpath = TempDir::new("_rust_rocksdb_internaltest").expect("");
+            let rustpath = tempdir_with_prefix("_rust_rocksdb_internaltest");
             let cpath = CString::new(rustpath.path().to_str().unwrap()).unwrap();
             let cpath_ptr = cpath.as_ptr();
 
@@ -2162,7 +2165,7 @@ mod test {
             let opts = crocksdb_options_create();
             crocksdb_options_set_create_if_missing(opts, true);
 
-            let rustpath = TempDir::new("_rust_rocksdb_internaltest").expect("");
+            let rustpath = tempdir_with_prefix("_rust_rocksdb_internaltest");
             let cpath = CString::new(rustpath.path().to_str().unwrap()).unwrap();
             let cpath_ptr = cpath.as_ptr();
 
@@ -2174,7 +2177,7 @@ mod test {
             let io_options = crocksdb_options_create();
             let writer = crocksdb_sstfilewriter_create(env_opt, io_options);
 
-            let sst_dir = TempDir::new("_rust_rocksdb_internaltest").expect("");
+            let sst_dir = tempdir_with_prefix("_rust_rocksdb_internaltest");
             let sst_path = sst_dir.path().join("sstfilename");
             let c_sst_path = CString::new(sst_path.to_str().unwrap()).unwrap();
             let c_sst_path_ptr = c_sst_path.as_ptr();

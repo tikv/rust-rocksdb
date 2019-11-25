@@ -2651,17 +2651,18 @@ pub fn run_ldb_tool(ldb_args: &Vec<String>, opts: &DBOptions) {
 
 #[cfg(test)]
 mod test {
-    use super::*;
     use std::fs;
     use std::path::Path;
     use std::str;
     use std::string::String;
     use std::thread;
-    use tempdir::TempDir;
+
+    use super::*;
+    use crate::tempdir_with_prefix;
 
     #[test]
     fn external() {
-        let path = TempDir::new("_rust_rocksdb_externaltest").expect("");
+        let path = tempdir_with_prefix("_rust_rocksdb_externaltest");
         let db = DB::open_default(path.path().to_str().unwrap()).unwrap();
         let p = db.put(b"k1", b"v1111");
         assert!(p.is_ok());
@@ -2674,7 +2675,7 @@ mod test {
     #[allow(unused_variables)]
     #[test]
     fn errors_do_stuff() {
-        let path = TempDir::new("_rust_rocksdb_error").expect("");
+        let path = tempdir_with_prefix("_rust_rocksdb_error");
         let path_str = path.path().to_str().unwrap();
         let db = DB::open_default(path_str).unwrap();
         let opts = DBOptions::new();
@@ -2693,7 +2694,7 @@ mod test {
 
     #[test]
     fn writebatch_works() {
-        let path = TempDir::new("_rust_rocksdb_writebacktest").expect("");
+        let path = tempdir_with_prefix("_rust_rocksdb_writebacktest");
         let db = DB::open_default(path.path().to_str().unwrap()).unwrap();
 
         // test put
@@ -2764,7 +2765,7 @@ mod test {
 
     #[test]
     fn iterator_test() {
-        let path = TempDir::new("_rust_rocksdb_iteratortest").expect("");
+        let path = tempdir_with_prefix("_rust_rocksdb_iteratortest");
 
         let db = DB::open_default(path.path().to_str().unwrap()).unwrap();
         db.put(b"k1", b"v1111").expect("");
@@ -2783,7 +2784,7 @@ mod test {
 
     #[test]
     fn approximate_size_test() {
-        let path = TempDir::new("_rust_rocksdb_iteratortest").expect("");
+        let path = tempdir_with_prefix("_rust_rocksdb_iteratortest");
         let db = DB::open_default(path.path().to_str().unwrap()).unwrap();
         for i in 1..8000 {
             db.put(
@@ -2811,7 +2812,7 @@ mod test {
 
     #[test]
     fn property_test() {
-        let path = TempDir::new("_rust_rocksdb_propertytest").expect("");
+        let path = tempdir_with_prefix("_rust_rocksdb_propertytest");
         let db = DB::open_default(path.path().to_str().unwrap()).unwrap();
         db.put(b"a1", b"v1").unwrap();
         db.flush(true).unwrap();
@@ -2826,7 +2827,7 @@ mod test {
 
     #[test]
     fn list_column_families_test() {
-        let path = TempDir::new("_rust_rocksdb_list_column_families_test").expect("");
+        let path = tempdir_with_prefix("_rust_rocksdb_list_column_families_test");
         let mut cfs = ["default", "cf1", "cf2", "cf3"];
         {
             let mut cfs_opts = vec![];
@@ -2857,13 +2858,13 @@ mod test {
         let key = b"foo";
         let value = b"bar";
 
-        let db_dir = TempDir::new("_rust_rocksdb_backuptest").unwrap();
+        let db_dir = tempdir_with_prefix("_rust_rocksdb_backuptest");
         let db = DB::open_default(db_dir.path().to_str().unwrap()).unwrap();
         let p = db.put(key, value);
         assert!(p.is_ok());
 
         // Make a backup.
-        let backup_dir = TempDir::new("_rust_rocksdb_backuptest_backup").unwrap();
+        let backup_dir = tempdir_with_prefix("_rust_rocksdb_backuptest_backup");
         let backup_engine = db.backup_at(backup_dir.path().to_str().unwrap()).unwrap();
 
         // Restore it.
@@ -2872,7 +2873,7 @@ mod test {
         ropt2.set_keep_log_files(true);
         let ropts = [ropt1, ropt2];
         for ropt in &ropts {
-            let restore_dir = TempDir::new("_rust_rocksdb_backuptest_restore").unwrap();
+            let restore_dir = tempdir_with_prefix("_rust_rocksdb_backuptest_restore");
             let restored_db = DB::restore_from(
                 &backup_engine,
                 restore_dir.path().to_str().unwrap(),
@@ -2888,7 +2889,7 @@ mod test {
 
     #[test]
     fn log_dir_test() {
-        let db_dir = TempDir::new("_rust_rocksdb_logdirtest").unwrap();
+        let db_dir = tempdir_with_prefix("_rust_rocksdb_logdirtest");
         let db_path = db_dir.path().to_str().unwrap();
         let log_path = format!("{}", Path::new(&db_path).join("log_path").display());
         fs::create_dir_all(&log_path).unwrap();
@@ -2914,7 +2915,7 @@ mod test {
 
     #[test]
     fn single_delete_test() {
-        let path = TempDir::new("_rust_rocksdb_singledeletetest").expect("");
+        let path = tempdir_with_prefix("_rust_rocksdb_singledeletetest");
         let db = DB::open_default(path.path().to_str().unwrap()).unwrap();
 
         db.put(b"a", b"v1").unwrap();
@@ -2949,7 +2950,7 @@ mod test {
 
     #[test]
     fn test_pause_bg_work() {
-        let path = TempDir::new("_rust_rocksdb_pause_bg_work").expect("");
+        let path = tempdir_with_prefix("_rust_rocksdb_pause_bg_work");
         let db = DB::open_default(path.path().to_str().unwrap()).unwrap();
         let db = Arc::new(db);
         let db1 = db.clone();
@@ -3004,7 +3005,7 @@ mod test {
 
     #[test]
     fn block_cache_usage() {
-        let path = TempDir::new("_rust_rocksdb_block_cache_usage").expect("");
+        let path = tempdir_with_prefix("_rust_rocksdb_block_cache_usage");
         let db = DB::open_default(path.path().to_str().unwrap()).unwrap();
 
         for i in 0..200 {
@@ -3022,7 +3023,7 @@ mod test {
 
     #[test]
     fn flush_cf() {
-        let path = TempDir::new("_rust_rocksdb_flush_cf").expect("");
+        let path = tempdir_with_prefix("_rust_rocksdb_flush_cf");
         let mut opts = DBOptions::new();
         opts.create_if_missing(true);
         let mut db = DB::open(opts, path.path().to_str().unwrap()).unwrap();
@@ -3062,7 +3063,7 @@ mod test {
     fn test_get_all_key_versions() {
         let mut opts = DBOptions::new();
         opts.create_if_missing(true);
-        let path = TempDir::new("_rust_rocksdb_get_all_key_version_test").expect("");
+        let path = tempdir_with_prefix("_rust_rocksdb_get_all_key_version_test");
         let db = DB::open(opts, path.path().to_str().unwrap()).unwrap();
 
         let samples = vec![
@@ -3088,7 +3089,7 @@ mod test {
     fn test_get_approximate_memtable_stats() {
         let mut opts = DBOptions::new();
         opts.create_if_missing(true);
-        let path = TempDir::new("_rust_rocksdb_get_approximate_memtable_stats").expect("");
+        let path = tempdir_with_prefix("_rust_rocksdb_get_approximate_memtable_stats");
         let db = DB::open(opts, path.path().to_str().unwrap()).unwrap();
 
         let samples = [
@@ -3118,7 +3119,7 @@ mod test {
     fn test_set_options() {
         let mut opts = DBOptions::new();
         opts.create_if_missing(true);
-        let path = TempDir::new("_rust_rocksdb_set_option").expect("");
+        let path = tempdir_with_prefix("_rust_rocksdb_set_option");
 
         let db = DB::open(opts, path.path().to_str().unwrap()).unwrap();
         let cf = db.cf_handle("default").unwrap();
@@ -3139,7 +3140,7 @@ mod test {
 
     #[test]
     fn test_load_latest_options() {
-        let path = TempDir::new("_rust_rocksdb_load_latest_option").expect("");
+        let path = tempdir_with_prefix("_rust_rocksdb_load_latest_option");
         let dbpath = path.path().to_str().unwrap().clone();
         let cf_name: &str = "cf_dynamic_level_bytes";
 
@@ -3174,7 +3175,7 @@ mod test {
 
     #[test]
     fn test_sequence_number() {
-        let path = TempDir::new("_rust_rocksdb_sequence_number").expect("");
+        let path = tempdir_with_prefix("_rust_rocksdb_sequence_number");
 
         let mut opts = DBOptions::new();
         opts.create_if_missing(true);
@@ -3192,7 +3193,7 @@ mod test {
 
     #[test]
     fn test_map_property() {
-        let path = TempDir::new("_rust_rocksdb_get_map_property").expect("");
+        let path = tempdir_with_prefix("_rust_rocksdb_get_map_property");
         let dbpath = path.path().to_str().unwrap().clone();
 
         let mut opts = DBOptions::new();

@@ -18,7 +18,7 @@ extern crate libc;
 #[macro_use]
 pub extern crate librocksdb_sys;
 #[cfg(test)]
-extern crate tempdir;
+extern crate tempfile;
 
 pub use compaction_filter::CompactionFilter;
 pub use event_listener::{
@@ -69,3 +69,8 @@ mod table_properties_collector;
 mod table_properties_collector_factory;
 mod titan;
 mod util;
+
+#[cfg(test)]
+fn tempdir_with_prefix(prefix: &str) -> tempfile::TempDir {
+    tempfile::Builder::new().prefix(prefix).tempdir().expect("")
+}

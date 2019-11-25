@@ -103,8 +103,8 @@ pub fn new_bloom_filter(bits: c_int) -> *mut DBFilterPolicy {
     unsafe { crocksdb_filterpolicy_create_bloom(bits) }
 }
 
-pub fn new_lru_cache(opt: *mut DBLRUCacheOptions) -> *mut DBCache {
-    unsafe { crocksdb_cache_create_lru(opt) }
+pub unsafe fn new_lru_cache(opt: *mut DBLRUCacheOptions) -> *mut DBCache {
+    crocksdb_cache_create_lru(opt)
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -302,7 +302,7 @@ pub enum DBBackgroundErrorReason {
     MemTable = 4,
 }
 
-pub fn error_message(ptr: *mut c_char) -> String {
+pub unsafe fn error_message(ptr: *mut c_char) -> String {
     let c_str = unsafe { CStr::from_ptr(ptr) };
     let s = format!("{}", c_str.to_string_lossy());
     unsafe {
@@ -863,8 +863,8 @@ extern "C" {
     );
     pub fn crocksdb_mergeoperator_create(
         state: *mut c_void,
-        destroy: extern "C" fn(*mut c_void) -> (),
-        full_merge: extern "C" fn(
+        destroy: unsafe extern "C" fn(*mut c_void) -> (),
+        full_merge: unsafe extern "C" fn(
             arg: *mut c_void,
             key: *const c_char,
             key_len: size_t,
@@ -876,7 +876,7 @@ extern "C" {
             success: *mut u8,
             new_value_length: *mut size_t,
         ) -> *const c_char,
-        partial_merge: extern "C" fn(
+        partial_merge: unsafe extern "C" fn(
             arg: *mut c_void,
             key: *const c_char,
             key_len: size_t,
@@ -887,9 +887,9 @@ extern "C" {
             new_value_length: *mut size_t,
         ) -> *const c_char,
         delete_value: Option<
-            extern "C" fn(*mut c_void, value: *const c_char, value_len: *mut size_t) -> (),
+            unsafe extern "C" fn(*mut c_void, value: *const c_char, value_len: *mut size_t) -> (),
         >,
-        name_fn: extern "C" fn(*mut c_void) -> *const c_char,
+        name_fn: unsafe extern "C" fn(*mut c_void) -> *const c_char,
     ) -> *mut DBMergeOperator;
     pub fn crocksdb_mergeoperator_destroy(mo: *mut DBMergeOperator);
     pub fn crocksdb_options_set_merge_operator(options: *mut Options, mo: *mut DBMergeOperator);
@@ -1005,15 +1005,15 @@ extern "C" {
     pub fn crocksdb_options_set_comparator(options: *mut Options, cb: *mut DBComparator);
     pub fn crocksdb_comparator_create(
         state: *mut c_void,
-        destroy: extern "C" fn(*mut c_void) -> (),
-        compare: extern "C" fn(
+        destroy: unsafe extern "C" fn(*mut c_void) -> (),
+        compare: unsafe extern "C" fn(
             arg: *mut c_void,
             a: *const c_char,
             alen: size_t,
             b: *const c_char,
             blen: size_t,
         ) -> c_int,
-        name_fn: extern "C" fn(*mut c_void) -> *const c_char,
+        name_fn: unsafe extern "C" fn(*mut c_void) -> *const c_char,
     ) -> *mut DBComparator;
     pub fn crocksdb_comparator_destroy(cmp: *mut DBComparator);
 

@@ -2542,8 +2542,11 @@ pub struct Cache {
 
 impl Cache {
     pub fn new_lru_cache(opt: LRUCacheOptions) -> Cache {
-        Cache {
-            inner: crocksdb_ffi::new_lru_cache(opt.inner),
+        // This is ok because LRUCacheOptions always contains a valid pointer
+        unsafe {
+            Cache {
+                inner: crocksdb_ffi::new_lru_cache(opt.inner),
+            }
         }
     }
 }

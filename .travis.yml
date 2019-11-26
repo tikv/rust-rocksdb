@@ -26,6 +26,7 @@ before_script:
   - rustup component add rustfmt-preview
 
 script:
+  - make clippy
   - cargo fmt --all -- --check
   - cargo build
   - cargo test --all

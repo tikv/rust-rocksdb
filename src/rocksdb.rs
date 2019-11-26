@@ -2434,7 +2434,7 @@ impl Env {
         let env = unsafe {
             crocksdb_ffi::crocksdb_ctr_encrypted_env_create(
                 base_env.inner,
-                mem::transmute(&ciphertext[0]),
+                ciphertext.as_ptr() as *const u8 as *const c_char,
                 len,
             )
         };

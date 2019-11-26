@@ -303,11 +303,9 @@ pub enum DBBackgroundErrorReason {
 }
 
 pub unsafe fn error_message(ptr: *mut c_char) -> String {
-    let c_str = unsafe { CStr::from_ptr(ptr) };
+    let c_str = CStr::from_ptr(ptr);
     let s = format!("{}", c_str.to_string_lossy());
-    unsafe {
-        libc::free(ptr as *mut c_void);
-    }
+    libc::free(ptr as *mut c_void);
     s
 }
 

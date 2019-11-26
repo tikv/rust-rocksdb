@@ -39,7 +39,6 @@ use std::str::from_utf8;
 use std::sync::Arc;
 use std::{fs, ptr, slice};
 use table_properties::{TableProperties, TablePropertiesCollection};
-use util::is_power_of_two;
 
 pub struct CFHandle {
     inner: *mut DBCFHandle,
@@ -2425,7 +2424,7 @@ impl Env {
     // The recommanded block size are 1024, 512 and 256.
     pub fn new_ctr_encrypted_env(base_env: Arc<Env>, ciphertext: &[u8]) -> Result<Env, String> {
         let len = ciphertext.len();
-        if len > 2048 || !is_power_of_two(len) {
+        if len > 2048 || !len.is_power_of_two() {
             return Err(
                 "ciphertext length must be less or equal to 2048, and must be power of 2"
                     .to_owned(),

@@ -454,9 +454,10 @@ impl ReadOptions {
     pub fn set_table_filter(&mut self, filter: Box<dyn TableFilter>) {
         unsafe {
             let f = Box::into_raw(Box::new(filter));
+            let f = f as *mut c_void;
             crocksdb_ffi::crocksdb_readoptions_set_table_filter(
                 self.inner,
-                mem::transmute(f),
+                f,
                 table_filter,
                 destroy_table_filter,
             );

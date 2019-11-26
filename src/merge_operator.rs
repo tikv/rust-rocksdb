@@ -127,10 +127,10 @@ impl<'a> Iterator for &'a mut MergeOperands {
                 let len = *len_ptr as usize;
                 let ptr = base + (spacing * self.cursor);
                 self.cursor += 1;
-                Some(mem::transmute(slice::from_raw_parts(
+                Some(slice::from_raw_parts(
                     *(ptr as *const *const u8) as *const u8,
                     len,
-                )))
+                ))
             }
         }
     }

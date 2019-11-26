@@ -2117,11 +2117,12 @@ impl SstFileReader {
         let path =
             CString::new(name.to_owned()).map_err(|e| format!("invalid path {}: {:?}", name, e))?;
         unsafe {
-            Ok(ffi_try!(crocksdb_sstfilereader_open(
+            ffi_try!(crocksdb_sstfilereader_open(
                 self.inner,
                 path.as_ptr()
-            )))
+            ));
         }
+        Ok(())
     }
 
     pub fn iter(&self) -> DBIterator<&Self> {
@@ -2184,7 +2185,8 @@ impl SstFileReader {
     }
 
     pub fn verify_checksum(&self) -> Result<(), String> {
-        unsafe { Ok(ffi_try!(crocksdb_sstfilereader_verify_checksum(self.inner))) }
+        unsafe { ffi_try!(crocksdb_sstfilereader_verify_checksum(self.inner)) };
+        Ok(())
     }
 }
 
@@ -2236,11 +2238,12 @@ impl SstFileWriter {
             Ok(p) => p,
         };
         unsafe {
-            Ok(ffi_try!(crocksdb_sstfilewriter_open(
+            ffi_try!(crocksdb_sstfilewriter_open(
                 self.inner,
                 path.as_ptr()
-            )))
+            ));
         }
+        Ok(())
     }
 
     /// Add key, value to currently opened file

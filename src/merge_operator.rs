@@ -58,10 +58,11 @@ pub unsafe extern "C" fn full_merge_callback(
     result.shrink_to_fit();
     // TODO(tan) investigate zero-copy techniques to improve performance
     let buf = libc::malloc(result.len() as size_t);
+    let buf = buf as *mut u8;
     assert!(!buf.is_null());
     *new_value_length = result.len() as size_t;
     *success = 1 as u8;
-    ptr::copy(result.as_ptr() as *mut c_void, &mut *buf, result.len());
+    ptr::copy(result.as_ptr(), &mut *buf, result.len());
     buf as *const c_char
 }
 
@@ -82,10 +83,11 @@ pub unsafe extern "C" fn partial_merge_callback(
     result.shrink_to_fit();
     // TODO(tan) investigate zero-copy techniques to improve performance
     let buf = libc::malloc(result.len() as size_t);
+    let buf = buf as *mut u8;
     assert!(!buf.is_null());
     *new_value_length = result.len() as size_t;
     *success = 1 as u8;
-    ptr::copy(result.as_ptr() as *mut c_void, &mut *buf, result.len());
+    ptr::copy(result.as_ptr(), &mut *buf, result.len());
     buf as *const c_char
 }
 

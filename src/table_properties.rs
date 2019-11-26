@@ -20,6 +20,7 @@ use std::marker::PhantomData;
 use std::ops::{Deref, Index};
 use std::{mem, slice, str};
 
+#[repr(transparent)]
 pub struct TablePropertiesCollectionView(DBTablePropertiesCollection);
 
 impl TablePropertiesCollectionView {
@@ -130,6 +131,7 @@ impl Deref for TablePropertiesCollection {
     }
 }
 
+#[repr(transparent)]
 pub struct TableProperties {
     inner: DBTableProperties,
 }
@@ -229,6 +231,7 @@ impl TableProperties {
     }
 }
 
+#[repr(transparent)]
 pub struct UserCollectedProperties {
     inner: DBUserCollectedProperties,
 }

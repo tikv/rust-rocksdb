@@ -30,6 +30,7 @@ macro_rules! fetch_str {
     })
 }
 
+#[repr(transparent)]
 pub struct FlushJobInfo(DBFlushJobInfo);
 
 impl FlushJobInfo {
@@ -58,6 +59,7 @@ impl FlushJobInfo {
     }
 }
 
+#[repr(transparent)]
 pub struct CompactionJobInfo(DBCompactionJobInfo);
 
 impl CompactionJobInfo {
@@ -128,6 +130,7 @@ impl CompactionJobInfo {
     }
 }
 
+#[repr(transparent)]
 pub struct IngestionInfo(DBIngestionInfo);
 
 impl IngestionInfo {
@@ -152,6 +155,7 @@ impl IngestionInfo {
     }
 }
 
+#[repr(transparent)]
 pub struct WriteStallInfo(DBWriteStallInfo);
 
 impl WriteStallInfo {

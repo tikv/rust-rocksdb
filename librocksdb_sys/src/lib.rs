@@ -634,7 +634,7 @@ extern "C" {
         cf_descs: *const *mut *mut ColumnFamilyDescriptor,
         cf_descs_len: *mut size_t,
         ignore_unknown_options: bool,
-        errptr: *const *mut c_char,
+        errptr: *mut *mut c_char,
     ) -> bool;
     pub fn crocksdb_ratelimiter_create(
         rate_bytes_per_sec: i64,

@@ -31,7 +31,6 @@ use rocksdb::Env;
 use rocksdb::{Cache, MemoryAllocator};
 use slice_transform::{new_slice_transform, SliceTransform};
 use std::ffi::{CStr, CString};
-use std::mem;
 use std::path::Path;
 use std::ptr;
 use std::sync::Arc;
@@ -1277,10 +1276,11 @@ impl ColumnFamilyOptions {
             name: CString::new(name.as_bytes()).unwrap(),
             merge_fn: merge_fn,
         });
+        let cb = Box::into_raw(cb) as *mut c_void;
 
         unsafe {
             let mo = crocksdb_ffi::crocksdb_mergeoperator_create(
-                mem::transmute(cb),
+                cb,
                 merge_operator::destructor_callback,
                 full_merge_callback,
                 partial_merge_callback,
@@ -1296,10 +1296,11 @@ impl ColumnFamilyOptions {
             name: CString::new(name.as_bytes()).unwrap(),
             f: compare_fn,
         });
+        let cb = Box::into_raw(cb) as *mut c_void;
 
         unsafe {
             let cmp = crocksdb_ffi::crocksdb_comparator_create(
-                mem::transmute(cb),
+                cb,
                 comparator::destructor_callback,
                 compare_callback,
                 comparator::name_callback,

@@ -15,7 +15,6 @@
 
 use libc::{c_char, c_int, c_void, size_t};
 use std::ffi::CString;
-use std::mem;
 use std::slice;
 
 pub struct ComparatorCallback {
@@ -25,7 +24,7 @@ pub struct ComparatorCallback {
 
 pub unsafe extern "C" fn destructor_callback(raw_cb: *mut c_void) {
     // turn this back into a local variable so rust will reclaim it
-    let _: Box<ComparatorCallback> = mem::transmute(raw_cb);
+    let _ = Box::from_raw(raw_cb as *mut ComparatorCallback);
 }
 
 pub unsafe extern "C" fn name_callback(raw_cb: *mut c_void) -> *const c_char {

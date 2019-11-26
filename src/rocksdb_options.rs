@@ -1674,7 +1674,7 @@ impl CColumnFamilyDescriptor {
         CColumnFamilyDescriptor { inner }
     }
 
-    pub fn name<'a>(&'a self) -> &'a str {
+    pub fn name(&self) -> &str {
         unsafe {
             let raw_cf_name = crocksdb_ffi::crocksdb_name_from_column_family_descriptor(self.inner);
             CStr::from_ptr(raw_cf_name).to_str().unwrap()

@@ -83,7 +83,7 @@ fn split_descriptors<'a>(
 
 fn build_cstring_list(str_list: &[&str]) -> Vec<CString> {
     str_list
-        .into_iter()
+        .iter()
         .map(|s| CString::new(s.as_bytes()).unwrap())
         .collect()
 }
@@ -557,11 +557,7 @@ impl DB {
             .map(|x| x.titan_inner as *const crocksdb_ffi::DBTitanDBOptions)
             .collect();
 
-        let readonly = if error_if_log_file_exist.is_some() {
-            true
-        } else {
-            false
-        };
+        let readonly = error_if_log_file_exist.is_some();
 
         let with_ttl = if ttls_vec.len() > 0 {
             if ttls_vec.len() == cf_names.len() {
@@ -2611,14 +2607,14 @@ pub fn load_latest_options(
     let dbpath = CString::new(dbpath.as_bytes()).map_err(|_| ERR_CONVERT_PATH.to_owned())?;
     let db_options = DBOptions::new();
     unsafe {
-        let mut raw_cf_descs: *mut *mut crocksdb_ffi::ColumnFamilyDescriptor = ptr::null_mut();
+        let raw_cf_descs: *mut *mut crocksdb_ffi::ColumnFamilyDescriptor = ptr::null_mut();
         let mut cf_descs_len: size_t = 0;
 
         let ok = ffi_try!(crocksdb_load_latest_options(
             dbpath.as_ptr(),
             env.inner,
             db_options.inner,
-            &mut raw_cf_descs,
+            &raw_cf_descs,
             &mut cf_descs_len,
             ignore_unknown_options
         ));
@@ -2627,7 +2623,7 @@ pub fn load_latest_options(
         }
         let cf_descs_list = slice::from_raw_parts(raw_cf_descs, cf_descs_len);
         let cf_descs = cf_descs_list
-            .into_iter()
+            .iter()
             .map(|raw_cf_desc| CColumnFamilyDescriptor::from_raw(*raw_cf_desc))
             .collect();
 
@@ -2637,7 +2633,7 @@ pub fn load_latest_options(
     }
 }
 
-pub fn run_ldb_tool(ldb_args: &Vec<String>, opts: &DBOptions) {
+pub fn run_ldb_tool(ldb_args: &[String], opts: &DBOptions) {
     unsafe {
         let ldb_args_cstrs: Vec<_> = ldb_args
             .iter()

@@ -262,6 +262,7 @@ impl<D> DBIterator<D> {
         self.valid()
     }
 
+    #[allow(clippy::should_implement_trait)]
     pub fn next(&mut self) -> bool {
         unsafe {
             crocksdb_ffi::crocksdb_iter_next(self.inner);

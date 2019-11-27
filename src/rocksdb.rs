@@ -42,12 +42,12 @@ use table_properties::{TableProperties, TablePropertiesCollection};
 use util::is_power_of_two;
 use write_batch::WriteBatch;
 
-pub trait WriteBatchBase {
+pub trait WriteBatchBase: Send {
     fn write_into_rocksdb(&self, db: *mut DBInstance, writeopts: *mut DBWriteOptions) -> Result<(), String>;
     fn count(&self) -> usize;
     fn is_empty(&self) -> bool;
     fn data_size(&self) -> usize;
-    fn clear(&self);
+    fn clear(&mut self);
 
     fn set_save_point(&mut self);
     fn rollback_to_save_point(&mut self) -> Result<(), String>;

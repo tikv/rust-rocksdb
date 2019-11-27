@@ -36,7 +36,7 @@ pub use perf_context::{get_perf_level, set_perf_level, IOStatsContext, PerfConte
 pub use rocksdb::{
     load_latest_options, run_ldb_tool, set_external_sst_file_global_seq_no, BackupEngine, CFHandle,
     Cache, DBIterator, DBVector, Env, ExternalSstFileInfo, Kv, MapProperty, MemoryAllocator, Range,
-    SeekKey, SequentialFile, SstFileReader, SstFileWriter, Writable, WriteBatch, DB,
+    SeekKey, SequentialFile, SstFileReader, SstFileWriter, Writable, DB,
 };
 pub use rocksdb_options::{
     BlockBasedOptions, CColumnFamilyDescriptor, ColumnFamilyOptions, CompactOptions,
@@ -53,6 +53,7 @@ pub use table_properties::{
 pub use table_properties_collector::TablePropertiesCollector;
 pub use table_properties_collector_factory::TablePropertiesCollectorFactory;
 pub use titan::{TitanBlobIndex, TitanDBOptions};
+pub use write_batch::WriteBatch;
 
 mod compaction_filter;
 pub mod comparator;
@@ -69,3 +70,4 @@ mod table_properties_collector;
 mod table_properties_collector_factory;
 mod titan;
 mod util;
+mod write_batch;

@@ -18,7 +18,7 @@ clean:
 clippy:
 	@cargo clippy --all -- \
 	-D warnings \
-	-A clippy::redundant_field_names -A clippy::missing_safety_doc -A clippy::single_match \
+	-A clippy::redundant_field_names -A clippy::single_match \
 	-A clippy::assign_op_pattern -A clippy::new_without_default -A clippy::useless_let_if_seq \
 	-A clippy::needless_return -A clippy::len_zero
 

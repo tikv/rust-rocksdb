@@ -203,7 +203,7 @@ extern "C" fn on_flush_completed(
     let (ctx, info) = unsafe {
         (
             &*(ctx as *mut Box<dyn EventListener>),
-            &*(info as *const FlushJobInfo)
+            &*(info as *const FlushJobInfo),
         )
     };
     ctx.on_flush_completed(info);
@@ -217,7 +217,7 @@ extern "C" fn on_compaction_completed(
     let (ctx, info) = unsafe {
         (
             &*(ctx as *mut Box<dyn EventListener>),
-            &*(info as *const CompactionJobInfo)
+            &*(info as *const CompactionJobInfo),
         )
     };
     ctx.on_compaction_completed(info);
@@ -231,7 +231,7 @@ extern "C" fn on_external_file_ingested(
     let (ctx, info) = unsafe {
         (
             &*(ctx as *mut Box<dyn EventListener>),
-            &*(info as *const IngestionInfo)
+            &*(info as *const IngestionInfo),
         )
     };
     ctx.on_external_file_ingested(info);
@@ -258,7 +258,7 @@ extern "C" fn on_stall_conditions_changed(ctx: *mut c_void, info: *const DBWrite
     let (ctx, info) = unsafe {
         (
             &*(ctx as *mut Box<dyn EventListener>),
-            &*(info as *const WriteStallInfo)
+            &*(info as *const WriteStallInfo),
         )
     };
     ctx.on_stall_conditions_changed(info);

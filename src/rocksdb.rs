@@ -2117,10 +2117,7 @@ impl SstFileReader {
         let path =
             CString::new(name.to_owned()).map_err(|e| format!("invalid path {}: {:?}", name, e))?;
         unsafe {
-            ffi_try!(crocksdb_sstfilereader_open(
-                self.inner,
-                path.as_ptr()
-            ));
+            ffi_try!(crocksdb_sstfilereader_open(self.inner, path.as_ptr()));
         }
         Ok(())
     }
@@ -2238,10 +2235,7 @@ impl SstFileWriter {
             Ok(p) => p,
         };
         unsafe {
-            ffi_try!(crocksdb_sstfilewriter_open(
-                self.inner,
-                path.as_ptr()
-            ));
+            ffi_try!(crocksdb_sstfilewriter_open(self.inner, path.as_ptr()));
         }
         Ok(())
     }

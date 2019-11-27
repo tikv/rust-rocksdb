@@ -42,60 +42,114 @@ use std::fmt;
 // [1]: https://doc.rust-lang.org/nomicon/ffi.html#representing-opaque-structs
 // [2]: https://doc.rust-lang.org/nightly/src/core/ffi.rs.html#28
 
-#[repr(C)] pub struct Options(c_void);
-#[repr(C)] pub struct ColumnFamilyDescriptor(c_void);
-#[repr(C)] pub struct DBInstance(c_void);
-#[repr(C)] pub struct DBWriteOptions(c_void);
-#[repr(C)] pub struct DBReadOptions(c_void);
-#[repr(C)] pub struct DBMergeOperator(c_void);
-#[repr(C)] pub struct DBBlockBasedTableOptions(c_void);
-#[repr(C)] pub struct DBMemoryAllocator(c_void);
-#[repr(C)] pub struct DBLRUCacheOptions(c_void);
-#[repr(C)] pub struct DBCache(c_void);
-#[repr(C)] pub struct DBFilterPolicy(c_void);
-#[repr(C)] pub struct DBSnapshot(c_void);
-#[repr(C)] pub struct DBIterator(c_void);
-#[repr(C)] pub struct DBCFHandle(c_void);
-#[repr(C)] pub struct DBWriteBatch(c_void);
-#[repr(C)] pub struct DBComparator(c_void);
-#[repr(C)] pub struct DBFlushOptions(c_void);
-#[repr(C)] pub struct DBCompactionFilter(c_void);
-#[repr(C)] pub struct EnvOptions(c_void);
-#[repr(C)] pub struct SstFileReader(c_void);
-#[repr(C)] pub struct SstFileWriter(c_void);
-#[repr(C)] pub struct ExternalSstFileInfo(c_void);
-#[repr(C)] pub struct IngestExternalFileOptions(c_void);
-#[repr(C)] pub struct DBBackupEngine(c_void);
-#[repr(C)] pub struct DBRestoreOptions(c_void);
-#[repr(C)] pub struct DBSliceTransform(c_void);
-#[repr(C)] pub struct DBRateLimiter(c_void);
-#[repr(C)] pub struct DBLogger(c_void);
-#[repr(C)] pub struct DBCompactOptions(c_void);
-#[repr(C)] pub struct DBFifoCompactionOptions(c_void);
-#[repr(C)] pub struct DBPinnableSlice(c_void);
-#[repr(C)] pub struct DBUserCollectedProperties(c_void);
-#[repr(C)] pub struct DBUserCollectedPropertiesIterator(c_void);
-#[repr(C)] pub struct DBTableProperties(c_void);
-#[repr(C)] pub struct DBTablePropertiesCollection(c_void);
-#[repr(C)] pub struct DBTablePropertiesCollectionIterator(c_void);
-#[repr(C)] pub struct DBTablePropertiesCollector(c_void);
-#[repr(C)] pub struct DBTablePropertiesCollectorFactory(c_void);
-#[repr(C)] pub struct DBFlushJobInfo(c_void);
-#[repr(C)] pub struct DBCompactionJobInfo(c_void);
-#[repr(C)] pub struct DBIngestionInfo(c_void);
-#[repr(C)] pub struct DBEventListener(c_void);
-#[repr(C)] pub struct DBKeyVersions(c_void);
-#[repr(C)] pub struct DBEnv(c_void);
-#[repr(C)] pub struct DBSequentialFile(c_void);
-#[repr(C)] pub struct DBColumnFamilyMetaData(c_void);
-#[repr(C)] pub struct DBLevelMetaData(c_void);
-#[repr(C)] pub struct DBSstFileMetaData(c_void);
-#[repr(C)] pub struct DBCompactionOptions(c_void);
-#[repr(C)] pub struct DBPerfContext(c_void);
-#[repr(C)] pub struct DBIOStatsContext(c_void);
-#[repr(C)] pub struct DBWriteStallInfo(c_void);
-#[repr(C)] pub struct DBStatusPtr(c_void);
-#[repr(C)] pub struct DBMapProperty(c_void);
+#[repr(C)]
+pub struct Options(c_void);
+#[repr(C)]
+pub struct ColumnFamilyDescriptor(c_void);
+#[repr(C)]
+pub struct DBInstance(c_void);
+#[repr(C)]
+pub struct DBWriteOptions(c_void);
+#[repr(C)]
+pub struct DBReadOptions(c_void);
+#[repr(C)]
+pub struct DBMergeOperator(c_void);
+#[repr(C)]
+pub struct DBBlockBasedTableOptions(c_void);
+#[repr(C)]
+pub struct DBMemoryAllocator(c_void);
+#[repr(C)]
+pub struct DBLRUCacheOptions(c_void);
+#[repr(C)]
+pub struct DBCache(c_void);
+#[repr(C)]
+pub struct DBFilterPolicy(c_void);
+#[repr(C)]
+pub struct DBSnapshot(c_void);
+#[repr(C)]
+pub struct DBIterator(c_void);
+#[repr(C)]
+pub struct DBCFHandle(c_void);
+#[repr(C)]
+pub struct DBWriteBatch(c_void);
+#[repr(C)]
+pub struct DBComparator(c_void);
+#[repr(C)]
+pub struct DBFlushOptions(c_void);
+#[repr(C)]
+pub struct DBCompactionFilter(c_void);
+#[repr(C)]
+pub struct EnvOptions(c_void);
+#[repr(C)]
+pub struct SstFileReader(c_void);
+#[repr(C)]
+pub struct SstFileWriter(c_void);
+#[repr(C)]
+pub struct ExternalSstFileInfo(c_void);
+#[repr(C)]
+pub struct IngestExternalFileOptions(c_void);
+#[repr(C)]
+pub struct DBBackupEngine(c_void);
+#[repr(C)]
+pub struct DBRestoreOptions(c_void);
+#[repr(C)]
+pub struct DBSliceTransform(c_void);
+#[repr(C)]
+pub struct DBRateLimiter(c_void);
+#[repr(C)]
+pub struct DBLogger(c_void);
+#[repr(C)]
+pub struct DBCompactOptions(c_void);
+#[repr(C)]
+pub struct DBFifoCompactionOptions(c_void);
+#[repr(C)]
+pub struct DBPinnableSlice(c_void);
+#[repr(C)]
+pub struct DBUserCollectedProperties(c_void);
+#[repr(C)]
+pub struct DBUserCollectedPropertiesIterator(c_void);
+#[repr(C)]
+pub struct DBTableProperties(c_void);
+#[repr(C)]
+pub struct DBTablePropertiesCollection(c_void);
+#[repr(C)]
+pub struct DBTablePropertiesCollectionIterator(c_void);
+#[repr(C)]
+pub struct DBTablePropertiesCollector(c_void);
+#[repr(C)]
+pub struct DBTablePropertiesCollectorFactory(c_void);
+#[repr(C)]
+pub struct DBFlushJobInfo(c_void);
+#[repr(C)]
+pub struct DBCompactionJobInfo(c_void);
+#[repr(C)]
+pub struct DBIngestionInfo(c_void);
+#[repr(C)]
+pub struct DBEventListener(c_void);
+#[repr(C)]
+pub struct DBKeyVersions(c_void);
+#[repr(C)]
+pub struct DBEnv(c_void);
+#[repr(C)]
+pub struct DBSequentialFile(c_void);
+#[repr(C)]
+pub struct DBColumnFamilyMetaData(c_void);
+#[repr(C)]
+pub struct DBLevelMetaData(c_void);
+#[repr(C)]
+pub struct DBSstFileMetaData(c_void);
+#[repr(C)]
+pub struct DBCompactionOptions(c_void);
+#[repr(C)]
+pub struct DBPerfContext(c_void);
+#[repr(C)]
+pub struct DBIOStatsContext(c_void);
+#[repr(C)]
+pub struct DBWriteStallInfo(c_void);
+#[repr(C)]
+pub struct DBStatusPtr(c_void);
+#[repr(C)]
+pub struct DBMapProperty(c_void);
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 #[repr(C)]
@@ -108,8 +162,10 @@ pub enum WriteStallCondition {
 mod generated;
 pub use generated::*;
 
-#[repr(C)] pub struct DBTitanDBOptions(c_void);
-#[repr(C)] pub struct DBTitanReadOptions(c_void);
+#[repr(C)]
+pub struct DBTitanDBOptions(c_void);
+#[repr(C)]
+pub struct DBTitanReadOptions(c_void);
 
 #[derive(Clone, Debug, Default)]
 #[repr(C)]

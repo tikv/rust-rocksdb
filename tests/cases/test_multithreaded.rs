@@ -15,13 +15,14 @@ use std::sync::Arc;
 use std::thread;
 
 use rocksdb::{Writable, DB};
-use tempdir::TempDir;
+
+use super::tempdir_with_prefix;
 
 const N: usize = 100_000;
 
 #[test]
 pub fn test_multithreaded() {
-    let path = TempDir::new("_rust_rocksdb_multithreadtest").expect("");
+    let path = tempdir_with_prefix("_rust_rocksdb_multithreadtest");
 
     let db = DB::open_default(path.path().to_str().unwrap()).unwrap();
     let db = Arc::new(db);

@@ -20,7 +20,8 @@ use rocksdb::{
     BlockBasedOptions, ColumnFamilyOptions, DBIterator, DBOptions, Kv, ReadOptions, SeekKey,
     SliceTransform, Writable, WriteOptions, DB,
 };
-use tempdir::TempDir;
+
+use super::tempdir_with_prefix;
 
 struct FixedPrefixTransform {
     pub prefix_len: usize,
@@ -70,7 +71,7 @@ fn next_collect<D: Deref<Target = DB>>(iter: &mut DBIterator<D>) -> Vec<Kv> {
 
 #[test]
 pub fn test_iterator() {
-    let path = TempDir::new("_rust_rocksdb_iteratortest").expect("");
+    let path = tempdir_with_prefix("_rust_rocksdb_iteratortest");
 
     let k1 = b"k1";
     let k2 = b"k2";
@@ -180,7 +181,7 @@ pub fn test_iterator() {
 
 #[test]
 fn test_send_iterator() {
-    let path = TempDir::new("_rust_rocksdb_iteratortest_send").expect("");
+    let path = tempdir_with_prefix("_rust_rocksdb_iteratortest_send");
 
     let db = Arc::new(DB::open_default(path.path().to_str().unwrap()).unwrap());
     db.put(b"k1", b"v1").unwrap();
@@ -223,7 +224,7 @@ fn test_send_iterator() {
 
 #[test]
 fn test_seek_for_prev() {
-    let path = TempDir::new("_rust_rocksdb_seek_for_prev").expect("");
+    let path = tempdir_with_prefix("_rust_rocksdb_seek_for_prev");
     let mut opts = DBOptions::new();
     opts.create_if_missing(true);
     {
@@ -271,7 +272,7 @@ fn test_seek_for_prev() {
 
 #[test]
 fn read_with_upper_bound() {
-    let path = TempDir::new("_rust_rocksdb_read_with_upper_bound_test").expect("");
+    let path = tempdir_with_prefix("_rust_rocksdb_read_with_upper_bound_test");
     let mut opts = DBOptions::new();
     opts.create_if_missing(true);
     {
@@ -294,7 +295,7 @@ fn read_with_upper_bound() {
 
 #[test]
 fn test_total_order_seek() {
-    let path = TempDir::new("_rust_rocksdb_total_order_seek").expect("");
+    let path = tempdir_with_prefix("_rust_rocksdb_total_order_seek");
     let mut bbto = BlockBasedOptions::new();
     bbto.set_bloom_filter(10, false);
     bbto.set_whole_key_filtering(false);
@@ -382,7 +383,7 @@ fn test_total_order_seek() {
 
 #[test]
 fn test_fixed_suffix_seek() {
-    let path = TempDir::new("_rust_rocksdb_fixed_suffix_seek").expect("");
+    let path = tempdir_with_prefix("_rust_rocksdb_fixed_suffix_seek");
     let mut bbto = BlockBasedOptions::new();
     bbto.set_bloom_filter(10, false);
     bbto.set_whole_key_filtering(false);

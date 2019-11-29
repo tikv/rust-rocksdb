@@ -15,7 +15,8 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, RwLock};
 
 use rocksdb::{ColumnFamilyOptions, CompactionFilter, DBOptions, Writable, DB};
-use tempdir::TempDir;
+
+use super::tempdir_with_prefix;
 
 struct Filter {
     drop_called: Arc<AtomicBool>,
@@ -40,7 +41,7 @@ impl Drop for Filter {
 
 #[test]
 fn test_compaction_filter() {
-    let path = TempDir::new("_rust_rocksdb_writebacktest").expect("");
+    let path = tempdir_with_prefix("_rust_rocksdb_writebacktest");
     let mut cf_opts = ColumnFamilyOptions::new();
     let drop_called = Arc::new(AtomicBool::new(false));
     let filtered_kvs = Arc::new(RwLock::new(vec![]));

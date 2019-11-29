@@ -15,11 +15,12 @@ use rocksdb::{
     DBOptions, DBStatisticsHistogramType as HistogramType, DBStatisticsTickerType as TickerType,
     WriteOptions, DB,
 };
-use tempdir::TempDir;
+
+use super::tempdir_with_prefix;
 
 #[test]
 fn test_db_statistics() {
-    let path = TempDir::new("_rust_rocksdb_statistics").expect("");
+    let path = tempdir_with_prefix("_rust_rocksdb_statistics");
     let mut opts = DBOptions::new();
     opts.create_if_missing(true);
     opts.enable_statistics(true);
@@ -51,7 +52,7 @@ fn test_db_statistics() {
 
 #[test]
 fn test_disable_db_statistics() {
-    let path = TempDir::new("_rust_rocksdb_statistics").expect("");
+    let path = tempdir_with_prefix("_rust_rocksdb_statistics");
     let mut opts = DBOptions::new();
     opts.create_if_missing(true);
     opts.enable_statistics(false);

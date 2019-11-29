@@ -14,7 +14,8 @@
 use rocksdb::{
     BlockBasedOptions, ColumnFamilyOptions, DBOptions, SeekKey, SliceTransform, WriteOptions, DB,
 };
-use tempdir::TempDir;
+
+use super::tempdir_with_prefix;
 
 struct FixedPrefixTransform {
     pub prefix_len: usize,
@@ -32,7 +33,7 @@ impl SliceTransform for FixedPrefixTransform {
 
 #[test]
 fn test_prefix_extractor_compatibility() {
-    let path = TempDir::new("_rust_rocksdb_prefix_extractor_compatibility").expect("");
+    let path = tempdir_with_prefix("_rust_rocksdb_prefix_extractor_compatibility");
     let keys = vec![
         b"k1-0", b"k1-1", b"k1-2", b"k1-3", b"k1-4", b"k1-5", b"k1-6", b"k1-7", b"k1-8",
     ];

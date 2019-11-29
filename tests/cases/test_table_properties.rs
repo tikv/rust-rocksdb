@@ -19,7 +19,8 @@ use rocksdb::{
     TableProperties, TablePropertiesCollection, TablePropertiesCollector,
     TablePropertiesCollectorFactory, UserCollectedProperties, Writable, DB,
 };
-use tempdir::TempDir;
+
+use super::tempdir_with_prefix;
 
 enum Props {
     NumKeys = 0,
@@ -169,7 +170,7 @@ fn test_table_properties_collector_factory() {
     opts.create_if_missing(true);
     cf_opts.add_table_properties_collector_factory("example-collector", Box::new(f));
 
-    let path = TempDir::new("_rust_rocksdb_collectortest").expect("");
+    let path = tempdir_with_prefix("_rust_rocksdb_collectortest");
     let db = DB::open_cf(
         opts,
         path.path().to_str().unwrap(),
@@ -241,7 +242,7 @@ fn test_table_properties_with_table_filter() {
     opts.create_if_missing(true);
     cf_opts.add_table_properties_collector_factory("example-collector", Box::new(f));
 
-    let path = TempDir::new("_rust_rocksdb_collector_with_table_filter").expect("");
+    let path = tempdir_with_prefix("_rust_rocksdb_collector_with_table_filter");
     let db = DB::open_cf(
         opts,
         path.path().to_str().unwrap(),

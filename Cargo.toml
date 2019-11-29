@@ -31,4 +31,4 @@ path = "librocksdb_sys"
 [dev-dependencies]
 rand = "0.7"
 crc = "1.8"
-tempdir = "0.3"
+tempfile = "3.1"

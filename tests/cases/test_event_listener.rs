@@ -19,9 +19,9 @@ use rocksdb::{
     EventListener, FlushJobInfo, IngestExternalFileOptions, IngestionInfo, Writable,
     WriteStallCondition, WriteStallInfo, DB,
 };
-use tempdir::TempDir;
 
-use crate::cases::test_ingest_external_file::gen_sst;
+use super::tempdir_with_prefix;
+use super::test_ingest_external_file::gen_sst;
 
 #[derive(Default, Clone)]
 struct EventCounter {
@@ -140,7 +140,7 @@ impl EventListener for BackgroundErrorCounter {
 
 #[test]
 fn test_event_listener_stall_conditions_changed() {
-    let path = TempDir::new("_rust_rocksdb_event_listener_stall_conditions").expect("");
+    let path = tempdir_with_prefix("_rust_rocksdb_event_listener_stall_conditions");
     let path_str = path.path().to_str().unwrap();
 
     let mut opts = DBOptions::new();
@@ -185,7 +185,7 @@ fn test_event_listener_stall_conditions_changed() {
 
 #[test]
 fn test_event_listener_basic() {
-    let path = TempDir::new("_rust_rocksdb_event_listener_flush").expect("");
+    let path = tempdir_with_prefix("_rust_rocksdb_event_listener_flush");
     let path_str = path.path().to_str().unwrap();
 
     let mut opts = DBOptions::new();
@@ -231,7 +231,7 @@ fn test_event_listener_basic() {
 
 #[test]
 fn test_event_listener_ingestion() {
-    let path = TempDir::new("_rust_rocksdb_event_listener_ingestion").expect("");
+    let path = tempdir_with_prefix("_rust_rocksdb_event_listener_ingestion");
     let path_str = path.path().to_str().unwrap();
 
     let mut opts = DBOptions::new();
@@ -240,7 +240,7 @@ fn test_event_listener_ingestion() {
     opts.create_if_missing(true);
     let db = DB::open(opts, path_str).unwrap();
 
-    let gen_path = TempDir::new("_rust_rocksdb_ingest_sst_gen").expect("");
+    let gen_path = tempdir_with_prefix("_rust_rocksdb_ingest_sst_gen");
     let test_sstfile = gen_path.path().join("test_sst_file");
     let test_sstfile_str = test_sstfile.to_str().unwrap();
 
@@ -265,7 +265,7 @@ fn test_event_listener_ingestion() {
 fn test_event_listener_background_error() {
     // TODO(yiwu): should create a test Env object which inject some IO error, to
     // actually trigger background error.
-    let path = TempDir::new("_rust_rocksdb_event_listener_ingestion").expect("");
+    let path = tempdir_with_prefix("_rust_rocksdb_event_listener_ingestion");
     let path_str = path.path().to_str().unwrap();
 
     let mut opts = DBOptions::new();

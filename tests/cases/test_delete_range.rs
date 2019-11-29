@@ -18,7 +18,8 @@ use rocksdb::{
     CFHandle, ColumnFamilyOptions, DBOptions, EnvOptions, IngestExternalFileOptions, SeekKey,
     SliceTransform, SstFileWriter, Writable, WriteBatch, DB,
 };
-use tempdir::TempDir;
+
+use super::tempdir_with_prefix;
 
 fn gen_sst(opt: ColumnFamilyOptions, cf: Option<&CFHandle>, path: &str) {
     let _ = fs::remove_file(path);
@@ -83,7 +84,7 @@ fn gen_crc32_from_db_in_range(db: &DB, start_key: &[u8], end_key: &[u8]) -> u32 
 
 #[test]
 fn test_delete_range_case_1() {
-    let path = TempDir::new("_rust_rocksdb_test_delete_range_case_1").expect("");
+    let path = tempdir_with_prefix("_rust_rocksdb_test_delete_range_case_1");
     let path_str = path.path().to_str().unwrap();
     let mut opts = DBOptions::new();
     opts.create_if_missing(true);
@@ -100,7 +101,7 @@ fn test_delete_range_case_1() {
     }
     let before = gen_crc32_from_db(&db);
 
-    let gen_path = TempDir::new("_rust_rocksdb_case_1_ingest_sst_gen").expect("");
+    let gen_path = tempdir_with_prefix("_rust_rocksdb_case_1_ingest_sst_gen");
     let test_sstfile = gen_path.path().join("test_sst_file");
     let test_sstfile_str = test_sstfile.to_str().unwrap();
     let ingest_opt = IngestExternalFileOptions::new();
@@ -144,7 +145,7 @@ fn test_delete_range_case_1() {
 
 #[test]
 fn test_delete_range_case_2() {
-    let path = TempDir::new("_rust_rocksdb_test_delete_range_case_2_1").expect("");
+    let path = tempdir_with_prefix("_rust_rocksdb_test_delete_range_case_2_1");
     let path_str = path.path().to_str().unwrap();
     let mut opts = DBOptions::new();
     opts.create_if_missing(true);
@@ -161,7 +162,7 @@ fn test_delete_range_case_2() {
     }
     let before = gen_crc32_from_db(&db);
 
-    let gen_path = TempDir::new("_rust_rocksdb_case_2_ingest_sst_gen").expect("");
+    let gen_path = tempdir_with_prefix("_rust_rocksdb_case_2_ingest_sst_gen");
     let test_sstfile = gen_path.path().join("test_sst_file");
     let test_sstfile_str = test_sstfile.to_str().unwrap();
     let ingest_opt = IngestExternalFileOptions::new();
@@ -186,7 +187,7 @@ fn test_delete_range_case_2() {
         ],
     );
 
-    let path = TempDir::new("_rust_rocksdb_test_delete_range_case_2_2").expect("");
+    let path = tempdir_with_prefix("_rust_rocksdb_test_delete_range_case_2_2");
     let path_str = path.path().to_str().unwrap();
     let mut opts = DBOptions::new();
     opts.create_if_missing(true);
@@ -211,7 +212,7 @@ fn test_delete_range_case_2() {
 
 #[test]
 fn test_delete_range_case_3() {
-    let path = TempDir::new("_rust_rocksdb_test_delete_range_case_3").expect("");
+    let path = tempdir_with_prefix("_rust_rocksdb_test_delete_range_case_3");
     let path_str = path.path().to_str().unwrap();
     let mut opts = DBOptions::new();
     opts.create_if_missing(true);
@@ -243,7 +244,7 @@ fn test_delete_range_case_3() {
         ],
     );
 
-    let path2 = TempDir::new("_rust_rocksdb_test_delete_range_case_3_2").expect("");
+    let path2 = tempdir_with_prefix("_rust_rocksdb_test_delete_range_case_3_2");
     let path_str2 = path2.path().to_str().unwrap();
     let mut opts2 = DBOptions::new();
     opts2.create_if_missing(true);
@@ -255,7 +256,7 @@ fn test_delete_range_case_3() {
         assert_eq!(v, &*db2.get(k).unwrap().unwrap());
     }
 
-    let gen_path = TempDir::new("_rust_rocksdb_case_3_ingest_sst_gen").expect("");
+    let gen_path = tempdir_with_prefix("_rust_rocksdb_case_3_ingest_sst_gen");
     let test_sstfile = gen_path.path().join("test_sst_file");
     let test_sstfile_str = test_sstfile.to_str().unwrap();
     let ingest_opt = IngestExternalFileOptions::new();
@@ -288,7 +289,7 @@ fn test_delete_range_case_3() {
 
 #[test]
 fn test_delete_range_case_4() {
-    let path = TempDir::new("_rust_rocksdb_test_delete_range_case_4").expect("");
+    let path = tempdir_with_prefix("_rust_rocksdb_test_delete_range_case_4");
     let path_str = path.path().to_str().unwrap();
     let mut opts = DBOptions::new();
     opts.create_if_missing(true);
@@ -320,7 +321,7 @@ fn test_delete_range_case_4() {
         ],
     );
 
-    let path = TempDir::new("_rust_rocksdb_test_delete_range_case_4_2").expect("");
+    let path = tempdir_with_prefix("_rust_rocksdb_test_delete_range_case_4_2");
     let path_str = path.path().to_str().unwrap();
     let mut opts = DBOptions::new();
     opts.create_if_missing(true);
@@ -332,7 +333,7 @@ fn test_delete_range_case_4() {
         assert_eq!(v, &*db2.get(k).unwrap().unwrap());
     }
 
-    let gen_path = TempDir::new("_rust_rocksdb_case_4_ingest_sst_gen").expect("");
+    let gen_path = tempdir_with_prefix("_rust_rocksdb_case_4_ingest_sst_gen");
     let test_sstfile = gen_path.path().join("test_sst_file");
     let test_sstfile_str = test_sstfile.to_str().unwrap();
     let ingest_opt = IngestExternalFileOptions::new();
@@ -365,7 +366,7 @@ fn test_delete_range_case_4() {
 
 #[test]
 fn test_delete_range_case_5() {
-    let path = TempDir::new("_rust_rocksdb_test_delete_range_case_5").expect("");
+    let path = tempdir_with_prefix("_rust_rocksdb_test_delete_range_case_5");
     let path_str = path.path().to_str().unwrap();
     let mut opts = DBOptions::new();
     opts.create_if_missing(true);
@@ -396,7 +397,7 @@ fn test_delete_range_case_5() {
         ],
     );
 
-    let path = TempDir::new("_rust_rocksdb_test_delete_range_case_5_2").expect("");
+    let path = tempdir_with_prefix("_rust_rocksdb_test_delete_range_case_5_2");
     let path_str = path.path().to_str().unwrap();
     let mut opts = DBOptions::new();
     opts.create_if_missing(true);
@@ -409,7 +410,7 @@ fn test_delete_range_case_5() {
     }
     let before = gen_crc32_from_db(&db2);
 
-    let gen_path = TempDir::new("_rust_rocksdb_case_5_ingest_sst_gen").expect("");
+    let gen_path = tempdir_with_prefix("_rust_rocksdb_case_5_ingest_sst_gen");
     let test_sstfile = gen_path.path().join("test_sst_file");
     let test_sstfile_str = test_sstfile.to_str().unwrap();
     let ingest_opt = IngestExternalFileOptions::new();
@@ -436,7 +437,7 @@ fn test_delete_range_case_5() {
 
 #[test]
 fn test_delete_range_case_6() {
-    let path = TempDir::new("_rust_rocksdb_test_delete_range_case_6").expect("");
+    let path = tempdir_with_prefix("_rust_rocksdb_test_delete_range_case_6");
     let path_str = path.path().to_str().unwrap();
     let mut opts = DBOptions::new();
     opts.create_if_missing(true);
@@ -469,7 +470,7 @@ fn test_delete_range_case_6() {
         ],
     );
 
-    let path = TempDir::new("_rust_rocksdb_test_delete_range_case_5_2").expect("");
+    let path = tempdir_with_prefix("_rust_rocksdb_test_delete_range_case_5_2");
     let path_str = path.path().to_str().unwrap();
     let mut opts = DBOptions::new();
     opts.create_if_missing(true);
@@ -485,7 +486,7 @@ fn test_delete_range_case_6() {
         assert_eq!(v, &*db2.get(k).unwrap().unwrap());
     }
 
-    let gen_path = TempDir::new("_rust_rocksdb_case_6_ingest_sst_gen").expect("");
+    let gen_path = tempdir_with_prefix("_rust_rocksdb_case_6_ingest_sst_gen");
     let test_sstfile = gen_path.path().join("test_sst_file");
     let test_sstfile_str = test_sstfile.to_str().unwrap();
     let ingest_opt = IngestExternalFileOptions::new();
@@ -518,7 +519,7 @@ fn test_delete_range_case_6() {
 
 #[test]
 fn test_delete_range_compact() {
-    let path = TempDir::new("_rust_rocksdb_test_delete_range_case_6").expect("");
+    let path = tempdir_with_prefix("_rust_rocksdb_test_delete_range_case_6");
     let path_str = path.path().to_str().unwrap();
     let mut opts = DBOptions::new();
     opts.create_if_missing(true);
@@ -551,7 +552,7 @@ fn test_delete_range_compact() {
         ],
     );
 
-    let path = TempDir::new("_rust_rocksdb_test_delete_range_case_5_2").expect("");
+    let path = tempdir_with_prefix("_rust_rocksdb_test_delete_range_case_5_2");
     let path_str = path.path().to_str().unwrap();
     let mut opts = DBOptions::new();
     opts.create_if_missing(true);
@@ -567,7 +568,7 @@ fn test_delete_range_compact() {
         assert_eq!(v, &*db2.get(k).unwrap().unwrap());
     }
 
-    let gen_path = TempDir::new("_rust_rocksdb_case_6_ingest_sst_gen").expect("");
+    let gen_path = tempdir_with_prefix("_rust_rocksdb_case_6_ingest_sst_gen");
     let test_sstfile = gen_path.path().join("test_sst_file");
     let test_sstfile_str = test_sstfile.to_str().unwrap();
     let ingest_opt = IngestExternalFileOptions::new();
@@ -632,7 +633,7 @@ pub fn get_cf_handle<'a>(db: &'a DB, cf: &str) -> Result<&'a CFHandle, String> {
 
 #[test]
 fn test_delete_range_prefix_bloom_case_1() {
-    let path = TempDir::new("_rust_rocksdb_test_delete_range_prefix_bloom_case_1").expect("");
+    let path = tempdir_with_prefix("_rust_rocksdb_test_delete_range_prefix_bloom_case_1");
     let path_str = path.path().to_str().unwrap();
     let mut opts = DBOptions::new();
     opts.create_if_missing(true);
@@ -662,7 +663,7 @@ fn test_delete_range_prefix_bloom_case_1() {
     }
     let before = gen_crc32_from_db(&db);
 
-    let gen_path = TempDir::new("_rust_rocksdb_case_prefix_bloom_1_ingest_sst_gen").expect("");
+    let gen_path = tempdir_with_prefix("_rust_rocksdb_case_prefix_bloom_1_ingest_sst_gen");
     let test_sstfile = gen_path.path().join("test_sst_file");
     let test_sstfile_str = test_sstfile.to_str().unwrap();
     let ingest_opt = IngestExternalFileOptions::new();
@@ -707,7 +708,7 @@ fn test_delete_range_prefix_bloom_case_1() {
 
 #[test]
 fn test_delete_range_prefix_bloom_case_2() {
-    let path = TempDir::new("_rust_rocksdb_test_delete_range_prefix_bloom_case_2").expect("");
+    let path = tempdir_with_prefix("_rust_rocksdb_test_delete_range_prefix_bloom_case_2");
     let path_str = path.path().to_str().unwrap();
     let mut opts = DBOptions::new();
     opts.create_if_missing(true);
@@ -737,7 +738,7 @@ fn test_delete_range_prefix_bloom_case_2() {
     }
     let before = gen_crc32_from_db(&db);
 
-    let gen_path = TempDir::new("_rust_rocksdb_case_prefix_bloom_1_ingest_sst_gen").expect("");
+    let gen_path = tempdir_with_prefix("_rust_rocksdb_case_prefix_bloom_1_ingest_sst_gen");
     let test_sstfile = gen_path.path().join("test_sst_file");
     let test_sstfile_str = test_sstfile.to_str().unwrap();
     let ingest_opt = IngestExternalFileOptions::new();
@@ -763,7 +764,7 @@ fn test_delete_range_prefix_bloom_case_2() {
         ],
     );
 
-    let path = TempDir::new("_rust_rocksdb_test_delete_range_prefix_bloom_case_2_2").expect("");
+    let path = tempdir_with_prefix("_rust_rocksdb_test_delete_range_prefix_bloom_case_2_2");
     let path_str = path.path().to_str().unwrap();
     let mut opts = DBOptions::new();
     opts.create_if_missing(true);
@@ -800,7 +801,7 @@ fn test_delete_range_prefix_bloom_case_2() {
 
 #[test]
 fn test_delete_range_prefix_bloom_case_3() {
-    let path = TempDir::new("_rust_rocksdb_test_delete_range_prefix_bloom_case_3").expect("");
+    let path = tempdir_with_prefix("_rust_rocksdb_test_delete_range_prefix_bloom_case_3");
     let path_str = path.path().to_str().unwrap();
     let mut opts = DBOptions::new();
     opts.create_if_missing(true);
@@ -845,7 +846,7 @@ fn test_delete_range_prefix_bloom_case_3() {
         ],
     );
 
-    let path = TempDir::new("_rust_rocksdb_test_delete_range_prefix_bloom_case_3_2").expect("");
+    let path = tempdir_with_prefix("_rust_rocksdb_test_delete_range_prefix_bloom_case_3_2");
     let path_str = path.path().to_str().unwrap();
     let mut opts = DBOptions::new();
     opts.create_if_missing(true);
@@ -868,7 +869,7 @@ fn test_delete_range_prefix_bloom_case_3() {
         assert_eq!(v, &*db2.get(k).unwrap().unwrap());
     }
 
-    let gen_path = TempDir::new("_rust_rocksdb_prefix_bloom_case_3_ingest_sst_gen").expect("");
+    let gen_path = tempdir_with_prefix("_rust_rocksdb_prefix_bloom_case_3_ingest_sst_gen");
     let test_sstfile = gen_path.path().join("test_sst_file");
     let test_sstfile_str = test_sstfile.to_str().unwrap();
     let ingest_opt = IngestExternalFileOptions::new();
@@ -896,7 +897,7 @@ fn test_delete_range_prefix_bloom_case_3() {
 
 #[test]
 fn test_delete_range_prefix_bloom_case_4() {
-    let path = TempDir::new("_rust_rocksdb_test_delete_range_prefix_bloom_case_4").expect("");
+    let path = tempdir_with_prefix("_rust_rocksdb_test_delete_range_prefix_bloom_case_4");
     let path_str = path.path().to_str().unwrap();
     let mut opts = DBOptions::new();
     opts.create_if_missing(true);
@@ -941,7 +942,7 @@ fn test_delete_range_prefix_bloom_case_4() {
         ],
     );
 
-    let path = TempDir::new("_rust_rocksdb_test_delete_range_prefix_bloom_case_4_2").expect("");
+    let path = tempdir_with_prefix("_rust_rocksdb_test_delete_range_prefix_bloom_case_4_2");
     let path_str = path.path().to_str().unwrap();
     let mut opts = DBOptions::new();
     opts.create_if_missing(true);
@@ -965,7 +966,7 @@ fn test_delete_range_prefix_bloom_case_4() {
         assert_eq!(v, &*db2.get(k).unwrap().unwrap());
     }
 
-    let gen_path = TempDir::new("_rust_rocksdb_case_prefix_bloom_4_ingest_sst_gen").expect("");
+    let gen_path = tempdir_with_prefix("_rust_rocksdb_case_prefix_bloom_4_ingest_sst_gen");
     let test_sstfile = gen_path.path().join("test_sst_file");
     let test_sstfile_str = test_sstfile.to_str().unwrap();
     let ingest_opt = IngestExternalFileOptions::new();
@@ -993,7 +994,7 @@ fn test_delete_range_prefix_bloom_case_4() {
 
 #[test]
 fn test_delete_range_prefix_bloom_case_5() {
-    let path = TempDir::new("_rust_rocksdb_test_delete_range_prefix_bloom_case_5").expect("");
+    let path = tempdir_with_prefix("_rust_rocksdb_test_delete_range_prefix_bloom_case_5");
     let path_str = path.path().to_str().unwrap();
     let mut opts = DBOptions::new();
     opts.create_if_missing(true);
@@ -1036,7 +1037,7 @@ fn test_delete_range_prefix_bloom_case_5() {
         ],
     );
 
-    let path = TempDir::new("_rust_rocksdb_test_delete_range_prefix_bloom_case_5_2").expect("");
+    let path = tempdir_with_prefix("_rust_rocksdb_test_delete_range_prefix_bloom_case_5_2");
     let path_str = path.path().to_str().unwrap();
     let mut opts = DBOptions::new();
     opts.create_if_missing(true);
@@ -1060,7 +1061,7 @@ fn test_delete_range_prefix_bloom_case_5() {
     }
     let before = gen_crc32_from_db(&db2);
 
-    let gen_path = TempDir::new("_rust_rocksdb_case_prefix_bloom_5_ingest_sst_gen").expect("");
+    let gen_path = tempdir_with_prefix("_rust_rocksdb_case_prefix_bloom_5_ingest_sst_gen");
     let test_sstfile = gen_path.path().join("test_sst_file");
     let test_sstfile_str = test_sstfile.to_str().unwrap();
     let ingest_opt = IngestExternalFileOptions::new();
@@ -1085,7 +1086,7 @@ fn test_delete_range_prefix_bloom_case_5() {
 
 #[test]
 fn test_delete_range_prefix_bloom_case_6() {
-    let path = TempDir::new("_rust_rocksdb_test_delete_range_prefix_bloom_case_6").expect("");
+    let path = tempdir_with_prefix("_rust_rocksdb_test_delete_range_prefix_bloom_case_6");
     let path_str = path.path().to_str().unwrap();
     let mut opts = DBOptions::new();
     opts.create_if_missing(true);
@@ -1130,7 +1131,7 @@ fn test_delete_range_prefix_bloom_case_6() {
         ],
     );
 
-    let path = TempDir::new("_rust_rocksdb_test_delete_range_prefix_bloom_case_6_2").expect("");
+    let path = tempdir_with_prefix("_rust_rocksdb_test_delete_range_prefix_bloom_case_6_2");
     let path_str = path.path().to_str().unwrap();
     let mut opts = DBOptions::new();
     opts.create_if_missing(true);
@@ -1157,7 +1158,7 @@ fn test_delete_range_prefix_bloom_case_6() {
         assert_eq!(v, &*db2.get(k).unwrap().unwrap());
     }
 
-    let gen_path = TempDir::new("_rust_rocksdb_case_6_ingest_sst_gen").expect("");
+    let gen_path = tempdir_with_prefix("_rust_rocksdb_case_6_ingest_sst_gen");
     let test_sstfile = gen_path.path().join("test_sst_file");
     let test_sstfile_str = test_sstfile.to_str().unwrap();
     let ingest_opt = IngestExternalFileOptions::new();
@@ -1203,7 +1204,7 @@ fn check_kv(db: &DB, cf: Option<&CFHandle>, data: &[(&[u8], Option<&[u8]>)]) {
 
 #[test]
 fn test_delete_range_prefix_bloom_compact_case() {
-    let path = TempDir::new("_rust_rocksdb_test_delete_range_prefix_bloom_case_6").expect("");
+    let path = tempdir_with_prefix("_rust_rocksdb_test_delete_range_prefix_bloom_case_6");
     let path_str = path.path().to_str().unwrap();
     let mut opts = DBOptions::new();
     opts.create_if_missing(true);
@@ -1248,7 +1249,7 @@ fn test_delete_range_prefix_bloom_compact_case() {
         ],
     );
 
-    let path = TempDir::new("_rust_rocksdb_test_delete_range_prefix_bloom_case_6_2").expect("");
+    let path = tempdir_with_prefix("_rust_rocksdb_test_delete_range_prefix_bloom_case_6_2");
     let path_str = path.path().to_str().unwrap();
     let mut opts = DBOptions::new();
     opts.create_if_missing(true);
@@ -1275,7 +1276,7 @@ fn test_delete_range_prefix_bloom_compact_case() {
         assert_eq!(v, &*db2.get(k).unwrap().unwrap());
     }
 
-    let gen_path = TempDir::new("_rust_rocksdb_case_6_ingest_sst_gen").expect("");
+    let gen_path = tempdir_with_prefix("_rust_rocksdb_case_6_ingest_sst_gen");
     let test_sstfile = gen_path.path().join("test_sst_file");
     let test_sstfile_str = test_sstfile.to_str().unwrap();
     let ingest_opt = IngestExternalFileOptions::new();
@@ -1305,7 +1306,7 @@ fn test_delete_range_prefix_bloom_compact_case() {
 #[test]
 fn test_delete_range() {
     // Test `DB::delete_range()`
-    let path = TempDir::new("_rust_rocksdb_test_delete_range").expect("");
+    let path = tempdir_with_prefix("_rust_rocksdb_test_delete_range");
     let db = DB::open_default(path.path().to_str().unwrap()).unwrap();
 
     // Prepare some data.
@@ -1356,7 +1357,7 @@ fn test_delete_range() {
 
 #[test]
 fn test_delete_range_sst_files() {
-    let path = TempDir::new("_rust_rocksdb_test_delete_range_sst_files").expect("");
+    let path = tempdir_with_prefix("_rust_rocksdb_test_delete_range_sst_files");
     let db = DB::open_default(path.path().to_str().unwrap()).unwrap();
     let samples_a = vec![
         (b"key1", b"value1"),
@@ -1419,12 +1420,12 @@ fn test_delete_range_sst_files() {
 
 #[test]
 fn test_delete_range_ingest_file() {
-    let path = TempDir::new("_rust_rocksdb_test_delete_range_ingest_file").expect("");
+    let path = tempdir_with_prefix("_rust_rocksdb_test_delete_range_ingest_file");
     let path_str = path.path().to_str().unwrap();
     let mut opts = DBOptions::new();
     opts.create_if_missing(true);
     let mut db = DB::open(opts, path_str).unwrap();
-    let gen_path = TempDir::new("_rust_rocksdb_ingest_sst_gen").expect("");
+    let gen_path = tempdir_with_prefix("_rust_rocksdb_ingest_sst_gen");
     let test_sstfile = gen_path.path().join("test_sst_file");
     let test_sstfile_str = test_sstfile.to_str().unwrap();
     let ingest_opt = IngestExternalFileOptions::new();

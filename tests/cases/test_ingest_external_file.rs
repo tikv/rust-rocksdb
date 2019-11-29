@@ -19,7 +19,8 @@ use rocksdb::{
     set_external_sst_file_global_seq_no, CFHandle, ColumnFamilyOptions, DBOptions, Env, EnvOptions,
     IngestExternalFileOptions, MergeOperands, SeekKey, SstFileReader, SstFileWriter, Writable, DB,
 };
-use tempdir::TempDir;
+
+use super::tempdir_with_prefix;
 
 pub fn gen_sst(
     opt: ColumnFamilyOptions,
@@ -103,11 +104,11 @@ fn concat_merge(_: &[u8], existing_val: Option<&[u8]>, operands: &mut MergeOpera
 
 #[test]
 fn test_ingest_external_file() {
-    let path = TempDir::new("_rust_rocksdb_ingest_sst").expect("");
+    let path = tempdir_with_prefix("_rust_rocksdb_ingest_sst");
     let mut db = create_default_database(&path);
     db.create_cf("cf1").unwrap();
     let handle = db.cf_handle("cf1").unwrap();
-    let gen_path = TempDir::new("_rust_rocksdb_ingest_sst_gen").expect("");
+    let gen_path = tempdir_with_prefix("_rust_rocksdb_ingest_sst_gen");
     let test_sstfile = gen_path.path().join("test_sst_file");
     let test_sstfile_str = test_sstfile.to_str().unwrap();
     let default_options = db.get_options();
@@ -157,14 +158,14 @@ fn test_ingest_external_file() {
 
 #[test]
 fn test_ingest_external_file_new() {
-    let path = TempDir::new("_rust_rocksdb_ingest_sst_new").expect("");
+    let path = tempdir_with_prefix("_rust_rocksdb_ingest_sst_new");
     let path_str = path.path().to_str().unwrap();
     let mut opts = DBOptions::new();
     opts.create_if_missing(true);
     let mut cf_opts = ColumnFamilyOptions::new();
     cf_opts.add_merge_operator("merge operator", concat_merge);
     let db = DB::open_cf(opts, path_str, vec![("default", cf_opts)]).unwrap();
-    let gen_path = TempDir::new("_rust_rocksdb_ingest_sst_gen_new").expect("");
+    let gen_path = tempdir_with_prefix("_rust_rocksdb_ingest_sst_gen_new");
     let test_sstfile = gen_path.path().join("test_sst_file_new");
     let test_sstfile_str = test_sstfile.to_str().unwrap();
     let default_options = db.get_options();
@@ -217,9 +218,9 @@ fn test_ingest_external_file_new() {
 
 #[test]
 fn test_ingest_external_file_new_cf() {
-    let path = TempDir::new("_rust_rocksdb_ingest_sst_new_cf").expect("");
+    let path = tempdir_with_prefix("_rust_rocksdb_ingest_sst_new_cf");
     let mut db = create_default_database(&path);
-    let gen_path = TempDir::new("_rust_rocksdb_ingest_sst_gen_new_cf").expect("");
+    let gen_path = tempdir_with_prefix("_rust_rocksdb_ingest_sst_gen_new_cf");
     let test_sstfile = gen_path.path().join("test_sst_file_new_cf");
     let test_sstfile_str = test_sstfile.to_str().unwrap();
     let mut cf_opts = ColumnFamilyOptions::new();
@@ -300,7 +301,7 @@ fn gen_sst_from_cf(opt: ColumnFamilyOptions, db: &DB, cf: &CFHandle, path: &str)
     assert!(info.num_entries() > 0);
 }
 
-fn create_default_database(path: &TempDir) -> DB {
+fn create_default_database(path: &tempfile::TempDir) -> DB {
     let path_str = path.path().to_str().unwrap();
     let mut opts = DBOptions::new();
     opts.create_if_missing(true);
@@ -318,9 +319,9 @@ fn create_cfs(db: &mut DB, cfs: &[&str]) {
 #[test]
 fn test_ingest_simulate_real_world() {
     const ALL_CFS: [&str; 3] = ["lock", "write", "default"];
-    let path = TempDir::new("_rust_rocksdb_ingest_real_world_1").expect("");
+    let path = tempdir_with_prefix("_rust_rocksdb_ingest_real_world_1");
     let mut db = create_default_database(&path);
-    let gen_path = TempDir::new("_rust_rocksdb_ingest_real_world_new_cf").expect("");
+    let gen_path = tempdir_with_prefix("_rust_rocksdb_ingest_real_world_new_cf");
     create_cfs(&mut db, &ALL_CFS);
     for cf in &ALL_CFS {
         let handle = db.cf_handle(cf).unwrap();
@@ -333,7 +334,7 @@ fn test_ingest_simulate_real_world() {
         );
     }
 
-    let path2 = TempDir::new("_rust_rocksdb_ingest_real_world_2").expect("");
+    let path2 = tempdir_with_prefix("_rust_rocksdb_ingest_real_world_2");
     let mut db2 = create_default_database(&path2);
     for cf in &ALL_CFS {
         if *cf != "default" {
@@ -393,7 +394,7 @@ fn test_ingest_simulate_real_world() {
 
 #[test]
 fn test_mem_sst_file_writer() {
-    let path = TempDir::new("_rust_mem_sst_file_writer").expect("");
+    let path = tempdir_with_prefix("_rust_mem_sst_file_writer");
     let db = create_default_database(&path);
 
     let env = Arc::new(Env::new_mem());
@@ -444,9 +445,9 @@ fn test_mem_sst_file_writer() {
 
 #[test]
 fn test_set_external_sst_file_global_seq_no() {
-    let db_path = TempDir::new("_rust_rocksdb_set_external_sst_file_global_seq_no_db").expect("");
+    let db_path = tempdir_with_prefix("_rust_rocksdb_set_external_sst_file_global_seq_no_db");
     let db = create_default_database(&db_path);
-    let path = TempDir::new("_rust_rocksdb_set_external_sst_file_global_seq_no").expect("");
+    let path = tempdir_with_prefix("_rust_rocksdb_set_external_sst_file_global_seq_no");
     let file = path.path().join("sst_file");
     let sstfile_str = file.to_str().unwrap();
     gen_sst(
@@ -475,9 +476,9 @@ fn test_set_external_sst_file_global_seq_no() {
 
 #[test]
 fn test_ingest_external_file_optimized() {
-    let path = TempDir::new("_rust_rocksdb_ingest_sst_optimized").expect("");
+    let path = tempdir_with_prefix("_rust_rocksdb_ingest_sst_optimized");
     let db = create_default_database(&path);
-    let gen_path = TempDir::new("_rust_rocksdb_ingest_sst_gen_new_cf").expect("");
+    let gen_path = tempdir_with_prefix("_rust_rocksdb_ingest_sst_gen_new_cf");
     let test_sstfile = gen_path.path().join("test_sst_file_optimized");
     let test_sstfile_str = test_sstfile.to_str().unwrap();
     let handle = db.cf_handle("default").unwrap();
@@ -512,7 +513,7 @@ fn test_ingest_external_file_optimized() {
 
 #[test]
 fn test_read_sst() {
-    let dir = TempDir::new("_rust_rocksdb_test_read_sst").unwrap();
+    let dir = tempdir_with_prefix("_rust_rocksdb_test_read_sst");
     let sst_path = dir.path().join("sst");
     let sst_path_str = sst_path.to_str().unwrap();
     gen_sst_put(ColumnFamilyOptions::new(), None, sst_path_str);
@@ -537,7 +538,7 @@ fn test_read_sst() {
 
 #[test]
 fn test_read_invalid_sst() {
-    let dir = TempDir::new("_rust_rocksdb_test_read_invalid_sst").unwrap();
+    let dir = tempdir_with_prefix("_rust_rocksdb_test_read_invalid_sst");
     let sst_path = dir.path().join("sst");
     let sst_path_str = sst_path.to_str().unwrap();
     gen_sst_put(ColumnFamilyOptions::new(), None, sst_path_str);

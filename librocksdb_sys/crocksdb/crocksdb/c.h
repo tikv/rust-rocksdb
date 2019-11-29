@@ -1207,6 +1207,10 @@ extern C_ROCKSDB_LIBRARY_API unsigned char
 crocksdb_compactionfiltercontext_is_manual_compaction(
     crocksdb_compactionfiltercontext_t* context);
 
+extern C_ROCKSDB_LIBRARY_API int
+crocksdb_compactionfiltercontext_output_level(
+    crocksdb_compactionfiltercontext_t* context);
+
 /* Compaction Filter Factory */
 
 extern C_ROCKSDB_LIBRARY_API crocksdb_compactionfilterfactory_t*
@@ -1342,6 +1346,8 @@ crocksdb_compactoptions_set_exclusive_manual_compaction(
 extern C_ROCKSDB_LIBRARY_API void crocksdb_compactoptions_set_change_level(
     crocksdb_compactoptions_t*, unsigned char);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_compactoptions_set_target_level(
+    crocksdb_compactoptions_t*, int);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_compactoptions_set_first_level(
     crocksdb_compactoptions_t*, int);
 extern C_ROCKSDB_LIBRARY_API void
 crocksdb_compactoptions_set_max_subcompactions(crocksdb_compactoptions_t*, int);

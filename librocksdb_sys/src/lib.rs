@@ -80,6 +80,10 @@ pub struct DBFlushOptions(c_void);
 #[repr(C)]
 pub struct DBCompactionFilter(c_void);
 #[repr(C)]
+pub struct DBCompactionFilterFactory(c_void);
+#[repr(C)]
+pub struct DBCompactionFilterContext(c_void);
+#[repr(C)]
 pub struct EnvOptions(c_void);
 #[repr(C)]
 pub struct SstFileReader(c_void);
@@ -553,6 +557,10 @@ extern "C" {
     pub fn crocksdb_options_set_compaction_filter(
         options: *mut Options,
         filter: *mut DBCompactionFilter,
+    );
+    pub fn crocksdb_options_set_compaction_filter_factory(
+        options: *mut Options,
+        factor: *mut DBCompactionFilterFactory,
     );
     pub fn crocksdb_options_set_create_if_missing(options: *mut Options, v: bool);
     pub fn crocksdb_options_set_max_open_files(options: *mut Options, files: c_int);
@@ -1212,6 +1220,7 @@ extern "C" {
     );
     pub fn crocksdb_compactoptions_set_change_level(opt: *mut DBCompactOptions, v: bool);
     pub fn crocksdb_compactoptions_set_target_level(opt: *mut DBCompactOptions, v: i32);
+    pub fn crocksdb_compactoptions_set_first_level(opt: *mut DBCompactOptions, v: i32);
     pub fn crocksdb_compactoptions_set_max_subcompactions(opt: *mut DBCompactOptions, v: i32);
     pub fn crocksdb_compactoptions_set_bottommost_level_compaction(
         opt: *mut DBCompactOptions,
@@ -1308,6 +1317,7 @@ extern "C" {
         cf: *mut DBCFHandle,
         propname: *const c_char,
     ) -> *mut c_char;
+
     // Compaction filter
     pub fn crocksdb_compactionfilter_create(
         state: *mut c_void,
@@ -1330,6 +1340,31 @@ extern "C" {
         ignore_snapshot: bool,
     );
     pub fn crocksdb_compactionfilter_destroy(filter: *mut DBCompactionFilter);
+
+    // Compaction filter context
+    pub fn crocksdb_compactionfiltercontext_is_full_compaction(
+        ctx: *const DBCompactionFilterContext
+    ) -> bool;
+    pub fn crocksdb_compactionfiltercontext_is_manual_compaction(
+        ctx: *const DBCompactionFilterContext
+    ) -> bool;
+    pub fn crocksdb_compactionfiltercontext_output_level(
+        ctx: *const DBCompactionFilterContext
+    ) -> i32;
+
+    // Compaction filter factory
+    pub fn crocksdb_compactionfilterfactory_create(
+        state: *mut c_void,
+        destructor: extern "C" fn(*mut c_void),
+        create_compaction_filter: extern "C" fn(
+            *mut c_void,
+            *const DBCompactionFilterContext,
+        ) -> *mut DBCompactionFilter,
+        name: extern "C" fn(*mut c_void) -> *const c_char,
+    ) -> *mut DBCompactionFilterFactory;
+    pub fn crocksdb_compactionfilterfactory_destroy(
+        factor: *mut DBCompactionFilterFactory,
+    );
 
     // Env
     pub fn crocksdb_default_env_create() -> *mut DBEnv;

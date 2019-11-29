@@ -24,7 +24,14 @@ struct Filter {
 }
 
 impl CompactionFilter for Filter {
-    fn filter(&mut self, _: usize, key: &[u8], value: &[u8]) -> bool {
+    fn filter(
+        &mut self,
+        _: usize,
+        key: &[u8],
+        value: &[u8],
+        _: &mut Vec<u8>,
+        _: &mut bool,
+    ) -> bool {
         self.filtered_kvs
             .write()
             .unwrap()

@@ -1343,13 +1343,13 @@ extern "C" {
 
     // Compaction filter context
     pub fn crocksdb_compactionfiltercontext_is_full_compaction(
-        ctx: *const DBCompactionFilterContext
+        ctx: *const DBCompactionFilterContext,
     ) -> bool;
     pub fn crocksdb_compactionfiltercontext_is_manual_compaction(
-        ctx: *const DBCompactionFilterContext
+        ctx: *const DBCompactionFilterContext,
     ) -> bool;
     pub fn crocksdb_compactionfiltercontext_output_level(
-        ctx: *const DBCompactionFilterContext
+        ctx: *const DBCompactionFilterContext,
     ) -> i32;
 
     // Compaction filter factory
@@ -1362,9 +1362,7 @@ extern "C" {
         ) -> *mut DBCompactionFilter,
         name: extern "C" fn(*mut c_void) -> *const c_char,
     ) -> *mut DBCompactionFilterFactory;
-    pub fn crocksdb_compactionfilterfactory_destroy(
-        factor: *mut DBCompactionFilterFactory,
-    );
+    pub fn crocksdb_compactionfilterfactory_destroy(factor: *mut DBCompactionFilterFactory);
 
     // Env
     pub fn crocksdb_default_env_create() -> *mut DBEnv;

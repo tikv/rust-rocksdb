@@ -21,7 +21,6 @@ use std::marker::PhantomData;
 use std::ops::{Deref, Index};
 use std::{slice, str};
 
-#[repr(transparent)]
 pub struct TablePropertiesCollectionView(crocksdb_table_properties_collection_t);
 
 impl TablePropertiesCollectionView {
@@ -133,7 +132,6 @@ impl Deref for TablePropertiesCollection {
     }
 }
 
-#[repr(transparent)]
 pub struct TableProperties {
     inner: crocksdb_table_properties_t,
 }
@@ -238,7 +236,6 @@ impl TableProperties {
     }
 }
 
-#[repr(transparent)]
 pub struct UserCollectedProperties {
     inner: crocksdb_user_collected_properties_t,
 }

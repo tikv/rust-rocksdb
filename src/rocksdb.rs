@@ -18,7 +18,7 @@ use crocksdb_ffi::{
     crocksdb_sequential_file_t, crocksdb_t, crocksdb_writebatch_t, ctitandb_options_t,
     DBCompressionType, DBStatisticsHistogramType, DBStatisticsTickerType,
 };
-use libc::{self, c_int, c_void, size_t};
+use libc::{self, c_char, c_int, c_void, size_t};
 use metadata::ColumnFamilyMetaData;
 use rocksdb_options::{
     CColumnFamilyDescriptor, ColumnFamilyDescriptor, ColumnFamilyOptions, CompactOptions,
@@ -39,7 +39,6 @@ use std::str::from_utf8;
 use std::sync::Arc;
 use std::{fs, ptr, slice};
 use table_properties::{TableProperties, TablePropertiesCollection};
-use util::is_power_of_two;
 use util::opt_bytes_to_ptr;
 
 pub struct CFHandle {
@@ -2560,10 +2559,9 @@ pub struct Cache {
 impl Cache {
     pub fn new_lru_cache(opt: LRUCacheOptions) -> Cache {
         // This is ok because LRUCacheOptions always contains a valid pointer
-        unsafe {
-            Cache {
-                inner: crocksdb_ffi::new_lru_cache(opt.inner),
-            }
+
+        Cache {
+            inner: crocksdb_ffi::new_lru_cache(opt.inner),
         }
     }
 }
@@ -2636,7 +2634,7 @@ pub fn load_latest_options(
             dbpath.as_ptr(),
             env.inner,
             db_options.inner,
-            &raw_cf_descs,
+            &mut raw_cf_descs,
             &mut cf_descs_len,
             ignore_unknown_options as u8
         ));

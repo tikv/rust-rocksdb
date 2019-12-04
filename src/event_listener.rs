@@ -31,7 +31,6 @@ macro_rules! fetch_str {
     })
 }
 
-#[repr(transparent)]
 pub struct FlushJobInfo(crocksdb_flushjobinfo_t);
 
 impl FlushJobInfo {
@@ -60,7 +59,6 @@ impl FlushJobInfo {
     }
 }
 
-#[repr(transparent)]
 pub struct CompactionJobInfo(crocksdb_compactionjobinfo_t);
 
 impl CompactionJobInfo {
@@ -131,7 +129,6 @@ impl CompactionJobInfo {
     }
 }
 
-#[repr(transparent)]
 pub struct IngestionInfo(crocksdb_externalfileingestioninfo_t);
 
 impl IngestionInfo {
@@ -156,7 +153,6 @@ impl IngestionInfo {
     }
 }
 
-#[repr(transparent)]
 pub struct WriteStallInfo(crocksdb_writestallinfo_t);
 
 impl WriteStallInfo {

@@ -14,34 +14,9 @@
 use libc::c_char;
 use std::ptr;
 
-pub fn is_power_of_two(mut n: usize) -> bool {
-    if n == 0 {
-        return false;
-    }
-    while n % 2 == 0 {
-        n = n / 2;
-    }
-    n == 1
-}
-
 pub fn opt_bytes_to_ptr<T: AsRef<[u8]>>(opt: Option<T>) -> *const c_char {
     match opt {
         Some(v) => v.as_ref().as_ptr() as *const c_char,
         None => ptr::null(),
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    #[test]
-    fn test_is_power_of_two() {
-        assert_eq!(is_power_of_two(0), false);
-        assert_eq!(is_power_of_two(1), true);
-        assert_eq!(is_power_of_two(2), true);
-        assert_eq!(is_power_of_two(4), true);
-        assert_eq!(is_power_of_two(8), true);
-        assert_eq!(is_power_of_two(5), false);
     }
 }

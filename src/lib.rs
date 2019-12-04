@@ -68,6 +68,7 @@ mod table_properties;
 mod table_properties_collector;
 mod table_properties_collector_factory;
 mod titan;
+mod util;
 
 #[cfg(test)]
 fn tempdir_with_prefix(prefix: &str) -> tempfile::TempDir {

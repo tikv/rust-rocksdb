@@ -126,7 +126,10 @@ impl CompactionJobInfo {
     }
 
     pub fn compaction_reason(&self) -> CompactionReason {
-        unsafe { crocksdb_ffi::crocksdb_compactionjobinfo_compaction_reason(&self.0) }
+        unsafe {
+            *(crocksdb_ffi::crocksdb_compactionjobinfo_compaction_reason(&self.0)
+                as *const CompactionReason)
+        }
     }
 }
 

@@ -151,8 +151,6 @@ pub struct DBWriteStallInfo(c_void);
 pub struct DBStatusPtr(c_void);
 #[repr(C)]
 pub struct DBMapProperty(c_void);
-#[repr(C)]
-pub struct DBCompactionReason(c_void);
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 #[repr(C)]
@@ -1776,7 +1774,7 @@ extern "C" {
     pub fn crocksdb_compactionjobinfo_total_output_bytes(info: *const DBCompactionJobInfo) -> u64;
     pub fn crocksdb_compactionjobinfo_compaction_reason(
         info: *const DBCompactionJobInfo,
-    ) -> *const DBCompactionReason;
+    ) -> CompactionReason;
 
     pub fn crocksdb_externalfileingestioninfo_cf_name(
         info: *const DBIngestionInfo,

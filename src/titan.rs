@@ -1,7 +1,7 @@
 use std::ffi::{CStr, CString};
 use std::ops::Deref;
 
-use crocksdb_ffi::{self, DBCompressionType, DBTitanBlobIndex, DBTitanDBOptions};
+use crocksdb_ffi::{self, ctitandb_blob_index_t, ctitandb_options_t, DBCompressionType};
 use librocksdb_sys::{ctitandb_encode_blob_index, DBTitanDBBlobRunMode};
 use rocksdb::Cache;
 use rocksdb_options::LRUCacheOptions;
@@ -12,7 +12,7 @@ use std::ptr;
 use std::slice;
 
 pub struct TitanDBOptions {
-    pub inner: *mut DBTitanDBOptions,
+    pub inner: *mut ctitandb_options_t,
 }
 
 impl TitanDBOptions {
@@ -51,30 +51,34 @@ impl TitanDBOptions {
     }
 
     pub fn blob_file_compression(&self) -> DBCompressionType {
-        unsafe { crocksdb_ffi::ctitandb_options_blob_file_compression(self.inner) }
+        unsafe {
+            DBCompressionType::from_i32(crocksdb_ffi::ctitandb_options_blob_file_compression(
+                self.inner,
+            ))
+        }
     }
 
     pub fn set_blob_file_compression(&mut self, t: DBCompressionType) {
         unsafe {
-            crocksdb_ffi::ctitandb_options_set_blob_file_compression(self.inner, t);
+            crocksdb_ffi::ctitandb_options_set_blob_file_compression(self.inner, t as i32);
         }
     }
 
     pub fn set_disable_background_gc(&mut self, disable: bool) {
         unsafe {
-            crocksdb_ffi::ctitandb_options_set_disable_background_gc(self.inner, disable);
+            crocksdb_ffi::ctitandb_options_set_disable_background_gc(self.inner, disable as u8);
         }
     }
 
     pub fn set_level_merge(&mut self, enable: bool) {
         unsafe {
-            crocksdb_ffi::ctitandb_options_set_level_merge(self.inner, enable);
+            crocksdb_ffi::ctitandb_options_set_level_merge(self.inner, enable as u8);
         }
     }
 
     pub fn set_range_merge(&mut self, enable: bool) {
         unsafe {
-            crocksdb_ffi::ctitandb_options_set_range_merge(self.inner, enable);
+            crocksdb_ffi::ctitandb_options_set_range_merge(self.inner, enable as u8);
         }
     }
 
@@ -92,7 +96,10 @@ impl TitanDBOptions {
 
     pub fn set_purge_obsolete_files_period(&mut self, period: usize) {
         unsafe {
-            crocksdb_ffi::ctitandb_options_set_purge_obsolete_files_period_sec(self.inner, period);
+            crocksdb_ffi::ctitandb_options_set_purge_obsolete_files_period_sec(
+                self.inner,
+                period as u32,
+            );
         }
     }
 
@@ -146,7 +153,7 @@ impl TitanDBOptions {
 
     pub fn set_blob_run_mode(&mut self, t: DBTitanDBBlobRunMode) {
         unsafe {
-            crocksdb_ffi::ctitandb_options_set_blob_run_mode(self.inner, t);
+            crocksdb_ffi::ctitandb_options_set_blob_run_mode(self.inner, t as i32);
         }
     }
 }
@@ -159,9 +166,20 @@ impl Drop for TitanDBOptions {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct TitanBlobIndex {
-    inner: DBTitanBlobIndex,
+    inner: ctitandb_blob_index_t,
+}
+
+impl Default for TitanBlobIndex {
+    fn default() -> TitanBlobIndex {
+        let blob_index = ctitandb_blob_index_t {
+            file_number: 0,
+            blob_offset: 0,
+            blob_size: 0,
+        };
+        TitanBlobIndex { inner: blob_index }
+    }
 }
 
 impl TitanBlobIndex {
@@ -169,9 +187,9 @@ impl TitanBlobIndex {
         let mut index = Self::default();
         unsafe {
             ffi_try!(ctitandb_decode_blob_index(
-                value.as_ptr(),
-                value.len() as u64,
-                &mut index.inner as *mut DBTitanBlobIndex
+                value.as_ptr() as *const i8,
+                value.len() as usize,
+                &mut index.inner as *mut ctitandb_blob_index_t
             ));
         }
         Ok(index)
@@ -179,10 +197,10 @@ impl TitanBlobIndex {
 
     pub fn encode(&self) -> Vec<u8> {
         let mut value = ptr::null_mut();
-        let mut value_size: u64 = 0;
+        let mut value_size: usize = 0;
         unsafe {
             ctitandb_encode_blob_index(&self.inner, &mut value, &mut value_size);
-            let slice = slice::from_raw_parts(value, value_size as usize);
+            let slice = slice::from_raw_parts(value as *mut u8, value_size);
             let vec = slice.to_vec();
             libc::free(value as *mut libc::c_void);
             vec
@@ -191,7 +209,7 @@ impl TitanBlobIndex {
 }
 
 impl Deref for TitanBlobIndex {
-    type Target = DBTitanBlobIndex;
+    type Target = ctitandb_blob_index_t;
     fn deref(&self) -> &Self::Target {
         &self.inner
     }

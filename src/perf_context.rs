@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crocksdb_ffi::{self, DBIOStatsContext, DBPerfContext};
+use crocksdb_ffi::{self, crocksdb_iostats_context_t, crocksdb_perf_context_t};
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum PerfLevel {
@@ -51,7 +51,7 @@ pub fn set_perf_level(level: PerfLevel) {
 }
 
 pub struct PerfContext {
-    inner: *mut DBPerfContext,
+    inner: *mut crocksdb_perf_context_t,
 }
 
 impl PerfContext {
@@ -337,7 +337,7 @@ impl PerfContext {
 }
 
 pub struct IOStatsContext {
-    inner: *mut DBIOStatsContext,
+    inner: *mut crocksdb_iostats_context_t,
 }
 
 impl IOStatsContext {

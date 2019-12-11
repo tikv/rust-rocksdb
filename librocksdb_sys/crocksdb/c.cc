@@ -266,6 +266,9 @@ struct crocksdb_sst_file_meta_data_t {
 struct crocksdb_compaction_options_t {
   CompactionOptions rep;
 };
+struct crocksdb_compaction_reason_t {
+  CompactionReason rep;
+};
 
 struct crocksdb_map_property_t {
   std::map<std::string, std::string> rep;
@@ -2003,9 +2006,9 @@ uint64_t crocksdb_compactionjobinfo_total_output_bytes(
   return info->rep.stats.total_output_bytes;
 }
 
-CompactionReason crocksdb_compactionjobinfo_compaction_reason(
+const crocksdb_compaction_reason_t* crocksdb_compactionjobinfo_compaction_reason(
     const crocksdb_compactionjobinfo_t* info) {
-  return info->rep.compaction_reason;
+  return reinterpret_cast<const crocksdb_compaction_reason_t*>(&info->rep.compaction_reason);
 }
 
 /* ExternalFileIngestionInfo */

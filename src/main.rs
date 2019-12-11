@@ -160,9 +160,6 @@ mod tests {
         cf_opts.set_disable_auto_compactions(true);
         cf_opts.set_max_compaction_bytes(1073741824 * 25);
 
-        // let filter = new_bloom_filter(10);
-        // opts.set_filter(filter);
-
         DB::open_cf(opts, path, vec![("default", cf_opts)]).unwrap()
     }
 

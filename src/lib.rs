@@ -25,10 +25,10 @@ pub use event_listener::{
     CompactionJobInfo, EventListener, FlushJobInfo, IngestionInfo, WriteStallInfo,
 };
 pub use librocksdb_sys::{
-    self as crocksdb_ffi, new_bloom_filter, CompactionPriority, CompactionReason,
+    self as crocksdb_ffi, crocksdb_status_ptr_t, CompactionPriority, CompactionReason,
     DBBackgroundErrorReason, DBBottommostLevelCompaction, DBCompactionStyle, DBCompressionType,
     DBEntryType, DBInfoLogLevel, DBRateLimiterMode, DBRecoveryMode, DBStatisticsHistogramType,
-    DBStatisticsTickerType, DBStatusPtr, DBTitanDBBlobRunMode, IndexType, WriteStallCondition,
+    DBStatisticsTickerType, DBTitanDBBlobRunMode, IndexType, WriteStallCondition,
 };
 pub use merge_operator::MergeOperands;
 pub use metadata::{ColumnFamilyMetaData, LevelMetaData, SstFileMetaData};
@@ -68,6 +68,7 @@ mod table_properties;
 mod table_properties_collector;
 mod table_properties_collector_factory;
 mod titan;
+mod util;
 
 #[cfg(test)]
 fn tempdir_with_prefix(prefix: &str) -> tempfile::TempDir {

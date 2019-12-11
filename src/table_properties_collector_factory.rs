@@ -11,7 +11,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crocksdb_ffi::{self, DBTablePropertiesCollector, DBTablePropertiesCollectorFactory};
+use crocksdb_ffi::{
+    self, crocksdb_table_properties_collector_factory_t, crocksdb_table_properties_collector_t,
+};
 use libc::{c_char, c_void};
 use std::ffi::CString;
 use table_properties_collector::{new_table_properties_collector, TablePropertiesCollector};
@@ -56,7 +58,7 @@ extern "C" fn destruct(handle: *mut c_void) {
 extern "C" fn create_table_properties_collector(
     handle: *mut c_void,
     cf: u32,
-) -> *mut DBTablePropertiesCollector {
+) -> *mut crocksdb_table_properties_collector_t {
     unsafe {
         let handle = &mut *(handle as *mut TablePropertiesCollectorFactoryHandle);
         let collector = handle.rep.create_table_properties_collector(cf);
@@ -67,12 +69,12 @@ extern "C" fn create_table_properties_collector(
 pub unsafe fn new_table_properties_collector_factory(
     fname: &str,
     factory: Box<dyn TablePropertiesCollectorFactory>,
-) -> *mut DBTablePropertiesCollectorFactory {
+) -> *mut crocksdb_table_properties_collector_factory_t {
     let handle = TablePropertiesCollectorFactoryHandle::new(fname, factory);
     crocksdb_ffi::crocksdb_table_properties_collector_factory_create(
         Box::into_raw(Box::new(handle)) as *mut c_void,
-        name,
-        destruct,
-        create_table_properties_collector,
+        Some(name),
+        Some(destruct),
+        Some(create_table_properties_collector),
     )
 }

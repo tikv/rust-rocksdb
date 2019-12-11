@@ -11,18 +11,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crocksdb_ffi::{self, DBColumnFamilyMetaData, DBLevelMetaData, DBSstFileMetaData};
+use crocksdb_ffi::{
+    self, crocksdb_column_family_meta_data_t, crocksdb_level_meta_data_t,
+    crocksdb_sst_file_meta_data_t,
+};
 use std::ffi::CStr;
 use std::slice;
 
 use libc::size_t;
 
 pub struct ColumnFamilyMetaData {
-    inner: *mut DBColumnFamilyMetaData,
+    inner: *mut crocksdb_column_family_meta_data_t,
 }
 
 impl ColumnFamilyMetaData {
-    pub fn from_ptr(inner: *mut DBColumnFamilyMetaData) -> ColumnFamilyMetaData {
+    pub fn from_ptr(inner: *mut crocksdb_column_family_meta_data_t) -> ColumnFamilyMetaData {
         ColumnFamilyMetaData { inner: inner }
     }
 
@@ -48,13 +51,13 @@ impl Drop for ColumnFamilyMetaData {
 }
 
 pub struct LevelMetaData<'a> {
-    inner: *const DBLevelMetaData,
+    inner: *const crocksdb_level_meta_data_t,
     _mark: &'a ColumnFamilyMetaData,
 }
 
 impl<'a> LevelMetaData<'a> {
     pub fn from_ptr(
-        inner: *const DBLevelMetaData,
+        inner: *const crocksdb_level_meta_data_t,
         _mark: &'a ColumnFamilyMetaData,
     ) -> LevelMetaData {
         LevelMetaData { inner, _mark }
@@ -74,13 +77,13 @@ impl<'a> LevelMetaData<'a> {
 }
 
 pub struct SstFileMetaData<'a> {
-    inner: *const DBSstFileMetaData,
+    inner: *const crocksdb_sst_file_meta_data_t,
     _mark: &'a ColumnFamilyMetaData,
 }
 
 impl<'a> SstFileMetaData<'a> {
     pub fn from_ptr(
-        inner: *const DBSstFileMetaData,
+        inner: *const crocksdb_sst_file_meta_data_t,
         _mark: &'a ColumnFamilyMetaData,
     ) -> SstFileMetaData {
         SstFileMetaData { inner, _mark }

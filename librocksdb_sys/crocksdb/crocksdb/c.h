@@ -147,6 +147,7 @@ typedef struct crocksdb_iostats_context_t crocksdb_iostats_context_t;
 typedef struct crocksdb_writestallinfo_t crocksdb_writestallinfo_t;
 typedef struct crocksdb_writestallcondition_t crocksdb_writestallcondition_t;
 typedef struct crocksdb_map_property_t crocksdb_map_property_t;
+typedef struct crocksdb_compaction_reason_t crocksdb_compaction_reason_t;
 
 typedef enum crocksdb_table_property_t {
   kDataSize = 1,
@@ -756,6 +757,8 @@ crocksdb_compactionjobinfo_total_input_bytes(
 extern C_ROCKSDB_LIBRARY_API uint64_t
 crocksdb_compactionjobinfo_total_output_bytes(
     const crocksdb_compactionjobinfo_t* info);
+extern C_ROCKSDB_LIBRARY_API const crocksdb_compaction_reason_t*
+crocksdb_compactionjobinfo_compaction_reason(const crocksdb_compactionjobinfo_t* info);
 
 /* External file ingestion info */
 extern C_ROCKSDB_LIBRARY_API const char*

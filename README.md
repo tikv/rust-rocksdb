@@ -1,6 +1,6 @@
 # rust-rocksdb
 
-This library has been tested against RocksDB 5.15 on Linux and macOS.
+This library has been tested against RocksDB 6.4 on Linux and macOS.
 
 ## Status
   - [x] basic open/put/get/delete/close
@@ -40,7 +40,7 @@ $ cargo build
 
 ```rust
 [dependencies.rocksdb]
-git = "https://github.com/pingcap/rust-rocksdb.git"
+git = "https://github.com/tikv/rust-rocksdb.git"
 ```
 
 ###### Code

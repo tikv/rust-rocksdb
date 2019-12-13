@@ -14,9 +14,6 @@
 use std::collections::HashMap;
 use std::ops;
 
-use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
-use tempdir::TempDir;
-
 use rand::Rng;
 use rocksdb::{
     CFHandle, ColumnFamilyOptions, CompactOptions, DBBottommostLevelCompaction, DBCompressionType,
@@ -25,14 +22,16 @@ use rocksdb::{
     Writable, DB,
 };
 
+use super::tempdir_with_prefix;
+
 fn encode_u32(x: u32) -> Vec<u8> {
-    let mut w = Vec::new();
-    w.write_u32::<LittleEndian>(x).unwrap();
-    w
+    x.to_le_bytes().to_vec()
 }
 
-fn decode_u32(mut x: &[u8]) -> u32 {
-    x.read_u32::<LittleEndian>().unwrap()
+fn decode_u32(x: &[u8]) -> u32 {
+    let mut dst = [0u8; 4];
+    dst.copy_from_slice(&x[..4]);
+    u32::from_le_bytes(dst)
 }
 
 #[derive(Default)]
@@ -103,7 +102,7 @@ fn check_table_properties(db: &DB, num_blobs: u32, num_entries: u32) {
 fn test_titandb() {
     let max_value_size = 10;
 
-    let path = TempDir::new("test_titandb").unwrap();
+    let path = tempdir_with_prefix("test_titandb");
     let tdb_path = path.path().join("titandb");
     let mut tdb_opts = TitanDBOptions::new();
     tdb_opts.set_dirname(tdb_path.to_str().unwrap());
@@ -123,7 +122,7 @@ fn test_titandb() {
     cf_opts.add_table_properties_collector_factory("titan-collector", Box::new(f));
     cf_opts.set_titandb_options(&tdb_opts);
 
-    let db = DB::open_cf(
+    let mut db = DB::open_cf(
         opts,
         path.path().to_str().unwrap(),
         vec![("default", cf_opts)],
@@ -139,6 +138,13 @@ fn test_titandb() {
         }
         db.flush(true).unwrap();
     }
+
+    let mut cf_opts = ColumnFamilyOptions::new();
+    cf_opts.set_num_levels(4);
+    cf_opts.set_titandb_options(&tdb_opts);
+    db.create_cf(("cf1", cf_opts)).unwrap();
+    let cf1 = db.cf_handle("cf1").unwrap();
+    assert_eq!(db.get_options_cf(cf1).get_num_levels(), 4);
 
     let mut iter = db.iter();
     iter.seek(SeekKey::Start);
@@ -245,7 +251,7 @@ fn generate_file_bottom_level(db: &DB, handle: &CFHandle, range: ops::Range<u32>
 
 #[test]
 fn test_titan_delete_files_in_ranges() {
-    let path = TempDir::new("_rust_rocksdb_test_titan_delete_files_in_multi_ranges").unwrap();
+    let path = tempdir_with_prefix("_rust_rocksdb_test_titan_delete_files_in_multi_ranges");
     let tdb_path = path.path().join("titandb");
     let mut tdb_opts = TitanDBOptions::new();
     tdb_opts.set_dirname(tdb_path.to_str().unwrap());
@@ -306,7 +312,7 @@ fn test_titan_delete_files_in_ranges() {
 
 #[test]
 fn test_get_blob_cache_usage() {
-    let path = TempDir::new("_rust_rocksdb_set_blob_cache").expect("");
+    let path = tempdir_with_prefix("_rust_rocksdb_set_blob_cache");
     let tdb_path = path.path().join("titandb");
     let mut tdb_opts = TitanDBOptions::new();
     tdb_opts.set_dirname(tdb_path.to_str().unwrap());
@@ -340,7 +346,7 @@ fn test_get_blob_cache_usage() {
 
 #[test]
 fn test_blob_cache_capacity() {
-    let path = TempDir::new("_rust_rocksdb_set_and_get_blob_cache_capacity").expect("");
+    let path = tempdir_with_prefix("_rust_rocksdb_set_and_get_blob_cache_capacity");
     let tdb_path = path.path().join("titandb");
     let mut tdb_opts = TitanDBOptions::new();
     tdb_opts.set_dirname(tdb_path.to_str().unwrap());

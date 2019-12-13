@@ -40,7 +40,6 @@ use std::sync::Arc;
 use std::{fs, ptr, slice};
 
 use table_properties::{TableProperties, TablePropertiesCollection};
-use util::is_power_of_two;
 use titan::TitanDBOptions;
 
 pub struct CFHandle {
@@ -89,7 +88,7 @@ fn split_descriptors<'a>(
 
 fn build_cstring_list(str_list: &[&str]) -> Vec<CString> {
     str_list
-        .into_iter()
+        .iter()
         .map(|s| CString::new(s.as_bytes()).unwrap())
         .collect()
 }
@@ -268,6 +267,7 @@ impl<D> DBIterator<D> {
         self.valid()
     }
 
+    #[allow(clippy::should_implement_trait)]
     pub fn next(&mut self) -> bool {
         unsafe {
             crocksdb_ffi::crocksdb_iter_next(self.inner);
@@ -563,11 +563,7 @@ impl DB {
             .map(|x| x.titan_inner as *const crocksdb_ffi::DBTitanDBOptions)
             .collect();
 
-        let readonly = if error_if_log_file_exist.is_some() {
-            true
-        } else {
-            false
-        };
+        let readonly = error_if_log_file_exist.is_some();
 
         let with_ttl = if ttls_vec.len() > 0 {
             if ttls_vec.len() == cf_names.len() {
@@ -829,6 +825,7 @@ impl DB {
             } else {
                 ffi_try!(ctitandb_create_column_family(
                     self.inner,
+                    cfd.options.inner,
                     cfd.options.titan_inner,
                     cname_ptr
                 ))
@@ -2126,11 +2123,9 @@ impl SstFileReader {
         let path =
             CString::new(name.to_owned()).map_err(|e| format!("invalid path {}: {:?}", name, e))?;
         unsafe {
-            Ok(ffi_try!(crocksdb_sstfilereader_open(
-                self.inner,
-                path.as_ptr()
-            )))
+            ffi_try!(crocksdb_sstfilereader_open(self.inner, path.as_ptr()));
         }
+        Ok(())
     }
 
     pub fn iter(&self) -> DBIterator<&Self> {
@@ -2193,7 +2188,8 @@ impl SstFileReader {
     }
 
     pub fn verify_checksum(&self) -> Result<(), String> {
-        unsafe { Ok(ffi_try!(crocksdb_sstfilereader_verify_checksum(self.inner))) }
+        unsafe { ffi_try!(crocksdb_sstfilereader_verify_checksum(self.inner)) };
+        Ok(())
     }
 }
 
@@ -2245,11 +2241,9 @@ impl SstFileWriter {
             Ok(p) => p,
         };
         unsafe {
-            Ok(ffi_try!(crocksdb_sstfilewriter_open(
-                self.inner,
-                path.as_ptr()
-            )))
+            ffi_try!(crocksdb_sstfilewriter_open(self.inner, path.as_ptr()));
         }
+        Ok(())
     }
 
     /// Add key, value to currently opened file
@@ -2430,7 +2424,7 @@ impl Env {
     // The recommanded block size are 1024, 512 and 256.
     pub fn new_ctr_encrypted_env(base_env: Arc<Env>, ciphertext: &[u8]) -> Result<Env, String> {
         let len = ciphertext.len();
-        if len > 2048 || !is_power_of_two(len) {
+        if len > 2048 || !len.is_power_of_two() {
             return Err(
                 "ciphertext length must be less or equal to 2048, and must be power of 2"
                     .to_owned(),
@@ -2439,7 +2433,7 @@ impl Env {
         let env = unsafe {
             crocksdb_ffi::crocksdb_ctr_encrypted_env_create(
                 base_env.inner,
-                mem::transmute(&ciphertext[0]),
+                ciphertext.as_ptr() as *const c_char,
                 len,
             )
         };
@@ -2547,8 +2541,11 @@ pub struct Cache {
 
 impl Cache {
     pub fn new_lru_cache(opt: LRUCacheOptions) -> Cache {
-        Cache {
-            inner: crocksdb_ffi::new_lru_cache(opt.inner),
+        // This is ok because LRUCacheOptions always contains a valid pointer
+        unsafe {
+            Cache {
+                inner: crocksdb_ffi::new_lru_cache(opt.inner),
+            }
         }
     }
 }
@@ -2613,14 +2610,14 @@ pub fn load_latest_options(
     let dbpath = CString::new(dbpath.as_bytes()).map_err(|_| ERR_CONVERT_PATH.to_owned())?;
     let db_options = DBOptions::new();
     unsafe {
-        let mut raw_cf_descs: *mut *mut crocksdb_ffi::ColumnFamilyDescriptor = ptr::null_mut();
+        let raw_cf_descs: *mut *mut crocksdb_ffi::ColumnFamilyDescriptor = ptr::null_mut();
         let mut cf_descs_len: size_t = 0;
 
         let ok = ffi_try!(crocksdb_load_latest_options(
             dbpath.as_ptr(),
             env.inner,
             db_options.inner,
-            &mut raw_cf_descs,
+            &raw_cf_descs,
             &mut cf_descs_len,
             ignore_unknown_options
         ));
@@ -2629,7 +2626,7 @@ pub fn load_latest_options(
         }
         let cf_descs_list = slice::from_raw_parts(raw_cf_descs, cf_descs_len);
         let cf_descs = cf_descs_list
-            .into_iter()
+            .iter()
             .map(|raw_cf_desc| CColumnFamilyDescriptor::from_raw(*raw_cf_desc))
             .collect();
 
@@ -2639,7 +2636,7 @@ pub fn load_latest_options(
     }
 }
 
-pub fn run_ldb_tool(ldb_args: &Vec<String>, opts: &DBOptions) {
+pub fn run_ldb_tool(ldb_args: &[String], opts: &DBOptions) {
     unsafe {
         let ldb_args_cstrs: Vec<_> = ldb_args
             .iter()
@@ -2656,17 +2653,18 @@ pub fn run_ldb_tool(ldb_args: &Vec<String>, opts: &DBOptions) {
 
 #[cfg(test)]
 mod test {
-    use super::*;
     use std::fs;
     use std::path::Path;
     use std::str;
     use std::string::String;
     use std::thread;
-    use tempdir::TempDir;
+
+    use super::*;
+    use crate::tempdir_with_prefix;
 
     #[test]
     fn external() {
-        let path = TempDir::new("_rust_rocksdb_externaltest").expect("");
+        let path = tempdir_with_prefix("_rust_rocksdb_externaltest");
         let db = DB::open_default(path.path().to_str().unwrap()).unwrap();
         let p = db.put(b"k1", b"v1111");
         assert!(p.is_ok());
@@ -2679,7 +2677,7 @@ mod test {
     #[allow(unused_variables)]
     #[test]
     fn errors_do_stuff() {
-        let path = TempDir::new("_rust_rocksdb_error").expect("");
+        let path = tempdir_with_prefix("_rust_rocksdb_error");
         let path_str = path.path().to_str().unwrap();
         let db = DB::open_default(path_str).unwrap();
         let opts = DBOptions::new();
@@ -2698,7 +2696,7 @@ mod test {
 
     #[test]
     fn writebatch_works() {
-        let path = TempDir::new("_rust_rocksdb_writebacktest").expect("");
+        let path = tempdir_with_prefix("_rust_rocksdb_writebacktest");
         let db = DB::open_default(path.path().to_str().unwrap()).unwrap();
 
         // test put
@@ -2769,7 +2767,7 @@ mod test {
 
     #[test]
     fn iterator_test() {
-        let path = TempDir::new("_rust_rocksdb_iteratortest").expect("");
+        let path = tempdir_with_prefix("_rust_rocksdb_iteratortest");
 
         let db = DB::open_default(path.path().to_str().unwrap()).unwrap();
         db.put(b"k1", b"v1111").expect("");
@@ -2788,7 +2786,7 @@ mod test {
 
     #[test]
     fn approximate_size_test() {
-        let path = TempDir::new("_rust_rocksdb_iteratortest").expect("");
+        let path = tempdir_with_prefix("_rust_rocksdb_iteratortest");
         let db = DB::open_default(path.path().to_str().unwrap()).unwrap();
         for i in 1..8000 {
             db.put(
@@ -2816,7 +2814,7 @@ mod test {
 
     #[test]
     fn property_test() {
-        let path = TempDir::new("_rust_rocksdb_propertytest").expect("");
+        let path = tempdir_with_prefix("_rust_rocksdb_propertytest");
         let db = DB::open_default(path.path().to_str().unwrap()).unwrap();
         db.put(b"a1", b"v1").unwrap();
         db.flush(true).unwrap();
@@ -2831,7 +2829,7 @@ mod test {
 
     #[test]
     fn list_column_families_test() {
-        let path = TempDir::new("_rust_rocksdb_list_column_families_test").expect("");
+        let path = tempdir_with_prefix("_rust_rocksdb_list_column_families_test");
         let mut cfs = ["default", "cf1", "cf2", "cf3"];
         {
             let mut cfs_opts = vec![];
@@ -2862,13 +2860,13 @@ mod test {
         let key = b"foo";
         let value = b"bar";
 
-        let db_dir = TempDir::new("_rust_rocksdb_backuptest").unwrap();
+        let db_dir = tempdir_with_prefix("_rust_rocksdb_backuptest");
         let db = DB::open_default(db_dir.path().to_str().unwrap()).unwrap();
         let p = db.put(key, value);
         assert!(p.is_ok());
 
         // Make a backup.
-        let backup_dir = TempDir::new("_rust_rocksdb_backuptest_backup").unwrap();
+        let backup_dir = tempdir_with_prefix("_rust_rocksdb_backuptest_backup");
         let backup_engine = db.backup_at(backup_dir.path().to_str().unwrap()).unwrap();
 
         // Restore it.
@@ -2877,7 +2875,7 @@ mod test {
         ropt2.set_keep_log_files(true);
         let ropts = [ropt1, ropt2];
         for ropt in &ropts {
-            let restore_dir = TempDir::new("_rust_rocksdb_backuptest_restore").unwrap();
+            let restore_dir = tempdir_with_prefix("_rust_rocksdb_backuptest_restore");
             let restored_db = DB::restore_from(
                 &backup_engine,
                 restore_dir.path().to_str().unwrap(),
@@ -2893,7 +2891,7 @@ mod test {
 
     #[test]
     fn log_dir_test() {
-        let db_dir = TempDir::new("_rust_rocksdb_logdirtest").unwrap();
+        let db_dir = tempdir_with_prefix("_rust_rocksdb_logdirtest");
         let db_path = db_dir.path().to_str().unwrap();
         let log_path = format!("{}", Path::new(&db_path).join("log_path").display());
         fs::create_dir_all(&log_path).unwrap();
@@ -2919,7 +2917,7 @@ mod test {
 
     #[test]
     fn single_delete_test() {
-        let path = TempDir::new("_rust_rocksdb_singledeletetest").expect("");
+        let path = tempdir_with_prefix("_rust_rocksdb_singledeletetest");
         let db = DB::open_default(path.path().to_str().unwrap()).unwrap();
 
         db.put(b"a", b"v1").unwrap();
@@ -2954,7 +2952,7 @@ mod test {
 
     #[test]
     fn test_pause_bg_work() {
-        let path = TempDir::new("_rust_rocksdb_pause_bg_work").expect("");
+        let path = tempdir_with_prefix("_rust_rocksdb_pause_bg_work");
         let db = DB::open_default(path.path().to_str().unwrap()).unwrap();
         let db = Arc::new(db);
         let db1 = db.clone();
@@ -3009,7 +3007,7 @@ mod test {
 
     #[test]
     fn block_cache_usage() {
-        let path = TempDir::new("_rust_rocksdb_block_cache_usage").expect("");
+        let path = tempdir_with_prefix("_rust_rocksdb_block_cache_usage");
         let db = DB::open_default(path.path().to_str().unwrap()).unwrap();
 
         for i in 0..200 {
@@ -3027,7 +3025,7 @@ mod test {
 
     #[test]
     fn flush_cf() {
-        let path = TempDir::new("_rust_rocksdb_flush_cf").expect("");
+        let path = tempdir_with_prefix("_rust_rocksdb_flush_cf");
         let mut opts = DBOptions::new();
         opts.create_if_missing(true);
         let mut db = DB::open(opts, path.path().to_str().unwrap()).unwrap();
@@ -3067,7 +3065,7 @@ mod test {
     fn test_get_all_key_versions() {
         let mut opts = DBOptions::new();
         opts.create_if_missing(true);
-        let path = TempDir::new("_rust_rocksdb_get_all_key_version_test").expect("");
+        let path = tempdir_with_prefix("_rust_rocksdb_get_all_key_version_test");
         let db = DB::open(opts, path.path().to_str().unwrap()).unwrap();
 
         let samples = vec![
@@ -3093,7 +3091,7 @@ mod test {
     fn test_get_approximate_memtable_stats() {
         let mut opts = DBOptions::new();
         opts.create_if_missing(true);
-        let path = TempDir::new("_rust_rocksdb_get_approximate_memtable_stats").expect("");
+        let path = tempdir_with_prefix("_rust_rocksdb_get_approximate_memtable_stats");
         let db = DB::open(opts, path.path().to_str().unwrap()).unwrap();
 
         let samples = [
@@ -3123,7 +3121,7 @@ mod test {
     fn test_set_options() {
         let mut opts = DBOptions::new();
         opts.create_if_missing(true);
-        let path = TempDir::new("_rust_rocksdb_set_option").expect("");
+        let path = tempdir_with_prefix("_rust_rocksdb_set_option");
 
         let db = DB::open(opts, path.path().to_str().unwrap()).unwrap();
         let cf = db.cf_handle("default").unwrap();
@@ -3144,7 +3142,7 @@ mod test {
 
     #[test]
     fn test_load_latest_options() {
-        let path = TempDir::new("_rust_rocksdb_load_latest_option").expect("");
+        let path = tempdir_with_prefix("_rust_rocksdb_load_latest_option");
         let dbpath = path.path().to_str().unwrap().clone();
         let cf_name: &str = "cf_dynamic_level_bytes";
 
@@ -3179,7 +3177,7 @@ mod test {
 
     #[test]
     fn test_sequence_number() {
-        let path = TempDir::new("_rust_rocksdb_sequence_number").expect("");
+        let path = tempdir_with_prefix("_rust_rocksdb_sequence_number");
 
         let mut opts = DBOptions::new();
         opts.create_if_missing(true);
@@ -3197,7 +3195,7 @@ mod test {
 
     #[test]
     fn test_map_property() {
-        let path = TempDir::new("_rust_rocksdb_get_map_property").expect("");
+        let path = tempdir_with_prefix("_rust_rocksdb_get_map_property");
         let dbpath = path.path().to_str().unwrap().clone();
 
         let mut opts = DBOptions::new();

@@ -16,66 +16,141 @@
 extern crate bzip2_sys;
 extern crate libc;
 #[cfg(test)]
-extern crate tempdir;
+extern crate tempfile;
 
-use libc::{c_char, c_double, c_int, c_uchar, c_void, size_t};
 use std::ffi::CStr;
 use std::fmt;
 
-pub enum Options {}
-pub enum ColumnFamilyDescriptor {}
-pub enum DBInstance {}
-pub enum DBWriteOptions {}
-pub enum DBReadOptions {}
-pub enum DBMergeOperator {}
-pub enum DBBlockBasedTableOptions {}
-pub enum DBMemoryAllocator {}
-pub enum DBLRUCacheOptions {}
-pub enum DBCache {}
-pub enum DBFilterPolicy {}
-pub enum DBSnapshot {}
-pub enum DBIterator {}
-pub enum DBCFHandle {}
-pub enum DBWriteBatch {}
-pub enum DBComparator {}
-pub enum DBFlushOptions {}
-pub enum DBCompactionFilter {}
-pub enum EnvOptions {}
-pub enum SstFileReader {}
-pub enum SstFileWriter {}
-pub enum ExternalSstFileInfo {}
-pub enum IngestExternalFileOptions {}
-pub enum DBBackupEngine {}
-pub enum DBRestoreOptions {}
-pub enum DBSliceTransform {}
-pub enum DBRateLimiter {}
-pub enum DBLogger {}
-pub enum DBCompactOptions {}
-pub enum DBFifoCompactionOptions {}
-pub enum DBPinnableSlice {}
-pub enum DBUserCollectedProperties {}
-pub enum DBUserCollectedPropertiesIterator {}
-pub enum DBTableProperties {}
-pub enum DBTablePropertiesCollection {}
-pub enum DBTablePropertiesCollectionIterator {}
-pub enum DBTablePropertiesCollector {}
-pub enum DBTablePropertiesCollectorFactory {}
-pub enum DBFlushJobInfo {}
-pub enum DBCompactionJobInfo {}
-pub enum DBIngestionInfo {}
-pub enum DBEventListener {}
-pub enum DBKeyVersions {}
-pub enum DBEnv {}
-pub enum DBSequentialFile {}
-pub enum DBColumnFamilyMetaData {}
-pub enum DBLevelMetaData {}
-pub enum DBSstFileMetaData {}
-pub enum DBCompactionOptions {}
-pub enum DBPerfContext {}
-pub enum DBIOStatsContext {}
-pub enum DBWriteStallInfo {}
-pub enum DBStatusPtr {}
-pub enum DBMapProperty {}
+use libc::{c_char, c_double, c_int, c_uchar, c_void, size_t};
+
+// FFI-safe opaque types.
+//
+// These represent opaque RocksDB types. They are used behind pointers, but are
+// also wrapped in other types in the higher-level bindings.
+//
+// These use the strategy for opaque C types described in the nomicon [1]:
+// but with the exception that they contain c_void instead of [u8; 0], thus
+// making them uninstantiable sized types instead of ZSTs.
+//
+// The c_void documentation publicly recommends using the ZST pattern from the
+// nomicon, but in private documentation [2] warns about UB from dereferencing
+// pointers to uninhabited types, which these bindings do.
+//
+// Additionally, these bindings wrap some these types directly (not through
+// pointers) and it's impossible to repr(transparent) a ZST, without which the
+// unsafe casts within are dubious.
+//
+// [1]: https://doc.rust-lang.org/nomicon/ffi.html#representing-opaque-structs
+// [2]: https://doc.rust-lang.org/nightly/src/core/ffi.rs.html#28
+
+#[repr(C)]
+pub struct Options(c_void);
+#[repr(C)]
+pub struct ColumnFamilyDescriptor(c_void);
+#[repr(C)]
+pub struct DBInstance(c_void);
+#[repr(C)]
+pub struct DBWriteOptions(c_void);
+#[repr(C)]
+pub struct DBReadOptions(c_void);
+#[repr(C)]
+pub struct DBMergeOperator(c_void);
+#[repr(C)]
+pub struct DBBlockBasedTableOptions(c_void);
+#[repr(C)]
+pub struct DBMemoryAllocator(c_void);
+#[repr(C)]
+pub struct DBLRUCacheOptions(c_void);
+#[repr(C)]
+pub struct DBCache(c_void);
+#[repr(C)]
+pub struct DBFilterPolicy(c_void);
+#[repr(C)]
+pub struct DBSnapshot(c_void);
+#[repr(C)]
+pub struct DBIterator(c_void);
+#[repr(C)]
+pub struct DBCFHandle(c_void);
+#[repr(C)]
+pub struct DBWriteBatch(c_void);
+#[repr(C)]
+pub struct DBComparator(c_void);
+#[repr(C)]
+pub struct DBFlushOptions(c_void);
+#[repr(C)]
+pub struct DBCompactionFilter(c_void);
+#[repr(C)]
+pub struct EnvOptions(c_void);
+#[repr(C)]
+pub struct SstFileReader(c_void);
+#[repr(C)]
+pub struct SstFileWriter(c_void);
+#[repr(C)]
+pub struct ExternalSstFileInfo(c_void);
+#[repr(C)]
+pub struct IngestExternalFileOptions(c_void);
+#[repr(C)]
+pub struct DBBackupEngine(c_void);
+#[repr(C)]
+pub struct DBRestoreOptions(c_void);
+#[repr(C)]
+pub struct DBSliceTransform(c_void);
+#[repr(C)]
+pub struct DBRateLimiter(c_void);
+#[repr(C)]
+pub struct DBLogger(c_void);
+#[repr(C)]
+pub struct DBCompactOptions(c_void);
+#[repr(C)]
+pub struct DBFifoCompactionOptions(c_void);
+#[repr(C)]
+pub struct DBPinnableSlice(c_void);
+#[repr(C)]
+pub struct DBUserCollectedProperties(c_void);
+#[repr(C)]
+pub struct DBUserCollectedPropertiesIterator(c_void);
+#[repr(C)]
+pub struct DBTableProperties(c_void);
+#[repr(C)]
+pub struct DBTablePropertiesCollection(c_void);
+#[repr(C)]
+pub struct DBTablePropertiesCollectionIterator(c_void);
+#[repr(C)]
+pub struct DBTablePropertiesCollector(c_void);
+#[repr(C)]
+pub struct DBTablePropertiesCollectorFactory(c_void);
+#[repr(C)]
+pub struct DBFlushJobInfo(c_void);
+#[repr(C)]
+pub struct DBCompactionJobInfo(c_void);
+#[repr(C)]
+pub struct DBIngestionInfo(c_void);
+#[repr(C)]
+pub struct DBEventListener(c_void);
+#[repr(C)]
+pub struct DBKeyVersions(c_void);
+#[repr(C)]
+pub struct DBEnv(c_void);
+#[repr(C)]
+pub struct DBSequentialFile(c_void);
+#[repr(C)]
+pub struct DBColumnFamilyMetaData(c_void);
+#[repr(C)]
+pub struct DBLevelMetaData(c_void);
+#[repr(C)]
+pub struct DBSstFileMetaData(c_void);
+#[repr(C)]
+pub struct DBCompactionOptions(c_void);
+#[repr(C)]
+pub struct DBPerfContext(c_void);
+#[repr(C)]
+pub struct DBIOStatsContext(c_void);
+#[repr(C)]
+pub struct DBWriteStallInfo(c_void);
+#[repr(C)]
+pub struct DBStatusPtr(c_void);
+#[repr(C)]
+pub struct DBMapProperty(c_void);
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 #[repr(C)]
@@ -88,8 +163,10 @@ pub enum WriteStallCondition {
 mod generated;
 pub use generated::*;
 
-pub enum DBTitanDBOptions {}
-pub enum DBTitanReadOptions {}
+#[repr(C)]
+pub struct DBTitanDBOptions(c_void);
+#[repr(C)]
+pub struct DBTitanReadOptions(c_void);
 
 #[derive(Clone, Debug, Default)]
 #[repr(C)]
@@ -103,8 +180,8 @@ pub fn new_bloom_filter(bits: c_int) -> *mut DBFilterPolicy {
     unsafe { crocksdb_filterpolicy_create_bloom(bits) }
 }
 
-pub fn new_lru_cache(opt: *mut DBLRUCacheOptions) -> *mut DBCache {
-    unsafe { crocksdb_cache_create_lru(opt) }
+pub unsafe fn new_lru_cache(opt: *mut DBLRUCacheOptions) -> *mut DBCache {
+    crocksdb_cache_create_lru(opt)
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -302,12 +379,10 @@ pub enum DBBackgroundErrorReason {
     MemTable = 4,
 }
 
-pub fn error_message(ptr: *mut c_char) -> String {
-    let c_str = unsafe { CStr::from_ptr(ptr) };
+pub unsafe fn error_message(ptr: *mut c_char) -> String {
+    let c_str = CStr::from_ptr(ptr);
     let s = format!("{}", c_str.to_string_lossy());
-    unsafe {
-        libc::free(ptr as *mut c_void);
-    }
+    libc::free(ptr as *mut c_void);
     s
 }
 
@@ -634,7 +709,7 @@ extern "C" {
         cf_descs: *const *mut *mut ColumnFamilyDescriptor,
         cf_descs_len: *mut size_t,
         ignore_unknown_options: bool,
-        errptr: *const *mut c_char,
+        errptr: *mut *mut c_char,
     ) -> bool;
     pub fn crocksdb_ratelimiter_create(
         rate_bytes_per_sec: i64,
@@ -863,8 +938,8 @@ extern "C" {
     );
     pub fn crocksdb_mergeoperator_create(
         state: *mut c_void,
-        destroy: extern "C" fn(*mut c_void) -> (),
-        full_merge: extern "C" fn(
+        destroy: unsafe extern "C" fn(*mut c_void) -> (),
+        full_merge: unsafe extern "C" fn(
             arg: *mut c_void,
             key: *const c_char,
             key_len: size_t,
@@ -876,7 +951,7 @@ extern "C" {
             success: *mut u8,
             new_value_length: *mut size_t,
         ) -> *const c_char,
-        partial_merge: extern "C" fn(
+        partial_merge: unsafe extern "C" fn(
             arg: *mut c_void,
             key: *const c_char,
             key_len: size_t,
@@ -887,9 +962,9 @@ extern "C" {
             new_value_length: *mut size_t,
         ) -> *const c_char,
         delete_value: Option<
-            extern "C" fn(*mut c_void, value: *const c_char, value_len: *mut size_t) -> (),
+            unsafe extern "C" fn(*mut c_void, value: *const c_char, value_len: *mut size_t) -> (),
         >,
-        name_fn: extern "C" fn(*mut c_void) -> *const c_char,
+        name_fn: unsafe extern "C" fn(*mut c_void) -> *const c_char,
     ) -> *mut DBMergeOperator;
     pub fn crocksdb_mergeoperator_destroy(mo: *mut DBMergeOperator);
     pub fn crocksdb_options_set_merge_operator(options: *mut Options, mo: *mut DBMergeOperator);
@@ -1005,15 +1080,15 @@ extern "C" {
     pub fn crocksdb_options_set_comparator(options: *mut Options, cb: *mut DBComparator);
     pub fn crocksdb_comparator_create(
         state: *mut c_void,
-        destroy: extern "C" fn(*mut c_void) -> (),
-        compare: extern "C" fn(
+        destroy: unsafe extern "C" fn(*mut c_void) -> (),
+        compare: unsafe extern "C" fn(
             arg: *mut c_void,
             a: *const c_char,
             alen: size_t,
             b: *const c_char,
             blen: size_t,
         ) -> c_int,
-        name_fn: extern "C" fn(*mut c_void) -> *const c_char,
+        name_fn: unsafe extern "C" fn(*mut c_void) -> *const c_char,
     ) -> *mut DBComparator;
     pub fn crocksdb_comparator_destroy(cmp: *mut DBComparator);
 
@@ -1929,6 +2004,7 @@ extern "C" {
 
     pub fn ctitandb_create_column_family(
         db: *mut DBInstance,
+        column_family_options: *const Options,
         titan_column_family_options: *const DBTitanDBOptions,
         column_family_name: *const c_char,
         err: *mut *mut c_char,
@@ -2043,7 +2119,10 @@ mod test {
     use libc::{self, c_void};
     use std::ffi::{CStr, CString};
     use std::{fs, ptr, slice};
-    use tempdir::TempDir;
+
+    fn tempdir_with_prefix(prefix: &str) -> tempfile::TempDir {
+        tempfile::Builder::new().prefix(prefix).tempdir().expect()
+    }
 
     #[test]
     fn internal() {
@@ -2054,8 +2133,7 @@ mod test {
             crocksdb_options_increase_parallelism(opts, 0);
             crocksdb_options_optimize_level_style_compaction(opts, 0);
             crocksdb_options_set_create_if_missing(opts, true);
-
-            let rustpath = TempDir::new("_rust_rocksdb_internaltest").expect("");
+            let rustpath = tempdir_with_prefix("_rust_rocksdb_internaltest");
             let cpath = CString::new(rustpath.path().to_str().unwrap()).unwrap();
             let cpath_ptr = cpath.as_ptr();
 
@@ -2161,7 +2239,7 @@ mod test {
             let opts = crocksdb_options_create();
             crocksdb_options_set_create_if_missing(opts, true);
 
-            let rustpath = TempDir::new("_rust_rocksdb_internaltest").expect("");
+            let rustpath = tempdir_with_prefix("_rust_rocksdb_internaltest");
             let cpath = CString::new(rustpath.path().to_str().unwrap()).unwrap();
             let cpath_ptr = cpath.as_ptr();
 
@@ -2173,7 +2251,7 @@ mod test {
             let io_options = crocksdb_options_create();
             let writer = crocksdb_sstfilewriter_create(env_opt, io_options);
 
-            let sst_dir = TempDir::new("_rust_rocksdb_internaltest").expect("");
+            let sst_dir = tempdir_with_prefix("_rust_rocksdb_internaltest");
             let sst_path = sst_dir.path().join("sstfilename");
             let c_sst_path = CString::new(sst_path.to_str().unwrap()).unwrap();
             let c_sst_path_ptr = c_sst_path.as_ptr();

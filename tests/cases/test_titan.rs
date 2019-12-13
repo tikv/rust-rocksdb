@@ -212,10 +212,20 @@ fn test_titan_sequence_number() {
     let snap_seq = snap.get_sequence_number();
     let seq1 = db.get_latest_sequence_number();
     assert_eq!(snap_seq, seq1);
+    assert_eq!(snap_seq, db.get_oldest_snapshot_sequence_number());
 
     db.put(b"key", b"value").unwrap();
     let seq2 = db.get_latest_sequence_number();
     assert!(seq2 > seq1);
+    assert_eq!(snap_seq, db.get_oldest_snapshot_sequence_number());
+
+    drop(snap);
+    let snap = db.snapshot();
+    assert_ne!(snap_seq, db.get_oldest_snapshot_sequence_number());
+    assert_eq!(
+        snap.get_sequence_number(),
+        db.get_oldest_snapshot_sequence_number()
+    );
 }
 
 #[test]

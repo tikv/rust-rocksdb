@@ -60,7 +60,11 @@ impl Drop for CFHandle {
     }
 }
 
-fn ensure_default_cf_exists<'a>(list: &mut Vec<ColumnFamilyDescriptor<'a>>, ttls: &mut Vec<i32>, is_titan: bool) {
+fn ensure_default_cf_exists<'a>(
+    list: &mut Vec<ColumnFamilyDescriptor<'a>>,
+    ttls: &mut Vec<i32>,
+    is_titan: bool,
+) {
     let contains = list.iter().any(|ref cf| cf.is_default());
     if !contains {
         let mut desc = ColumnFamilyDescriptor::default();
@@ -1097,6 +1101,10 @@ impl DB {
     /// Get the sequence number of the most recent transaction.
     pub fn get_latest_sequence_number(&self) -> u64 {
         unsafe { crocksdb_ffi::crocksdb_get_latest_sequence_number(self.inner) }
+    }
+
+    pub fn get_oldest_snapshot_sequence_number(&self) -> u64 {
+        unsafe { crocksdb_ffi::crocksdb_get_oldest_snapshot_sequence_number(self.inner) }
     }
 
     /// Return the approximate file system space used by keys in each ranges.
@@ -3187,10 +3195,20 @@ mod test {
         let snap_seq = snap.get_sequence_number();
         let seq1 = db.get_latest_sequence_number();
         assert_eq!(snap_seq, seq1);
+        assert_eq!(snap_seq, db.get_oldest_snapshot_sequence_number());
 
         db.put(b"key", b"value").unwrap();
         let seq2 = db.get_latest_sequence_number();
         assert!(seq2 > seq1);
+        assert_eq!(snap_seq, db.get_oldest_snapshot_sequence_number());
+
+        drop(snap);
+        let snap = db.snapshot();
+        assert_ne!(snap_seq, db.get_oldest_snapshot_sequence_number());
+        assert_eq!(
+            snap.get_sequence_number(),
+            db.get_oldest_snapshot_sequence_number()
+        );
     }
 
     #[test]

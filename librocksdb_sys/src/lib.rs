@@ -1165,6 +1165,7 @@ extern "C" {
     pub fn crocksdb_sync_wal(db: *mut DBInstance, err: *mut *mut c_char);
 
     pub fn crocksdb_get_latest_sequence_number(db: *mut DBInstance) -> u64;
+    pub fn crocksdb_get_oldest_snapshot_sequence_number(db: *mut DBInstance) -> u64;
 
     pub fn crocksdb_approximate_sizes(
         db: *mut DBInstance,

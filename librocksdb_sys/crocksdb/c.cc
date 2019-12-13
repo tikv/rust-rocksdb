@@ -39,10 +39,12 @@
 #include "rocksdb/write_batch.h"
 #include "rocksdb/iostats_context.h"
 
+#include "db/db_impl/db_impl.h"
 #include "db/column_family.h"
 #include "table/sst_file_writer_collectors.h"
 #include "table/block_based/block_based_table_factory.h"
 #include "table/table_reader.h"
+#include "monitoring/instrumented_mutex.h"
 #include "util/file_reader_writer.h"
 #include "util/coding.h"
 
@@ -141,7 +143,8 @@ using rocksdb::KeyVersion;
 using rocksdb::DbPath;
 using rocksdb::RangePtr;
 
-using rocksdb::ColumnFamilyData;
+using rocksdb::DBImpl;
+using rocksdb::InstrumentedMutexLock;
 using rocksdb::ColumnFamilyHandleImpl;
 using rocksdb::TableReaderOptions;
 using rocksdb::TableReader;
@@ -1339,6 +1342,20 @@ void crocksdb_sync_wal(
 
 uint64_t crocksdb_get_latest_sequence_number(crocksdb_t* db) {
   return db->rep->GetLatestSequenceNumber();
+}
+
+uint64_t crocksdb_get_oldest_snapshot_sequence_number(crocksdb_t* db) {
+  SequenceNumber oldest_snapshot = kMaxSequenceNumber;
+  {
+    DBImpl* db_impl = reinterpret_cast<DBImpl*>(db->rep->GetRootDB());
+    // Need to lock DBImpl mutex before access snapshot list.
+    InstrumentedMutexLock l(db_impl->mutex());
+    auto& snapshots = db_impl->snapshots();
+    if (!snapshots.empty()) {
+      oldest_snapshot = snapshots.oldest()->GetSequenceNumber();
+    }
+  }
+  return oldest_snapshot;
 }
 
 void crocksdb_disable_file_deletions(crocksdb_t* db, char** errptr) {

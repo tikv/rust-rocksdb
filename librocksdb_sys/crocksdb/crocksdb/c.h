@@ -485,6 +485,9 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_sync_wal(
 extern C_ROCKSDB_LIBRARY_API uint64_t
 crocksdb_get_latest_sequence_number(crocksdb_t* db);
 
+extern C_ROCKSDB_LIBRARY_API uint64_t
+crocksdb_get_oldest_snapshot_sequence_number(crocksdb_t* db);
+
 extern C_ROCKSDB_LIBRARY_API void crocksdb_disable_file_deletions(crocksdb_t* db,
                                                                char** errptr);
 

@@ -60,7 +60,11 @@ impl Drop for CFHandle {
     }
 }
 
-fn ensure_default_cf_exists<'a>(list: &mut Vec<ColumnFamilyDescriptor<'a>>, ttls: &mut Vec<i32>, is_titan: bool) {
+fn ensure_default_cf_exists<'a>(
+    list: &mut Vec<ColumnFamilyDescriptor<'a>>,
+    ttls: &mut Vec<i32>,
+    is_titan: bool,
+) {
     let contains = list.iter().any(|ref cf| cf.is_default());
     if !contains {
         let mut desc = ColumnFamilyDescriptor::default();

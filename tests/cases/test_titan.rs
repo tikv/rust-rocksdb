@@ -197,7 +197,7 @@ fn test_titandb() {
 
 #[test]
 fn test_titan_sequence_number() {
-    let path = TempDir::new("_rust_titan_sequence_number").expect("");
+    let path = tempdir_with_prefix("test_titan_sequence_number");
 
     let tdb_path = path.path().join("titandb");
     let mut tdb_opts = TitanDBOptions::new();

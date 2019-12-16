@@ -306,18 +306,24 @@ pub fn error_message(ptr: *mut c_char) -> String {
 macro_rules! ffi_try {
     ($func:ident($($arg:expr),+)) => ({
         use std::ptr;
-        let mut err = ptr::null_mut();
+        let mut err: *mut libc::c_char = ptr::null_mut();
         let res = $crate::$func($($arg),+, &mut err);
         if !err.is_null() {
+            if err.offset(-1) == ptr::null_mut() {
+                return Err(String::default());
+            }
             return Err($crate::error_message(err));
         }
         res
     });
     ($func:ident()) => ({
         use std::ptr;
-        let mut err = ptr::null_mut();
+        let mut err: *mut libc::c_char = ptr::null_mut();
         let res = $crate::$func(&mut err);
         if !err.is_null() {
+            if err.offset(-1) == ptr::null_mut() {
+                return Err(String::default());
+            }
             return Err($crate::error_message(err));
         }
         res

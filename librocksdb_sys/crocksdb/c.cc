@@ -543,13 +543,16 @@ static bool SaveError(char** errptr, const Status& s) {
   assert(errptr != nullptr);
   if (s.ok()) {
     return false;
-  } else if (*errptr == nullptr) {
-    *errptr = strdup(s.ToString().c_str());
-  } else {
+  }
+
+  if ((long)*errptr != 0x1L && *errptr != NULL) {
     // TODO(sanjay): Merge with existing error?
     // This is a bug if *errptr is not created by malloc()
     free(*errptr);
-    *errptr = strdup(s.ToString().c_str());
+  }
+  *errptr = strdup(s.ToString().c_str());
+  if (*errptr == NULL) {
+    *errptr = (char*)0x1L;
   }
   return true;
 }

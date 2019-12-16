@@ -545,7 +545,7 @@ static bool SaveError(char** errptr, const Status& s) {
     return false;
   }
 
-  if ((long)*errptr != 0x1L && *errptr != NULL) {
+  if (*errptr != NULL && (long)*errptr != 0x1L) {
     // TODO(sanjay): Merge with existing error?
     // This is a bug if *errptr is not created by malloc()
     free(*errptr);

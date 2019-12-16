@@ -310,6 +310,7 @@ macro_rules! ffi_try {
         let res = $crate::$func($($arg),+, &mut err);
         if !err.is_null() {
             if err.offset(-1) == ptr::null_mut() {
+                eprintln!("save error fail");
                 return Err(String::default());
             }
             return Err($crate::error_message(err));
@@ -322,6 +323,7 @@ macro_rules! ffi_try {
         let res = $crate::$func(&mut err);
         if !err.is_null() {
             if err.offset(-1) == ptr::null_mut() {
+                eprintln!("save error fail");
                 return Err(String::default());
             }
             return Err($crate::error_message(err));

@@ -13,6 +13,10 @@
 // limitations under the License.
 //
 
+// TODO: remove it.
+#![allow(bare_trait_objects)]
+#![allow(unused_imports)]
+
 extern crate core;
 extern crate libc;
 #[macro_use]

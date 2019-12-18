@@ -187,6 +187,7 @@ impl<D: Deref<Target = DB>> DBIterator<D> {
 }
 
 impl<D> DBIterator<D> {
+    #[deprecated]
     pub fn seek(&mut self, key: SeekKey) -> bool {
         unsafe {
             match key {
@@ -197,9 +198,24 @@ impl<D> DBIterator<D> {
                 }
             }
         }
+        #[allow(deprecated)]
         self.valid()
     }
 
+    pub fn checked_seek(&mut self, key: SeekKey) -> Result<bool, String> {
+        unsafe {
+            match key {
+                SeekKey::Start => crocksdb_ffi::crocksdb_iter_seek_to_first(self.inner),
+                SeekKey::End => crocksdb_ffi::crocksdb_iter_seek_to_last(self.inner),
+                SeekKey::Key(key) => {
+                    crocksdb_ffi::crocksdb_iter_seek(self.inner, key.as_ptr(), key.len() as size_t)
+                }
+            }
+        }
+        self.checked_valid()
+    }
+
+    #[deprecated]
     pub fn seek_for_prev(&mut self, key: SeekKey) -> bool {
         unsafe {
             match key {
@@ -212,25 +228,52 @@ impl<D> DBIterator<D> {
                 ),
             }
         }
+        #[allow(deprecated)]
         self.valid()
     }
 
+    pub fn checked_seek_for_prev(&mut self) -> Result<bool, String> {
+        unsafe {
+            crocksdb_ffi::crocksdb_iter_prev(self.inner);
+        }
+        self.checked_valid()
+    }
+
+    #[deprecated]
     pub fn prev(&mut self) -> bool {
         unsafe {
             crocksdb_ffi::crocksdb_iter_prev(self.inner);
         }
+        #[allow(deprecated)]
         self.valid()
     }
 
+    pub fn checked_prev(&mut self) -> Result<bool, String> {
+        unsafe {
+            crocksdb_ffi::crocksdb_iter_prev(self.inner);
+        }
+        self.checked_valid()
+    }
+
+    #[deprecated]
     pub fn next(&mut self) -> bool {
         unsafe {
             crocksdb_ffi::crocksdb_iter_next(self.inner);
         }
+
+        #[allow(deprecated)]
         self.valid()
     }
 
+    pub fn checked_next(&mut self) -> Result<bool, String> {
+        unsafe {
+            crocksdb_ffi::crocksdb_iter_next(self.inner);
+        }
+        self.checked_valid()
+    }
+
     pub fn key(&self) -> &[u8] {
-        assert!(self.valid());
+        assert_eq!(self.checked_valid(), Ok(true));
         let mut key_len: size_t = 0;
         let key_len_ptr: *mut size_t = &mut key_len;
         unsafe {
@@ -240,7 +283,7 @@ impl<D> DBIterator<D> {
     }
 
     pub fn value(&self) -> &[u8] {
-        assert!(self.valid());
+        assert_eq!(self.checked_valid(), Ok(true));
         let mut val_len: size_t = 0;
         let val_len_ptr: *mut size_t = &mut val_len;
         unsafe {
@@ -250,15 +293,25 @@ impl<D> DBIterator<D> {
     }
 
     pub fn kv(&self) -> Option<(Vec<u8>, Vec<u8>)> {
-        if self.valid() {
+        let valid = self.checked_valid().expect("checked_valid fail");
+        if valid {
             Some((self.key().to_vec(), self.value().to_vec()))
         } else {
             None
         }
     }
 
+    #[deprecated]
     pub fn valid(&self) -> bool {
         unsafe { crocksdb_ffi::crocksdb_iter_valid(self.inner) }
+    }
+
+    pub fn checked_valid(&self) -> Result<bool, String> {
+        if !unsafe { crocksdb_ffi::crocksdb_iter_valid(self.inner) } {
+            self.status()?;
+            return Ok(false);
+        }
+        Ok(true)
     }
 
     pub fn status(&self) -> Result<(), String> {
@@ -277,7 +330,7 @@ impl<'b, D> Iterator for &'b mut DBIterator<D> {
     fn next(&mut self) -> Option<Kv> {
         let kv = self.kv();
         if kv.is_some() {
-            DBIterator::next(self);
+            let _ = DBIterator::checked_next(self);
         }
         kv
     }

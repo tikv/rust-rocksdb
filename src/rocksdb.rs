@@ -232,12 +232,21 @@ impl<D> DBIterator<D> {
         self.valid()
     }
 
-    pub fn checked_seek_for_prev(&mut self) -> Result<bool, String> {
+    pub fn checked_seek_for_prev(&mut self, key: SeekKey) -> Result<bool, String> {
         unsafe {
-            crocksdb_ffi::crocksdb_iter_prev(self.inner);
+            match key {
+                SeekKey::Start => crocksdb_ffi::crocksdb_iter_seek_to_first(self.inner),
+                SeekKey::End => crocksdb_ffi::crocksdb_iter_seek_to_last(self.inner),
+                SeekKey::Key(key) => crocksdb_ffi::crocksdb_iter_seek_for_prev(
+                    self.inner,
+                    key.as_ptr(),
+                    key.len() as size_t,
+                ),
+            }
         }
         self.checked_valid()
     }
+
 
     #[deprecated]
     pub fn prev(&mut self) -> bool {

@@ -48,7 +48,7 @@ $ ./scripts/generate-bindings.sh
 
 ```rust
 [dependencies.rocksdb]
-git = "https://github.com/pingcap/rust-rocksdb.git"
+git = "https://github.com/tikv/rust-rocksdb.git"
 ```
 
 ###### Code

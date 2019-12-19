@@ -618,7 +618,7 @@ extern "C" {
     );
     pub fn crocksdb_options_set_delayed_write_rate(options: *mut Options, rate: u64);
     pub fn crocksdb_options_set_force_consistency_checks(options: *mut Options, v: bool);
-    pub fn crocksdb_options_set_ratelimiter(options: *mut Options, limiter: *mut DBRateLimiter);
+    pub fn crocksdb_options_set_ratelimiter(options: *mut Options, limiter: *mut DBRateLimiter) -> *mut DBRateLimiter;
     pub fn crocksdb_options_set_info_log(options: *mut Options, logger: *mut DBLogger);
     pub fn crocksdb_options_get_block_cache_usage(options: *const Options) -> usize;
     pub fn crocksdb_options_set_block_cache_capacity(
@@ -1673,7 +1673,7 @@ extern "C" {
         size: *mut size_t,
     ) -> *const c_char;
     pub fn crocksdb_compactionjobinfo_input_files_count(info: *const DBCompactionJobInfo)
-        -> size_t;
+                                                        -> size_t;
     pub fn crocksdb_compactionjobinfo_input_file_at(
         info: *const DBCompactionJobInfo,
         pos: size_t,
@@ -1721,7 +1721,7 @@ extern "C" {
         info: *const DBWriteStallInfo,
     ) -> *const WriteStallCondition;
     pub fn crocksdb_writestallinfo_cur(info: *const DBWriteStallInfo)
-        -> *const WriteStallCondition;
+                                       -> *const WriteStallCondition;
 
     pub fn crocksdb_eventlistener_create(
         state: *mut c_void,
@@ -1946,7 +1946,7 @@ extern "C" {
     pub fn ctitandb_options_min_blob_size(opts: *mut DBTitanDBOptions) -> u64;
     pub fn ctitandb_options_set_min_blob_size(opts: *mut DBTitanDBOptions, size: u64);
     pub fn ctitandb_options_blob_file_compression(opts: *mut DBTitanDBOptions)
-        -> DBCompressionType;
+                                                  -> DBCompressionType;
     pub fn ctitandb_options_set_blob_file_compression(
         opts: *mut DBTitanDBOptions,
         t: DBCompressionType,

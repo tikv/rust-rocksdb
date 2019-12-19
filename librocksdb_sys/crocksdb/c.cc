@@ -2886,9 +2886,12 @@ unsigned char crocksdb_options_statistics_get_histogram(
   return 0;
 }
 
-void crocksdb_options_set_ratelimiter(crocksdb_options_t *opt, crocksdb_ratelimiter_t *limiter) {
+crocksdb_ratelimiter_t* crocksdb_options_set_ratelimiter(crocksdb_options_t *opt, crocksdb_ratelimiter_t *limiter) {
   opt->rep.rate_limiter.reset(limiter->rep);
+  crocksdb_ratelimiter_t* ptr_rate_limiter = new crocksdb_ratelimiter_t;
+  ptr_rate_limiter->rep=limiter->rep;
   limiter->rep = nullptr;
+  return ptr_rate_limiter;
 }
 
 void crocksdb_options_set_vector_memtable_factory(crocksdb_options_t* opt, uint64_t reserved_bytes) {

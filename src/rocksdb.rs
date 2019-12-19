@@ -1103,10 +1103,6 @@ impl DB {
         unsafe { crocksdb_ffi::crocksdb_get_latest_sequence_number(self.inner) }
     }
 
-    pub fn get_oldest_snapshot_sequence_number(&self) -> u64 {
-        unsafe { crocksdb_ffi::crocksdb_get_oldest_snapshot_sequence_number(self.inner) }
-    }
-
     /// Return the approximate file system space used by keys in each ranges.
     ///
     /// Note that the returned sizes measure file system space usage, so

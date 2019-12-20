@@ -236,7 +236,7 @@ impl<D: Deref<Target = DB>> DBIterator<D> {
 }
 
 impl<D> DBIterator<D> {
-    pub fn seek(&mut self, key: SeekKey) -> bool {
+    pub fn seek(&mut self, key: SeekKey) -> Result<bool, String> {
         unsafe {
             match key {
                 SeekKey::Start => crocksdb_ffi::crocksdb_iter_seek_to_first(self.inner),
@@ -249,7 +249,7 @@ impl<D> DBIterator<D> {
         self.valid()
     }
 
-    pub fn seek_for_prev(&mut self, key: SeekKey) -> bool {
+    pub fn seek_for_prev(&mut self, key: SeekKey) -> Result<bool, String> {
         unsafe {
             match key {
                 SeekKey::Start => crocksdb_ffi::crocksdb_iter_seek_to_first(self.inner),
@@ -264,7 +264,7 @@ impl<D> DBIterator<D> {
         self.valid()
     }
 
-    pub fn prev(&mut self) -> bool {
+    pub fn prev(&mut self) -> Result<bool, String> {
         unsafe {
             crocksdb_ffi::crocksdb_iter_prev(self.inner);
         }
@@ -272,7 +272,7 @@ impl<D> DBIterator<D> {
     }
 
     #[allow(clippy::should_implement_trait)]
-    pub fn next(&mut self) -> bool {
+    pub fn next(&mut self) -> Result<bool, String> {
         unsafe {
             crocksdb_ffi::crocksdb_iter_next(self.inner);
         }
@@ -280,7 +280,7 @@ impl<D> DBIterator<D> {
     }
 
     pub fn key(&self) -> &[u8] {
-        assert!(self.valid());
+        debug_assert_eq!(self.valid(), Ok(true));
         let mut key_len: size_t = 0;
         let key_len_ptr: *mut size_t = &mut key_len;
         unsafe {
@@ -290,7 +290,7 @@ impl<D> DBIterator<D> {
     }
 
     pub fn value(&self) -> &[u8] {
-        assert!(self.valid());
+        debug_assert_eq!(self.valid(), Ok(true));
         let mut val_len: size_t = 0;
         let val_len_ptr: *mut size_t = &mut val_len;
         unsafe {
@@ -299,16 +299,20 @@ impl<D> DBIterator<D> {
         }
     }
 
-    pub fn kv(&self) -> Option<(Vec<u8>, Vec<u8>)> {
-        if self.valid() {
-            Some((self.key().to_vec(), self.value().to_vec()))
-        } else {
-            None
+    pub fn kv(&self) -> Result<Option<(Vec<u8>, Vec<u8>)>, String> {
+        match self.valid() {
+            Ok(true) => Ok(Some((self.key().to_vec(), self.value().to_vec()))),
+            Ok(false) => Ok(None),
+            Err(e) => Err(e),
         }
     }
 
-    pub fn valid(&self) -> bool {
-        unsafe { crocksdb_ffi::crocksdb_iter_valid(self.inner) }
+    pub fn valid(&self) -> Result<bool, String> {
+        let valid = unsafe { crocksdb_ffi::crocksdb_iter_valid(self.inner) };
+        if !valid {
+            self.status()?;
+        }
+        Ok(valid)
     }
 
     pub fn status(&self) -> Result<(), String> {
@@ -319,17 +323,20 @@ impl<D> DBIterator<D> {
     }
 }
 
-pub type Kv = (Vec<u8>, Vec<u8>);
+pub type Kv = Result<(Vec<u8>, Vec<u8>), String>;
 
 impl<'b, D> Iterator for &'b mut DBIterator<D> {
     type Item = Kv;
 
     fn next(&mut self) -> Option<Kv> {
-        let kv = self.kv();
-        if kv.is_some() {
-            DBIterator::next(self);
+        match self.kv() {
+            Ok(Some(kv)) => {
+                let _ = DBIterator::next(self);
+                Some(Ok(kv))
+            }
+            Ok(None) => None,
+            Err(e) => Some(Err(e)),
         }
-        kv
     }
 }
 
@@ -2778,8 +2785,8 @@ mod test {
         db.put(b"k2", b"v2222").expect("");
         db.put(b"k3", b"v3333").expect("");
         let mut iter = db.iter();
-        iter.seek(SeekKey::Start);
-        for (k, v) in &mut iter {
+        iter.seek(SeekKey::Start).unwrap();
+        for (k, v) in iter.map(|res| res.unwrap()) {
             println!(
                 "Hello {}: {}",
                 str::from_utf8(&*k).unwrap(),

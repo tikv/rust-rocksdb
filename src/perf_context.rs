@@ -423,9 +423,7 @@ mod test {
 
         let mut iter = db.iter();
         assert!(iter.seek(SeekKey::Start).unwrap());
-        while iter.valid().unwrap() {
-            iter.next().unwrap();
-        }
+        while iter.next().unwrap() {}
         assert_eq!(ctx.internal_key_skipped_count(), n);
         assert_eq!(ctx.internal_delete_skipped_count(), n / 2);
         assert_eq!(ctx.seek_internal_seek_time(), 0);

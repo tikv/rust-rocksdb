@@ -299,13 +299,17 @@ impl<D> DBIterator<D> {
         }
     }
 
-    #[allow(clippy::type_complexity)]
-    pub fn kv(&self) -> Result<Option<(Vec<u8>, Vec<u8>)>, String> {
+    pub fn kv(&self) -> Result<Option<Kv>, String> {
         match self.valid() {
             Ok(true) => Ok(Some((self.key().to_vec(), self.value().to_vec()))),
             Ok(false) => Ok(None),
             Err(e) => Err(e),
         }
+    }
+
+    /// Similar with `kv`, but must be called when `self.valid() == Ok(true)`.
+    pub fn must_kv(&self) -> Kv {
+        (self.key().to_vec(), self.value().to_vec())
     }
 
     pub fn valid(&self) -> Result<bool, String> {
@@ -324,12 +328,12 @@ impl<D> DBIterator<D> {
     }
 }
 
-pub type Kv = Result<(Vec<u8>, Vec<u8>), String>;
+pub type Kv = (Vec<u8>, Vec<u8>);
 
 impl<'b, D> Iterator for &'b mut DBIterator<D> {
-    type Item = Kv;
+    type Item = Result<Kv, String>;
 
-    fn next(&mut self) -> Option<Kv> {
+    fn next(&mut self) -> Option<Self::Item> {
         match self.kv() {
             Ok(Some(kv)) => {
                 let _ = DBIterator::next(self);

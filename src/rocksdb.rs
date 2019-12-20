@@ -299,6 +299,7 @@ impl<D> DBIterator<D> {
         }
     }
 
+    #[allow(clippy::type_complexity)]
     pub fn kv(&self) -> Result<Option<(Vec<u8>, Vec<u8>)>, String> {
         match self.valid() {
             Ok(true) => Ok(Some((self.key().to_vec(), self.value().to_vec()))),
@@ -315,7 +316,7 @@ impl<D> DBIterator<D> {
         Ok(valid)
     }
 
-    pub fn status(&self) -> Result<(), String> {
+    fn status(&self) -> Result<(), String> {
         unsafe {
             ffi_try!(crocksdb_iter_get_error(self.inner));
         }

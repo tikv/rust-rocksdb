@@ -48,11 +48,14 @@ impl SliceTransform for FixedSuffixTransform {
     }
 }
 
-fn prev_collect<D: Deref<Target = DB>>(iter: &mut DBIterator<D>) -> Vec<(Vec<u8>, Vec<u8>)> {
+#[allow(deprecated)]
+fn prev_collect<D: Deref<Target = DB>>(iter: &mut DBIterator<D>) -> Vec<Kv> {
     let mut buf = vec![];
     while iter.valid().unwrap() {
-        buf.push(iter.kv().unwrap().unwrap());
-        iter.prev().unwrap();
+        let k = iter.key().to_vec();
+        let v = iter.value().to_vec();
+        buf.push((k, v));
+        let _ = iter.prev();
     }
     buf
 }
@@ -60,8 +63,10 @@ fn prev_collect<D: Deref<Target = DB>>(iter: &mut DBIterator<D>) -> Vec<(Vec<u8>
 fn next_collect<D: Deref<Target = DB>>(iter: &mut DBIterator<D>) -> Vec<(Vec<u8>, Vec<u8>)> {
     let mut buf = vec![];
     while iter.valid().unwrap() {
-        buf.push(iter.kv().unwrap().unwrap());
-        iter.next().unwrap();
+        let k = iter.key().to_vec();
+        let v = iter.value().to_vec();
+        buf.push((k, v));
+        let _ = iter.next();
     }
     buf
 }
@@ -94,11 +99,11 @@ pub fn test_iterator() {
     let mut iter = db.iter();
 
     iter.seek(SeekKey::Start).unwrap();
-    assert_eq!(iter.map(|res| res.unwrap()).collect::<Vec<_>>(), expected);
+    assert_eq!(iter.collect::<Vec<_>>(), expected);
 
     // Test that it's idempotent
     iter.seek(SeekKey::Start).unwrap();
-    assert_eq!(iter.map(|res| res.unwrap()).collect::<Vec<_>>(), expected);
+    assert_eq!(iter.collect::<Vec<_>>(), expected);
 
     // Test it in reverse a few times
     iter.seek(SeekKey::End).unwrap();
@@ -113,10 +118,10 @@ pub fn test_iterator() {
 
     // Try it forward again
     iter.seek(SeekKey::Start).unwrap();
-    assert_eq!(iter.map(|res| res.unwrap()).collect::<Vec<_>>(), expected);
+    assert_eq!(iter.collect::<Vec<_>>(), expected);
 
     iter.seek(SeekKey::Start).unwrap();
-    assert_eq!(iter.map(|res| res.unwrap()).collect::<Vec<_>>(), expected);
+    assert_eq!(iter.collect::<Vec<_>>(), expected);
 
     let mut old_iterator = db.iter();
     old_iterator.seek(SeekKey::Start).unwrap();
@@ -128,14 +133,11 @@ pub fn test_iterator() {
         (k3.to_vec(), v3.to_vec()),
         (k4.to_vec(), v4.to_vec()),
     ];
-    assert_eq!(
-        old_iterator.map(|res| res.unwrap()).collect::<Vec<_>>(),
-        expected
-    );
+    assert_eq!(old_iterator.collect::<Vec<_>>(), expected);
 
     iter = db.iter();
     iter.seek(SeekKey::Start).unwrap();
-    assert_eq!(iter.map(|res| res.unwrap()).collect::<Vec<_>>(), expected2);
+    assert_eq!(iter.collect::<Vec<_>>(), expected2);
 
     iter.seek(SeekKey::Key(k2)).unwrap();
     let expected = vec![
@@ -143,7 +145,7 @@ pub fn test_iterator() {
         (k3.to_vec(), v3.to_vec()),
         (k4.to_vec(), v4.to_vec()),
     ];
-    assert_eq!(iter.map(|res| res.unwrap()).collect::<Vec<_>>(), expected);
+    assert_eq!(iter.collect::<Vec<_>>(), expected);
 
     iter.seek(SeekKey::Key(k2)).unwrap();
     let expected = vec![(k2.to_vec(), v2.to_vec()), (k1.to_vec(), v1.to_vec())];

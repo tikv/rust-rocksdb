@@ -279,6 +279,7 @@ impl<D> DBIterator<D> {
         self.valid()
     }
 
+    /// Get the key pointed by the iterator. Must be called when `self.valid() == Ok(true)`.
     pub fn key(&self) -> &[u8] {
         debug_assert_eq!(self.valid(), Ok(true));
         let mut key_len: size_t = 0;
@@ -289,6 +290,7 @@ impl<D> DBIterator<D> {
         }
     }
 
+    /// Get the value pointed by the iterator. Must be called when `self.valid() == Ok(true)`.
     pub fn value(&self) -> &[u8] {
         debug_assert_eq!(self.valid(), Ok(true));
         let mut val_len: size_t = 0;
@@ -299,17 +301,13 @@ impl<D> DBIterator<D> {
         }
     }
 
-    pub fn kv(&self) -> Result<Option<Kv>, String> {
-        match self.valid() {
-            Ok(true) => Ok(Some((self.key().to_vec(), self.value().to_vec()))),
-            Ok(false) => Ok(None),
-            Err(e) => Err(e),
+    #[deprecated]
+    pub fn kv(&self) -> Option<(Vec<u8>, Vec<u8>)> {
+        if self.valid().unwrap() {
+            Some((self.key().to_vec(), self.value().to_vec()))
+        } else {
+            None
         }
-    }
-
-    /// Similar with `kv`, but must be called when `self.valid() == Ok(true)`.
-    pub fn must_kv(&self) -> Kv {
-        (self.key().to_vec(), self.value().to_vec())
     }
 
     pub fn valid(&self) -> Result<bool, String> {
@@ -328,20 +326,24 @@ impl<D> DBIterator<D> {
     }
 }
 
+#[deprecated]
 pub type Kv = (Vec<u8>, Vec<u8>);
 
+#[deprecated]
 impl<'b, D> Iterator for &'b mut DBIterator<D> {
-    type Item = Result<Kv, String>;
+    #[allow(deprecated)]
+    type Item = Kv;
 
     fn next(&mut self) -> Option<Self::Item> {
-        match self.kv() {
-            Ok(Some(kv)) => {
-                let _ = DBIterator::next(self);
-                Some(Ok(kv))
-            }
-            Ok(None) => None,
-            Err(e) => Some(Err(e)),
+        match self.valid() {
+            Ok(true) => {}
+            Ok(false) => return None,
+            Err(e) => panic!("invalid iterator: {}", e),
         }
+        let k = self.key().to_vec();
+        let v = self.value().to_vec();
+        let _ = DBIterator::next(self);
+        Some((k, v))
     }
 }
 
@@ -2791,7 +2793,7 @@ mod test {
         db.put(b"k3", b"v3333").expect("");
         let mut iter = db.iter();
         iter.seek(SeekKey::Start).unwrap();
-        for (k, v) in iter.map(|res| res.unwrap()) {
+        for (k, v) in &mut iter {
             println!(
                 "Hello {}: {}",
                 str::from_utf8(&*k).unwrap(),

@@ -524,7 +524,7 @@ fn test_read_sst() {
     let mut it = reader.iter();
     it.seek(SeekKey::Start).unwrap();
     assert_eq!(
-        it.map(|res| res.unwrap()).collect::<Vec<_>>(),
+        it.collect::<Vec<_>>(),
         vec![
             (b"k1".to_vec(), b"a".to_vec()),
             (b"k2".to_vec(), b"b".to_vec()),

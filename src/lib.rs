@@ -34,8 +34,8 @@ pub use metadata::{ColumnFamilyMetaData, LevelMetaData, SstFileMetaData};
 pub use perf_context::{get_perf_level, set_perf_level, IOStatsContext, PerfContext, PerfLevel};
 pub use rocksdb::{
     load_latest_options, run_ldb_tool, set_external_sst_file_global_seq_no, BackupEngine, CFHandle,
-    DBIterator, DBVector, Env, ExternalSstFileInfo, Kv, Range, SeekKey, SequentialFile,
-    SstFileWriter, Writable, WriteBatch, DB,
+    DBIterator, DBVector, Env, ExternalSstFileInfo, Range, SeekKey, SequentialFile, SstFileWriter,
+    Writable, WriteBatch, DB,
 };
 pub use rocksdb_options::{
     BlockBasedOptions, CColumnFamilyDescriptor, ColumnFamilyOptions, CompactOptions,
@@ -50,6 +50,9 @@ pub use table_properties::{
 };
 pub use table_properties_collector::TablePropertiesCollector;
 pub use table_properties_collector_factory::TablePropertiesCollectorFactory;
+
+#[allow(deprecated)]
+pub use rocksdb::Kv;
 
 mod compaction_filter;
 pub mod comparator;

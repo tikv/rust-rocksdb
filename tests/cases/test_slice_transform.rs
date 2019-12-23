@@ -77,8 +77,8 @@ fn test_slice_transform() {
     ];
 
     for key in invalid_seeks {
-        it.seek(SeekKey::Key(&key));
-        assert!(!it.valid());
+        it.seek(SeekKey::Key(&key)).unwrap();
+        assert!(!it.valid().unwrap());
     }
 
     let valid_seeks = vec![
@@ -88,8 +88,8 @@ fn test_slice_transform() {
     ];
 
     for (key, expect_key) in valid_seeks {
-        it.seek(SeekKey::Key(&key));
-        assert!(it.valid());
+        it.seek(SeekKey::Key(&key)).unwrap();
+        assert!(it.valid().unwrap());
         assert_eq!(it.key(), &*expect_key);
     }
 

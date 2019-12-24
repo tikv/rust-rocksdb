@@ -179,7 +179,6 @@ impl<D: Deref<Target = DB>> DBIterator<D> {
         self.valid()
     }
 
-    #[allow(clippy::should_implement_trait)]
     pub fn next(&mut self) -> Result<bool, String> {
         unsafe {
             crocksdb_ffi::crocksdb_iter_next(self.inner);

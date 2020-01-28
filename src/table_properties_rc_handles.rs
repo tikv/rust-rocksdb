@@ -1,16 +1,12 @@
 //! Reference counted handles to various TableProperties* types, that safely
 //! preserve destruction order.
 
-use librocksdb_sys as crocksdb_ffi;
 use crocksdb_ffi::{
-    DBTablePropertiesCollection,
-    DBTablePropertiesCollectionIterator,
-    DBTableProperties,
-    DBUserCollectedProperties,
-    DBUserCollectedPropertiesIterator,
+    DBTableProperties, DBTablePropertiesCollection, DBTablePropertiesCollectionIterator,
+    DBUserCollectedProperties, DBUserCollectedPropertiesIterator,
 };
+use librocksdb_sys as crocksdb_ffi;
 use std::rc::Rc;
-
 
 /// This is a shared wrapper around a DBTablePropertiesCollection w/ dtor
 #[derive(Clone)]
@@ -22,7 +18,7 @@ impl TablePropertiesCollectionHandle {
     pub unsafe fn new(ptr: *mut DBTablePropertiesCollection) -> TablePropertiesCollectionHandle {
         assert!(!ptr.is_null());
         TablePropertiesCollectionHandle {
-            shared: Rc::new(TablePropertiesCollectionHandleWithDrop { ptr })
+            shared: Rc::new(TablePropertiesCollectionHandleWithDrop { ptr }),
         }
     }
 
@@ -43,7 +39,6 @@ impl Drop for TablePropertiesCollectionHandleWithDrop {
     }
 }
 
-
 /// This is a shared wrapper around a DBTablePropertiesCollection w/ dtor.
 ///
 /// # Safety
@@ -57,9 +52,12 @@ pub struct TablePropertiesCollectionIteratorHandle {
 }
 
 impl TablePropertiesCollectionIteratorHandle {
-    pub fn new(collection: TablePropertiesCollectionHandle) -> TablePropertiesCollectionIteratorHandle {
+    pub fn new(
+        collection: TablePropertiesCollectionHandle,
+    ) -> TablePropertiesCollectionIteratorHandle {
         unsafe {
-            let ptr = crocksdb_ffi::crocksdb_table_properties_collection_iter_create(collection.ptr());
+            let ptr =
+                crocksdb_ffi::crocksdb_table_properties_collection_iter_create(collection.ptr());
             TablePropertiesCollectionIteratorHandle {
                 shared: Rc::new(TablePropertiesCollectionIteratorHandleWithDrop { ptr }),
                 collection,
@@ -84,7 +82,6 @@ impl Drop for TablePropertiesCollectionIteratorHandleWithDrop {
     }
 }
 
-
 /// # Safety
 ///
 /// `ptr` is valid as long as the iterator is
@@ -95,17 +92,17 @@ pub struct TablePropertiesHandle {
 }
 
 impl TablePropertiesHandle {
-    pub fn new(ptr: *const DBTableProperties, iter_handle: TablePropertiesCollectionIteratorHandle) -> TablePropertiesHandle {
-        TablePropertiesHandle {
-            ptr, iter_handle,
-        }
+    pub fn new(
+        ptr: *const DBTableProperties,
+        iter_handle: TablePropertiesCollectionIteratorHandle,
+    ) -> TablePropertiesHandle {
+        TablePropertiesHandle { ptr, iter_handle }
     }
 
     pub fn ptr(&self) -> *const DBTableProperties {
         self.ptr
     }
 }
-
 
 /// # Safety
 ///
@@ -119,9 +116,12 @@ pub struct UserCollectedPropertiesHandle {
 impl UserCollectedPropertiesHandle {
     pub fn new(table_props_handle: TablePropertiesHandle) -> UserCollectedPropertiesHandle {
         unsafe {
-            let ptr = crocksdb_ffi::crocksdb_table_properties_get_user_properties(table_props_handle.ptr());
+            let ptr = crocksdb_ffi::crocksdb_table_properties_get_user_properties(
+                table_props_handle.ptr(),
+            );
             UserCollectedPropertiesHandle {
-                ptr, table_props_handle
+                ptr,
+                table_props_handle,
             }
         }
     }
@@ -130,7 +130,6 @@ impl UserCollectedPropertiesHandle {
         self.ptr
     }
 }
-
 
 /// This is a shared wrapper around a DBTablePropertiesCollection w/ dtor.
 ///
@@ -147,7 +146,8 @@ pub struct UserCollectedPropertiesIteratorHandle {
 impl UserCollectedPropertiesIteratorHandle {
     pub fn new(user_props: UserCollectedPropertiesHandle) -> UserCollectedPropertiesIteratorHandle {
         unsafe {
-            let ptr = crocksdb_ffi::crocksdb_user_collected_properties_iter_create(user_props.ptr());
+            let ptr =
+                crocksdb_ffi::crocksdb_user_collected_properties_iter_create(user_props.ptr());
             UserCollectedPropertiesIteratorHandle {
                 shared: Rc::new(UserCollectedPropertiesIteratorHandleWithDrop { ptr }),
                 user_props,

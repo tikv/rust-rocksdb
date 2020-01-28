@@ -6,22 +6,16 @@
 //! the collection stay valid for the lifetime of the collection, it doesn't
 //! guarantee that the _DB_ stays valid for the lifetime of the collection.
 
-use std::slice;
-use std::str;
+use crocksdb_ffi::{DBTablePropertiesCollection, DBTableProperty};
 use libc::size_t;
 use librocksdb_sys as crocksdb_ffi;
-use crocksdb_ffi::{
-    DBTablePropertiesCollection,
-    DBTableProperty,
-};
 use std::ops::Deref;
+use std::slice;
+use std::str;
 
 use crate::table_properties_rc_handles::{
-    TablePropertiesCollectionHandle,
-    TablePropertiesCollectionIteratorHandle,
-    TablePropertiesHandle,
-    UserCollectedPropertiesHandle,
-    UserCollectedPropertiesIteratorHandle,
+    TablePropertiesCollectionHandle, TablePropertiesCollectionIteratorHandle,
+    TablePropertiesHandle, UserCollectedPropertiesHandle, UserCollectedPropertiesIteratorHandle,
 };
 
 pub struct TablePropertiesCollection {
@@ -32,7 +26,7 @@ impl TablePropertiesCollection {
     pub unsafe fn new(ptr: *mut DBTablePropertiesCollection) -> TablePropertiesCollection {
         assert!(!ptr.is_null());
         TablePropertiesCollection {
-            handle: TablePropertiesCollectionHandle::new(ptr)
+            handle: TablePropertiesCollectionHandle::new(ptr),
         }
     }
 
@@ -48,7 +42,6 @@ impl TablePropertiesCollection {
         self.len() == 0
     }
 }
-
 
 pub struct TablePropertiesCollectionIter {
     handle: TablePropertiesCollectionIteratorHandle,
@@ -68,15 +61,19 @@ impl Iterator for TablePropertiesCollectionIter {
     fn next(&mut self) -> Option<Self::Item> {
         unsafe {
             loop {
-                if !crocksdb_ffi::crocksdb_table_properties_collection_iter_valid(self.handle.ptr()) {
+                if !crocksdb_ffi::crocksdb_table_properties_collection_iter_valid(self.handle.ptr())
+                {
                     return None;
                 }
 
                 let mut keylen: size_t = 0;
                 let key = crocksdb_ffi::crocksdb_table_properties_collection_iter_key(
-                    self.handle.ptr(), &mut keylen,
+                    self.handle.ptr(),
+                    &mut keylen,
                 );
-                let props = crocksdb_ffi::crocksdb_table_properties_collection_iter_value(self.handle.ptr());
+                let props = crocksdb_ffi::crocksdb_table_properties_collection_iter_value(
+                    self.handle.ptr(),
+                );
                 crocksdb_ffi::crocksdb_table_properties_collection_iter_next(self.handle.ptr());
                 if !props.is_null() {
                     assert!(!key.is_null() && keylen != 0);
@@ -102,10 +99,15 @@ pub struct TablePropertiesKey {
 }
 
 impl TablePropertiesKey {
-    fn new(key: *const u8, keylen: size_t,
-           _iter_handle: TablePropertiesCollectionIteratorHandle) -> TablePropertiesKey {
+    fn new(
+        key: *const u8,
+        keylen: size_t,
+        _iter_handle: TablePropertiesCollectionIteratorHandle,
+    ) -> TablePropertiesKey {
         TablePropertiesKey {
-            key, keylen, _iter_handle,
+            key,
+            keylen,
+            _iter_handle,
         }
     }
 }
@@ -186,7 +188,6 @@ impl UserCollectedProperties {
         self.len() == 0
     }
 }
-
 
 pub struct UserCollectedPropertiesIter {
     _handle: UserCollectedPropertiesIteratorHandle,

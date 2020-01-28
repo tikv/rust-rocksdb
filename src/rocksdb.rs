@@ -1668,6 +1668,13 @@ impl DB {
         }
     }
 
+    pub fn get_properties_of_all_tables_rc(&self) -> Result<RcTablePropertiesCollection, String> {
+        unsafe {
+            let props = ffi_try!(crocksdb_get_properties_of_all_tables(self.inner));
+            Ok(RcTablePropertiesCollection::new(props))
+        }
+    }
+
     pub fn get_properties_of_all_tables_cf(
         &self,
         cf: &CFHandle,

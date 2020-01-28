@@ -1,6 +1,10 @@
 //! This provides reference-counted abstractions around table properties
 //! collections. It is used by tikv in its own engine abstractions, to avoid the
 //! complexities of lifetimes in associated types.
+//!
+//! FIXME: Safety - While this does guarantee that all the types created from
+//! the collection stay valid for the lifetime of the collection, it doesn't
+//! guarantee that the _DB_ stays valid for the lifetime of the collection.
 
 use std::slice;
 use std::str;
@@ -19,7 +23,6 @@ use crate::table_properties_rc_handles::{
     UserCollectedPropertiesHandle,
     UserCollectedPropertiesIteratorHandle,
 };
-
 
 pub struct TablePropertiesCollection {
     handle: TablePropertiesCollectionHandle,

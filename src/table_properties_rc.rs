@@ -120,8 +120,7 @@ impl Deref for TablePropertiesKey {
         // be valid as long is this object is valid.
         unsafe {
             let bytes = slice::from_raw_parts(self.key, self.keylen);
-            let key = str::from_utf8(bytes).unwrap();
-            key
+            str::from_utf8(bytes).unwrap()
         }
     }
 }

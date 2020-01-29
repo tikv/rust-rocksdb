@@ -558,6 +558,12 @@ impl CompactOptions {
         }
     }
 
+    pub fn set_target_path_id(&mut self, v: i32) {
+        unsafe {
+            crocksdb_ffi::crocksdb_compactoptions_set_target_path_id(self.inner, v);
+        }
+    }
+
     pub fn set_max_subcompactions(&mut self, v: i32) {
         unsafe {
             crocksdb_ffi::crocksdb_compactoptions_set_max_subcompactions(self.inner, v);

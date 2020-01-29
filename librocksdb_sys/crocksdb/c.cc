@@ -3377,6 +3377,11 @@ void crocksdb_compactoptions_set_target_level(crocksdb_compactoptions_t* opt,
   opt->rep.target_level = n;
 }
 
+void crocksdb_compactoptions_set_target_path_id(crocksdb_compactoptions_t* opt,
+                                             int n) {
+  opt->rep.target_path_id = n;
+}
+
 void crocksdb_compactoptions_set_max_subcompactions(
     crocksdb_compactoptions_t* opt,
     int v) {

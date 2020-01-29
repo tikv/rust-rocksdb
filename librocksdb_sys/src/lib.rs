@@ -1212,6 +1212,7 @@ extern "C" {
     );
     pub fn crocksdb_compactoptions_set_change_level(opt: *mut DBCompactOptions, v: bool);
     pub fn crocksdb_compactoptions_set_target_level(opt: *mut DBCompactOptions, v: i32);
+    pub fn crocksdb_compactoptions_set_target_path_id(opt: *mut DBCompactOptions, v: i32);
     pub fn crocksdb_compactoptions_set_max_subcompactions(opt: *mut DBCompactOptions, v: i32);
     pub fn crocksdb_compactoptions_set_bottommost_level_compaction(
         opt: *mut DBCompactOptions,

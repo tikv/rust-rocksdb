@@ -2755,6 +2755,12 @@ extern "C" {
     );
 }
 extern "C" {
+    pub fn crocksdb_compactoptions_set_target_path_id(
+        arg1: *mut crocksdb_compactoptions_t,
+        arg2: libc::c_int,
+    );
+}
+extern "C" {
     pub fn crocksdb_compactoptions_set_max_subcompactions(
         arg1: *mut crocksdb_compactoptions_t,
         arg2: libc::c_int,

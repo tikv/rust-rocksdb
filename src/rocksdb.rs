@@ -3231,7 +3231,7 @@ mod test {
     fn test_get_db_path_from_option() {
         let mut opts = DBOptions::new();
         opts.create_if_missing(true);
-        let dir = tempdir_with_prefix("_rust_rocksdb_get_approximate_memtable_stats");
+        let dir = tempdir_with_prefix("_rust_rocksdb_get_db_path_from_option");
         let path = dir.path().to_str().unwrap();
         let db = DB::open(opts, path).unwrap();
         let path_num = db.get_db_options().get_db_paths_num();

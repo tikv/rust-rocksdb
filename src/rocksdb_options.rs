@@ -1071,9 +1071,7 @@ impl DBOptions {
     }
 
     pub fn get_db_paths_num(&self) -> usize {
-        unsafe {
-            crocksdb_ffi::crocksdb_options_get_db_paths_num(self.inner)
-        }
+        unsafe { crocksdb_ffi::crocksdb_options_get_db_paths_num(self.inner) }
     }
 
     pub fn get_db_path(&self, idx: usize) -> Option<String> {
@@ -1088,9 +1086,7 @@ impl DBOptions {
     }
 
     pub fn crocksdb_options_get_target_size(&self, idx: usize) -> u64 {
-        unsafe {
-            crocksdb_ffi::crocksdb_options_get_path_target_size(self.inner, idx as size_t)
-        }
+        unsafe { crocksdb_ffi::crocksdb_options_get_path_target_size(self.inner, idx as size_t) }
     }
 
     /// Set paranoid checks. The default value is `true`. We can set it to `false`

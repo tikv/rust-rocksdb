@@ -23,6 +23,9 @@ valgrind = []
 
 [dependencies]
 libc = "0.2.11"
+num = "0.2"
+num-derive = "0.3"
+num-traits = "0.2"
 
 [dependencies.librocksdb_sys]
 path = "librocksdb_sys"

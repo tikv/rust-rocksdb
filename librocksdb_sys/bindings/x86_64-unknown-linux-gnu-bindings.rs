@@ -416,14 +416,13 @@ pub struct crocksdb_writestallinfo_t {
 }
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
-pub struct crocksdb_writestallcondition_t {
-    _unused: [u8; 0],
-}
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
 pub struct crocksdb_map_property_t {
     _unused: [u8; 0],
 }
+pub const crocksdb_writestallcondition_t_Normal: crocksdb_writestallcondition_t = 0;
+pub const crocksdb_writestallcondition_t_Delayed: crocksdb_writestallcondition_t = 1;
+pub const crocksdb_writestallcondition_t_Stopped: crocksdb_writestallcondition_t = 2;
+pub type crocksdb_writestallcondition_t = u32;
 pub const crocksdb_table_property_t_kDataSize: crocksdb_table_property_t = 1;
 pub const crocksdb_table_property_t_kIndexSize: crocksdb_table_property_t = 2;
 pub const crocksdb_table_property_t_kFilterSize: crocksdb_table_property_t = 3;
@@ -451,6 +450,23 @@ pub const crocksdb_backgrounderrorreason_t_kCompaction: crocksdb_backgrounderror
 pub const crocksdb_backgrounderrorreason_t_kWriteCallback: crocksdb_backgrounderrorreason_t = 3;
 pub const crocksdb_backgrounderrorreason_t_kMemTable: crocksdb_backgrounderrorreason_t = 4;
 pub type crocksdb_backgrounderrorreason_t = u32;
+pub const crocksdb_compaction_reason_t_Unknown: crocksdb_compaction_reason_t = 0;
+pub const crocksdb_compaction_reason_t_LevelL0FilesNum: crocksdb_compaction_reason_t = 1;
+pub const crocksdb_compaction_reason_t_LevelMaxLevelSize: crocksdb_compaction_reason_t = 2;
+pub const crocksdb_compaction_reason_t_UniversalSizeAmplification: crocksdb_compaction_reason_t = 3;
+pub const crocksdb_compaction_reason_t_UniversalSizeRatio: crocksdb_compaction_reason_t = 4;
+pub const crocksdb_compaction_reason_t_UniversalSortedRunNum: crocksdb_compaction_reason_t = 5;
+pub const crocksdb_compaction_reason_t_FIFOMaxSize: crocksdb_compaction_reason_t = 6;
+pub const crocksdb_compaction_reason_t_FIFOReduceNumFiles: crocksdb_compaction_reason_t = 7;
+pub const crocksdb_compaction_reason_t_FIFOTtl: crocksdb_compaction_reason_t = 8;
+pub const crocksdb_compaction_reason_t_ManualCompaction: crocksdb_compaction_reason_t = 9;
+pub const crocksdb_compaction_reason_t_FilesMarkedForCompaction: crocksdb_compaction_reason_t = 10;
+pub const crocksdb_compaction_reason_t_BottommostFiles: crocksdb_compaction_reason_t = 11;
+pub const crocksdb_compaction_reason_t_Ttl: crocksdb_compaction_reason_t = 12;
+pub const crocksdb_compaction_reason_t_Flush: crocksdb_compaction_reason_t = 13;
+pub const crocksdb_compaction_reason_t_ExternalSstIngestion: crocksdb_compaction_reason_t = 14;
+pub const crocksdb_compaction_reason_t_NumOfReasons: crocksdb_compaction_reason_t = 15;
+pub type crocksdb_compaction_reason_t = u32;
 extern "C" {
     pub fn crocksdb_open(
         options: *const crocksdb_options_t,
@@ -1557,6 +1573,11 @@ extern "C" {
     pub fn crocksdb_compactionjobinfo_total_output_bytes(
         info: *const crocksdb_compactionjobinfo_t,
     ) -> u64;
+}
+extern "C" {
+    pub fn crocksdb_compactionjobinfo_compaction_reason(
+        info: *const crocksdb_compactionjobinfo_t,
+    ) -> *const crocksdb_compaction_reason_t;
 }
 extern "C" {
     pub fn crocksdb_externalfileingestioninfo_cf_name(

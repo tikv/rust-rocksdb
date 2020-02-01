@@ -12,15 +12,17 @@
 // limitations under the License.
 
 use crocksdb_ffi::{
-    self, DBTableProperties, DBTablePropertiesCollection, DBTablePropertiesCollectionIterator,
-    DBTableProperty, DBUserCollectedProperties, DBUserCollectedPropertiesIterator,
+    self, crocksdb_table_properties_collection_iterator_t, crocksdb_table_properties_collection_t,
+    crocksdb_table_properties_t, crocksdb_user_collected_properties_iterator_t,
+    crocksdb_user_collected_properties_t,
 };
 use libc::size_t;
 use std::marker::PhantomData;
 use std::ops::{Deref, Index};
 use std::{slice, str};
+use DBTableProperty;
 
-#[repr(transparent)]
+pub type DBTablePropertiesCollection = crocksdb_table_properties_collection_t;
 pub struct TablePropertiesCollectionView(DBTablePropertiesCollection);
 
 impl TablePropertiesCollectionView {
@@ -54,7 +56,7 @@ impl<'a> IntoIterator for &'a TablePropertiesCollectionView {
 
 pub struct TablePropertiesCollectionIter<'a> {
     props: PhantomData<&'a TablePropertiesCollection>,
-    inner: *mut DBTablePropertiesCollectionIterator,
+    inner: *mut crocksdb_table_properties_collection_iterator_t,
 }
 
 impl<'a> Drop for TablePropertiesCollectionIter<'a> {
@@ -82,7 +84,7 @@ impl<'a> Iterator for TablePropertiesCollectionIter<'a> {
     fn next(&mut self) -> Option<(&'a str, &'a TableProperties)> {
         unsafe {
             loop {
-                if !crocksdb_ffi::crocksdb_table_properties_collection_iter_valid(self.inner) {
+                if crocksdb_ffi::crocksdb_table_properties_collection_iter_valid(self.inner) == 0 {
                     return None;
                 }
 
@@ -90,7 +92,7 @@ impl<'a> Iterator for TablePropertiesCollectionIter<'a> {
                 let k = crocksdb_ffi::crocksdb_table_properties_collection_iter_key(
                     self.inner, &mut klen,
                 );
-                let bytes = slice::from_raw_parts(k, klen);
+                let bytes = slice::from_raw_parts(k as *const u8, klen);
                 let key = str::from_utf8(bytes).unwrap();
                 let props =
                     crocksdb_ffi::crocksdb_table_properties_collection_iter_value(self.inner);
@@ -130,7 +132,7 @@ impl Deref for TablePropertiesCollection {
     }
 }
 
-#[repr(transparent)]
+pub type DBTableProperties = crocksdb_table_properties_t;
 pub struct TableProperties {
     inner: DBTableProperties,
 }
@@ -138,17 +140,23 @@ pub struct TableProperties {
 impl TableProperties {
     pub unsafe fn from_ptr<'a>(ptr: *const DBTableProperties) -> &'a TableProperties {
         &*(ptr as *const TableProperties)
+        //let res = &*ptr;
+        //mem::transmute(res)
     }
 
     fn get_u64(&self, prop: DBTableProperty) -> u64 {
-        unsafe { crocksdb_ffi::crocksdb_table_properties_get_u64(&self.inner, prop) }
+        unsafe { crocksdb_ffi::crocksdb_table_properties_get_u64(&self.inner, prop as u32) }
     }
 
     fn get_str(&self, prop: DBTableProperty) -> &str {
         unsafe {
             let mut slen: size_t = 0;
-            let s = crocksdb_ffi::crocksdb_table_properties_get_str(&self.inner, prop, &mut slen);
-            let bytes = slice::from_raw_parts(s, slen);
+            let s = crocksdb_ffi::crocksdb_table_properties_get_str(
+                &self.inner,
+                prop as u32,
+                &mut slen,
+            );
+            let bytes = slice::from_raw_parts(s as *const u8, slen);
             str::from_utf8(bytes).unwrap()
         }
     }
@@ -229,7 +237,7 @@ impl TableProperties {
     }
 }
 
-#[repr(transparent)]
+pub type DBUserCollectedProperties = crocksdb_user_collected_properties_t;
 pub struct UserCollectedProperties {
     inner: DBUserCollectedProperties,
 }
@@ -245,14 +253,14 @@ impl UserCollectedProperties {
         unsafe {
             let ptr = crocksdb_ffi::crocksdb_user_collected_properties_get(
                 &self.inner,
-                bytes.as_ptr(),
+                bytes.as_ptr() as *const i8,
                 bytes.len(),
                 &mut size,
             );
             if ptr.is_null() {
                 return None;
             }
-            Some(slice::from_raw_parts(ptr, size))
+            Some(slice::from_raw_parts(ptr as *const u8, size))
         }
     }
 
@@ -286,7 +294,7 @@ impl<'a> IntoIterator for &'a UserCollectedProperties {
 
 pub struct UserCollectedPropertiesIter<'a> {
     props: PhantomData<&'a UserCollectedProperties>,
-    inner: *mut DBUserCollectedPropertiesIterator,
+    inner: *mut crocksdb_user_collected_properties_iterator_t,
 }
 
 impl<'a> Drop for UserCollectedPropertiesIter<'a> {
@@ -313,18 +321,18 @@ impl<'a> Iterator for UserCollectedPropertiesIter<'a> {
 
     fn next(&mut self) -> Option<(&'a [u8], &'a [u8])> {
         unsafe {
-            if !crocksdb_ffi::crocksdb_user_collected_properties_iter_valid(self.inner) {
+            if crocksdb_ffi::crocksdb_user_collected_properties_iter_valid(self.inner) == 0 {
                 return None;
             }
             let mut klen: size_t = 0;
             let k =
                 crocksdb_ffi::crocksdb_user_collected_properties_iter_key(self.inner, &mut klen);
-            let key = slice::from_raw_parts(k, klen);
+            let key = slice::from_raw_parts(k as *const u8, klen);
 
             let mut vlen: size_t = 0;
             let v =
                 crocksdb_ffi::crocksdb_user_collected_properties_iter_value(self.inner, &mut vlen);
-            let val = slice::from_raw_parts(v, vlen);
+            let val = slice::from_raw_parts(v as *const u8, vlen);
 
             crocksdb_ffi::crocksdb_user_collected_properties_iter_next(self.inner);
 

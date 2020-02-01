@@ -11,12 +11,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crocksdb_ffi::{self, DBEntryType, DBTablePropertiesCollector, DBUserCollectedProperties};
+use crocksdb_ffi::{
+    self, crocksdb_table_properties_collector_t, crocksdb_user_collected_properties_t,
+};
 use libc::{c_char, c_int, c_void, size_t};
 use std::collections::HashMap;
 use std::ffi::CString;
 use std::mem;
 use std::slice;
+use DBEntryType;
 
 /// `TablePropertiesCollector` provides the mechanism for users to collect
 /// their own properties that they are interested in. This class is essentially
@@ -62,9 +65,9 @@ extern "C" fn destruct(handle: *mut c_void) {
 
 pub extern "C" fn add(
     handle: *mut c_void,
-    key: *const u8,
+    key: *const c_char,
     key_len: size_t,
-    value: *const u8,
+    value: *const c_char,
     value_len: size_t,
     entry_type: c_int,
     seq: u64,
@@ -72,29 +75,30 @@ pub extern "C" fn add(
 ) {
     unsafe {
         let handle = &mut *(handle as *mut TablePropertiesCollectorHandle);
-        let key = slice::from_raw_parts(key, key_len);
-        let value = slice::from_raw_parts(value, value_len);
+        let key = slice::from_raw_parts(key as *const u8, key_len);
+        let value = slice::from_raw_parts(value as *const u8, value_len);
         handle
             .rep
             .add(key, value, mem::transmute(entry_type), seq, file_size);
     }
 }
 
-pub extern "C" fn finish(handle: *mut c_void, props: *mut DBUserCollectedProperties) {
+pub extern "C" fn finish(handle: *mut c_void, props: *mut crocksdb_user_collected_properties_t) {
     unsafe {
         let handle = &mut *(handle as *mut TablePropertiesCollectorHandle);
         for (key, value) in handle.rep.finish() {
             crocksdb_ffi::crocksdb_user_collected_properties_add(
                 props,
-                key.as_ptr(),
+                key.as_ptr() as *const i8,
                 key.len(),
-                value.as_ptr(),
+                value.as_ptr() as *const i8,
                 value.len(),
             );
         }
     }
 }
 
+pub type DBTablePropertiesCollector = crocksdb_table_properties_collector_t;
 pub unsafe fn new_table_properties_collector(
     cname: &str,
     collector: Box<dyn TablePropertiesCollector>,
@@ -102,9 +106,9 @@ pub unsafe fn new_table_properties_collector(
     let handle = TablePropertiesCollectorHandle::new(cname, collector);
     crocksdb_ffi::crocksdb_table_properties_collector_create(
         Box::into_raw(Box::new(handle)) as *mut c_void,
-        name,
-        destruct,
-        add,
-        finish,
+        Some(name),
+        Some(destruct),
+        Some(add),
+        Some(finish),
     )
 }

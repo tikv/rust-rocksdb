@@ -48,7 +48,7 @@ pub unsafe extern "C" fn full_merge_callback(
     num_operands: c_int,
     success: *mut u8,
     new_value_length: *mut size_t,
-) -> *const c_char {
+) -> *mut c_char {
     let cb: &mut MergeOperatorCallback = &mut *(raw_cb as *mut MergeOperatorCallback);
     let operands = &mut MergeOperands::new(operands_list, operands_list_len, num_operands);
     let key: &[u8] = slice::from_raw_parts(raw_key as *const u8, key_len as usize);
@@ -58,12 +58,11 @@ pub unsafe extern "C" fn full_merge_callback(
     result.shrink_to_fit();
     // TODO(tan) investigate zero-copy techniques to improve performance
     let buf = libc::malloc(result.len() as size_t);
-    let buf = buf as *mut u8;
     assert!(!buf.is_null());
     *new_value_length = result.len() as size_t;
     *success = 1 as u8;
-    ptr::copy(result.as_ptr(), &mut *buf, result.len());
-    buf as *const c_char
+    ptr::copy(result.as_ptr() as *mut c_void, &mut *buf, result.len());
+    buf as *mut c_char
 }
 
 pub unsafe extern "C" fn partial_merge_callback(
@@ -75,7 +74,7 @@ pub unsafe extern "C" fn partial_merge_callback(
     num_operands: c_int,
     success: *mut u8,
     new_value_length: *mut size_t,
-) -> *const c_char {
+) -> *mut c_char {
     let cb: &mut MergeOperatorCallback = &mut *(raw_cb as *mut MergeOperatorCallback);
     let operands = &mut MergeOperands::new(operands_list, operands_list_len, num_operands);
     let key: &[u8] = slice::from_raw_parts(raw_key as *const u8, key_len as usize);
@@ -83,12 +82,11 @@ pub unsafe extern "C" fn partial_merge_callback(
     result.shrink_to_fit();
     // TODO(tan) investigate zero-copy techniques to improve performance
     let buf = libc::malloc(result.len() as size_t);
-    let buf = buf as *mut u8;
     assert!(!buf.is_null());
     *new_value_length = result.len() as size_t;
     *success = 1 as u8;
-    ptr::copy(result.as_ptr(), &mut *buf, result.len());
-    buf as *const c_char
+    ptr::copy(result.as_ptr() as *mut c_void, &mut *buf, result.len());
+    buf as *mut c_char
 }
 
 pub struct MergeOperands {

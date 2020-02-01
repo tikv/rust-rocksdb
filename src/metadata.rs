@@ -11,12 +11,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crocksdb_ffi::{self, DBColumnFamilyMetaData, DBLevelMetaData, DBSstFileMetaData};
+use crocksdb_ffi::{
+    self, crocksdb_column_family_meta_data_t, crocksdb_level_meta_data_t,
+    crocksdb_sst_file_meta_data_t,
+};
 use std::ffi::CStr;
 use std::slice;
 
 use libc::size_t;
 
+pub type DBColumnFamilyMetaData = crocksdb_column_family_meta_data_t;
 pub struct ColumnFamilyMetaData {
     inner: *mut DBColumnFamilyMetaData,
 }
@@ -47,6 +51,7 @@ impl Drop for ColumnFamilyMetaData {
     }
 }
 
+pub type DBLevelMetaData = crocksdb_level_meta_data_t;
 pub struct LevelMetaData<'a> {
     inner: *const DBLevelMetaData,
     _mark: &'a ColumnFamilyMetaData,
@@ -73,6 +78,7 @@ impl<'a> LevelMetaData<'a> {
     }
 }
 
+pub type DBSstFileMetaData = crocksdb_sst_file_meta_data_t;
 pub struct SstFileMetaData<'a> {
     inner: *const DBSstFileMetaData,
     _mark: &'a ColumnFamilyMetaData,

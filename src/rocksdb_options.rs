@@ -1085,7 +1085,7 @@ impl DBOptions {
         }
     }
 
-    pub fn crocksdb_options_get_target_size(&self, idx: usize) -> u64 {
+    pub fn get_path_target_size(&self, idx: usize) -> u64 {
         unsafe { crocksdb_ffi::crocksdb_options_get_path_target_size(self.inner, idx as size_t) }
     }
 

@@ -2091,6 +2091,21 @@ extern "C" {
     );
 }
 extern "C" {
+    pub fn crocksdb_options_get_db_paths_num(arg1: *mut crocksdb_options_t) -> usize;
+}
+extern "C" {
+    pub fn crocksdb_options_get_db_path(
+        arg1: *mut crocksdb_options_t,
+        index: usize,
+    ) -> *const libc::c_char;
+}
+extern "C" {
+    pub fn crocksdb_options_get_path_target_size(
+        arg1: *mut crocksdb_options_t,
+        index: usize,
+    ) -> u64;
+}
+extern "C" {
     pub fn crocksdb_options_set_db_log_dir(
         arg1: *mut crocksdb_options_t,
         arg2: *const libc::c_char,

@@ -15,7 +15,7 @@ use std::str;
 
 use crate::table_properties_rc_handles::{
     TablePropertiesCollectionHandle, TablePropertiesCollectionIteratorHandle,
-    TablePropertiesHandle, UserCollectedPropertiesHandle, UserCollectedPropertiesIteratorHandle,
+    TablePropertiesHandle, UserCollectedPropertiesHandle,
 };
 
 pub struct TablePropertiesCollection {
@@ -87,11 +87,11 @@ impl Iterator for TablePropertiesCollectionIter {
     }
 }
 
-/// # Safety
-///
-/// The underlying iterator is over an unordered map of heap-allocated strings,
-/// so as long as the iterator and collection are alive, the key pointers are
-/// valid.
+// # Safety
+//
+// The underlying iterator is over an unordered map of heap-allocated strings,
+// so as long as the iterator and collection are alive, the key pointers are
+// valid.
 pub struct TablePropertiesKey {
     key: *const u8,
     keylen: size_t,
@@ -104,6 +104,11 @@ impl TablePropertiesKey {
         keylen: size_t,
         _iter_handle: TablePropertiesCollectionIteratorHandle,
     ) -> TablePropertiesKey {
+        // Caller must ensure slice is valid
+        unsafe {
+            let bytes = slice::from_raw_parts(key, keylen);
+            assert!(str::from_utf8(bytes).is_ok());
+        }
         TablePropertiesKey {
             key,
             keylen,
@@ -117,10 +122,11 @@ impl Deref for TablePropertiesKey {
 
     fn deref(&self) -> &str {
         // Safety: creating slice from values reported by rocksdb, that should
-        // be valid as long is this object is valid.
+        // be valid as long is this object is valid. The slice is guaranteed to
+        // be UTF-8 by the constructor.
         unsafe {
             let bytes = slice::from_raw_parts(self.key, self.keylen);
-            str::from_utf8(bytes).unwrap()
+            str::from_utf8_unchecked(bytes)
         }
     }
 }
@@ -158,10 +164,6 @@ impl UserCollectedProperties {
         }
     }
 
-    pub fn iter(&self) -> UserCollectedPropertiesIter {
-        UserCollectedPropertiesIter::new(self.handle.clone())
-    }
-
     pub fn get<Q: AsRef<[u8]>>(&self, index: Q) -> Option<&[u8]> {
         let bytes = index.as_ref();
         let mut size = 0;
@@ -185,17 +187,5 @@ impl UserCollectedProperties {
 
     pub fn is_empty(&self) -> bool {
         self.len() == 0
-    }
-}
-
-pub struct UserCollectedPropertiesIter {
-    _handle: UserCollectedPropertiesIteratorHandle,
-}
-
-impl UserCollectedPropertiesIter {
-    fn new(user_props: UserCollectedPropertiesHandle) -> UserCollectedPropertiesIter {
-        UserCollectedPropertiesIter {
-            _handle: UserCollectedPropertiesIteratorHandle::new(user_props),
-        }
     }
 }

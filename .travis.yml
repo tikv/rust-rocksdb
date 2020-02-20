@@ -29,7 +29,7 @@ env:
 cache: false
 
 before_script:
-  - rustup default nightly-2019-09-05
+  - rustup default nightly-2019-12-20
   - rustup component add rustfmt-preview
   - rustup component add clippy
 

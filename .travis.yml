@@ -5,6 +5,10 @@ language: rust
 os:
   - linux
 
+arch:
+  - amd64
+  - arm64
+
 rust:
   - stable
   - beta
@@ -15,6 +19,8 @@ matrix:
   - os: osx
     osx_image: xcode11.3
     rust: stable
+  - os: linux
+    arch: arm64
 
 env:
   global:

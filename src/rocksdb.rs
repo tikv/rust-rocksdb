@@ -768,7 +768,7 @@ impl DB {
 
     pub fn multi_batch_write(
         &self,
-        batches: &Vec<WriteBatch>,
+        batches: &[WriteBatch],
         writeopts: &WriteOptions,
     ) -> Result<(), String> {
         unsafe {
@@ -3298,10 +3298,10 @@ mod test {
         let mut data = Vec::new();
         for s in &[b"ab", b"cd", b"ef"] {
             let w = WriteBatch::new();
-            w.put_cf(cf, s.to_vec().as_slice(), b"a");
+            w.put_cf(cf, s.to_vec().as_slice(), b"a").unwrap();
             data.push(w);
         }
-        db.multi_batch_write(&data, &WriteOptions::new());
+        db.multi_batch_write(&data, &WriteOptions::new()).unwrap();
         for s in &[b"ab", b"cd", b"ef"] {
             let v = db.get_cf(cf, s.to_vec().as_slice()).unwrap();
             assert!(v.is_some());
@@ -3309,6 +3309,7 @@ mod test {
         }
     }
 
+    #[test]
     fn test_get_db_path_from_option() {
         let mut opts = DBOptions::new();
         opts.create_if_missing(true);
@@ -3320,4 +3321,5 @@ mod test {
         let first_path = db.get_db_options().get_db_path(0).unwrap();
         assert_eq!(path, first_path.as_str());
     }
+
 }

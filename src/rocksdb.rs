@@ -3321,5 +3321,4 @@ mod test {
         let first_path = db.get_db_options().get_db_path(0).unwrap();
         assert_eq!(path, first_path.as_str());
     }
-
 }

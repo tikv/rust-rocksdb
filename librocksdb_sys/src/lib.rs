@@ -151,6 +151,10 @@ pub struct DBWriteStallInfo(c_void);
 pub struct DBStatusPtr(c_void);
 #[repr(C)]
 pub struct DBMapProperty(c_void);
+#[repr(C)]
+pub struct DBFileEncryptionInfo(c_void);
+#[repr(C)]
+pub struct DBEncryptionKeyManager(c_void);
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 #[repr(C)]
@@ -377,6 +381,16 @@ pub enum DBBackgroundErrorReason {
     Compaction = 2,
     WriteCallback = 3,
     MemTable = 4,
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[repr(C)]
+pub enum DBEncryptionMethod {
+    Unknown = 0,
+    Plaintext = 1,
+    AES128_CTR = 2,
+    AES192_CTR = 3,
+    AES256_CTR = 4,
 }
 
 pub unsafe fn error_message(ptr: *mut c_char) -> String {
@@ -1390,6 +1404,27 @@ extern "C" {
         allow_blocking_flush: bool,
     );
     pub fn crocksdb_ingestexternalfileoptions_destroy(opt: *mut IngestExternalFileOptions);
+
+    // KeyManagedEncryptedEnv
+    pub fn crocksdb_file_encryption_info_set_method(
+        file_info: *mut DBEncryptionFileInfo, method: DBEncryptionMethod);
+    pub fn crocksdb_file_encryption_info_set_key(
+        file_info: *mut DBEncryptionFileInfo, key: *const c_char, key_len: size_t);
+    pub fn crocksdb_file_encryption_info_set_iv(
+        file_info: *mut DBEncryptionFileInfo, iv: *const c_char, iv_len: size_t);
+
+    pub fn crocksdb_encryption_key_manager_create(
+        state: *mut c_void,
+        destructor: extern "C" fn(*mut c_void);
+        get_file: extern "C" fn(*mut c_void, *const c_char, *mut DBFileEncryptionInfo) -> *const c_char;
+        new_file: extern "C" fn(*mut c_void, *const c_char, *mut DBFileEncryptionInfo) -> *const c_char;
+        delete_file: extern "C" fn(*mut c_void, *const c_char) -> *const c_char,
+    ) -> *mut DBEncryptionKeyManager;
+    pub fn crocksdb_encryption_key_manager_destroy(key_manager: *mut DBEncryptionKeyManager);
+
+    pub fn crocksdb_key_managed_encrypted_env_create(
+        base_env: *mut DBEnv, key_manager: *mut DBEncryptionKeyManager
+    ) -> *mut DBEnv;
 
     // SstFileReader
     pub fn crocksdb_sstfilereader_create(io_options: *const Options) -> *mut SstFileReader;

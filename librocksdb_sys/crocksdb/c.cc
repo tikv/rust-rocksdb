@@ -3670,7 +3670,7 @@ struct crocksdb_encryption_key_manager_impl_t : public KeyManager {
       const std::string& fname, FileEncryptionInfo* file_info) override {
     crocksdb_file_encryption_info_t info;
     info.rep = file_info;
-    char* ret = get_file(state, fname.c_str(), &info);
+    const char* ret = get_file(state, fname.c_str(), &info);
     Status s;
     if (ret != nullptr) {
       s = Status::Corruption(std::string(ret));
@@ -3683,7 +3683,7 @@ struct crocksdb_encryption_key_manager_impl_t : public KeyManager {
       const std::string& fname, FileEncryptionInfo* file_info) override {
     crocksdb_file_encryption_info_t info;
     info.rep = file_info;
-    char* ret = new_file(state, fname.c_str(), &info);
+    const char* ret = new_file(state, fname.c_str(), &info);
     Status s;
     if (ret != nullptr) {
       s = Status::Corruption(std::string(ret));
@@ -3693,7 +3693,7 @@ struct crocksdb_encryption_key_manager_impl_t : public KeyManager {
   }
   
   Status DeleteFile(const std::string& fname) override {
-    char* ret = delete_file(state, fname.c_str());
+    const char* ret = delete_file(state, fname.c_str());
     Status s;
     if (ret != nullptr) {
       s = Status::Corruption(std::string(ret));

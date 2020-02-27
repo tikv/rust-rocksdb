@@ -1450,11 +1450,11 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_file_encryption_info_set_key(
 extern C_ROCKSDB_LIBRARY_API void crocksdb_file_encryption_info_set_iv(
     crocksdb_file_encryption_info_t* file_info, const char* iv, size_t ivlen);
 
-typedef char* (*crocksdb_encryption_key_manager_get_file_cb)(
+typedef const char* (*crocksdb_encryption_key_manager_get_file_cb)(
     void* state, char* fname, crocksdb_file_encryption_info_t*);
-typedef char* (*crocksdb_encryption_key_manager_new_file_cb)(
+typedef const char* (*crocksdb_encryption_key_manager_new_file_cb)(
     void* state, char* fname, crocksdb_file_encryption_info_t*);
-typedef char* (*crocksdb_encryption_key_manager_delete_file_cb)(
+typedef const char* (*crocksdb_encryption_key_manager_delete_file_cb)(
     void* state, char* fname);
 
 extern C_ROCKSDB_LIBRARY_API crocksdb_encryption_key_manager_t*

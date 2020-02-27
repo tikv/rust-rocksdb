@@ -178,6 +178,11 @@ using rocksdb::titandb::TitanBlobRunMode;
 
 using rocksdb::MemoryAllocator;
 
+uinsg rocksdb::encryption::EncryptionMethod;
+using rocksdb::encryption::FileEncryptionInfo;
+usine rocksdb::encryption::KeyManager;
+using rocksdb::encryption::NewKeyManagedEncryptedEnv;
+
 using std::shared_ptr;
 
 extern "C" {
@@ -541,6 +546,14 @@ struct crocksdb_slicetransform_t : public SliceTransform {
 
 struct crocksdb_universal_compaction_options_t {
   rocksdb::CompactionOptionsUniversal *rep;
+};
+
+struct crocksdb_file_encryption_info_t {
+  FileEncryptionInfo* rep;
+};
+
+struct crocksdb_encryption_key_manager_t {
+  std::shared_ptr<KeyManager> rep;
 };
 
 static bool SaveError(char** errptr, const Status& s) {
@@ -3604,6 +3617,122 @@ void crocksdb_sequential_file_skip(crocksdb_sequential_file_t* file,
 void crocksdb_sequential_file_destroy(crocksdb_sequential_file_t* file) {
   delete file->rep;
   delete file;
+}
+
+void crocksdb_file_encryption_info_set_method(
+    crocksdb_file_encryption_info_t* file_info, crocksdb_encryption_method_t method) {
+  assert(file_info != nullptr);
+  switch (method) {
+    case kUnknown:
+      file_info->rep->method = EncryptionMethod::kUnknown;
+      break;
+    case kPlaintext:
+      file_info->rep->method = EncryptionMethod::kPlaintext;
+      break;
+    case kAES128_CTR:
+      file_info->rep->method = EncryptionMethod::kAES128_CTR;
+      break;
+    case kAES192_CTR:
+      file_info->rep->method = EncryptionMethod::kAES192_CTR;
+      break;
+    case kAES256_CTR:
+      file_info->rep->method = EncryptionMethod::kAES256_CTR;
+      break;
+    default:
+      assert(false);
+  };
+}
+
+void crocksdb_file_encryption_info_set_key(
+    crocksdb_file_encryption_info_t* file_info, const char* key, size_t keylen) {
+  assert(file_info != nullptr);
+  file_info->rep->key = std::string(key, keylen);
+}
+
+void crocksdb_file_encryption_info_set_iv(
+    crocksdb_file_encryption_into_t* file_info, const char* iv, size_t kvlen) {
+  assert(file_info != nullptr);
+  file_info->rep->iv = std::string(iv, ivlen);
+}
+
+struct crocksdb_encryption_key_manager_impl_t : public KeyManager {
+  void* state;
+  void (*destructor)(void*);
+  crocksdb_encryption_key_manager_get_file_cb get_file;
+  crocksdb_encryption_key_manager_new_file_cb new_file;
+  crocksdb_encryption_key_manager_delete_file_cb delete_file;
+
+  virtual ~crocksdb_encryption_key_manager_impl_t() {
+    destructor(state);
+  }
+
+  Status GetFile(
+      const std::string& fname, FileEncryptionInfo* file_info) override {
+    crocksdb_file_encryption_info_t info;
+    info.rep = file_info;
+    char* ret = get_file(state, fname.c_str(), &info);
+    Status s;
+    if (ret != nullptr) {
+      s = Status::Corruption(std::string(ret));
+      delete ret;
+    }
+    return s;
+  }
+  
+  Status NewFile(
+      const std::string& fname, FileEncryptionInfo* file_info) override {
+    crocksdb_file_encryption_info_t info;
+    info.rep = file_info;
+    char* ret = new_file(state, fname.c_str(), &info);
+    Status s;
+    if (ret != nullptr) {
+      s = Status::Corruption(std::string(ret));
+      delete ret;
+    }
+    return s;
+  }
+  
+  Status DeleteFile(const std::string& fname) override {
+    char* ret = delete_file(state, fname.c_str());
+    Status s;
+    if (ret != nullptr) {
+      s = Status::Corruption(std::string(ret));
+      delete ret;
+    }
+    return s;
+  }
+};
+
+crocksdb_encryption_key_manager_t* crocksdb_encryption_key_manager_create(
+    void* state, void (*destructor)(void*),
+    crocksdb_encryption_key_manager_get_file_cb get_file,
+    crocksdb_encryption_key_manager_new_file_cb new_file,
+    crocksdb_encryption_key_manager_delete_file_cb delete_file) {
+  std::shared_ptr<crocksdb_encryption_key_manager_impl_t> key_manager_impl = std::make_shared();
+  key_manager_impl->state = state;
+  key_manager_impl->destructor = destructor;
+  key_manager_impl->get_file = get_file;
+  key_manager_impl->new_file = new_file;
+  key_manager_impl->delete_file = delete_file;
+  crocksdb_encryption_key_manager_t* key_manager = new crocksdb_encryption_key_manager_t;
+  key_manager->rep = key_manager_impl;
+  return key_manager;
+}
+
+void crocksdb_encryption_key_manager_destroy(crocksdb_encryption_key_manager_t* key_manager) {
+  delete key_manager;
+}
+
+crocksdb_env_t* crocksdb_key_managed_encrypted_env_create(
+    crocksdb_env_t* base_env, crocksdb_encryption_key_manager_t* key_manager) {
+  assert(base_env != nullptr);
+  assert(key_manager != nullptr);
+  crocksdb_env_t* result = new crocksdb_env_t;
+  result->rep = NewKeyManagedEncryptedEnv(base_env->rep, key_manager->rep);
+  result->block_cipher = nullptr;
+  result->encryption_provider = nullptr;
+  result->is_default = false;
+  return result;
 }
 
 crocksdb_sstfilereader_t* crocksdb_sstfilereader_create(

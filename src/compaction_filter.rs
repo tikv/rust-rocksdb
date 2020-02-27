@@ -67,7 +67,7 @@ extern "C" fn filter(
             key,
             value,
             &mut new_value_v,
-            mem::transmute(value_changed),
+            mem::transmute(&mut *value_changed),
         );
         if *value_changed {
             *new_value = &mut new_value_v[0] as *mut u8;
@@ -150,7 +150,6 @@ mod factory {
     use super::{CompactionFilterContext, CompactionFilterFactoryProxy};
     use crocksdb_ffi::{DBCompactionFilter, DBCompactionFilterContext};
     use libc::{c_char, c_void};
-    use std::mem;
 
     pub(super) extern "C" fn name(factory: *mut c_void) -> *const c_char {
         unsafe {
@@ -169,9 +168,11 @@ mod factory {
         factory: *mut c_void,
         context: *const DBCompactionFilterContext,
     ) -> *mut DBCompactionFilter {
-        let factory = unsafe { &mut *(factory as *mut CompactionFilterFactoryProxy) };
-        let context: &CompactionFilterContext = unsafe { mem::transmute(context) };
-        factory.factory.create_compaction_filter(context)
+        unsafe {
+            let factory = &mut *(factory as *mut CompactionFilterFactoryProxy);
+            let context: &CompactionFilterContext = &*(context as *const CompactionFilterContext);
+            factory.factory.create_compaction_filter(context)
+        }
     }
 }
 

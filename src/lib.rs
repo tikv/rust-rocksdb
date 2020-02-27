@@ -13,6 +13,8 @@
 // limitations under the License.
 //
 
+#![allow(clippy::missing_safety_doc)]
+
 extern crate core;
 extern crate libc;
 #[macro_use]

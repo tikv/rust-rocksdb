@@ -140,7 +140,7 @@ extern "C" fn encryption_key_manager_delete_file(ctx: *mut c_void, fname: *const
             );
         }
     };
-    match ctx.new_file(fname) {
+    match ctx.delete_file(fname) {
         Ok() => ptr::null(),
         Err(err) => stddup(
             CString::new(format!(

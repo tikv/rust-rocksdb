@@ -66,7 +66,7 @@ impl WriteBatch {
         }
     }
 
-    pub fn clear(&self) {
+    pub fn clear(&mut self) {
         unsafe {
             crocksdb_ffi::crocksdb_writebatch_clear(self.inner);
         }

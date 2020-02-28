@@ -21,6 +21,7 @@ pub extern crate librocksdb_sys;
 extern crate tempfile;
 
 pub use compaction_filter::CompactionFilter;
+pub use encryption::{DBEncryptionMethod, EncryptionKeyManager, FileEncryptionInfo};
 pub use event_listener::{
     CompactionJobInfo, EventListener, FlushJobInfo, IngestionInfo, WriteStallInfo,
 };
@@ -59,6 +60,7 @@ pub use rocksdb::Kv;
 
 mod compaction_filter;
 pub mod comparator;
+mod encryption;
 mod event_listener;
 pub mod merge_operator;
 mod metadata;

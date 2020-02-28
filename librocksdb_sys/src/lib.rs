@@ -154,7 +154,7 @@ pub struct DBMapProperty(c_void);
 #[repr(C)]
 pub struct DBFileEncryptionInfo(c_void);
 #[repr(C)]
-pub struct DBEncryptionKeyManager(c_void);
+pub struct DBEncryptionKeyManagerInstance(c_void);
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 #[repr(C)]
@@ -1419,11 +1419,11 @@ extern "C" {
         get_file: extern "C" fn(*mut c_void, *const c_char, *mut DBFileEncryptionInfo) -> *const c_char;
         new_file: extern "C" fn(*mut c_void, *const c_char, *mut DBFileEncryptionInfo) -> *const c_char;
         delete_file: extern "C" fn(*mut c_void, *const c_char) -> *const c_char,
-    ) -> *mut DBEncryptionKeyManager;
-    pub fn crocksdb_encryption_key_manager_destroy(key_manager: *mut DBEncryptionKeyManager);
+    ) -> *mut DBEncryptionKeyManagerInstance;
+    pub fn crocksdb_encryption_key_manager_destroy(key_manager: *mut DBEncryptionKeyManagerInstance);
 
     pub fn crocksdb_key_managed_encrypted_env_create(
-        base_env: *mut DBEnv, key_manager: *mut DBEncryptionKeyManager
+        base_env: *mut DBEnv, key_manager: *mut DBEncryptionKeyManagerInstance
     ) -> *mut DBEnv;
 
     // SstFileReader

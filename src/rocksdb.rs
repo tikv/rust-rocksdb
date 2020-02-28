@@ -13,7 +13,7 @@
 // limitations under the License.
 
 use crocksdb_ffi::{
-    self, DBBackupEngine, DBCFHandle, DBCache, DBCompressionType, DBEnv, DBInstance, DBMapProperty,
+    self, DBBackupEngine, DBCache, DBCompressionType, DBEnv, DBInstance, DBMapProperty,
     DBPinnableSlice, DBSequentialFile, DBStatisticsHistogramType, DBStatisticsTickerType,
     DBTablePropertiesCollection, DBTitanDBOptions, DBWriteBatch,
 };
@@ -38,28 +38,11 @@ use std::rc::Rc;
 use std::str::from_utf8;
 use std::sync::Arc;
 use std::{fs, ptr, slice};
+use write_batch::{CFHandle, WriteBatch};
 
 use table_properties::{TableProperties, TablePropertiesCollection};
 use table_properties_rc::TablePropertiesCollection as RcTablePropertiesCollection;
 use titan::TitanDBOptions;
-
-pub struct CFHandle {
-    inner: *mut DBCFHandle,
-}
-
-impl CFHandle {
-    pub fn id(&self) -> u32 {
-        unsafe { crocksdb_ffi::crocksdb_column_family_handle_id(self.inner) }
-    }
-}
-
-impl Drop for CFHandle {
-    fn drop(&mut self) {
-        unsafe {
-            crocksdb_ffi::crocksdb_column_family_handle_destroy(self.inner);
-        }
-    }
-}
 
 fn ensure_default_cf_exists<'a>(
     list: &mut Vec<ColumnFamilyDescriptor<'a>>,
@@ -160,12 +143,6 @@ impl DB {
         !self.opts.titan_inner.is_null()
     }
 }
-
-pub struct WriteBatch {
-    inner: *mut DBWriteBatch,
-}
-
-unsafe impl Send for WriteBatch {}
 
 pub struct Snapshot<D: Deref<Target = DB>> {
     db: D,
@@ -1875,74 +1852,6 @@ impl Writable for DB {
     }
 }
 
-impl Default for WriteBatch {
-    fn default() -> WriteBatch {
-        WriteBatch {
-            inner: unsafe { crocksdb_ffi::crocksdb_writebatch_create() },
-        }
-    }
-}
-
-impl WriteBatch {
-    pub fn new() -> WriteBatch {
-        WriteBatch::default()
-    }
-
-    pub fn with_capacity(cap: usize) -> WriteBatch {
-        WriteBatch {
-            inner: unsafe { crocksdb_ffi::crocksdb_writebatch_create_with_capacity(cap) },
-        }
-    }
-
-    pub fn count(&self) -> usize {
-        unsafe { crocksdb_ffi::crocksdb_writebatch_count(self.inner) as usize }
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.count() == 0
-    }
-
-    pub fn data_size(&self) -> usize {
-        unsafe {
-            let mut data_size: usize = 0;
-            let _ = crocksdb_ffi::crocksdb_writebatch_data(self.inner, &mut data_size);
-            return data_size;
-        }
-    }
-
-    pub fn clear(&self) {
-        unsafe {
-            crocksdb_ffi::crocksdb_writebatch_clear(self.inner);
-        }
-    }
-
-    pub fn set_save_point(&mut self) {
-        unsafe {
-            crocksdb_ffi::crocksdb_writebatch_set_save_point(self.inner);
-        }
-    }
-
-    pub fn rollback_to_save_point(&mut self) -> Result<(), String> {
-        unsafe {
-            ffi_try!(crocksdb_writebatch_rollback_to_save_point(self.inner));
-        }
-        Ok(())
-    }
-
-    pub fn pop_save_point(&mut self) -> Result<(), String> {
-        unsafe {
-            ffi_try!(crocksdb_writebatch_pop_save_point(self.inner));
-        }
-        Ok(())
-    }
-}
-
-impl Drop for WriteBatch {
-    fn drop(&mut self) {
-        unsafe { crocksdb_ffi::crocksdb_writebatch_destroy(self.inner) }
-    }
-}
-
 impl Drop for DB {
     fn drop(&mut self) {
         // SyncWAL before call close.
@@ -1955,136 +1864,6 @@ impl Drop for DB {
         unsafe {
             self.cfs.clear();
             crocksdb_ffi::crocksdb_close(self.inner);
-        }
-    }
-}
-
-impl Writable for WriteBatch {
-    fn put(&self, key: &[u8], value: &[u8]) -> Result<(), String> {
-        unsafe {
-            crocksdb_ffi::crocksdb_writebatch_put(
-                self.inner,
-                key.as_ptr(),
-                key.len() as size_t,
-                value.as_ptr(),
-                value.len() as size_t,
-            );
-            Ok(())
-        }
-    }
-
-    fn put_cf(&self, cf: &CFHandle, key: &[u8], value: &[u8]) -> Result<(), String> {
-        unsafe {
-            crocksdb_ffi::crocksdb_writebatch_put_cf(
-                self.inner,
-                cf.inner,
-                key.as_ptr(),
-                key.len() as size_t,
-                value.as_ptr(),
-                value.len() as size_t,
-            );
-            Ok(())
-        }
-    }
-
-    fn merge(&self, key: &[u8], value: &[u8]) -> Result<(), String> {
-        unsafe {
-            crocksdb_ffi::crocksdb_writebatch_merge(
-                self.inner,
-                key.as_ptr(),
-                key.len() as size_t,
-                value.as_ptr(),
-                value.len() as size_t,
-            );
-            Ok(())
-        }
-    }
-
-    fn merge_cf(&self, cf: &CFHandle, key: &[u8], value: &[u8]) -> Result<(), String> {
-        unsafe {
-            crocksdb_ffi::crocksdb_writebatch_merge_cf(
-                self.inner,
-                cf.inner,
-                key.as_ptr(),
-                key.len() as size_t,
-                value.as_ptr(),
-                value.len() as size_t,
-            );
-            Ok(())
-        }
-    }
-
-    fn delete(&self, key: &[u8]) -> Result<(), String> {
-        unsafe {
-            crocksdb_ffi::crocksdb_writebatch_delete(self.inner, key.as_ptr(), key.len() as size_t);
-            Ok(())
-        }
-    }
-
-    fn delete_cf(&self, cf: &CFHandle, key: &[u8]) -> Result<(), String> {
-        unsafe {
-            crocksdb_ffi::crocksdb_writebatch_delete_cf(
-                self.inner,
-                cf.inner,
-                key.as_ptr(),
-                key.len() as size_t,
-            );
-            Ok(())
-        }
-    }
-
-    fn single_delete(&self, key: &[u8]) -> Result<(), String> {
-        unsafe {
-            crocksdb_ffi::crocksdb_writebatch_single_delete(
-                self.inner,
-                key.as_ptr(),
-                key.len() as size_t,
-            );
-            Ok(())
-        }
-    }
-
-    fn single_delete_cf(&self, cf: &CFHandle, key: &[u8]) -> Result<(), String> {
-        unsafe {
-            crocksdb_ffi::crocksdb_writebatch_single_delete_cf(
-                self.inner,
-                cf.inner,
-                key.as_ptr(),
-                key.len() as size_t,
-            );
-            Ok(())
-        }
-    }
-
-    fn delete_range(&self, begin_key: &[u8], end_key: &[u8]) -> Result<(), String> {
-        unsafe {
-            crocksdb_ffi::crocksdb_writebatch_delete_range(
-                self.inner,
-                begin_key.as_ptr(),
-                begin_key.len(),
-                end_key.as_ptr(),
-                end_key.len(),
-            );
-            Ok(())
-        }
-    }
-
-    fn delete_range_cf(
-        &self,
-        cf: &CFHandle,
-        begin_key: &[u8],
-        end_key: &[u8],
-    ) -> Result<(), String> {
-        unsafe {
-            crocksdb_ffi::crocksdb_writebatch_delete_range_cf(
-                self.inner,
-                cf.inner,
-                begin_key.as_ptr(),
-                begin_key.len(),
-                end_key.as_ptr(),
-                end_key.len(),
-            );
-            Ok(())
         }
     }
 }
@@ -2779,7 +2558,7 @@ mod test {
         let db = DB::open_default(path.path().to_str().unwrap()).unwrap();
 
         // test put
-        let batch = WriteBatch::new();
+        let mut batch = WriteBatch::new();
         assert!(db.get(b"k1").unwrap().is_none());
         assert_eq!(batch.count(), 0);
         assert!(batch.is_empty());
@@ -2793,7 +2572,7 @@ mod test {
         assert_eq!(r.unwrap().unwrap(), b"v1111");
 
         // test delete
-        let batch = WriteBatch::new();
+        let mut batch = WriteBatch::new();
         let _ = batch.delete(b"k1");
         assert_eq!(batch.count(), 1);
         assert!(!batch.is_empty());
@@ -2801,7 +2580,7 @@ mod test {
         assert!(p.is_ok());
         assert!(db.get(b"k1").unwrap().is_none());
 
-        let batch = WriteBatch::new();
+        let mut batch = WriteBatch::new();
         let prev_size = batch.data_size();
         let _ = batch.delete(b"k1");
         assert!(batch.data_size() > prev_size);
@@ -2833,7 +2612,7 @@ mod test {
         assert!(r.unwrap().is_none());
 
         // test with capacity
-        let batch = WriteBatch::with_capacity(1024);
+        let mut batch = WriteBatch::with_capacity(1024);
         batch.put(b"kc1", b"v1").unwrap();
         batch.put(b"kc2", b"v2").unwrap();
         let p = db.write(&batch);
@@ -3297,7 +3076,7 @@ mod test {
         let cf = db.cf_handle("default").unwrap();
         let mut data = Vec::new();
         for s in &[b"ab", b"cd", b"ef"] {
-            let w = WriteBatch::new();
+            let mut w = WriteBatch::new();
             w.put_cf(cf, s.to_vec().as_slice(), b"a").unwrap();
             data.push(w);
         }

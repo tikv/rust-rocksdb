@@ -388,9 +388,9 @@ pub enum DBBackgroundErrorReason {
 pub enum DBEncryptionMethod {
     Unknown = 0,
     Plaintext = 1,
-    AES128_CTR = 2,
-    AES192_CTR = 3,
-    AES256_CTR = 4,
+    Aes128Ctr = 2,
+    Aes192Ctr = 3,
+    Aes256Ctr = 4,
 }
 
 pub unsafe fn error_message(ptr: *mut c_char) -> String {
@@ -1407,17 +1407,17 @@ extern "C" {
 
     // KeyManagedEncryptedEnv
     pub fn crocksdb_file_encryption_info_set_method(
-        file_info: *mut DBEncryptionFileInfo, method: DBEncryptionMethod);
+        file_info: *mut DBFileEncryptionInfo, method: DBEncryptionMethod);
     pub fn crocksdb_file_encryption_info_set_key(
-        file_info: *mut DBEncryptionFileInfo, key: *const c_char, key_len: size_t);
+        file_info: *mut DBFileEncryptionInfo, key: *const c_char, key_len: size_t);
     pub fn crocksdb_file_encryption_info_set_iv(
-        file_info: *mut DBEncryptionFileInfo, iv: *const c_char, iv_len: size_t);
+        file_info: *mut DBFileEncryptionInfo, iv: *const c_char, iv_len: size_t);
 
     pub fn crocksdb_encryption_key_manager_create(
         state: *mut c_void,
-        destructor: extern "C" fn(*mut c_void);
-        get_file: extern "C" fn(*mut c_void, *const c_char, *mut DBFileEncryptionInfo) -> *const c_char;
-        new_file: extern "C" fn(*mut c_void, *const c_char, *mut DBFileEncryptionInfo) -> *const c_char;
+        destructor: extern "C" fn(*mut c_void),
+        get_file: extern "C" fn(*mut c_void, *const c_char, *mut DBFileEncryptionInfo) -> *const c_char,
+        new_file: extern "C" fn(*mut c_void, *const c_char, *mut DBFileEncryptionInfo) -> *const c_char,
         delete_file: extern "C" fn(*mut c_void, *const c_char) -> *const c_char,
     ) -> *mut DBEncryptionKeyManagerInstance;
     pub fn crocksdb_encryption_key_manager_destroy(key_manager: *mut DBEncryptionKeyManagerInstance);

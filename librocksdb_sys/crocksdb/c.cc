@@ -14,6 +14,7 @@
 #include "rocksdb/comparator.h"
 #include "rocksdb/convenience.h"
 #include "rocksdb/db.h"
+#include "rocksdb/encryption.h"
 #include "rocksdb/env.h"
 #include "rocksdb/env_encryption.h"
 #include "rocksdb/filter_policy.h"
@@ -178,9 +179,9 @@ using rocksdb::titandb::TitanBlobRunMode;
 
 using rocksdb::MemoryAllocator;
 
-uinsg rocksdb::encryption::EncryptionMethod;
+using rocksdb::encryption::EncryptionMethod;
 using rocksdb::encryption::FileEncryptionInfo;
-usine rocksdb::encryption::KeyManager;
+using rocksdb::encryption::KeyManager;
 using rocksdb::encryption::NewKeyManagedEncryptedEnv;
 
 using std::shared_ptr;
@@ -504,7 +505,7 @@ struct crocksdb_mergeoperator_t : public MergeOperator {
 struct crocksdb_env_t {
   Env* rep;
   bool is_default;
-  EncryptionProvider* encryption_provoider;
+  EncryptionProvider* encryption_provider;
   BlockCipher* block_cipher;
 };
 
@@ -3499,7 +3500,7 @@ crocksdb_env_t* crocksdb_default_env_create() {
   crocksdb_env_t* result = new crocksdb_env_t;
   result->rep = Env::Default();
   result->block_cipher = nullptr;
-  result->encryption_provoider = nullptr;
+  result->encryption_provider = nullptr;
   result->is_default = true;
   return result;
 }
@@ -3508,7 +3509,7 @@ crocksdb_env_t* crocksdb_mem_env_create() {
   crocksdb_env_t* result = new crocksdb_env_t;
   result->rep = rocksdb::NewMemEnv(Env::Default());
   result->block_cipher = nullptr;
-  result->encryption_provoider = nullptr;
+  result->encryption_provider = nullptr;
   result->is_default = false;
   return result;
 }
@@ -3546,9 +3547,9 @@ crocksdb_ctr_encrypted_env_create(crocksdb_env_t* base_env,
   auto result = new crocksdb_env_t;
   result->block_cipher = new CTRBlockCipher(
       ciphertext_len, std::string(ciphertext, ciphertext_len));
-  result->encryption_provoider =
+  result->encryption_provider =
       new CTREncryptionProvider(*result->block_cipher);
-  result->rep = NewEncryptedEnv(base_env->rep, result->encryption_provoider);
+  result->rep = NewEncryptedEnv(base_env->rep, result->encryption_provider);
   result->is_default = false;
 
   return result;
@@ -3577,7 +3578,7 @@ void crocksdb_env_delete_file(crocksdb_env_t* env, const char* path, char** errp
 void crocksdb_env_destroy(crocksdb_env_t* env) {
   if (!env->is_default) delete env->rep;
   if (env->block_cipher) delete env->block_cipher;
-  if (env->encryption_provoider) delete env->encryption_provoider;
+  if (env->encryption_provider) delete env->encryption_provider;
   delete env;
 }
 
@@ -3650,7 +3651,7 @@ void crocksdb_file_encryption_info_set_key(
 }
 
 void crocksdb_file_encryption_info_set_iv(
-    crocksdb_file_encryption_into_t* file_info, const char* iv, size_t kvlen) {
+    crocksdb_file_encryption_info_t* file_info, const char* iv, size_t ivlen) {
   assert(file_info != nullptr);
   file_info->rep->iv = std::string(iv, ivlen);
 }
@@ -3708,7 +3709,8 @@ crocksdb_encryption_key_manager_t* crocksdb_encryption_key_manager_create(
     crocksdb_encryption_key_manager_get_file_cb get_file,
     crocksdb_encryption_key_manager_new_file_cb new_file,
     crocksdb_encryption_key_manager_delete_file_cb delete_file) {
-  std::shared_ptr<crocksdb_encryption_key_manager_impl_t> key_manager_impl = std::make_shared();
+  std::shared_ptr<crocksdb_encryption_key_manager_impl_t> key_manager_impl =
+      std::make_shared<crocksdb_encryption_key_manager_impl_t>();
   key_manager_impl->state = state;
   key_manager_impl->destructor = destructor;
   key_manager_impl->get_file = get_file;

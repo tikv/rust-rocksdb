@@ -154,7 +154,7 @@ extern "C" fn encryption_key_manager_delete_file(ctx: *mut c_void, fname: *const
 
 impl DBEncryptionKeyManager {
     pub fn new(key_manager: Box<dyn EncryptionKeyManager>) -> DBEncryptionKeyManager {
-        unsafe {
+        let instance = unsafe {
             crocksdb_ffi::crocksdb_encryption_key_manager_create(
                 Box::into_raw(key_manager) as *mut c_void,
                 encryption_key_manager_destructor,
@@ -162,6 +162,7 @@ impl DBEncryptionKeyManager {
                 encryption_key_manager_new_file,
                 encryption_key_manager_delete_file,
             )
-        }
+        };
+        DBEncryptionKeyManager { inner: instance }
     }
 }

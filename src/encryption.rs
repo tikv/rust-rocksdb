@@ -16,14 +16,28 @@ use crocksdb_ffi::{
     self, DBEncryptionKeyManagerInstance, DBEncryptionMethod, DBFileEncryptionInfo,
 };
 
-use libc::{self, c_char, c_void, size_t, strdup};
+use libc::{c_char, c_void, size_t, strdup};
 use std::ffi::{CStr, CString};
+use std::fmt::{self, Debug, Formatter};
+use std::io::Error;
 use std::ptr;
 
 pub struct FileEncryptionInfo {
-    method: DBEncryptionMethod,
-    key: &[u8],
-    iv: &[u8],
+    pub method: DBEncryptionMethod,
+    pub key: Vec<u8>,
+    pub iv: Vec<u8>,
+}
+
+impl Debug for FileEncryptionInfo {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        write!(
+            f,
+            "FileEncryptionInfo [method={}, key=...<{} bytes>, iv=...<{} bytes>]",
+            self.method,
+            self.key.len(),
+            self.iv.len()
+        )
+    }
 }
 
 impl FileEncryptionInfo {
@@ -32,12 +46,12 @@ impl FileEncryptionInfo {
             crocksdb_ffi::crocksdb_file_encryption_info_set_method(file_info, self.method);
             crocksdb_ffi::crocksdb_file_encryption_info_set_key(
                 file_info,
-                CString::new(self.key).unwrap().as_ptr(),
+                CString::new(self.key.clone()).unwrap().as_ptr(),
                 self.key.len() as size_t,
             );
             crocksdb_ffi::crocksdb_file_encryption_info_set_iv(
                 file_info,
-                CString::new(self.iv).unwrap().as_ptr(),
+                CString::new(self.iv.clone()).unwrap().as_ptr(),
                 self.iv.len() as size_t,
             );
         }
@@ -45,13 +59,13 @@ impl FileEncryptionInfo {
 }
 
 pub trait EncryptionKeyManager: Send + Sync {
-    fn get_file(&mut self, fname: &str) -> Result<FileEncryptionInfo>;
-    fn new_file(&mut self, fname: &str) -> Result<FileEncryptionInfo>;
-    fn delete_file(&mut self, fname: &str) -> Result<()>;
+    fn get_file(&mut self, fname: &str) -> Result<FileEncryptionInfo, Error>;
+    fn new_file(&mut self, fname: &str) -> Result<FileEncryptionInfo, Error>;
+    fn delete_file(&mut self, fname: &str) -> Result<(), Error>;
 }
 
 pub struct DBEncryptionKeyManager {
-    inner: *mut DBEncryptionKeyManagerInstance,
+    pub inner: *mut DBEncryptionKeyManagerInstance,
 }
 
 impl Drop for DBEncryptionKeyManager {
@@ -72,18 +86,21 @@ extern "C" fn encryption_key_manager_get_file(
     ctx: *mut c_void,
     fname: *const c_char,
     file_info: *mut DBFileEncryptionInfo,
-) {
-    let ctx = unsafe { &*(ctx as *mut Box<dyn EncryptionKeyManager>) };
-    let fname = match CStr::from_ptr(fname).to_str() {
+) -> *const c_char {
+    let ctx = unsafe { &mut *(ctx as *mut Box<dyn EncryptionKeyManager>) };
+    let fname = match unsafe { CStr::from_ptr(fname).to_str() } {
         Ok(ret) => ret,
         Err(err) => {
-            return strdup(
-                CString::new(format!(
-                    "Encryption key manager encounter non-utf8 file name: {}",
-                    err
-                ))
-                .into_raw(),
-            );
+            return unsafe {
+                strdup(
+                    CString::new(format!(
+                        "Encryption key manager encounter non-utf8 file name: {}",
+                        err
+                    ))
+                    .unwrap()
+                    .into_raw(),
+                )
+            };
         }
     };
     match ctx.get_file(fname) {
@@ -91,9 +108,13 @@ extern "C" fn encryption_key_manager_get_file(
             ret.copy_to(file_info);
             ptr::null()
         }
-        Err(err) => stddup(
-            CString::new(format!("Encryption key manager get file failure: {}", err)).into_raw(),
-        ),
+        Err(err) => unsafe {
+            strdup(
+                CString::new(format!("Encryption key manager get file failure: {}", err))
+                    .unwrap()
+                    .into_raw(),
+            )
+        },
     }
 }
 
@@ -101,18 +122,21 @@ extern "C" fn encryption_key_manager_new_file(
     ctx: *mut c_void,
     fname: *const c_char,
     file_info: *mut DBFileEncryptionInfo,
-) {
-    let ctx = unsafe { &*(ctx as *mut Box<dyn EncryptionKeyManager>) };
-    let fname = match CStr::from_ptr(fname).to_str() {
+) -> *const c_char {
+    let ctx = unsafe { &mut *(ctx as *mut Box<dyn EncryptionKeyManager>) };
+    let fname = match unsafe { CStr::from_ptr(fname).to_str() } {
         Ok(ret) => ret,
         Err(err) => {
-            return strdup(
-                CString::new(format!(
-                    "Encryption key manager encounter non-utf8 file name: {}",
-                    err
-                ))
-                .into_raw(),
-            );
+            return unsafe {
+                strdup(
+                    CString::new(format!(
+                        "Encryption key manager encounter non-utf8 file name: {}",
+                        err
+                    ))
+                    .unwrap()
+                    .into_raw(),
+                )
+            };
         }
     };
     match ctx.new_file(fname) {
@@ -120,35 +144,48 @@ extern "C" fn encryption_key_manager_new_file(
             ret.copy_to(file_info);
             ptr::null()
         }
-        Err(err) => stddup(
-            CString::new(format!("Encryption key manager new file failure: {}", err)).into_raw(),
-        ),
+        Err(err) => unsafe {
+            strdup(
+                CString::new(format!("Encryption key manager new file failure: {}", err))
+                    .unwrap()
+                    .into_raw(),
+            )
+        },
     }
 }
 
-extern "C" fn encryption_key_manager_delete_file(ctx: *mut c_void, fname: *const c_char) {
-    let ctx = unsafe { &*(ctx as *mut Box<dyn EncryptionKeyManager>) };
-    let fname = match CStr::from_ptr(fname).to_str() {
+extern "C" fn encryption_key_manager_delete_file(
+    ctx: *mut c_void,
+    fname: *const c_char,
+) -> *const c_char {
+    let ctx = unsafe { &mut *(ctx as *mut Box<dyn EncryptionKeyManager>) };
+    let fname = match unsafe { CStr::from_ptr(fname).to_str() } {
         Ok(ret) => ret,
         Err(err) => {
-            return strdup(
-                CString::new(format!(
-                    "Encryption key manager encounter non-utf8 file name: {}",
-                    err
-                ))
-                .into_raw(),
-            );
+            return unsafe {
+                strdup(
+                    CString::new(format!(
+                        "Encryption key manager encounter non-utf8 file name: {}",
+                        err
+                    ))
+                    .unwrap()
+                    .into_raw(),
+                )
+            };
         }
     };
     match ctx.delete_file(fname) {
-        Ok() => ptr::null(),
-        Err(err) => stddup(
-            CString::new(format!(
-                "Encryption key manager delete file failure: {}",
-                err
-            ))
-            .into_raw(),
-        ),
+        Ok(()) => ptr::null(),
+        Err(err) => unsafe {
+            strdup(
+                CString::new(format!(
+                    "Encryption key manager delete file failure: {}",
+                    err
+                ))
+                .unwrap()
+                .into_raw(),
+            )
+        },
     }
 }
 

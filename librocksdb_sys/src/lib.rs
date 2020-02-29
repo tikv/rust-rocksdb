@@ -393,6 +393,12 @@ pub enum DBEncryptionMethod {
     Aes256Ctr = 4,
 }
 
+impl fmt::Display for DBEncryptionMethod {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
 pub unsafe fn error_message(ptr: *mut c_char) -> String {
     let c_str = CStr::from_ptr(ptr);
     let s = format!("{}", c_str.to_string_lossy());

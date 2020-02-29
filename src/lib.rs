@@ -21,15 +21,16 @@ pub extern crate librocksdb_sys;
 extern crate tempfile;
 
 pub use compaction_filter::CompactionFilter;
-pub use encryption::{DBEncryptionMethod, EncryptionKeyManager, FileEncryptionInfo};
+pub use encryption::{EncryptionKeyManager, FileEncryptionInfo};
 pub use event_listener::{
     CompactionJobInfo, EventListener, FlushJobInfo, IngestionInfo, WriteStallInfo,
 };
 pub use librocksdb_sys::{
     self as crocksdb_ffi, new_bloom_filter, CompactionPriority, CompactionReason,
     DBBackgroundErrorReason, DBBottommostLevelCompaction, DBCompactionStyle, DBCompressionType,
-    DBEntryType, DBInfoLogLevel, DBRateLimiterMode, DBRecoveryMode, DBStatisticsHistogramType,
-    DBStatisticsTickerType, DBStatusPtr, DBTitanDBBlobRunMode, IndexType, WriteStallCondition,
+    DBEncryptionMethod, DBEntryType, DBInfoLogLevel, DBRateLimiterMode, DBRecoveryMode,
+    DBStatisticsHistogramType, DBStatisticsTickerType, DBStatusPtr, DBTitanDBBlobRunMode,
+    IndexType, WriteStallCondition,
 };
 pub use merge_operator::MergeOperands;
 pub use metadata::{ColumnFamilyMetaData, LevelMetaData, SstFileMetaData};

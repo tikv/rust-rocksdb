@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#![allow(clippy::unknown_clippy_lints)]
 #![allow(clippy::missing_safety_doc)]
 
 extern crate bzip2_sys;

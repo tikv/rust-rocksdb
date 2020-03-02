@@ -3621,28 +3621,41 @@ void crocksdb_sequential_file_destroy(crocksdb_sequential_file_t* file) {
 }
 
 crocksdb_file_encryption_info_t* crocksdb_file_encryption_info_create() {
-  crocksdb_file_encryption_info_t file_info = new crocksdb_file_encryption_info_t;
-  file_info.rep = new FileEncryptionInfo;
+  crocksdb_file_encryption_info_t* file_info = new crocksdb_file_encryption_info_t;
+  file_info->rep = new FileEncryptionInfo;
   return file_info;
 }
 
-void crocksdb_file_encryption_info_t* crocksdb_file_encryption_info_destroy(
+void crocksdb_file_encryption_info_destroy(
     crocksdb_file_encryption_info_t* file_info) {
-  delete file_info.rep;
+  delete file_info->rep;
   delete file_info;
 }
 
 crocksdb_encryption_method_t crocksdb_file_encryption_info_method(
     crocksdb_file_encryption_info_t* file_info) {
   assert(file_info != nullptr);
-  assert(file_info.rep != nullptr);
-  return file_info->rep->method;
+  assert(file_info->rep != nullptr);
+  switch (file_info->rep->method) {
+    case EncryptionMethod::kUnknown:
+      return crocksdb_encryption_method_t::kUnknown;
+    case EncryptionMethod::kPlaintext:
+      return crocksdb_encryption_method_t::kPlaintext;
+    case EncryptionMethod::kAES128_CTR:
+      return crocksdb_encryption_method_t::kAES128_CTR;
+    case EncryptionMethod::kAES192_CTR:
+      return crocksdb_encryption_method_t::kAES192_CTR;
+    case EncryptionMethod::kAES256_CTR:
+      return crocksdb_encryption_method_t::kAES256_CTR;
+    default:
+      assert(false);
+  }
 }
 
 const char* crocksdb_file_encryption_info_key(
     crocksdb_file_encryption_info_t* file_info, size_t* keylen) {
   assert(file_info != nullptr);
-  assert(file_info.rep != nullptr);
+  assert(file_info->rep != nullptr);
   assert(keylen != nullptr);
   *keylen = file_info->rep->key.size();
   return file_info->rep->key.c_str();
@@ -3651,7 +3664,7 @@ const char* crocksdb_file_encryption_info_key(
 const char* crocksdb_file_encryption_info_iv(
     crocksdb_file_encryption_info_t* file_info, size_t* ivlen) {
   assert(file_info != nullptr);
-  assert(file_info.rep != nullptr);
+  assert(file_info->rep != nullptr);
   assert(ivlen != nullptr);
   *ivlen = file_info->rep->iv.size();
   return file_info->rep->iv.c_str();
@@ -3746,6 +3759,7 @@ crocksdb_encryption_key_manager_t* crocksdb_encryption_key_manager_create(
     crocksdb_encryption_key_manager_get_file_cb get_file,
     crocksdb_encryption_key_manager_new_file_cb new_file,
     crocksdb_encryption_key_manager_delete_file_cb delete_file) {
+  printf("c ctor");
   std::shared_ptr<crocksdb_encryption_key_manager_impl_t> key_manager_impl =
       std::make_shared<crocksdb_encryption_key_manager_impl_t>();
   key_manager_impl->state = state;
@@ -3759,15 +3773,17 @@ crocksdb_encryption_key_manager_t* crocksdb_encryption_key_manager_create(
 }
 
 void crocksdb_encryption_key_manager_destroy(crocksdb_encryption_key_manager_t* key_manager) {
+  printf("c del\n");
   delete key_manager;
 }
+
 
 const char* crocksdb_encryption_key_manager_get_file(
     crocksdb_encryption_key_manager_t* key_manager, const char* fname,
     crocksdb_file_encryption_info_t* file_info) {
-  assert(key_manager != nullptr && key_manager.rep != nullptr);
+  assert(key_manager != nullptr && key_manager->rep != nullptr);
   assert(fname != nullptr);
-  assert(file_info != nullptr && file_info.rep != nullptr);
+  assert(file_info != nullptr && file_info->rep != nullptr);
   Status s = key_manager->rep->GetFile(fname, file_info->rep);
   if (!s.ok()) {
     return strdup(s.ToString().c_str());
@@ -3778,9 +3794,9 @@ const char* crocksdb_encryption_key_manager_get_file(
 const char* crocksdb_encryption_key_manager_new_file(
     crocksdb_encryption_key_manager_t* key_manager, const char* fname,
     crocksdb_file_encryption_info_t* file_info) {
-  assert(key_manager != nullptr && key_manager.rep != nullptr);
+  assert(key_manager != nullptr && key_manager->rep != nullptr);
   assert(fname != nullptr);
-  assert(file_info != nullptr && file_info.rep != nullptr);
+  assert(file_info != nullptr && file_info->rep != nullptr);
   Status s = key_manager->rep->NewFile(fname, file_info->rep);
   if (!s.ok()) {
     return strdup(s.ToString().c_str());
@@ -3790,7 +3806,7 @@ const char* crocksdb_encryption_key_manager_new_file(
 
 const char* crocksdb_encryption_key_manager_delete_file(
     crocksdb_encryption_key_manager_t* key_manager, const char* fname) {
-  assert(key_manager != nullptr && key_manager.rep != nullptr);
+  assert(key_manager != nullptr && key_manager->rep != nullptr);
   assert(fname != nullptr);
   Status s = key_manager->rep->DeleteFile(fname);
   if (!s.ok()) {

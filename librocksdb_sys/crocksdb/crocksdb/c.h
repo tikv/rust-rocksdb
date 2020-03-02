@@ -1448,10 +1448,10 @@ crocksdb_file_encryption_info_create();
 extern C_ROCKSDB_LIBRARY_API void crocksdb_file_encryption_info_destroy(
     crocksdb_file_encryption_info_t* file_info);
 extern C_ROCKSDB_LIBRARY_API crocksdb_encryption_method_t
-crocksdb_encryption_info_method(crocksdb_file_encryption_info_t* file_info);
-extern C_ROCKSDB_LIBRARY_API const char* crocksdb_encryption_info_key(
+crocksdb_file_encryption_info_method(crocksdb_file_encryption_info_t* file_info);
+extern C_ROCKSDB_LIBRARY_API const char* crocksdb_file_encryption_info_key(
     crocksdb_file_encryption_info_t* file_info, size_t* keylen);
-extern C_ROCKSDB_LIBRARY_API const char* crocksdb_encryption_info_iv(
+extern C_ROCKSDB_LIBRARY_API const char* crocksdb_file_encryption_info_iv(
     crocksdb_file_encryption_info_t* file_info, size_t* ivlen);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_file_encryption_info_set_method(
     crocksdb_file_encryption_info_t* file_info, crocksdb_encryption_method_t method);

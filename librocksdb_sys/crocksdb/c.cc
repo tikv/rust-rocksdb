@@ -3759,7 +3759,6 @@ crocksdb_encryption_key_manager_t* crocksdb_encryption_key_manager_create(
     crocksdb_encryption_key_manager_get_file_cb get_file,
     crocksdb_encryption_key_manager_new_file_cb new_file,
     crocksdb_encryption_key_manager_delete_file_cb delete_file) {
-  printf("c ctor");
   std::shared_ptr<crocksdb_encryption_key_manager_impl_t> key_manager_impl =
       std::make_shared<crocksdb_encryption_key_manager_impl_t>();
   key_manager_impl->state = state;
@@ -3773,7 +3772,6 @@ crocksdb_encryption_key_manager_t* crocksdb_encryption_key_manager_create(
 }
 
 void crocksdb_encryption_key_manager_destroy(crocksdb_encryption_key_manager_t* key_manager) {
-  printf("c del\n");
   delete key_manager;
 }
 

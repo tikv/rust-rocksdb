@@ -19,10 +19,9 @@ use crocksdb_ffi::{
 use libc::{c_char, c_void, size_t};
 use std::ffi::{CStr, CString};
 use std::fmt::{self, Debug, Formatter};
-use std::io::{Error, ErrorKind, Result};
+use std::io::Result;
 use std::mem::transmute;
 use std::ptr;
-use std::slice;
 use std::sync::Arc;
 
 #[derive(Clone)]
@@ -94,8 +93,11 @@ unsafe impl Send for DBEncryptionKeyManager {}
 unsafe impl Sync for DBEncryptionKeyManager {}
 
 // The implementation of EncryptionKeyManager is used to test calling the methods through FFI.
+#[cfg(test)]
 impl EncryptionKeyManager for DBEncryptionKeyManager {
     fn get_file(&self, fname: &str) -> Result<FileEncryptionInfo> {
+        use std::io::{Error, ErrorKind};
+        use std::slice;
         let ret: Result<FileEncryptionInfo>;
         unsafe {
             let file_info = crocksdb_ffi::crocksdb_file_encryption_info_create();
@@ -131,6 +133,8 @@ impl EncryptionKeyManager for DBEncryptionKeyManager {
     }
 
     fn new_file(&self, fname: &str) -> Result<FileEncryptionInfo> {
+        use std::io::{Error, ErrorKind};
+        use std::slice;
         let ret: Result<FileEncryptionInfo>;
         unsafe {
             let file_info = crocksdb_ffi::crocksdb_file_encryption_info_create();
@@ -166,6 +170,7 @@ impl EncryptionKeyManager for DBEncryptionKeyManager {
     }
 
     fn delete_file(&self, fname: &str) -> Result<()> {
+        use std::io::{Error, ErrorKind};
         let ret: Result<()>;
         unsafe {
             let err = crocksdb_ffi::crocksdb_encryption_key_manager_delete_file(

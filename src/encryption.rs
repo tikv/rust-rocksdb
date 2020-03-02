@@ -20,7 +20,7 @@ use libc::{c_char, c_void, size_t};
 use std::ffi::{CStr, CString};
 use std::fmt::{self, Debug, Formatter};
 use std::io::Result;
-use std::mem::transmute;
+use std::mem;
 use std::ptr;
 use std::sync::Arc;
 
@@ -109,10 +109,10 @@ impl EncryptionKeyManager for DBEncryptionKeyManager {
             if err == ptr::null() {
                 let mut key_len: size_t = 0;
                 let mut iv_len: size_t = 0;
-                let key = transmute::<*const c_char, *const u8>(
+                let key = mem::transmute::<*const c_char, *const u8>(
                     crocksdb_ffi::crocksdb_file_encryption_info_key(file_info, &mut key_len),
                 );
-                let iv = transmute::<*const c_char, *const u8>(
+                let iv = mem::transmute::<*const c_char, *const u8>(
                     crocksdb_ffi::crocksdb_file_encryption_info_iv(file_info, &mut iv_len),
                 );
                 ret = Ok(FileEncryptionInfo {
@@ -146,10 +146,10 @@ impl EncryptionKeyManager for DBEncryptionKeyManager {
             if err == ptr::null() {
                 let mut key_len: size_t = 0;
                 let mut iv_len: size_t = 0;
-                let key = transmute::<*const c_char, *const u8>(
+                let key = mem::transmute::<*const c_char, *const u8>(
                     crocksdb_ffi::crocksdb_file_encryption_info_key(file_info, &mut key_len),
                 );
-                let iv = transmute::<*const c_char, *const u8>(
+                let iv = mem::transmute::<*const c_char, *const u8>(
                     crocksdb_ffi::crocksdb_file_encryption_info_iv(file_info, &mut iv_len),
                 );
                 ret = Ok(FileEncryptionInfo {
@@ -193,8 +193,10 @@ impl EncryptionKeyManager for DBEncryptionKeyManager {
 
 extern "C" fn encryption_key_manager_destructor(ctx: *mut c_void) {
     unsafe {
-        // implicitly drop.
-        Arc::from_raw(transmute::<*mut c_void, *const Box<dyn EncryptionKeyManager>>(ctx));
+        // Recover Arc from ctx and implicitly drop.
+        let ptr = mem::transmute::<*mut c_void, *mut *const dyn EncryptionKeyManager>(ctx);
+        Arc::from_raw(*ptr);
+        libc::free(ctx);
     }
 }
 
@@ -204,7 +206,7 @@ extern "C" fn encryption_key_manager_get_file(
     file_info: *mut DBFileEncryptionInfo,
 ) -> *const c_char {
     let key_manager =
-        unsafe { &*(transmute::<*mut c_void, *const Box<dyn EncryptionKeyManager>>(ctx)) };
+        unsafe { &*(mem::transmute::<*mut c_void, *const Box<dyn EncryptionKeyManager>>(ctx)) };
     let fname = match unsafe { CStr::from_ptr(fname).to_str() } {
         Ok(ret) => ret,
         Err(err) => {
@@ -241,7 +243,7 @@ extern "C" fn encryption_key_manager_new_file(
     file_info: *mut DBFileEncryptionInfo,
 ) -> *const c_char {
     let key_manager =
-        unsafe { &*(transmute::<*mut c_void, *const Box<dyn EncryptionKeyManager>>(ctx)) };
+        unsafe { &*(mem::transmute::<*mut c_void, *const Box<dyn EncryptionKeyManager>>(ctx)) };
     let fname = match unsafe { CStr::from_ptr(fname).to_str() } {
         Ok(ret) => ret,
         Err(err) => {
@@ -277,7 +279,7 @@ extern "C" fn encryption_key_manager_delete_file(
     fname: *const c_char,
 ) -> *const c_char {
     let key_manager =
-        unsafe { &*(transmute::<*mut c_void, *const Box<dyn EncryptionKeyManager>>(ctx)) };
+        unsafe { &*(mem::transmute::<*mut c_void, *const Box<dyn EncryptionKeyManager>>(ctx)) };
     let fname = match unsafe { CStr::from_ptr(fname).to_str() } {
         Ok(ret) => ret,
         Err(err) => {
@@ -309,10 +311,17 @@ extern "C" fn encryption_key_manager_delete_file(
 }
 
 impl DBEncryptionKeyManager {
-    pub fn new(key_manager: Arc<Box<dyn EncryptionKeyManager>>) -> DBEncryptionKeyManager {
+    pub fn new(key_manager: Arc<dyn EncryptionKeyManager>) -> DBEncryptionKeyManager {
+        // The size of the raw pointer is of 16 bytes, and it doesn't fit in a C-style pointer.
+        // Allocate a buffer of 16 bytes to store as ctx in C code.
+        let ptr = Arc::into_raw(key_manager);
+        let ptr_size = mem::size_of_val(&ptr);
+        debug_assert_eq!(16, ptr_size);
         let instance = unsafe {
+            let ctx = libc::malloc(ptr_size);
+            libc::memcpy(ctx, (&ptr as *const _) as *const c_void, ptr_size);
             crocksdb_ffi::crocksdb_encryption_key_manager_create(
-                Arc::into_raw(key_manager) as *mut c_void,
+                ctx,
                 encryption_key_manager_destructor,
                 encryption_key_manager_get_file,
                 encryption_key_manager_new_file,
@@ -331,19 +340,35 @@ mod test {
 
     use super::*;
 
-    #[derive(Clone)]
-    struct TestEncryptionKeyManager {
-        pub get_file_called: Arc<AtomicUsize>,
-        pub new_file_called: Arc<AtomicUsize>,
-        pub delete_file_called: Arc<AtomicUsize>,
-        pub drop_called: Arc<AtomicUsize>,
-        pub fname_got: Arc<Mutex<String>>,
-        pub return_value: Option<FileEncryptionInfo>,
+    struct TestDrop {
+        called: Arc<AtomicUsize>,
     }
 
-    impl Drop for TestEncryptionKeyManager {
+    impl Drop for TestDrop {
         fn drop(&mut self) {
-            self.drop_called.fetch_add(1, Ordering::SeqCst);
+            self.called.fetch_add(1, Ordering::SeqCst);
+        }
+    }
+
+    struct TestEncryptionKeyManager {
+        pub get_file_called: AtomicUsize,
+        pub new_file_called: AtomicUsize,
+        pub delete_file_called: AtomicUsize,
+        pub fname: Mutex<String>,
+        pub return_value: Option<FileEncryptionInfo>,
+        pub drop: Option<TestDrop>,
+    }
+
+    impl Default for TestEncryptionKeyManager {
+        fn default() -> Self {
+            TestEncryptionKeyManager {
+                get_file_called: AtomicUsize::new(0),
+                new_file_called: AtomicUsize::new(0),
+                delete_file_called: AtomicUsize::new(0),
+                fname: Mutex::new("".to_string()),
+                return_value: None,
+                drop: None,
+            }
         }
     }
 
@@ -351,7 +376,7 @@ mod test {
         fn get_file(&self, fname: &str) -> Result<FileEncryptionInfo> {
             let key_manager = self.lock().unwrap();
             key_manager.get_file_called.fetch_add(1, Ordering::SeqCst);
-            key_manager.fname_got.lock().unwrap().insert_str(0, fname);
+            key_manager.fname.lock().unwrap().insert_str(0, fname);
             match &key_manager.return_value {
                 Some(file_info) => Ok(file_info.clone()),
                 None => Err(Error::new(ErrorKind::Other, "")),
@@ -360,7 +385,7 @@ mod test {
         fn new_file(&self, fname: &str) -> Result<FileEncryptionInfo> {
             let key_manager = self.lock().unwrap();
             key_manager.new_file_called.fetch_add(1, Ordering::SeqCst);
-            key_manager.fname_got.lock().unwrap().insert_str(0, fname);
+            key_manager.fname.lock().unwrap().insert_str(0, fname);
             match &key_manager.return_value {
                 Some(file_info) => Ok(file_info.clone()),
                 None => Err(Error::new(ErrorKind::Other, "")),
@@ -371,7 +396,7 @@ mod test {
             key_manager
                 .delete_file_called
                 .fetch_add(1, Ordering::SeqCst);
-            key_manager.fname_got.lock().unwrap().insert_str(0, fname);
+            key_manager.fname.lock().unwrap().insert_str(0, fname);
             match &key_manager.return_value {
                 Some(_) => Ok(()),
                 None => Err(Error::new(ErrorKind::Other, "")),
@@ -381,195 +406,112 @@ mod test {
 
     #[test]
     fn create_and_destroy() {
-        let get_file_called = Arc::new(AtomicUsize::new(0));
-        let new_file_called = Arc::new(AtomicUsize::new(0));
-        let delete_file_called = Arc::new(AtomicUsize::new(0));
         let drop_called = Arc::new(AtomicUsize::new(0));
-        let fname_got = Arc::new(Mutex::new("".to_string()));
-        let key_manager: Arc<Box<dyn EncryptionKeyManager>> =
-            Arc::new(Box::new(Mutex::new(TestEncryptionKeyManager {
-                get_file_called: get_file_called.clone(),
-                new_file_called: new_file_called.clone(),
-                delete_file_called: delete_file_called.clone(),
-                drop_called: drop_called.clone(),
-                fname_got: fname_got.clone(),
-                return_value: None,
-            })));
+        let key_manager = Arc::new(Mutex::new(TestEncryptionKeyManager {
+            drop: Some(TestDrop {
+                called: drop_called.clone(),
+            }),
+            ..Default::default()
+        }));
         let db_key_manager = DBEncryptionKeyManager::new(key_manager.clone());
         drop(key_manager);
         assert_eq!(0, drop_called.load(Ordering::SeqCst));
         drop(db_key_manager);
         assert_eq!(1, drop_called.load(Ordering::SeqCst));
-        assert_eq!(0, get_file_called.load(Ordering::SeqCst));
-        assert_eq!(0, new_file_called.load(Ordering::SeqCst));
-        assert_eq!(0, delete_file_called.load(Ordering::SeqCst));
     }
 
     #[test]
     fn get_file() {
-        let get_file_called = Arc::new(AtomicUsize::new(0));
-        let new_file_called = Arc::new(AtomicUsize::new(0));
-        let delete_file_called = Arc::new(AtomicUsize::new(0));
-        let drop_called = Arc::new(AtomicUsize::new(0));
-        let fname_got = Arc::new(Mutex::new("".to_string()));
-        let key_manager: Arc<Box<dyn EncryptionKeyManager>> =
-            Arc::new(Box::new(Mutex::new(TestEncryptionKeyManager {
-                get_file_called: get_file_called.clone(),
-                new_file_called: new_file_called.clone(),
-                delete_file_called: delete_file_called.clone(),
-                drop_called: drop_called.clone(),
-                fname_got: fname_got.clone(),
-                return_value: Some(FileEncryptionInfo {
-                    method: DBEncryptionMethod::Aes128Ctr,
-                    key: b"test_key_get_file".to_vec(),
-                    iv: b"test_iv_get_file".to_vec(),
-                }),
-            })));
+        let key_manager = Arc::new(Mutex::new(TestEncryptionKeyManager {
+            return_value: Some(FileEncryptionInfo {
+                method: DBEncryptionMethod::Aes128Ctr,
+                key: b"test_key_get_file".to_vec(),
+                iv: b"test_iv_get_file".to_vec(),
+            }),
+            ..Default::default()
+        }));
         let db_key_manager = DBEncryptionKeyManager::new(key_manager.clone());
         let file_info = db_key_manager.get_file("get_file_path").unwrap();
         assert_eq!(DBEncryptionMethod::Aes128Ctr, file_info.method);
         assert_eq!(b"test_key_get_file", file_info.key.as_slice());
         assert_eq!(b"test_iv_get_file", file_info.iv.as_slice());
-        assert_eq!(0, drop_called.load(Ordering::SeqCst));
-        assert_eq!(1, get_file_called.load(Ordering::SeqCst));
-        assert_eq!(0, new_file_called.load(Ordering::SeqCst));
-        assert_eq!(0, delete_file_called.load(Ordering::SeqCst));
-        assert_eq!("get_file_path", fname_got.lock().unwrap().as_str());
+        let record = key_manager.lock().unwrap();
+        assert_eq!(1, record.get_file_called.load(Ordering::SeqCst));
+        assert_eq!(0, record.new_file_called.load(Ordering::SeqCst));
+        assert_eq!(0, record.delete_file_called.load(Ordering::SeqCst));
+        assert_eq!("get_file_path", record.fname.lock().unwrap().as_str());
     }
 
     #[test]
     fn get_file_error() {
-        let get_file_called = Arc::new(AtomicUsize::new(0));
-        let new_file_called = Arc::new(AtomicUsize::new(0));
-        let delete_file_called = Arc::new(AtomicUsize::new(0));
-        let drop_called = Arc::new(AtomicUsize::new(0));
-        let fname_got = Arc::new(Mutex::new("".to_string()));
-        let key_manager: Arc<Box<dyn EncryptionKeyManager>> =
-            Arc::new(Box::new(Mutex::new(TestEncryptionKeyManager {
-                get_file_called: get_file_called.clone(),
-                new_file_called: new_file_called.clone(),
-                delete_file_called: delete_file_called.clone(),
-                drop_called: drop_called.clone(),
-                fname_got: fname_got.clone(),
-                return_value: None,
-            })));
+        let key_manager = Arc::new(Mutex::new(TestEncryptionKeyManager::default()));
         let db_key_manager = DBEncryptionKeyManager::new(key_manager.clone());
         assert!(db_key_manager.get_file("get_file_path").is_err());
-        assert_eq!(0, drop_called.load(Ordering::SeqCst));
-        assert_eq!(1, get_file_called.load(Ordering::SeqCst));
-        assert_eq!(0, new_file_called.load(Ordering::SeqCst));
-        assert_eq!(0, delete_file_called.load(Ordering::SeqCst));
-        assert_eq!("get_file_path", fname_got.lock().unwrap().as_str());
+        let record = key_manager.lock().unwrap();
+        assert_eq!(1, record.get_file_called.load(Ordering::SeqCst));
+        assert_eq!(0, record.new_file_called.load(Ordering::SeqCst));
+        assert_eq!(0, record.delete_file_called.load(Ordering::SeqCst));
+        assert_eq!("get_file_path", record.fname.lock().unwrap().as_str());
     }
 
     #[test]
     fn new_file() {
-        let get_file_called = Arc::new(AtomicUsize::new(0));
-        let new_file_called = Arc::new(AtomicUsize::new(0));
-        let delete_file_called = Arc::new(AtomicUsize::new(0));
-        let drop_called = Arc::new(AtomicUsize::new(0));
-        let fname_got = Arc::new(Mutex::new("".to_string()));
-        let key_manager: Arc<Box<dyn EncryptionKeyManager>> =
-            Arc::new(Box::new(Mutex::new(TestEncryptionKeyManager {
-                get_file_called: get_file_called.clone(),
-                new_file_called: new_file_called.clone(),
-                delete_file_called: delete_file_called.clone(),
-                drop_called: drop_called.clone(),
-                fname_got: fname_got.clone(),
-                return_value: Some(FileEncryptionInfo {
-                    method: DBEncryptionMethod::Aes128Ctr,
-                    key: b"test_key_new_file".to_vec(),
-                    iv: b"test_iv_new_file".to_vec(),
-                }),
-            })));
+        let key_manager = Arc::new(Mutex::new(TestEncryptionKeyManager {
+            return_value: Some(FileEncryptionInfo {
+                method: DBEncryptionMethod::Aes256Ctr,
+                key: b"test_key_new_file".to_vec(),
+                iv: b"test_iv_new_file".to_vec(),
+            }),
+            ..Default::default()
+        }));
         let db_key_manager = DBEncryptionKeyManager::new(key_manager.clone());
         let file_info = db_key_manager.new_file("new_file_path").unwrap();
-        assert_eq!(DBEncryptionMethod::Aes128Ctr, file_info.method);
+        assert_eq!(DBEncryptionMethod::Aes256Ctr, file_info.method);
         assert_eq!(b"test_key_new_file", file_info.key.as_slice());
         assert_eq!(b"test_iv_new_file", file_info.iv.as_slice());
-        assert_eq!(0, drop_called.load(Ordering::SeqCst));
-        assert_eq!(0, get_file_called.load(Ordering::SeqCst));
-        assert_eq!(1, new_file_called.load(Ordering::SeqCst));
-        assert_eq!(0, delete_file_called.load(Ordering::SeqCst));
-        assert_eq!("new_file_path", fname_got.lock().unwrap().as_str());
+        let record = key_manager.lock().unwrap();
+        assert_eq!(0, record.get_file_called.load(Ordering::SeqCst));
+        assert_eq!(1, record.new_file_called.load(Ordering::SeqCst));
+        assert_eq!(0, record.delete_file_called.load(Ordering::SeqCst));
+        assert_eq!("new_file_path", record.fname.lock().unwrap().as_str());
     }
 
     #[test]
     fn new_file_error() {
-        let get_file_called = Arc::new(AtomicUsize::new(0));
-        let new_file_called = Arc::new(AtomicUsize::new(0));
-        let delete_file_called = Arc::new(AtomicUsize::new(0));
-        let drop_called = Arc::new(AtomicUsize::new(0));
-        let fname_got = Arc::new(Mutex::new("".to_string()));
-        let key_manager: Arc<Box<dyn EncryptionKeyManager>> =
-            Arc::new(Box::new(Mutex::new(TestEncryptionKeyManager {
-                get_file_called: get_file_called.clone(),
-                new_file_called: new_file_called.clone(),
-                delete_file_called: delete_file_called.clone(),
-                drop_called: drop_called.clone(),
-                fname_got: fname_got.clone(),
-                return_value: None,
-            })));
+        let key_manager = Arc::new(Mutex::new(TestEncryptionKeyManager::default()));
         let db_key_manager = DBEncryptionKeyManager::new(key_manager.clone());
         assert!(db_key_manager.new_file("new_file_path").is_err());
-        assert_eq!(0, drop_called.load(Ordering::SeqCst));
-        assert_eq!(0, get_file_called.load(Ordering::SeqCst));
-        assert_eq!(1, new_file_called.load(Ordering::SeqCst));
-        assert_eq!(0, delete_file_called.load(Ordering::SeqCst));
-        assert_eq!("new_file_path", fname_got.lock().unwrap().as_str());
+        let record = key_manager.lock().unwrap();
+        assert_eq!(0, record.get_file_called.load(Ordering::SeqCst));
+        assert_eq!(1, record.new_file_called.load(Ordering::SeqCst));
+        assert_eq!(0, record.delete_file_called.load(Ordering::SeqCst));
+        assert_eq!("new_file_path", record.fname.lock().unwrap().as_str());
     }
 
     #[test]
     fn delete_file() {
-        let get_file_called = Arc::new(AtomicUsize::new(0));
-        let new_file_called = Arc::new(AtomicUsize::new(0));
-        let delete_file_called = Arc::new(AtomicUsize::new(0));
-        let drop_called = Arc::new(AtomicUsize::new(0));
-        let fname_got = Arc::new(Mutex::new("".to_string()));
-        let key_manager: Arc<Box<dyn EncryptionKeyManager>> =
-            Arc::new(Box::new(Mutex::new(TestEncryptionKeyManager {
-                get_file_called: get_file_called.clone(),
-                new_file_called: new_file_called.clone(),
-                delete_file_called: delete_file_called.clone(),
-                drop_called: drop_called.clone(),
-                fname_got: fname_got.clone(),
-                return_value: Some(FileEncryptionInfo {
-                    method: DBEncryptionMethod::Aes128Ctr,
-                    key: b"test_key_delete_file".to_vec(),
-                    iv: b"test_iv_delete_file".to_vec(),
-                }),
-            })));
+        let key_manager = Arc::new(Mutex::new(TestEncryptionKeyManager {
+            return_value: Some(FileEncryptionInfo::default()),
+            ..Default::default()
+        }));
         let db_key_manager = DBEncryptionKeyManager::new(key_manager.clone());
         assert!(db_key_manager.delete_file("delete_file_path").is_ok());
-        assert_eq!(0, drop_called.load(Ordering::SeqCst));
-        assert_eq!(0, get_file_called.load(Ordering::SeqCst));
-        assert_eq!(0, new_file_called.load(Ordering::SeqCst));
-        assert_eq!(1, delete_file_called.load(Ordering::SeqCst));
-        assert_eq!("delete_file_path", fname_got.lock().unwrap().as_str());
+        let record = key_manager.lock().unwrap();
+        assert_eq!(0, record.get_file_called.load(Ordering::SeqCst));
+        assert_eq!(0, record.new_file_called.load(Ordering::SeqCst));
+        assert_eq!(1, record.delete_file_called.load(Ordering::SeqCst));
+        assert_eq!("delete_file_path", record.fname.lock().unwrap().as_str());
     }
 
     #[test]
     fn delete_file_error() {
-        let get_file_called = Arc::new(AtomicUsize::new(0));
-        let new_file_called = Arc::new(AtomicUsize::new(0));
-        let delete_file_called = Arc::new(AtomicUsize::new(0));
-        let drop_called = Arc::new(AtomicUsize::new(0));
-        let fname_got = Arc::new(Mutex::new("".to_string()));
-        let key_manager: Arc<Box<dyn EncryptionKeyManager>> =
-            Arc::new(Box::new(Mutex::new(TestEncryptionKeyManager {
-                get_file_called: get_file_called.clone(),
-                new_file_called: new_file_called.clone(),
-                delete_file_called: delete_file_called.clone(),
-                drop_called: drop_called.clone(),
-                fname_got: fname_got.clone(),
-                return_value: None,
-            })));
+        let key_manager = Arc::new(Mutex::new(TestEncryptionKeyManager::default()));
         let db_key_manager = DBEncryptionKeyManager::new(key_manager.clone());
         assert!(db_key_manager.delete_file("delete_file_path").is_err());
-        assert_eq!(0, drop_called.load(Ordering::SeqCst));
-        assert_eq!(0, get_file_called.load(Ordering::SeqCst));
-        assert_eq!(0, new_file_called.load(Ordering::SeqCst));
-        assert_eq!(1, delete_file_called.load(Ordering::SeqCst));
-        assert_eq!("delete_file_path", fname_got.lock().unwrap().as_str());
+        let record = key_manager.lock().unwrap();
+        assert_eq!(0, record.get_file_called.load(Ordering::SeqCst));
+        assert_eq!(0, record.new_file_called.load(Ordering::SeqCst));
+        assert_eq!(1, record.delete_file_called.load(Ordering::SeqCst));
+        assert_eq!("delete_file_path", record.fname.lock().unwrap().as_str());
     }
 }

@@ -92,10 +92,9 @@ impl Drop for CompactionFilterHandle {
 
 pub unsafe fn new_compaction_filter(
     c_name: CString,
-    ignore_snapshots: bool,
     f: Box<dyn CompactionFilter>,
 ) -> CompactionFilterHandle {
-    let filter = new_compaction_filter_raw(c_name, ignore_snapshots, f);
+    let filter = new_compaction_filter_raw(c_name, f);
     CompactionFilterHandle { inner: filter }
 }
 
@@ -103,7 +102,6 @@ pub unsafe fn new_compaction_filter(
 /// Generally used in `CompactionFilterFactory::create_compaction_filter`.
 pub unsafe fn new_compaction_filter_raw(
     c_name: CString,
-    ignore_snapshots: bool,
     f: Box<dyn CompactionFilter>,
 ) -> *mut DBCompactionFilter {
     let proxy = Box::into_raw(Box::new(CompactionFilterProxy {
@@ -116,7 +114,9 @@ pub unsafe fn new_compaction_filter_raw(
         filter,
         name,
     );
-    crocksdb_ffi::crocksdb_compactionfilter_set_ignore_snapshots(filter, ignore_snapshots);
+    // In latest rocksdb `ignore_snapshots` will be always true.
+    // TODO: remove it after rocksdb is upgraded.
+    crocksdb_ffi::crocksdb_compactionfilter_set_ignore_snapshots(filter, true);
     filter
 }
 
@@ -281,7 +281,7 @@ mod tests {
         let mut cf_opts = ColumnFamilyOptions::default();
         let name = CString::new("compaction filter factory").unwrap();
         let filter = Box::new(Filter(tx)) as Box<dyn CompactionFilter>;
-        cf_opts.set_compaction_filter(name, false, filter).unwrap();
+        cf_opts.set_compaction_filter(name, filter).unwrap();
         drop(cf_opts);
         assert!(rx.recv_timeout(Duration::from_secs(1)).is_ok());
 
@@ -296,7 +296,7 @@ mod tests {
             let mut cf_opts = ColumnFamilyOptions::default();
             let name = CString::new("compaction filter factory").unwrap();
             let filter = Box::new(Filter(tx)) as Box<dyn CompactionFilter>;
-            cf_opts.set_compaction_filter(name, false, filter).unwrap();
+            cf_opts.set_compaction_filter(name, filter).unwrap();
             cf_opts
         }));
         let db = DB::open_cf(db_opts, path, cfds);

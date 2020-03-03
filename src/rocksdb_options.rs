@@ -1229,16 +1229,12 @@ impl ColumnFamilyOptions {
     /// set.
     ///
     /// By default, compaction will only pass keys written after the most
-    /// recent call to GetSnapshot() to filter. However, if `ignore_snapshots`
-    /// is set to true, even if the keys were written before the last snapshot
-    /// will be passed to filter too. For more details please checkout
-    /// rocksdb's documentation.
+    /// recent call to GetSnapshot() to filter.
     ///
     /// See also `CompactionFilter`.
     pub fn set_compaction_filter<S>(
         &mut self,
         name: S,
-        ignore_snapshots: bool,
         filter: Box<dyn CompactionFilter>,
     ) -> Result<(), String>
     where
@@ -1249,7 +1245,7 @@ impl ColumnFamilyOptions {
                 Ok(s) => s,
                 Err(e) => return Err(format!("failed to convert to cstring: {:?}", e)),
             };
-            let filter = new_compaction_filter(c_name, ignore_snapshots, filter);
+            let filter = new_compaction_filter(c_name, filter);
             crocksdb_ffi::crocksdb_options_set_compaction_filter(self.inner, filter.inner);
             self.filter = Some(filter);
             Ok(())

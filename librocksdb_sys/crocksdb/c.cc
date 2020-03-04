@@ -974,6 +974,20 @@ void crocksdb_write(
   SaveError(errptr, db->rep->Write(options->rep, &batch->rep));
 }
 
+void crocksdb_write_multi_batch(
+    crocksdb_t* db,
+    const crocksdb_writeoptions_t* options,
+    crocksdb_writebatch_t** batches,
+    size_t batch_size,
+    char** errptr) {
+  thread_local std::vector<WriteBatch*> ws;
+  ws.clear();
+  for (size_t i = 0; i < batch_size; i ++) {
+    ws.push_back(&batches[i]->rep);
+  }
+  SaveError(errptr, db->rep->MultiThreadWrite(options->rep, ws));
+}
+
 char* crocksdb_get(
     crocksdb_t* db,
     const crocksdb_readoptions_t* options,
@@ -2613,6 +2627,11 @@ void crocksdb_options_set_bytes_per_sync(
 void crocksdb_options_set_enable_pipelined_write(crocksdb_options_t *opt,
                                                  unsigned char v) {
   opt->rep.enable_pipelined_write = v;
+}
+
+void crocksdb_options_set_enable_multi_batch_write(crocksdb_options_t *opt,
+                                                 unsigned char v) {
+  opt->rep.enable_multi_thread_write = v;
 }
 
 void crocksdb_options_set_unordered_write(crocksdb_options_t* opt,
@@ -5221,6 +5240,14 @@ uint64_t crocksdb_perf_context_write_pre_and_post_process_time(crocksdb_perf_con
 
 uint64_t crocksdb_perf_context_db_mutex_lock_nanos(crocksdb_perf_context_t* ctx) {
   return ctx->rep.db_mutex_lock_nanos;
+}
+
+uint64_t crocksdb_perf_context_write_thread_wait_nanos(crocksdb_perf_context_t* ctx) {
+  return ctx->rep.write_thread_wait_nanos;
+}
+
+uint64_t crocksdb_perf_context_write_scheduling_flushes_compactions_time(crocksdb_perf_context_t* ctx) {
+  return ctx->rep.write_scheduling_flushes_compactions_time;
 }
 
 uint64_t crocksdb_perf_context_db_condition_wait_nanos(crocksdb_perf_context_t* ctx) {

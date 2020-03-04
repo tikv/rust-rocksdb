@@ -8,6 +8,7 @@ links = "rocksdb"
 [dependencies]
 libc = "0.2.11"
 libtitan_sys = { path = "libtitan_sys" }
+openssl = "0.10.28"
 
 [dev-dependencies]
 tempfile = "3.1"

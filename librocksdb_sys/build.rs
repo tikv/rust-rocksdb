@@ -156,6 +156,7 @@ fn build_rocksdb() -> Build {
         .define("WITH_ZSTD", "ON")
         .register_dep("SNAPPY")
         .define("WITH_SNAPPY", "ON")
+        .define("WITH_OPENSSL", "ON")
         .define("WITH_TESTS", "OFF")
         .define("WITH_TOOLS", "OFF")
         .build_target("rocksdb")
@@ -199,5 +200,6 @@ fn build_rocksdb() -> Build {
     println!("cargo:rustc-link-lib=static=lz4");
     println!("cargo:rustc-link-lib=static=zstd");
     println!("cargo:rustc-link-lib=static=snappy");
+    println!("cargo:rustc-link-lib=static=crypto");
     build
 }

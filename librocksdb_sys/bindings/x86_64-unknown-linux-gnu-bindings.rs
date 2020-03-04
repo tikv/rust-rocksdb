@@ -3150,6 +3150,20 @@ pub type crocksdb_encryption_key_manager_delete_file_cb = ::std::option::Option<
         fname: *const libc::c_char,
     ) -> *const libc::c_char,
 >;
+pub type crocksdb_encryption_key_manager_link_file_cb = ::std::option::Option<
+    unsafe extern "C" fn(
+        state: *mut libc::c_void,
+        src_fname: *const libc::c_char,
+        dst_fname: *const libc::c_char,
+    ) -> *const libc::c_char,
+>;
+pub type crocksdb_encryption_key_manager_rename_file_cb = ::std::option::Option<
+    unsafe extern "C" fn(
+        state: *mut libc::c_void,
+        src_fname: *const libc::c_char,
+        dst_fname: *const libc::c_char,
+    ) -> *const libc::c_char,
+>;
 extern "C" {
     pub fn crocksdb_encryption_key_manager_create(
         state: *mut libc::c_void,
@@ -3157,6 +3171,8 @@ extern "C" {
         get_file: crocksdb_encryption_key_manager_get_file_cb,
         new_file: crocksdb_encryption_key_manager_new_file_cb,
         delete_file: crocksdb_encryption_key_manager_delete_file_cb,
+        link_file: crocksdb_encryption_key_manager_link_file_cb,
+        rename_file: crocksdb_encryption_key_manager_rename_file_cb,
     ) -> *mut crocksdb_encryption_key_manager_t;
 }
 extern "C" {
@@ -3180,6 +3196,20 @@ extern "C" {
     pub fn crocksdb_encryption_key_manager_delete_file(
         key_manager: *mut crocksdb_encryption_key_manager_t,
         fname: *const libc::c_char,
+    ) -> *const libc::c_char;
+}
+extern "C" {
+    pub fn crocksdb_encryption_key_manager_link_file(
+        key_manager: *mut crocksdb_encryption_key_manager_t,
+        src_fname: *const libc::c_char,
+        dst_fname: *const libc::c_char,
+    ) -> *const libc::c_char;
+}
+extern "C" {
+    pub fn crocksdb_encryption_key_manager_rename_file(
+        key_manager: *mut crocksdb_encryption_key_manager_t,
+        src_fname: *const libc::c_char,
+        dst_fname: *const libc::c_char,
     ) -> *const libc::c_char;
 }
 extern "C" {

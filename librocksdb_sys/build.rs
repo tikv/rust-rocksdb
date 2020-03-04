@@ -192,6 +192,7 @@ fn build_rocksdb() -> Build {
     // Adding rocksdb specific compile macros.
     // TODO: should make sure crocksdb compile options is the same as rocksdb and titan.
     build.define("ROCKSDB_SUPPORT_THREAD_LOCAL", None);
+    build.define("OPENSSL", None);
 
     println!("cargo:rustc-link-lib=static=rocksdb");
     println!("cargo:rustc-link-lib=static=titan");
@@ -200,6 +201,5 @@ fn build_rocksdb() -> Build {
     println!("cargo:rustc-link-lib=static=lz4");
     println!("cargo:rustc-link-lib=static=zstd");
     println!("cargo:rustc-link-lib=static=snappy");
-    println!("cargo:rustc-link-lib=static=crypto");
     build
 }

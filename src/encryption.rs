@@ -54,20 +54,20 @@ impl Debug for FileEncryptionInfo {
 }
 
 impl FileEncryptionInfo {
-    pub fn copy_to(&self, file_info: *mut DBFileEncryptionInfo) {
-        unsafe {
-            crocksdb_ffi::crocksdb_file_encryption_info_set_method(file_info, self.method);
-            crocksdb_ffi::crocksdb_file_encryption_info_set_key(
-                file_info,
-                CString::new(self.key.clone()).unwrap().as_ptr(),
-                self.key.len() as size_t,
-            );
-            crocksdb_ffi::crocksdb_file_encryption_info_set_iv(
-                file_info,
-                CString::new(self.iv.clone()).unwrap().as_ptr(),
-                self.iv.len() as size_t,
-            );
-        }
+    pub unsafe fn copy_to(&self, file_info: *mut DBFileEncryptionInfo) {
+        crocksdb_ffi::crocksdb_file_encryption_info_set_method(file_info, self.method);
+        let key = CString::new(self.key.clone()).unwrap();
+        crocksdb_ffi::crocksdb_file_encryption_info_set_key(
+            file_info,
+            key.as_ptr(),
+            self.key.len() as size_t,
+        );
+        let iv = CString::new(self.iv.clone()).unwrap();
+        crocksdb_ffi::crocksdb_file_encryption_info_set_iv(
+            file_info,
+            iv.as_ptr(),
+            self.iv.len() as size_t,
+        );
     }
 }
 
@@ -272,7 +272,9 @@ extern "C" fn encryption_key_manager_get_file(
     };
     match key_manager.get_file(fname) {
         Ok(ret) => {
-            ret.copy_to(file_info);
+            unsafe {
+                ret.copy_to(file_info);
+            }
             ptr::null()
         }
         Err(err) => unsafe {
@@ -309,7 +311,9 @@ extern "C" fn encryption_key_manager_new_file(
     };
     match key_manager.new_file(fname) {
         Ok(ret) => {
-            ret.copy_to(file_info);
+            unsafe {
+                ret.copy_to(file_info);
+            }
             ptr::null()
         }
         Err(err) => unsafe {

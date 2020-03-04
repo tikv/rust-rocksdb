@@ -1434,6 +1434,8 @@ extern "C" {
         get_file: extern "C" fn(*mut c_void, *const c_char, *mut DBFileEncryptionInfo) -> *const c_char,
         new_file: extern "C" fn(*mut c_void, *const c_char, *mut DBFileEncryptionInfo) -> *const c_char,
         delete_file: extern "C" fn(*mut c_void, *const c_char) -> *const c_char,
+        link_file: extern "C" fn(*mut c_void, *const c_char, *const c_char) -> *const c_char,
+        rename_file: extern "C" fn(*mut c_void, *const c_char, *const c_char) -> *const c_char,
     ) -> *mut DBEncryptionKeyManagerInstance;
     pub fn crocksdb_encryption_key_manager_destroy(key_manager: *mut DBEncryptionKeyManagerInstance);
     pub fn crocksdb_encryption_key_manager_get_file(
@@ -1449,6 +1451,16 @@ extern "C" {
     pub fn crocksdb_encryption_key_manager_delete_file(
         key_manager: *mut DBEncryptionKeyManagerInstance,
         fname: *const c_char,
+    ) -> *const c_char;
+    pub fn crocksdb_encryption_key_manager_link_file(
+        key_manager: *mut DBEncryptionKeyManagerInstance,
+        src_fname: *const c_char,
+        dst_fname: *const c_char,
+    ) -> *const c_char;
+    pub fn crocksdb_encryption_key_manager_rename_file(
+        key_manager: *mut DBEncryptionKeyManagerInstance,
+        src_fname: *const c_char,
+        dst_fname: *const c_char,
     ) -> *const c_char;
 
     pub fn crocksdb_key_managed_encrypted_env_create(

@@ -75,6 +75,8 @@ pub trait EncryptionKeyManager: Sync + Send {
     fn get_file(&self, fname: &str) -> Result<FileEncryptionInfo>;
     fn new_file(&self, fname: &str) -> Result<FileEncryptionInfo>;
     fn delete_file(&self, fname: &str) -> Result<()>;
+    fn link_file(&self, src_fname: &str, dst_fname: &str) -> Result<()>;
+    fn rename_file(&self, src_fname: &str, dst_fname: &str) -> Result<()>;
 }
 
 pub struct DBEncryptionKeyManager {
@@ -176,6 +178,50 @@ impl EncryptionKeyManager for DBEncryptionKeyManager {
             let err = crocksdb_ffi::crocksdb_encryption_key_manager_delete_file(
                 self.inner,
                 CString::new(fname).unwrap().as_ptr(),
+            );
+            if err == ptr::null() {
+                ret = Ok(());
+            } else {
+                ret = Err(Error::new(
+                    ErrorKind::Other,
+                    format!("{}", CStr::from_ptr(err).to_str().unwrap()),
+                ));
+                libc::free(err as _);
+            }
+        }
+        ret
+    }
+
+    fn link_file(&self, src_fname: &str, dst_fname: &str) -> Result<()> {
+        use std::io::{Error, ErrorKind};
+        let ret: Result<()>;
+        unsafe {
+            let err = crocksdb_ffi::crocksdb_encryption_key_manager_link_file(
+                self.inner,
+                CString::new(src_fname).unwrap().as_ptr(),
+                CString::new(dst_fname).unwrap().as_ptr(),
+            );
+            if err == ptr::null() {
+                ret = Ok(());
+            } else {
+                ret = Err(Error::new(
+                    ErrorKind::Other,
+                    format!("{}", CStr::from_ptr(err).to_str().unwrap()),
+                ));
+                libc::free(err as _);
+            }
+        }
+        ret
+    }
+
+    fn rename_file(&self, src_fname: &str, dst_fname: &str) -> Result<()> {
+        use std::io::{Error, ErrorKind};
+        let ret: Result<()>;
+        unsafe {
+            let err = crocksdb_ffi::crocksdb_encryption_key_manager_rename_file(
+                self.inner,
+                CString::new(src_fname).unwrap().as_ptr(),
+                CString::new(dst_fname).unwrap().as_ptr(),
             );
             if err == ptr::null() {
                 ret = Ok(());
@@ -310,6 +356,110 @@ extern "C" fn encryption_key_manager_delete_file(
     }
 }
 
+extern "C" fn encryption_key_manager_link_file(
+    ctx: *mut c_void,
+    src_fname: *const c_char,
+    dst_fname: *const c_char,
+) -> *const c_char {
+    let key_manager =
+        unsafe { &*(mem::transmute::<*mut c_void, *const Box<dyn EncryptionKeyManager>>(ctx)) };
+    let src_fname = match unsafe { CStr::from_ptr(src_fname).to_str() } {
+        Ok(ret) => ret,
+        Err(err) => {
+            return unsafe {
+                libc::strdup(
+                    CString::new(format!(
+                        "Encryption key manager encounter non-utf8 file name: {}",
+                        err
+                    ))
+                    .unwrap()
+                    .into_raw(),
+                )
+            };
+        }
+    };
+    let dst_fname = match unsafe { CStr::from_ptr(dst_fname).to_str() } {
+        Ok(ret) => ret,
+        Err(err) => {
+            return unsafe {
+                libc::strdup(
+                    CString::new(format!(
+                        "Encryption key manager encounter non-utf8 file name: {}",
+                        err
+                    ))
+                    .unwrap()
+                    .into_raw(),
+                )
+            };
+        }
+    };
+    match key_manager.link_file(src_fname, dst_fname) {
+        Ok(()) => ptr::null(),
+        Err(err) => unsafe {
+            libc::strdup(
+                CString::new(format!(
+                    "Encryption key manager delete file failure: {}",
+                    err
+                ))
+                .unwrap()
+                .into_raw(),
+            )
+        },
+    }
+}
+
+extern "C" fn encryption_key_manager_rename_file(
+    ctx: *mut c_void,
+    src_fname: *const c_char,
+    dst_fname: *const c_char,
+) -> *const c_char {
+    let key_manager =
+        unsafe { &*(mem::transmute::<*mut c_void, *const Box<dyn EncryptionKeyManager>>(ctx)) };
+    let src_fname = match unsafe { CStr::from_ptr(src_fname).to_str() } {
+        Ok(ret) => ret,
+        Err(err) => {
+            return unsafe {
+                libc::strdup(
+                    CString::new(format!(
+                        "Encryption key manager encounter non-utf8 file name: {}",
+                        err
+                    ))
+                    .unwrap()
+                    .into_raw(),
+                )
+            };
+        }
+    };
+    let dst_fname = match unsafe { CStr::from_ptr(dst_fname).to_str() } {
+        Ok(ret) => ret,
+        Err(err) => {
+            return unsafe {
+                libc::strdup(
+                    CString::new(format!(
+                        "Encryption key manager encounter non-utf8 file name: {}",
+                        err
+                    ))
+                    .unwrap()
+                    .into_raw(),
+                )
+            };
+        }
+    };
+    match key_manager.rename_file(src_fname, dst_fname) {
+        Ok(()) => ptr::null(),
+        Err(err) => unsafe {
+            libc::strdup(
+                CString::new(format!(
+                    "Encryption key manager delete file failure: {}",
+                    err
+                ))
+                .unwrap()
+                .into_raw(),
+            )
+        },
+    }
+}
+
 impl DBEncryptionKeyManager {
     pub fn new(key_manager: Arc<dyn EncryptionKeyManager>) -> DBEncryptionKeyManager {
         // The size of the raw pointer is of 16 bytes, and it doesn't fit in a C-style pointer.
@@ -326,6 +476,8 @@ impl DBEncryptionKeyManager {
                 encryption_key_manager_get_file,
                 encryption_key_manager_new_file,
                 encryption_key_manager_delete_file,
+                encryption_key_manager_link_file,
+                encryption_key_manager_rename_file,
             )
         };
         DBEncryptionKeyManager { inner: instance }
@@ -354,7 +506,10 @@ mod test {
         pub get_file_called: AtomicUsize,
         pub new_file_called: AtomicUsize,
         pub delete_file_called: AtomicUsize,
+        pub link_file_called: AtomicUsize,
+        pub rename_file_called: AtomicUsize,
         pub fname: Mutex<String>,
+        pub dst_fname: Mutex<String>,
         pub return_value: Option<FileEncryptionInfo>,
         pub drop: Option<TestDrop>,
     }
@@ -365,7 +520,10 @@ mod test {
                 get_file_called: AtomicUsize::new(0),
                 new_file_called: AtomicUsize::new(0),
                 delete_file_called: AtomicUsize::new(0),
+                link_file_called: AtomicUsize::new(0),
+                rename_file_called: AtomicUsize::new(0),
                 fname: Mutex::new("".to_string()),
+                dst_fname: Mutex::new("".to_string()),
                 return_value: None,
                 drop: None,
             }
@@ -382,6 +540,7 @@ mod test {
                 None => Err(Error::new(ErrorKind::Other, "")),
             }
         }
+
         fn new_file(&self, fname: &str) -> Result<FileEncryptionInfo> {
             let key_manager = self.lock().unwrap();
             key_manager.new_file_called.fetch_add(1, Ordering::SeqCst);
@@ -391,12 +550,45 @@ mod test {
                 None => Err(Error::new(ErrorKind::Other, "")),
             }
         }
+
         fn delete_file(&self, fname: &str) -> Result<()> {
             let key_manager = self.lock().unwrap();
             key_manager
                 .delete_file_called
                 .fetch_add(1, Ordering::SeqCst);
             key_manager.fname.lock().unwrap().insert_str(0, fname);
+            match &key_manager.return_value {
+                Some(_) => Ok(()),
+                None => Err(Error::new(ErrorKind::Other, "")),
+            }
+        }
+
+        fn link_file(&self, src_fname: &str, dst_fname: &str) -> Result<()> {
+            let key_manager = self.lock().unwrap();
+            key_manager.link_file_called.fetch_add(1, Ordering::SeqCst);
+            key_manager.fname.lock().unwrap().insert_str(0, src_fname);
+            key_manager
+                .dst_fname
+                .lock()
+                .unwrap()
+                .insert_str(0, dst_fname);
+            match &key_manager.return_value {
+                Some(_) => Ok(()),
+                None => Err(Error::new(ErrorKind::Other, "")),
+            }
+        }
+
+        fn rename_file(&self, src_fname: &str, dst_fname: &str) -> Result<()> {
+            let key_manager = self.lock().unwrap();
+            key_manager
+                .rename_file_called
+                .fetch_add(1, Ordering::SeqCst);
+            key_manager.fname.lock().unwrap().insert_str(0, src_fname);
+            key_manager
+                .dst_fname
+                .lock()
+                .unwrap()
+                .insert_str(0, dst_fname);
             match &key_manager.return_value {
                 Some(_) => Ok(()),
                 None => Err(Error::new(ErrorKind::Other, "")),
@@ -439,6 +631,8 @@ mod test {
         assert_eq!(1, record.get_file_called.load(Ordering::SeqCst));
         assert_eq!(0, record.new_file_called.load(Ordering::SeqCst));
         assert_eq!(0, record.delete_file_called.load(Ordering::SeqCst));
+        assert_eq!(0, record.link_file_called.load(Ordering::SeqCst));
+        assert_eq!(0, record.rename_file_called.load(Ordering::SeqCst));
         assert_eq!("get_file_path", record.fname.lock().unwrap().as_str());
     }
 
@@ -451,6 +645,8 @@ mod test {
         assert_eq!(1, record.get_file_called.load(Ordering::SeqCst));
         assert_eq!(0, record.new_file_called.load(Ordering::SeqCst));
         assert_eq!(0, record.delete_file_called.load(Ordering::SeqCst));
+        assert_eq!(0, record.link_file_called.load(Ordering::SeqCst));
+        assert_eq!(0, record.rename_file_called.load(Ordering::SeqCst));
         assert_eq!("get_file_path", record.fname.lock().unwrap().as_str());
     }
 
@@ -473,6 +669,8 @@ mod test {
         assert_eq!(0, record.get_file_called.load(Ordering::SeqCst));
         assert_eq!(1, record.new_file_called.load(Ordering::SeqCst));
         assert_eq!(0, record.delete_file_called.load(Ordering::SeqCst));
+        assert_eq!(0, record.link_file_called.load(Ordering::SeqCst));
+        assert_eq!(0, record.rename_file_called.load(Ordering::SeqCst));
         assert_eq!("new_file_path", record.fname.lock().unwrap().as_str());
     }
 
@@ -485,6 +683,8 @@ mod test {
         assert_eq!(0, record.get_file_called.load(Ordering::SeqCst));
         assert_eq!(1, record.new_file_called.load(Ordering::SeqCst));
         assert_eq!(0, record.delete_file_called.load(Ordering::SeqCst));
+        assert_eq!(0, record.link_file_called.load(Ordering::SeqCst));
+        assert_eq!(0, record.rename_file_called.load(Ordering::SeqCst));
         assert_eq!("new_file_path", record.fname.lock().unwrap().as_str());
     }
 
@@ -500,6 +700,8 @@ mod test {
         assert_eq!(0, record.get_file_called.load(Ordering::SeqCst));
         assert_eq!(0, record.new_file_called.load(Ordering::SeqCst));
         assert_eq!(1, record.delete_file_called.load(Ordering::SeqCst));
+        assert_eq!(0, record.link_file_called.load(Ordering::SeqCst));
+        assert_eq!(0, record.rename_file_called.load(Ordering::SeqCst));
         assert_eq!("delete_file_path", record.fname.lock().unwrap().as_str());
     }
 
@@ -512,6 +714,100 @@ mod test {
         assert_eq!(0, record.get_file_called.load(Ordering::SeqCst));
         assert_eq!(0, record.new_file_called.load(Ordering::SeqCst));
         assert_eq!(1, record.delete_file_called.load(Ordering::SeqCst));
+        assert_eq!(0, record.link_file_called.load(Ordering::SeqCst));
+        assert_eq!(0, record.rename_file_called.load(Ordering::SeqCst));
         assert_eq!("delete_file_path", record.fname.lock().unwrap().as_str());
+    }
+
+    #[test]
+    fn link_file() {
+        let key_manager = Arc::new(Mutex::new(TestEncryptionKeyManager {
+            return_value: Some(FileEncryptionInfo::default()),
+            ..Default::default()
+        }));
+        let db_key_manager = DBEncryptionKeyManager::new(key_manager.clone());
+        assert!(db_key_manager
+            .link_file("src_link_file_path", "dst_link_file_path")
+            .is_ok());
+        let record = key_manager.lock().unwrap();
+        assert_eq!(0, record.get_file_called.load(Ordering::SeqCst));
+        assert_eq!(0, record.new_file_called.load(Ordering::SeqCst));
+        assert_eq!(0, record.delete_file_called.load(Ordering::SeqCst));
+        assert_eq!(1, record.link_file_called.load(Ordering::SeqCst));
+        assert_eq!(0, record.rename_file_called.load(Ordering::SeqCst));
+        assert_eq!("src_link_file_path", record.fname.lock().unwrap().as_str());
+        assert_eq!(
+            "dst_link_file_path",
+            record.dst_fname.lock().unwrap().as_str()
+        );
+    }
+
+    #[test]
+    fn link_file_error() {
+        let key_manager = Arc::new(Mutex::new(TestEncryptionKeyManager::default()));
+        let db_key_manager = DBEncryptionKeyManager::new(key_manager.clone());
+        assert!(db_key_manager
+            .link_file("src_link_file_path", "dst_link_file_path")
+            .is_err());
+        let record = key_manager.lock().unwrap();
+        assert_eq!(0, record.get_file_called.load(Ordering::SeqCst));
+        assert_eq!(0, record.new_file_called.load(Ordering::SeqCst));
+        assert_eq!(0, record.delete_file_called.load(Ordering::SeqCst));
+        assert_eq!(1, record.link_file_called.load(Ordering::SeqCst));
+        assert_eq!(0, record.rename_file_called.load(Ordering::SeqCst));
+        assert_eq!("src_link_file_path", record.fname.lock().unwrap().as_str());
+        assert_eq!(
+            "dst_link_file_path",
+            record.dst_fname.lock().unwrap().as_str()
+        );
+    }
+
+    #[test]
+    fn rename_file() {
+        let key_manager = Arc::new(Mutex::new(TestEncryptionKeyManager {
+            return_value: Some(FileEncryptionInfo::default()),
+            ..Default::default()
+        }));
+        let db_key_manager = DBEncryptionKeyManager::new(key_manager.clone());
+        assert!(db_key_manager
+            .rename_file("src_rename_file_path", "dst_rename_file_path")
+            .is_ok());
+        let record = key_manager.lock().unwrap();
+        assert_eq!(0, record.get_file_called.load(Ordering::SeqCst));
+        assert_eq!(0, record.new_file_called.load(Ordering::SeqCst));
+        assert_eq!(0, record.delete_file_called.load(Ordering::SeqCst));
+        assert_eq!(0, record.link_file_called.load(Ordering::SeqCst));
+        assert_eq!(1, record.rename_file_called.load(Ordering::SeqCst));
+        assert_eq!(
+            "src_rename_file_path",
+            record.fname.lock().unwrap().as_str()
+        );
+        assert_eq!(
+            "dst_rename_file_path",
+            record.dst_fname.lock().unwrap().as_str()
+        );
+    }
+
+    #[test]
+    fn rename_file_error() {
+        let key_manager = Arc::new(Mutex::new(TestEncryptionKeyManager::default()));
+        let db_key_manager = DBEncryptionKeyManager::new(key_manager.clone());
+        assert!(db_key_manager
+            .rename_file("src_rename_file_path", "dst_rename_file_path")
+            .is_err());
+        let record = key_manager.lock().unwrap();
+        assert_eq!(0, record.get_file_called.load(Ordering::SeqCst));
+        assert_eq!(0, record.new_file_called.load(Ordering::SeqCst));
+        assert_eq!(0, record.delete_file_called.load(Ordering::SeqCst));
+        assert_eq!(0, record.link_file_called.load(Ordering::SeqCst));
+        assert_eq!(1, record.rename_file_called.load(Ordering::SeqCst));
+        assert_eq!(
+            "src_rename_file_path",
+            record.fname.lock().unwrap().as_str()
+        );
+        assert_eq!(
+            "dst_rename_file_path",
+            record.dst_fname.lock().unwrap().as_str()
+        );
     }
 }

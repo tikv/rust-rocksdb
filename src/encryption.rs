@@ -24,7 +24,7 @@ use std::mem;
 use std::ptr;
 use std::sync::Arc;
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct FileEncryptionInfo {
     pub method: DBEncryptionMethod,
     pub key: Vec<u8>,

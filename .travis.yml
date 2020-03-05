@@ -5,10 +5,6 @@ language: rust
 os:
   - linux
 
-arch:
-  - amd64
-  - arm64
-
 rust:
   - stable
   - beta
@@ -21,6 +17,7 @@ matrix:
     rust: stable
   - os: linux
     arch: arm64
+    rust: stable
 
 env:
   global:

@@ -242,7 +242,7 @@ impl EncryptionKeyManager for DBEncryptionKeyManager {
 extern "C" fn encryption_key_manager_destructor(ctx: *mut c_void) {
     unsafe {
         // Recover Arc from ctx and implicitly drop.
-        let ptr: *mut *const dyn EncryptionKeyManager = mem::transmute(ctx);
+        let ptr = ctx as *mut *const dyn EncryptionKeyManager;
         Arc::from_raw(*ptr);
         libc::free(ctx);
     }
@@ -253,8 +253,7 @@ extern "C" fn encryption_key_manager_get_file(
     fname: *const c_char,
     file_info: *mut DBFileEncryptionInfo,
 ) -> *const c_char {
-    let key_manager =
-        unsafe { &**(mem::transmute::<*mut c_void, *mut *const dyn EncryptionKeyManager>(ctx)) };
+    let key_manager = unsafe { &**(ctx as *mut *const dyn EncryptionKeyManager) };
     let fname = match unsafe { CStr::from_ptr(fname).to_str() } {
         Ok(ret) => ret,
         Err(err) => {
@@ -292,8 +291,7 @@ extern "C" fn encryption_key_manager_new_file(
     fname: *const c_char,
     file_info: *mut DBFileEncryptionInfo,
 ) -> *const c_char {
-    let key_manager =
-        unsafe { &**(mem::transmute::<*mut c_void, *mut *const dyn EncryptionKeyManager>(ctx)) };
+    let key_manager = unsafe { &**(ctx as *mut *const dyn EncryptionKeyManager) };
     let fname = match unsafe { CStr::from_ptr(fname).to_str() } {
         Ok(ret) => ret,
         Err(err) => {
@@ -330,8 +328,7 @@ extern "C" fn encryption_key_manager_delete_file(
     ctx: *mut c_void,
     fname: *const c_char,
 ) -> *const c_char {
-    let key_manager =
-        unsafe { &**(mem::transmute::<*mut c_void, *mut *const dyn EncryptionKeyManager>(ctx)) };
+    let key_manager = unsafe { &**(ctx as *mut *const dyn EncryptionKeyManager) };
     let fname = match unsafe { CStr::from_ptr(fname).to_str() } {
         Ok(ret) => ret,
         Err(err) => {
@@ -367,8 +364,7 @@ extern "C" fn encryption_key_manager_link_file(
     src_fname: *const c_char,
     dst_fname: *const c_char,
 ) -> *const c_char {
-    let key_manager =
-        unsafe { &**(mem::transmute::<*mut c_void, *mut *const dyn EncryptionKeyManager>(ctx)) };
+    let key_manager = unsafe { &**(ctx as *mut *const dyn EncryptionKeyManager) };
     let src_fname = match unsafe { CStr::from_ptr(src_fname).to_str() } {
         Ok(ret) => ret,
         Err(err) => {
@@ -419,8 +415,7 @@ extern "C" fn encryption_key_manager_rename_file(
     src_fname: *const c_char,
     dst_fname: *const c_char,
 ) -> *const c_char {
-    let key_manager =
-        unsafe { &**(mem::transmute::<*mut c_void, *mut *const dyn EncryptionKeyManager>(ctx)) };
+    let key_manager = unsafe { &**(ctx as *mut *const dyn EncryptionKeyManager) };
     let src_fname = match unsafe { CStr::from_ptr(src_fname).to_str() } {
         Ok(ret) => ret,
         Err(err) => {

@@ -558,6 +558,12 @@ impl CompactOptions {
         }
     }
 
+    pub fn set_target_path_id(&mut self, v: i32) {
+        unsafe {
+            crocksdb_ffi::crocksdb_compactoptions_set_target_path_id(self.inner, v);
+        }
+    }
+
     pub fn set_max_subcompactions(&mut self, v: i32) {
         unsafe {
             crocksdb_ffi::crocksdb_compactoptions_set_max_subcompactions(self.inner, v);
@@ -1022,6 +1028,12 @@ impl DBOptions {
         }
     }
 
+    pub fn enable_multi_batch_write(&self, v: bool) {
+        unsafe {
+            crocksdb_ffi::crocksdb_options_set_enable_multi_batch_write(self.inner, v);
+        }
+    }
+
     pub fn enable_unordered_write(&self, v: bool) {
         unsafe {
             crocksdb_ffi::crocksdb_options_set_unordered_write(self.inner, v);
@@ -1062,6 +1074,25 @@ impl DBOptions {
                 num_paths as c_int,
             );
         }
+    }
+
+    pub fn get_db_paths_num(&self) -> usize {
+        unsafe { crocksdb_ffi::crocksdb_options_get_db_paths_num(self.inner) }
+    }
+
+    pub fn get_db_path(&self, idx: usize) -> Option<String> {
+        unsafe {
+            let ptr = crocksdb_ffi::crocksdb_options_get_db_path(self.inner, idx as size_t);
+            if ptr.is_null() {
+                return None;
+            }
+            let s = CStr::from_ptr(ptr).to_str().unwrap().to_owned();
+            Some(s)
+        }
+    }
+
+    pub fn get_path_target_size(&self, idx: usize) -> u64 {
+        unsafe { crocksdb_ffi::crocksdb_options_get_path_target_size(self.inner, idx as size_t) }
     }
 
     /// Set paranoid checks. The default value is `true`. We can set it to `false`

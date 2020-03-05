@@ -960,6 +960,20 @@ void crocksdb_write(
   SaveError(errptr, db->rep->Write(options->rep, &batch->rep));
 }
 
+void crocksdb_write_multi_batch(
+    crocksdb_t* db,
+    const crocksdb_writeoptions_t* options,
+    crocksdb_writebatch_t** batches,
+    size_t batch_size,
+    char** errptr) {
+  thread_local std::vector<WriteBatch*> ws;
+  ws.clear();
+  for (size_t i = 0; i < batch_size; i ++) {
+    ws.push_back(&batches[i]->rep);
+  }
+  SaveError(errptr, db->rep->MultiThreadWrite(options->rep, ws));
+}
+
 char* crocksdb_get(
     crocksdb_t* db,
     const crocksdb_readoptions_t* options,
@@ -2502,6 +2516,18 @@ void crocksdb_options_set_db_paths(crocksdb_options_t *opt,
   opt->rep.db_paths = db_paths;
 }
 
+size_t crocksdb_options_get_db_paths_num(crocksdb_options_t *opt) {
+  return opt->rep.db_paths.size();
+}
+
+const char* crocksdb_options_get_db_path(crocksdb_options_t* opt, size_t index) {
+  return opt->rep.db_paths[index].path.data();
+}
+
+uint64_t crocksdb_options_get_path_target_size(crocksdb_options_t* opt, size_t index) {
+  return opt->rep.db_paths[index].target_size;
+}
+
 void crocksdb_options_set_db_log_dir(
     crocksdb_options_t* opt, const char* db_log_dir) {
   opt->rep.db_log_dir = db_log_dir;
@@ -2587,6 +2613,11 @@ void crocksdb_options_set_bytes_per_sync(
 void crocksdb_options_set_enable_pipelined_write(crocksdb_options_t *opt,
                                                  unsigned char v) {
   opt->rep.enable_pipelined_write = v;
+}
+
+void crocksdb_options_set_enable_multi_batch_write(crocksdb_options_t *opt,
+                                                 unsigned char v) {
+  opt->rep.enable_multi_thread_write = v;
 }
 
 void crocksdb_options_set_unordered_write(crocksdb_options_t* opt,
@@ -3375,6 +3406,11 @@ void crocksdb_compactoptions_set_change_level(crocksdb_compactoptions_t* opt,
 void crocksdb_compactoptions_set_target_level(crocksdb_compactoptions_t* opt,
                                              int n) {
   opt->rep.target_level = n;
+}
+
+void crocksdb_compactoptions_set_target_path_id(crocksdb_compactoptions_t* opt,
+                                             int n) {
+  opt->rep.target_path_id = n;
 }
 
 void crocksdb_compactoptions_set_max_subcompactions(
@@ -4931,6 +4967,14 @@ uint64_t crocksdb_perf_context_write_pre_and_post_process_time(crocksdb_perf_con
 
 uint64_t crocksdb_perf_context_db_mutex_lock_nanos(crocksdb_perf_context_t* ctx) {
   return ctx->rep.db_mutex_lock_nanos;
+}
+
+uint64_t crocksdb_perf_context_write_thread_wait_nanos(crocksdb_perf_context_t* ctx) {
+  return ctx->rep.write_thread_wait_nanos;
+}
+
+uint64_t crocksdb_perf_context_write_scheduling_flushes_compactions_time(crocksdb_perf_context_t* ctx) {
+  return ctx->rep.write_scheduling_flushes_compactions_time;
 }
 
 uint64_t crocksdb_perf_context_db_condition_wait_nanos(crocksdb_perf_context_t* ctx) {

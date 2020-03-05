@@ -342,6 +342,10 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_write(
     crocksdb_t* db, const crocksdb_writeoptions_t* options,
     crocksdb_writebatch_t* batch, char** errptr);
 
+extern C_ROCKSDB_LIBRARY_API void crocksdb_write_multi_batch(
+    crocksdb_t* db, const crocksdb_writeoptions_t* options,
+    crocksdb_writebatch_t** batches, size_t batch_size, char** errptr);
+
 /* Returns NULL if not found.  A malloc()ed array otherwise.
    Stores the length of the array in *vallen. */
 extern C_ROCKSDB_LIBRARY_API char* crocksdb_get(
@@ -1012,6 +1016,13 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_use_fsync(
 extern C_ROCKSDB_LIBRARY_API void
 crocksdb_options_set_db_paths(crocksdb_options_t *, const char *const *,
                               const size_t *, const uint64_t *, int);
+extern C_ROCKSDB_LIBRARY_API size_t
+crocksdb_options_get_db_paths_num(crocksdb_options_t *);
+extern C_ROCKSDB_LIBRARY_API const char*
+crocksdb_options_get_db_path(crocksdb_options_t *, size_t index);
+extern C_ROCKSDB_LIBRARY_API uint64_t
+crocksdb_options_get_path_target_size(crocksdb_options_t*, size_t index);
+
 
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_db_log_dir(
     crocksdb_options_t*, const char*);
@@ -1043,6 +1054,9 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_bytes_per_sync(
     crocksdb_options_t*, uint64_t);
 extern C_ROCKSDB_LIBRARY_API void
 crocksdb_options_set_enable_pipelined_write(crocksdb_options_t *, unsigned char);
+extern C_ROCKSDB_LIBRARY_API void
+crocksdb_options_set_enable_multi_batch_write(crocksdb_options_t *opt,
+                                             unsigned char v);
 extern C_ROCKSDB_LIBRARY_API void
 crocksdb_options_set_unordered_write(crocksdb_options_t*, unsigned char);
 extern C_ROCKSDB_LIBRARY_API void
@@ -1342,6 +1356,8 @@ crocksdb_compactoptions_set_exclusive_manual_compaction(
 extern C_ROCKSDB_LIBRARY_API void crocksdb_compactoptions_set_change_level(
     crocksdb_compactoptions_t*, unsigned char);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_compactoptions_set_target_level(
+    crocksdb_compactoptions_t*, int);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_compactoptions_set_target_path_id(
     crocksdb_compactoptions_t*, int);
 extern C_ROCKSDB_LIBRARY_API void
 crocksdb_compactoptions_set_max_subcompactions(crocksdb_compactoptions_t*, int);
@@ -1935,6 +1951,10 @@ extern C_ROCKSDB_LIBRARY_API uint64_t
 crocksdb_perf_context_write_pre_and_post_process_time(crocksdb_perf_context_t*);
 extern C_ROCKSDB_LIBRARY_API uint64_t
 crocksdb_perf_context_db_mutex_lock_nanos(crocksdb_perf_context_t*);
+extern C_ROCKSDB_LIBRARY_API uint64_t
+crocksdb_perf_context_write_thread_wait_nanos(crocksdb_perf_context_t*);
+extern C_ROCKSDB_LIBRARY_API uint64_t
+crocksdb_perf_context_write_scheduling_flushes_compactions_time(crocksdb_perf_context_t*);
 extern C_ROCKSDB_LIBRARY_API uint64_t
 crocksdb_perf_context_db_condition_wait_nanos(crocksdb_perf_context_t*);
 extern C_ROCKSDB_LIBRARY_API uint64_t

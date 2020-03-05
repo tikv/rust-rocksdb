@@ -766,6 +766,29 @@ impl DB {
         Ok(())
     }
 
+    pub fn multi_batch_write(
+        &self,
+        batches: &[WriteBatch],
+        writeopts: &WriteOptions,
+    ) -> Result<(), String> {
+        unsafe {
+            let b: Vec<*mut DBWriteBatch> = batches
+                .iter()
+                .filter(|w| w.count() > 0)
+                .map(|w| w.inner)
+                .collect();
+            if !b.is_empty() {
+                ffi_try!(crocksdb_write_multi_batch(
+                    self.inner,
+                    writeopts.inner,
+                    b.as_ptr(),
+                    b.len()
+                ));
+            }
+        }
+        Ok(())
+    }
+
     pub fn write(&self, batch: &WriteBatch) -> Result<(), String> {
         self.write_opt(batch, &WriteOptions::new())
     }
@@ -3261,5 +3284,41 @@ mod test {
         let cf_handle = db.cf_handle("default").unwrap();
         let mp = db.get_map_property_cf(cf_handle, "rocksdb.cfstats");
         assert!(mp.is_some());
+    }
+
+    #[test]
+    fn test_multi_batch_write() {
+        let mut opts = DBOptions::new();
+        opts.create_if_missing(true);
+        opts.enable_multi_batch_write(true);
+        let path = tempdir_with_prefix("_rust_rocksdb_multi_batch");
+
+        let db = DB::open(opts, path.path().to_str().unwrap()).unwrap();
+        let cf = db.cf_handle("default").unwrap();
+        let mut data = Vec::new();
+        for s in &[b"ab", b"cd", b"ef"] {
+            let w = WriteBatch::new();
+            w.put_cf(cf, s.to_vec().as_slice(), b"a").unwrap();
+            data.push(w);
+        }
+        db.multi_batch_write(&data, &WriteOptions::new()).unwrap();
+        for s in &[b"ab", b"cd", b"ef"] {
+            let v = db.get_cf(cf, s.to_vec().as_slice()).unwrap();
+            assert!(v.is_some());
+            assert_eq!(v.unwrap().to_utf8().unwrap(), "a");
+        }
+    }
+
+    #[test]
+    fn test_get_db_path_from_option() {
+        let mut opts = DBOptions::new();
+        opts.create_if_missing(true);
+        let dir = tempdir_with_prefix("_rust_rocksdb_get_db_path_from_option");
+        let path = dir.path().to_str().unwrap();
+        let db = DB::open(opts, path).unwrap();
+        let path_num = db.get_db_options().get_db_paths_num();
+        assert_eq!(1, path_num);
+        let first_path = db.get_db_options().get_db_path(0).unwrap();
+        assert_eq!(path, first_path.as_str());
     }
 }

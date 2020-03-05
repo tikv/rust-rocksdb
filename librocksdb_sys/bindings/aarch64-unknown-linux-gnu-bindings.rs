@@ -6,6 +6,7 @@ pub const _FEATURES_H: u32 = 1;
 pub const __USE_ANSI: u32 = 1;
 pub const _BSD_SOURCE: u32 = 1;
 pub const _SVID_SOURCE: u32 = 1;
+pub const __USE_ISOC11: u32 = 1;
 pub const __USE_ISOC99: u32 = 1;
 pub const __USE_ISOC95: u32 = 1;
 pub const _POSIX_SOURCE: u32 = 1;
@@ -75,6 +76,51 @@ pub const WINT_MAX: u32 = 4294967295;
 pub type va_list = __builtin_va_list;
 pub type __gnuc_va_list = __builtin_va_list;
 pub type wchar_t = libc::c_uint;
+#[repr(C)]
+#[repr(align(16))]
+#[derive(Debug, Copy, Clone)]
+pub struct max_align_t {
+    pub __clang_max_align_nonce1: libc::c_longlong,
+    pub __bindgen_padding_0: u64,
+    pub __clang_max_align_nonce2: u128,
+}
+#[test]
+fn bindgen_test_layout_max_align_t() {
+    assert_eq!(
+        ::std::mem::size_of::<max_align_t>(),
+        32usize,
+        concat!("Size of: ", stringify!(max_align_t))
+    );
+    assert_eq!(
+        ::std::mem::align_of::<max_align_t>(),
+        16usize,
+        concat!("Alignment of ", stringify!(max_align_t))
+    );
+    assert_eq!(
+        unsafe {
+            &(*(::std::ptr::null::<max_align_t>())).__clang_max_align_nonce1 as *const _ as usize
+        },
+        0usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(max_align_t),
+            "::",
+            stringify!(__clang_max_align_nonce1)
+        )
+    );
+    assert_eq!(
+        unsafe {
+            &(*(::std::ptr::null::<max_align_t>())).__clang_max_align_nonce2 as *const _ as usize
+        },
+        16usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(max_align_t),
+            "::",
+            stringify!(__clang_max_align_nonce2)
+        )
+    );
+}
 pub type int_least8_t = libc::c_schar;
 pub type int_least16_t = libc::c_short;
 pub type int_least32_t = libc::c_int;
@@ -734,6 +780,15 @@ extern "C" {
         db: *mut crocksdb_t,
         options: *const crocksdb_writeoptions_t,
         batch: *mut crocksdb_writebatch_t,
+        errptr: *mut *mut libc::c_char,
+    );
+}
+extern "C" {
+    pub fn crocksdb_write_multi_batch(
+        db: *mut crocksdb_t,
+        options: *const crocksdb_writeoptions_t,
+        batches: *mut *mut crocksdb_writebatch_t,
+        batch_size: usize,
         errptr: *mut *mut libc::c_char,
     );
 }
@@ -2085,6 +2140,21 @@ extern "C" {
     );
 }
 extern "C" {
+    pub fn crocksdb_options_get_db_paths_num(arg1: *mut crocksdb_options_t) -> usize;
+}
+extern "C" {
+    pub fn crocksdb_options_get_db_path(
+        arg1: *mut crocksdb_options_t,
+        index: usize,
+    ) -> *const libc::c_char;
+}
+extern "C" {
+    pub fn crocksdb_options_get_path_target_size(
+        arg1: *mut crocksdb_options_t,
+        index: usize,
+    ) -> u64;
+}
+extern "C" {
     pub fn crocksdb_options_set_db_log_dir(
         arg1: *mut crocksdb_options_t,
         arg2: *const libc::c_char,
@@ -2160,6 +2230,12 @@ extern "C" {
     pub fn crocksdb_options_set_enable_pipelined_write(
         arg1: *mut crocksdb_options_t,
         arg2: libc::c_uchar,
+    );
+}
+extern "C" {
+    pub fn crocksdb_options_set_enable_multi_batch_write(
+        opt: *mut crocksdb_options_t,
+        v: libc::c_uchar,
     );
 }
 extern "C" {
@@ -2744,6 +2820,12 @@ extern "C" {
 }
 extern "C" {
     pub fn crocksdb_compactoptions_set_target_level(
+        arg1: *mut crocksdb_compactoptions_t,
+        arg2: libc::c_int,
+    );
+}
+extern "C" {
+    pub fn crocksdb_compactoptions_set_target_path_id(
         arg1: *mut crocksdb_compactoptions_t,
         arg2: libc::c_int,
     );
@@ -3807,6 +3889,15 @@ extern "C" {
     pub fn crocksdb_perf_context_db_mutex_lock_nanos(arg1: *mut crocksdb_perf_context_t) -> u64;
 }
 extern "C" {
+    pub fn crocksdb_perf_context_write_thread_wait_nanos(arg1: *mut crocksdb_perf_context_t)
+        -> u64;
+}
+extern "C" {
+    pub fn crocksdb_perf_context_write_scheduling_flushes_compactions_time(
+        arg1: *mut crocksdb_perf_context_t,
+    ) -> u64;
+}
+extern "C" {
     pub fn crocksdb_perf_context_db_condition_wait_nanos(arg1: *mut crocksdb_perf_context_t)
         -> u64;
 }
@@ -3995,6 +4086,40 @@ fn bindgen_test_layout_ctitandb_blob_index_t() {
         ::std::mem::align_of::<ctitandb_blob_index_t>(),
         8usize,
         concat!("Alignment of ", stringify!(ctitandb_blob_index_t))
+    );
+    assert_eq!(
+        unsafe {
+            &(*(::std::ptr::null::<ctitandb_blob_index_t>())).file_number as *const _ as usize
+        },
+        0usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(ctitandb_blob_index_t),
+            "::",
+            stringify!(file_number)
+        )
+    );
+    assert_eq!(
+        unsafe {
+            &(*(::std::ptr::null::<ctitandb_blob_index_t>())).blob_offset as *const _ as usize
+        },
+        8usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(ctitandb_blob_index_t),
+            "::",
+            stringify!(blob_offset)
+        )
+    );
+    assert_eq!(
+        unsafe { &(*(::std::ptr::null::<ctitandb_blob_index_t>())).blob_size as *const _ as usize },
+        16usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(ctitandb_blob_index_t),
+            "::",
+            stringify!(blob_size)
+        )
     );
 }
 #[repr(C)]
@@ -4260,5 +4385,55 @@ fn bindgen_test_layout___va_list() {
         ::std::mem::align_of::<__va_list>(),
         8usize,
         concat!("Alignment of ", stringify!(__va_list))
+    );
+    assert_eq!(
+        unsafe { &(*(::std::ptr::null::<__va_list>())).__stack as *const _ as usize },
+        0usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(__va_list),
+            "::",
+            stringify!(__stack)
+        )
+    );
+    assert_eq!(
+        unsafe { &(*(::std::ptr::null::<__va_list>())).__gr_top as *const _ as usize },
+        8usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(__va_list),
+            "::",
+            stringify!(__gr_top)
+        )
+    );
+    assert_eq!(
+        unsafe { &(*(::std::ptr::null::<__va_list>())).__vr_top as *const _ as usize },
+        16usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(__va_list),
+            "::",
+            stringify!(__vr_top)
+        )
+    );
+    assert_eq!(
+        unsafe { &(*(::std::ptr::null::<__va_list>())).__gr_offs as *const _ as usize },
+        24usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(__va_list),
+            "::",
+            stringify!(__gr_offs)
+        )
+    );
+    assert_eq!(
+        unsafe { &(*(::std::ptr::null::<__va_list>())).__vr_offs as *const _ as usize },
+        28usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(__va_list),
+            "::",
+            stringify!(__vr_offs)
+        )
     );
 }

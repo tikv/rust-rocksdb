@@ -13,8 +13,10 @@
 // limitations under the License.
 //
 
+
 #![allow(clippy::unknown_clippy_lints)]
 #![allow(clippy::missing_safety_doc)]
+#![feature(optin_builtin_traits)]
 
 extern crate core;
 extern crate libc;

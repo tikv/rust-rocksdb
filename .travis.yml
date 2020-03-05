@@ -35,7 +35,7 @@ before_script:
   - rustup component add clippy
 
 script:
-  - make clippy
+  - travis_wait make clippy
   - cargo fmt --all -- --check
   - cargo build
   - cargo test --all

@@ -1254,7 +1254,7 @@ impl ColumnFamilyOptions {
 
     /// Set compaction filter factory.
     ///
-    /// See also `CompactionFilter`.
+    /// See also `CompactionFilterFactory`.
     pub fn set_compaction_filter_factory<S>(
         &mut self,
         name: S,
@@ -1270,7 +1270,7 @@ impl ColumnFamilyOptions {
         unsafe {
             let factory = new_compaction_filter_factory(c_name, factory)?;
             crocksdb_ffi::crocksdb_options_set_compaction_filter_factory(self.inner, factory.inner);
-            std::mem::forget(factory); // Avoid call destructor.
+            std::mem::forget(factory); // Deconstructor will be called after `self` is dropped.
             Ok(())
         }
     }

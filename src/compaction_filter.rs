@@ -3,7 +3,7 @@ use std::{mem, ptr, slice};
 
 pub use crocksdb_ffi::DBCompactionFilter;
 use crocksdb_ffi::{self, DBCompactionFilterContext, DBCompactionFilterFactory};
-use libc::{c_char, c_int, c_void, size_t};
+use libc::{c_char, c_int, c_void, size_t, strdup};
 
 /// `CompactionFilter` allows an application to modify/delete a key-value at
 /// the time of compaction.
@@ -70,9 +70,9 @@ extern "C" fn filter(
             mem::transmute(&mut *value_changed),
         );
         if *value_changed {
-            *new_value = &mut new_value_v[0] as *mut u8;
+            // The vector is allocated in Rust, so dup it before pass into C.
+            *new_value = strdup(mem::transmute(&mut new_value_v[0])) as *mut u8;
             *new_value_len = new_value_v.len();
-            mem::forget(new_value_v);
         }
         filtered
     }
@@ -116,7 +116,7 @@ pub unsafe fn new_compaction_filter_raw(
     );
     // In latest rocksdb `ignore_snapshots` will be always true.
     // TODO: remove it after rocksdb is upgraded.
-    crocksdb_ffi::crocksdb_compactionfilter_set_ignore_snapshots(filter, true);
+    // crocksdb_ffi::crocksdb_compactionfilter_set_ignore_snapshots(filter, true);
     filter
 }
 

@@ -71,7 +71,7 @@ extern "C" fn filter(
         );
         if *value_changed {
             // The vector is allocated in Rust, so dup it before pass into C.
-            *new_value = strdup(mem::transmute(&mut new_value_v[0])) as *mut u8;
+            *new_value = strdup(&mut new_value_v[0] as *mut u8 as *const i8) as *mut u8;
             *new_value_len = new_value_v.len();
         }
         filtered
@@ -108,16 +108,7 @@ pub unsafe fn new_compaction_filter_raw(
         name: c_name,
         filter: f,
     }));
-    let filter = crocksdb_ffi::crocksdb_compactionfilter_create(
-        proxy as *mut c_void,
-        destructor,
-        filter,
-        name,
-    );
-    // In latest rocksdb `ignore_snapshots` will be always true.
-    // TODO: remove it after rocksdb is upgraded.
-    // crocksdb_ffi::crocksdb_compactionfilter_set_ignore_snapshots(filter, true);
-    filter
+    crocksdb_ffi::crocksdb_compactionfilter_create(proxy as *mut c_void, destructor, filter, name)
 }
 
 pub struct CompactionFilterContext(DBCompactionFilterContext);

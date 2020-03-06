@@ -45,15 +45,16 @@ fn bindgen_rocksdb(file_path: &PathBuf) {
 fn config_binding_path() {
     let file_path: PathBuf;
 
-    match env::var("TARGET")
-        .unwrap_or_else(|_| String::default())
-        .as_str()
-    {
-        "x86_64-unknown-linux-gnu" => {
+    let target = env::var("TARGET").unwrap_or_else(|_| "".to_owned());
+    match target.as_str() {
+        "x86_64-unknown-linux-gnu" | "aarch64-unknown-linux-gnu" => {
             file_path = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap())
                 .join("bindings")
-                .join("x86_64-unknown-linux-gnu-bindings.rs");
-            if env::var("UPDATE_BIND").map(|s| s == "1").unwrap_or(false) {
+                .join(format!("{}-bindings.rs", target));
+            if env::var("UPDATE_BIND")
+                .map(|s| s.as_str() == "1")
+                .unwrap_or(false)
+            {
                 bindgen_rocksdb(&file_path);
             }
         }

@@ -12,9 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#![allow(clippy::unknown_clippy_lints)]
-#![allow(clippy::missing_safety_doc)]
-
 extern crate bzip2_sys;
 extern crate libc;
 #[cfg(test)]
@@ -186,7 +183,9 @@ pub fn new_bloom_filter(bits: c_int) -> *mut DBFilterPolicy {
     unsafe { crocksdb_filterpolicy_create_bloom(bits) }
 }
 
-#[allow(clippy::missing_safety_doc)]
+/// # Safety
+///
+/// `DBLRUCacheOptions` should pointer to a valid cache options
 pub unsafe fn new_lru_cache(opt: *mut DBLRUCacheOptions) -> *mut DBCache {
     crocksdb_cache_create_lru(opt)
 }
@@ -386,7 +385,9 @@ pub enum DBBackgroundErrorReason {
     MemTable = 4,
 }
 
-#[allow(clippy::missing_safety_doc)]
+/// # Safety
+///
+/// ptr must point to a valid CStr value
 pub unsafe fn error_message(ptr: *mut c_char) -> String {
     let c_str = CStr::from_ptr(ptr);
     let s = format!("{}", c_str.to_string_lossy());

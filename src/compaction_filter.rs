@@ -3,7 +3,7 @@ use std::{mem, ptr, slice};
 
 pub use crocksdb_ffi::DBCompactionFilter;
 use crocksdb_ffi::{self, DBCompactionFilterContext, DBCompactionFilterFactory};
-use libc::{c_char, c_int, c_void, size_t, strdup};
+use libc::{c_char, c_int, c_void, malloc, memcpy, size_t};
 
 /// `CompactionFilter` allows an application to modify/delete a key-value at
 /// the time of compaction.
@@ -70,9 +70,14 @@ extern "C" fn filter(
             mem::transmute(&mut *value_changed),
         );
         if *value_changed {
-            // The vector is allocated in Rust, so dup it before pass into C.
-            *new_value = strdup(&mut new_value_v[0] as *mut u8 as *const i8) as *mut u8;
             *new_value_len = new_value_v.len();
+            // The vector is allocated in Rust, so dup it before pass into C.
+            *new_value = malloc(*new_value_len) as *mut u8;
+            memcpy(
+                new_value as *mut c_void,
+                &new_value_v[0] as *const u8 as *const c_void,
+                *new_value_len,
+            );
         }
         filtered
     }

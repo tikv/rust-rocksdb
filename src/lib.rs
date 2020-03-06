@@ -13,7 +13,10 @@
 // limitations under the License.
 //
 
-#![feature(optin_builtin_traits)]
+// FIXME: we should remove this line after we add safe doc to all the unsafe functions
+// see: https://rust-lang.github.io/rust-clippy/master/index.html#missing_safety_doc
+#![allow(clippy::missing_safety_doc)]
+
 extern crate core;
 extern crate libc;
 #[macro_use]
@@ -21,7 +24,11 @@ pub extern crate librocksdb_sys;
 #[cfg(test)]
 extern crate tempfile;
 
-pub use compaction_filter::CompactionFilter;
+pub use compaction_filter::{
+    new_compaction_filter, new_compaction_filter_factory, new_compaction_filter_raw,
+    CompactionFilter, CompactionFilterContext, CompactionFilterFactory,
+    CompactionFilterFactoryHandle, CompactionFilterHandle, DBCompactionFilter,
+};
 pub use encryption::{DBEncryptionKeyManager, EncryptionKeyManager, FileEncryptionInfo};
 pub use event_listener::{
     CompactionJobInfo, EventListener, FlushJobInfo, IngestionInfo, WriteStallInfo,

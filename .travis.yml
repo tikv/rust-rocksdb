@@ -22,11 +22,6 @@ env:
 
 cache: false
 
-install:
-  - if [ "${TRAVIS_OS_NAME}" == osx ]; then
-      brew install openssl;
-    fi
-
 before_script:
   - rustup default nightly-2019-09-05
   - rustup component add rustfmt-preview

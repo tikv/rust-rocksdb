@@ -466,11 +466,9 @@ impl DBEncryptionKeyManager {
         // The size of the raw pointer is of 16 bytes, and it doesn't fit in a C-style pointer.
         // Allocate a buffer of 16 bytes to store as ctx in C code.
         let ptr = Arc::into_raw(key_manager);
-        let ptr_size = mem::size_of_val(&ptr);
-        debug_assert_eq!(16, ptr_size);
         let instance = unsafe {
-            let ctx = libc::malloc(ptr_size);
-            libc::memcpy(ctx, (&ptr as *const _) as *const c_void, ptr_size);
+            let ctx = libc::malloc(mem::size_of_val(&ptr));
+            *(ctx as *mut *const dyn EncryptionKeyManager) = ptr;
             crocksdb_ffi::crocksdb_encryption_key_manager_create(
                 ctx,
                 encryption_key_manager_destructor,

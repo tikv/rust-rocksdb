@@ -56,16 +56,14 @@ impl Debug for FileEncryptionInfo {
 impl FileEncryptionInfo {
     pub unsafe fn copy_to(&self, file_info: *mut DBFileEncryptionInfo) {
         crocksdb_ffi::crocksdb_file_encryption_info_set_method(file_info, self.method);
-        let key = CString::new(self.key.clone()).unwrap();
         crocksdb_ffi::crocksdb_file_encryption_info_set_key(
             file_info,
-            key.as_ptr(),
+            self.key.as_ptr() as *const c_char,
             self.key.len() as size_t,
         );
-        let iv = CString::new(self.iv.clone()).unwrap();
         crocksdb_ffi::crocksdb_file_encryption_info_set_iv(
             file_info,
-            iv.as_ptr(),
+            self.iv.as_ptr() as *const c_char,
             self.iv.len() as size_t,
         );
     }

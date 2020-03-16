@@ -214,6 +214,20 @@ struct crocksdb_randomfile_t      { RandomAccessFile* rep; };
 struct crocksdb_writablefile_t    { WritableFile*     rep; };
 struct crocksdb_filelock_t        { FileLock*         rep; };
 struct crocksdb_logger_t          { shared_ptr<Logger>  rep; };
+struct crocksdb_logger_impl_t : public Logger{
+  void* rep;
+
+  void (*destructor_)(void*);
+  void (*logv_internal)(void* logger,const char* format, va_list ap);
+
+  void Logv(const char* format, va_list ap) override {
+    logv_internal(rep,format,ap);
+  }
+
+  virtual ~crocksdb_logger_impl_t() {
+    (*destructor_)(rep);
+  }
+};
 struct crocksdb_lru_cache_options_t {
   LRUCacheOptions rep;
 };
@@ -2306,7 +2320,23 @@ void crocksdb_options_set_env(crocksdb_options_t* opt, crocksdb_env_t* env) {
   opt->rep.env = (env ? env->rep : nullptr);
 }
 
-void crocksdb_options_set_info_log(crocksdb_options_t* opt, crocksdb_logger_t* l) {
+crocksdb_logger_t* crocksdb_logger_create_from_impl(crocksdb_logger_impl_t* li) {
+  crocksdb_logger_t * logger = new crocksdb_logger_t;
+  logger->rep = std::shared_ptr<Logger>(li);
+  return logger;
+}
+
+crocksdb_logger_impl_t* crocksdb_logger_impl_create(void* rep, void (*destructor_)(void*),logv_cb logv) {
+  crocksdb_logger_impl_t * logger = new crocksdb_logger_impl_t;
+  logger->rep = rep;
+  logger->destructor_ = destructor_;
+  logger->logv_internal = logv;
+  return logger;
+}
+
+void crocksdb_logger_impl_destroy(crocksdb_logger_impl_t* t) { delete t; }
+
+void crocksdb_options_set_info_log(crocksdb_options_t* opt, crocksdb_logger_t* l ) {
   if (l) {
     opt->rep.info_log = l->rep;
   }
@@ -4117,6 +4147,16 @@ void crocksdb_delete_files_in_ranges_cf(
 }
 
 void crocksdb_free(void* ptr) { free(ptr); }
+
+crocksdb_logger_t *crocksdb_create_env_logger(const char *fname,crocksdb_env_t *env) {
+  crocksdb_logger_t *logger = new crocksdb_logger_t;
+  Status s = NewEnvLogger(std::string(fname),env->rep,&logger->rep);
+  if (!s.ok()) {
+    delete logger;
+    return NULL;
+  }
+  return logger;
+}
 
 crocksdb_logger_t *crocksdb_create_log_from_options(const char *path,
                                                     crocksdb_options_t *opts,

@@ -21,13 +21,14 @@ pub const __USE_MISC: u32 = 1;
 pub const __USE_ATFILE: u32 = 1;
 pub const __USE_FORTIFY_LEVEL: u32 = 0;
 pub const __GLIBC_USE_DEPRECATED_GETS: u32 = 0;
+pub const __GLIBC_USE_DEPRECATED_SCANF: u32 = 0;
 pub const _STDC_PREDEF_H: u32 = 1;
 pub const __STDC_IEC_559__: u32 = 1;
 pub const __STDC_IEC_559_COMPLEX__: u32 = 1;
 pub const __STDC_ISO_10646__: u32 = 201706;
 pub const __GNU_LIBRARY__: u32 = 6;
 pub const __GLIBC__: u32 = 2;
-pub const __GLIBC_MINOR__: u32 = 28;
+pub const __GLIBC_MINOR__: u32 = 30;
 pub const _SYS_CDEFS_H: u32 = 1;
 pub const __glibc_c99_flexarr_available: u32 = 1;
 pub const __WORDSIZE: u32 = 64;
@@ -39,11 +40,13 @@ pub const __GLIBC_USE_IEC_60559_BFP_EXT: u32 = 0;
 pub const __GLIBC_USE_IEC_60559_FUNCS_EXT: u32 = 0;
 pub const __GLIBC_USE_IEC_60559_TYPES_EXT: u32 = 0;
 pub const _BITS_TYPES_H: u32 = 1;
+pub const __TIMESIZE: u32 = 64;
 pub const _BITS_TYPESIZES_H: u32 = 1;
 pub const __OFF_T_MATCHES_OFF64_T: u32 = 1;
 pub const __INO_T_MATCHES_INO64_T: u32 = 1;
 pub const __RLIM_T_MATCHES_RLIM64_T: u32 = 1;
 pub const __FD_SETSIZE: u32 = 1024;
+pub const _BITS_TIME64_H: u32 = 1;
 pub const _BITS_WCHAR_H: u32 = 1;
 pub const _BITS_STDINT_INTN_H: u32 = 1;
 pub const _BITS_STDINT_UINTN_H: u32 = 1;
@@ -896,6 +899,15 @@ extern "C" {
         db: *mut crocksdb_t,
         options: *const crocksdb_writeoptions_t,
         batch: *mut crocksdb_writebatch_t,
+        errptr: *mut *mut libc::c_char,
+    );
+}
+extern "C" {
+    pub fn crocksdb_write_multi_batch(
+        db: *mut crocksdb_t,
+        options: *const crocksdb_writeoptions_t,
+        batches: *mut *mut crocksdb_writebatch_t,
+        batch_size: usize,
         errptr: *mut *mut libc::c_char,
     );
 }
@@ -2338,6 +2350,17 @@ extern "C" {
         arg1: *mut crocksdb_options_t,
         arg2: libc::c_uchar,
     );
+}
+extern "C" {
+    pub fn crocksdb_options_set_enable_multi_batch_write(
+        opt: *mut crocksdb_options_t,
+        v: libc::c_uchar,
+    );
+}
+extern "C" {
+    pub fn crocksdb_options_is_enable_multi_batch_write(
+        opt: *mut crocksdb_options_t,
+    ) -> libc::c_uchar;
 }
 extern "C" {
     pub fn crocksdb_options_set_unordered_write(arg1: *mut crocksdb_options_t, arg2: libc::c_uchar);
@@ -4121,6 +4144,15 @@ extern "C" {
     pub fn crocksdb_perf_context_db_mutex_lock_nanos(arg1: *mut crocksdb_perf_context_t) -> u64;
 }
 extern "C" {
+    pub fn crocksdb_perf_context_write_thread_wait_nanos(arg1: *mut crocksdb_perf_context_t)
+        -> u64;
+}
+extern "C" {
+    pub fn crocksdb_perf_context_write_scheduling_flushes_compactions_time(
+        arg1: *mut crocksdb_perf_context_t,
+    ) -> u64;
+}
+extern "C" {
     pub fn crocksdb_perf_context_db_condition_wait_nanos(arg1: *mut crocksdb_perf_context_t)
         -> u64;
 }
@@ -4406,6 +4438,12 @@ extern "C" {
 }
 extern "C" {
     pub fn ctitandb_options_blob_file_compression(arg1: *mut ctitandb_options_t) -> libc::c_int;
+}
+extern "C" {
+    pub fn ctitandb_options_set_gc_merge_rewrite(
+        arg1: *mut ctitandb_options_t,
+        arg2: libc::c_uchar,
+    );
 }
 extern "C" {
     pub fn ctitandb_options_set_blob_file_compression(

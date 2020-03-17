@@ -594,22 +594,6 @@ pub const crocksdb_backgrounderrorreason_t_kCompaction: crocksdb_backgrounderror
 pub const crocksdb_backgrounderrorreason_t_kWriteCallback: crocksdb_backgrounderrorreason_t = 3;
 pub const crocksdb_backgrounderrorreason_t_kMemTable: crocksdb_backgrounderrorreason_t = 4;
 pub type crocksdb_backgrounderrorreason_t = u32;
-pub const crocksdb_encryption_method_t_kUnknown: crocksdb_encryption_method_t = 0;
-pub const crocksdb_encryption_method_t_kPlaintext: crocksdb_encryption_method_t = 1;
-pub const crocksdb_encryption_method_t_kAES128_CTR: crocksdb_encryption_method_t = 2;
-pub const crocksdb_encryption_method_t_kAES192_CTR: crocksdb_encryption_method_t = 3;
-pub const crocksdb_encryption_method_t_kAES256_CTR: crocksdb_encryption_method_t = 4;
-pub type crocksdb_encryption_method_t = u32;
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct crocksdb_file_encryption_info_t {
-    _unused: [u8; 0],
-}
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct crocksdb_encryption_key_manager_t {
-    _unused: [u8; 0],
-}
 extern "C" {
     pub fn crocksdb_open(
         options: *const crocksdb_options_t,
@@ -2358,11 +2342,6 @@ extern "C" {
     );
 }
 extern "C" {
-    pub fn crocksdb_options_is_enable_multi_batch_write(
-        opt: *mut crocksdb_options_t,
-    ) -> libc::c_uchar;
-}
-extern "C" {
     pub fn crocksdb_options_set_unordered_write(arg1: *mut crocksdb_options_t, arg2: libc::c_uchar);
 }
 extern "C" {
@@ -3109,137 +3088,6 @@ extern "C" {
 }
 extern "C" {
     pub fn crocksdb_sequential_file_destroy(arg1: *mut crocksdb_sequential_file_t);
-}
-extern "C" {
-    pub fn crocksdb_file_encryption_info_create() -> *mut crocksdb_file_encryption_info_t;
-}
-extern "C" {
-    pub fn crocksdb_file_encryption_info_destroy(file_info: *mut crocksdb_file_encryption_info_t);
-}
-extern "C" {
-    pub fn crocksdb_file_encryption_info_method(
-        file_info: *mut crocksdb_file_encryption_info_t,
-    ) -> crocksdb_encryption_method_t;
-}
-extern "C" {
-    pub fn crocksdb_file_encryption_info_key(
-        file_info: *mut crocksdb_file_encryption_info_t,
-        keylen: *mut usize,
-    ) -> *const libc::c_char;
-}
-extern "C" {
-    pub fn crocksdb_file_encryption_info_iv(
-        file_info: *mut crocksdb_file_encryption_info_t,
-        ivlen: *mut usize,
-    ) -> *const libc::c_char;
-}
-extern "C" {
-    pub fn crocksdb_file_encryption_info_set_method(
-        file_info: *mut crocksdb_file_encryption_info_t,
-        method: crocksdb_encryption_method_t,
-    );
-}
-extern "C" {
-    pub fn crocksdb_file_encryption_info_set_key(
-        file_info: *mut crocksdb_file_encryption_info_t,
-        key: *const libc::c_char,
-        keylen: usize,
-    );
-}
-extern "C" {
-    pub fn crocksdb_file_encryption_info_set_iv(
-        file_info: *mut crocksdb_file_encryption_info_t,
-        iv: *const libc::c_char,
-        ivlen: usize,
-    );
-}
-pub type crocksdb_encryption_key_manager_get_file_cb = ::std::option::Option<
-    unsafe extern "C" fn(
-        state: *mut libc::c_void,
-        fname: *const libc::c_char,
-        file_info: *mut crocksdb_file_encryption_info_t,
-    ) -> *const libc::c_char,
->;
-pub type crocksdb_encryption_key_manager_new_file_cb = ::std::option::Option<
-    unsafe extern "C" fn(
-        state: *mut libc::c_void,
-        fname: *const libc::c_char,
-        file_info: *mut crocksdb_file_encryption_info_t,
-    ) -> *const libc::c_char,
->;
-pub type crocksdb_encryption_key_manager_delete_file_cb = ::std::option::Option<
-    unsafe extern "C" fn(
-        state: *mut libc::c_void,
-        fname: *const libc::c_char,
-    ) -> *const libc::c_char,
->;
-pub type crocksdb_encryption_key_manager_link_file_cb = ::std::option::Option<
-    unsafe extern "C" fn(
-        state: *mut libc::c_void,
-        src_fname: *const libc::c_char,
-        dst_fname: *const libc::c_char,
-    ) -> *const libc::c_char,
->;
-pub type crocksdb_encryption_key_manager_rename_file_cb = ::std::option::Option<
-    unsafe extern "C" fn(
-        state: *mut libc::c_void,
-        src_fname: *const libc::c_char,
-        dst_fname: *const libc::c_char,
-    ) -> *const libc::c_char,
->;
-extern "C" {
-    pub fn crocksdb_encryption_key_manager_create(
-        state: *mut libc::c_void,
-        destructor: ::std::option::Option<unsafe extern "C" fn(arg1: *mut libc::c_void)>,
-        get_file: crocksdb_encryption_key_manager_get_file_cb,
-        new_file: crocksdb_encryption_key_manager_new_file_cb,
-        delete_file: crocksdb_encryption_key_manager_delete_file_cb,
-        link_file: crocksdb_encryption_key_manager_link_file_cb,
-        rename_file: crocksdb_encryption_key_manager_rename_file_cb,
-    ) -> *mut crocksdb_encryption_key_manager_t;
-}
-extern "C" {
-    pub fn crocksdb_encryption_key_manager_destroy(arg1: *mut crocksdb_encryption_key_manager_t);
-}
-extern "C" {
-    pub fn crocksdb_encryption_key_manager_get_file(
-        key_manager: *mut crocksdb_encryption_key_manager_t,
-        fname: *const libc::c_char,
-        file_info: *mut crocksdb_file_encryption_info_t,
-    ) -> *const libc::c_char;
-}
-extern "C" {
-    pub fn crocksdb_encryption_key_manager_new_file(
-        key_manager: *mut crocksdb_encryption_key_manager_t,
-        fname: *const libc::c_char,
-        file_info: *mut crocksdb_file_encryption_info_t,
-    ) -> *const libc::c_char;
-}
-extern "C" {
-    pub fn crocksdb_encryption_key_manager_delete_file(
-        key_manager: *mut crocksdb_encryption_key_manager_t,
-        fname: *const libc::c_char,
-    ) -> *const libc::c_char;
-}
-extern "C" {
-    pub fn crocksdb_encryption_key_manager_link_file(
-        key_manager: *mut crocksdb_encryption_key_manager_t,
-        src_fname: *const libc::c_char,
-        dst_fname: *const libc::c_char,
-    ) -> *const libc::c_char;
-}
-extern "C" {
-    pub fn crocksdb_encryption_key_manager_rename_file(
-        key_manager: *mut crocksdb_encryption_key_manager_t,
-        src_fname: *const libc::c_char,
-        dst_fname: *const libc::c_char,
-    ) -> *const libc::c_char;
-}
-extern "C" {
-    pub fn crocksdb_key_managed_encrypted_env_create(
-        arg1: *mut crocksdb_env_t,
-        arg2: *mut crocksdb_encryption_key_manager_t,
-    ) -> *mut crocksdb_env_t;
 }
 extern "C" {
     pub fn crocksdb_sstfilereader_create(
@@ -4438,12 +4286,6 @@ extern "C" {
 }
 extern "C" {
     pub fn ctitandb_options_blob_file_compression(arg1: *mut ctitandb_options_t) -> libc::c_int;
-}
-extern "C" {
-    pub fn ctitandb_options_set_gc_merge_rewrite(
-        arg1: *mut ctitandb_options_t,
-        arg2: libc::c_uchar,
-    );
 }
 extern "C" {
     pub fn ctitandb_options_set_blob_file_compression(

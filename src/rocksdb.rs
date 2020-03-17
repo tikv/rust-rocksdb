@@ -39,7 +39,7 @@ use std::str::from_utf8;
 use std::sync::Arc;
 use std::{fs, ptr, slice};
 
-use encryption::DBEncryptionKeyManager;
+use encryption::{DBEncryptionKeyManager, EncryptionKeyManager};
 use table_properties::{TableProperties, TablePropertiesCollection};
 use table_properties_rc::TablePropertiesCollection as RcTablePropertiesCollection;
 use titan::TitanDBOptions;
@@ -2529,12 +2529,13 @@ impl Env {
     // Create an encrypted env that accepts an external key manager.
     pub fn new_key_managed_encrypted_env(
         base_env: Arc<Env>,
-        key_manager: DBEncryptionKeyManager,
+        key_manager: Arc<dyn EncryptionKeyManager>,
     ) -> Result<Env, String> {
+        let db_key_manager = DBEncryptionKeyManager::new(key_manager);
         let env = unsafe {
             crocksdb_ffi::crocksdb_key_managed_encrypted_env_create(
                 base_env.inner,
-                key_manager.inner,
+                db_key_manager.inner,
             )
         };
         Ok(Env {

@@ -29,7 +29,7 @@ pub use compaction_filter::{
     CompactionFilter, CompactionFilterContext, CompactionFilterFactory,
     CompactionFilterFactoryHandle, CompactionFilterHandle, DBCompactionFilter,
 };
-pub use encryption::{DBEncryptionKeyManager, EncryptionKeyManager, FileEncryptionInfo};
+pub use encryption::{EncryptionKeyManager, FileEncryptionInfo};
 pub use event_listener::{
     CompactionJobInfo, EventListener, FlushJobInfo, IngestionInfo, WriteStallInfo,
 };

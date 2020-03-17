@@ -1,7 +1,6 @@
 [submodule "rocksdb"]
 	path = librocksdb_sys/rocksdb
-	url = https://github.com/yiwu-arbug/rocksdb.git
-	branch = enc_env
+	url = https://github.com/tikv/rocksdb.git
 [submodule "titan"]
 	path = librocksdb_sys/libtitan_sys/titan
 	url = https://github.com/tikv/titan.git

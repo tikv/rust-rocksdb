@@ -29,14 +29,15 @@ pub use compaction_filter::{
     CompactionFilter, CompactionFilterContext, CompactionFilterFactory,
     CompactionFilterFactoryHandle, CompactionFilterHandle, DBCompactionFilter,
 };
-pub use encryption::{EncryptionKeyManager, FileEncryptionInfo};
+#[cfg(feature="encryption")]
+pub use encryption::{DBEncryptionMethod, EncryptionKeyManager, FileEncryptionInfo};
 pub use event_listener::{
     CompactionJobInfo, EventListener, FlushJobInfo, IngestionInfo, WriteStallInfo,
 };
 pub use librocksdb_sys::{
     self as crocksdb_ffi, new_bloom_filter, CompactionPriority, CompactionReason,
     DBBackgroundErrorReason, DBBottommostLevelCompaction, DBCompactionStyle, DBCompressionType,
-    DBEncryptionMethod, DBEntryType, DBInfoLogLevel, DBRateLimiterMode, DBRecoveryMode,
+    DBEntryType, DBInfoLogLevel, DBRateLimiterMode, DBRecoveryMode,
     DBStatisticsHistogramType, DBStatisticsTickerType, DBStatusPtr, DBTitanDBBlobRunMode,
     IndexType, WriteStallCondition,
 };
@@ -69,6 +70,7 @@ pub use rocksdb::Kv;
 
 mod compaction_filter;
 pub mod comparator;
+#[cfg(feature="encryption")]
 mod encryption;
 mod event_listener;
 pub mod merge_operator;

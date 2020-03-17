@@ -39,6 +39,7 @@ use std::str::from_utf8;
 use std::sync::Arc;
 use std::{fs, ptr, slice};
 
+#[cfg(feature="encryption")]
 use encryption::{DBEncryptionKeyManager, EncryptionKeyManager};
 use table_properties::{TableProperties, TablePropertiesCollection};
 use table_properties_rc::TablePropertiesCollection as RcTablePropertiesCollection;
@@ -2527,6 +2528,7 @@ impl Env {
     }
 
     // Create an encrypted env that accepts an external key manager.
+    #[cfg(feature="encryption")]
     pub fn new_key_managed_encrypted_env(
         base_env: Arc<Env>,
         key_manager: Arc<dyn EncryptionKeyManager>,

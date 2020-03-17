@@ -8,13 +8,14 @@ links = "rocksdb"
 [dependencies]
 libc = "0.2.11"
 libtitan_sys = { path = "libtitan_sys" }
-openssl-sys = { version = "0.9.54", features = ["vendored"] }
+openssl-sys = { version = "0.9.54", optional = true, features = ["vendored"] }
 
 [dev-dependencies]
 tempfile = "3.1"
 
 [features]
 default = []
+encryption = ["openssl-sys"]
 jemalloc = ["jemalloc-sys"]
 # portable doesn't require static link, though it's meaningless
 # when not using with static-link right now in this crate.

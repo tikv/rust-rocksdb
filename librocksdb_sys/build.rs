@@ -125,6 +125,10 @@ fn link_cpp(build: &mut Build) {
 fn build_rocksdb() -> Build {
     let target = env::var("TARGET").expect("TARGET was not set");
     let mut cfg = Config::new("rocksdb");
+    if cfg!(feature = "encryption") {
+        cfg.register_dep("OPENSSL").define("WITH_OPENSSL", "ON");
+        println!("cargo:rustc-link-lib=static=crypto");
+    }
     if cfg!(feature = "jemalloc") && NO_JEMALLOC_TARGETS.iter().all(|i| !target.contains(i)) {
         cfg.register_dep("JEMALLOC").define("WITH_JEMALLOC", "ON");
         println!("cargo:rustc-link-lib=static=jemalloc");
@@ -157,8 +161,6 @@ fn build_rocksdb() -> Build {
         .define("WITH_ZSTD", "ON")
         .register_dep("SNAPPY")
         .define("WITH_SNAPPY", "ON")
-        .register_dep("OPENSSL")
-        .define("WITH_OPENSSL", "ON")
         .define("WITH_TESTS", "OFF")
         .define("WITH_TOOLS", "OFF")
         .build_target("rocksdb")
@@ -194,7 +196,9 @@ fn build_rocksdb() -> Build {
     // Adding rocksdb specific compile macros.
     // TODO: should make sure crocksdb compile options is the same as rocksdb and titan.
     build.define("ROCKSDB_SUPPORT_THREAD_LOCAL", None);
-    build.define("OPENSSL", None);
+    if cfg!(feature = "encryption") {
+        build.define("OPENSSL", None);
+    }
 
     println!("cargo:rustc-link-lib=static=rocksdb");
     println!("cargo:rustc-link-lib=static=titan");
@@ -203,6 +207,5 @@ fn build_rocksdb() -> Build {
     println!("cargo:rustc-link-lib=static=lz4");
     println!("cargo:rustc-link-lib=static=zstd");
     println!("cargo:rustc-link-lib=static=snappy");
-    println!("cargo:rustc-link-lib=static=crypto");
     build
 }

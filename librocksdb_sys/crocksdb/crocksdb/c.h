@@ -181,6 +181,7 @@ typedef enum crocksdb_backgrounderrorreason_t {
   kMemTable = 4,
 } crocksdb_backgrounderrorreason_t;
 
+#ifdef OPENSSL
 typedef enum crocksdb_encryption_method_t {
   kUnknown = 0,
   kPlaintext = 1,
@@ -191,6 +192,7 @@ typedef enum crocksdb_encryption_method_t {
 
 typedef struct crocksdb_file_encryption_info_t crocksdb_file_encryption_info_t;
 typedef struct crocksdb_encryption_key_manager_t crocksdb_encryption_key_manager_t;
+#endif
 
 /* DB operations */
 
@@ -1452,6 +1454,7 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_sequential_file_destroy(
 
 /* KeyManagedEncryptedEnv */
 
+#ifdef OPENSSL
 extern C_ROCKSDB_LIBRARY_API crocksdb_file_encryption_info_t*
 crocksdb_file_encryption_info_create();
 extern C_ROCKSDB_LIBRARY_API void crocksdb_file_encryption_info_destroy(
@@ -1513,6 +1516,7 @@ crocksdb_encryption_key_manager_rename_file(
 extern C_ROCKSDB_LIBRARY_API crocksdb_env_t*
 crocksdb_key_managed_encrypted_env_create(
     crocksdb_env_t*, crocksdb_encryption_key_manager_t*);
+#endif
 
 /* SstFile */
 

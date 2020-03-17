@@ -179,10 +179,12 @@ using rocksdb::titandb::TitanBlobRunMode;
 
 using rocksdb::MemoryAllocator;
 
+#ifdef OPENSSL
 using rocksdb::encryption::EncryptionMethod;
 using rocksdb::encryption::FileEncryptionInfo;
 using rocksdb::encryption::KeyManager;
 using rocksdb::encryption::NewKeyManagedEncryptedEnv;
+#endif
 
 using std::shared_ptr;
 
@@ -550,6 +552,7 @@ struct crocksdb_universal_compaction_options_t {
   rocksdb::CompactionOptionsUniversal *rep;
 };
 
+#ifdef OPENSSL
 struct crocksdb_file_encryption_info_t {
   FileEncryptionInfo* rep;
 };
@@ -557,6 +560,7 @@ struct crocksdb_file_encryption_info_t {
 struct crocksdb_encryption_key_manager_t {
   std::shared_ptr<KeyManager> rep;
 };
+#endif
 
 static bool SaveError(char** errptr, const Status& s) {
   assert(errptr != nullptr);
@@ -3644,6 +3648,7 @@ void crocksdb_sequential_file_destroy(crocksdb_sequential_file_t* file) {
   delete file;
 }
 
+#ifdef OPENSSL
 crocksdb_file_encryption_info_t* crocksdb_file_encryption_info_create() {
   crocksdb_file_encryption_info_t* file_info = new crocksdb_file_encryption_info_t;
   file_info->rep = new FileEncryptionInfo;
@@ -3902,6 +3907,7 @@ crocksdb_env_t* crocksdb_key_managed_encrypted_env_create(
   result->is_default = false;
   return result;
 }
+#endif
 
 crocksdb_sstfilereader_t* crocksdb_sstfilereader_create(
     const crocksdb_options_t* io_options) {

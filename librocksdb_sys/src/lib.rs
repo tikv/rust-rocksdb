@@ -154,8 +154,10 @@ pub struct DBWriteStallInfo(c_void);
 pub struct DBStatusPtr(c_void);
 #[repr(C)]
 pub struct DBMapProperty(c_void);
+#[cfg(feature="encryption")]
 #[repr(C)]
 pub struct DBFileEncryptionInfo(c_void);
+#[cfg(feature="encryption")]
 #[repr(C)]
 pub struct DBEncryptionKeyManagerInstance(c_void);
 
@@ -389,6 +391,7 @@ pub enum DBBackgroundErrorReason {
     MemTable = 4,
 }
 
+#[cfg(feature="encryption")]
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 #[repr(C)]
 pub enum DBEncryptionMethod {
@@ -399,6 +402,7 @@ pub enum DBEncryptionMethod {
     Aes256Ctr = 4,
 }
 
+#[cfg(feature="encryption")]
 impl fmt::Display for DBEncryptionMethod {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{:?}", self)
@@ -1454,34 +1458,43 @@ extern "C" {
     pub fn crocksdb_ingestexternalfileoptions_destroy(opt: *mut IngestExternalFileOptions);
 
     // KeyManagedEncryptedEnv
+    #[cfg(feature="encryption")]
     pub fn crocksdb_file_encryption_info_create() -> *mut DBFileEncryptionInfo;
+    #[cfg(feature="encryption")]
     pub fn crocksdb_file_encryption_info_destroy(file_info: *mut DBFileEncryptionInfo);
+    #[cfg(feature="encryption")]
     pub fn crocksdb_file_encryption_info_method(
         file_info: *mut DBFileEncryptionInfo,
     ) -> DBEncryptionMethod;
+    #[cfg(feature="encryption")]
     pub fn crocksdb_file_encryption_info_key(
         file_info: *mut DBFileEncryptionInfo,
         key_len: *mut size_t,
     ) -> *const c_char;
+    #[cfg(feature="encryption")]
     pub fn crocksdb_file_encryption_info_iv(
         file_info: *mut DBFileEncryptionInfo,
         iv_len: *mut size_t,
     ) -> *const c_char;
+    #[cfg(feature="encryption")]
     pub fn crocksdb_file_encryption_info_set_method(
         file_info: *mut DBFileEncryptionInfo,
         method: DBEncryptionMethod,
     );
+    #[cfg(feature="encryption")]
     pub fn crocksdb_file_encryption_info_set_key(
         file_info: *mut DBFileEncryptionInfo,
         key: *const c_char,
         key_len: size_t,
     );
+    #[cfg(feature="encryption")]
     pub fn crocksdb_file_encryption_info_set_iv(
         file_info: *mut DBFileEncryptionInfo,
         iv: *const c_char,
         iv_len: size_t,
     );
 
+    #[cfg(feature="encryption")]
     pub fn crocksdb_encryption_key_manager_create(
         state: *mut c_void,
         destructor: extern "C" fn(*mut c_void),
@@ -1499,34 +1512,41 @@ extern "C" {
         link_file: extern "C" fn(*mut c_void, *const c_char, *const c_char) -> *const c_char,
         rename_file: extern "C" fn(*mut c_void, *const c_char, *const c_char) -> *const c_char,
     ) -> *mut DBEncryptionKeyManagerInstance;
+    #[cfg(feature="encryption")]
     pub fn crocksdb_encryption_key_manager_destroy(
         key_manager: *mut DBEncryptionKeyManagerInstance,
     );
+    #[cfg(feature="encryption")]
     pub fn crocksdb_encryption_key_manager_get_file(
         key_manager: *mut DBEncryptionKeyManagerInstance,
         fname: *const c_char,
         file_info: *mut DBFileEncryptionInfo,
     ) -> *const c_char;
+    #[cfg(feature="encryption")]
     pub fn crocksdb_encryption_key_manager_new_file(
         key_manager: *mut DBEncryptionKeyManagerInstance,
         fname: *const c_char,
         file_info: *mut DBFileEncryptionInfo,
     ) -> *const c_char;
+    #[cfg(feature="encryption")]
     pub fn crocksdb_encryption_key_manager_delete_file(
         key_manager: *mut DBEncryptionKeyManagerInstance,
         fname: *const c_char,
     ) -> *const c_char;
+    #[cfg(feature="encryption")]
     pub fn crocksdb_encryption_key_manager_link_file(
         key_manager: *mut DBEncryptionKeyManagerInstance,
         src_fname: *const c_char,
         dst_fname: *const c_char,
     ) -> *const c_char;
+    #[cfg(feature="encryption")]
     pub fn crocksdb_encryption_key_manager_rename_file(
         key_manager: *mut DBEncryptionKeyManagerInstance,
         src_fname: *const c_char,
         dst_fname: *const c_char,
     ) -> *const c_char;
 
+    #[cfg(feature="encryption")]
     pub fn crocksdb_key_managed_encrypted_env_create(
         base_env: *mut DBEnv,
         key_manager: *mut DBEncryptionKeyManagerInstance,

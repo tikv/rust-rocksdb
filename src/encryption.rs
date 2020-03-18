@@ -64,6 +64,12 @@ pub trait EncryptionKeyManager: Sync + Send {
     fn rename_file(&self, src_fname: &str, dst_fname: &str) -> Result<()>;
 }
 
+// Copy rust-owned error message to C-owned string. Caller is responsible to delete the result.
+fn copy_error<T: Into<Vec<u8>>>(err: T) -> *const char {
+    let cstr = CString::new(err).unwrap();
+    unsafe { libc::strdup(cstr.as_ptr()) }
+}
+
 extern "C" fn encryption_key_manager_destructor(ctx: *mut c_void) {
     unsafe {
         // Recover from raw pointer and implicitly drop.
@@ -80,16 +86,10 @@ extern "C" fn encryption_key_manager_get_file(
     let fname = match unsafe { CStr::from_ptr(fname).to_str() } {
         Ok(ret) => ret,
         Err(err) => {
-            return unsafe {
-                libc::strdup(
-                    CString::new(format!(
-                        "Encryption key manager encounter non-utf8 file name: {}",
-                        err
-                    ))
-                    .unwrap()
-                    .as_ptr(),
-                )
-            };
+            return copy_error(format!(
+                "Encryption key manager encounter non-utf8 file name: {}",
+                err
+            ));
         }
     };
     match key_manager.get_file(fname) {
@@ -99,13 +99,7 @@ extern "C" fn encryption_key_manager_get_file(
             }
             ptr::null()
         }
-        Err(err) => unsafe {
-            libc::strdup(
-                CString::new(format!("Encryption key manager get file failure: {}", err))
-                    .unwrap()
-                    .as_ptr(),
-            )
-        },
+        Err(err) => copy_error(format!("Encryption key manager get file failure: {}", err)),
     }
 }
 
@@ -118,16 +112,10 @@ extern "C" fn encryption_key_manager_new_file(
     let fname = match unsafe { CStr::from_ptr(fname).to_str() } {
         Ok(ret) => ret,
         Err(err) => {
-            return unsafe {
-                libc::strdup(
-                    CString::new(format!(
-                        "Encryption key manager encounter non-utf8 file name: {}",
-                        err
-                    ))
-                    .unwrap()
-                    .as_ptr(),
-                )
-            };
+            return copy_error(format!(
+                "Encryption key manager encounter non-utf8 file name: {}",
+                err
+            ));
         }
     };
     match key_manager.new_file(fname) {
@@ -137,13 +125,7 @@ extern "C" fn encryption_key_manager_new_file(
             }
             ptr::null()
         }
-        Err(err) => unsafe {
-            libc::strdup(
-                CString::new(format!("Encryption key manager new file failure: {}", err))
-                    .unwrap()
-                    .as_ptr(),
-            )
-        },
+        Err(err) => copy_error(format!("Encryption key manager new file failure: {}", err)),
     }
 }
 
@@ -155,30 +137,18 @@ extern "C" fn encryption_key_manager_delete_file(
     let fname = match unsafe { CStr::from_ptr(fname).to_str() } {
         Ok(ret) => ret,
         Err(err) => {
-            return unsafe {
-                libc::strdup(
-                    CString::new(format!(
-                        "Encryption key manager encounter non-utf8 file name: {}",
-                        err
-                    ))
-                    .unwrap()
-                    .as_ptr(),
-                )
-            };
+            return copy_error(format!(
+                "Encryption key manager encounter non-utf8 file name: {}",
+                err
+            ));
         }
     };
     match key_manager.delete_file(fname) {
         Ok(()) => ptr::null(),
-        Err(err) => unsafe {
-            libc::strdup(
-                CString::new(format!(
-                    "Encryption key manager delete file failure: {}",
-                    err
-                ))
-                .unwrap()
-                .as_ptr(),
-            )
-        },
+        Err(err) => copy_error(format!(
+            "Encryption key manager delete file failure: {}",
+            err
+        )),
     }
 }
 
@@ -191,45 +161,27 @@ extern "C" fn encryption_key_manager_link_file(
     let src_fname = match unsafe { CStr::from_ptr(src_fname).to_str() } {
         Ok(ret) => ret,
         Err(err) => {
-            return unsafe {
-                libc::strdup(
-                    CString::new(format!(
-                        "Encryption key manager encounter non-utf8 file name: {}",
-                        err
-                    ))
-                    .unwrap()
-                    .as_ptr(),
-                )
-            };
+            return copy_error(format!(
+                "Encryption key manager encounter non-utf8 file name: {}",
+                err
+            ));
         }
     };
     let dst_fname = match unsafe { CStr::from_ptr(dst_fname).to_str() } {
         Ok(ret) => ret,
         Err(err) => {
-            return unsafe {
-                libc::strdup(
-                    CString::new(format!(
-                        "Encryption key manager encounter non-utf8 file name: {}",
-                        err
-                    ))
-                    .unwrap()
-                    .as_ptr(),
-                )
-            };
+            return copy_error(format!(
+                "Encryption key manager encounter non-utf8 file name: {}",
+                err
+            ));
         }
     };
     match key_manager.link_file(src_fname, dst_fname) {
         Ok(()) => ptr::null(),
-        Err(err) => unsafe {
-            libc::strdup(
-                CString::new(format!(
-                    "Encryption key manager delete file failure: {}",
-                    err
-                ))
-                .unwrap()
-                .as_ptr(),
-            )
-        },
+        Err(err) => copy_error(format!(
+            "Encryption key manager delete file failure: {}",
+            err
+        )),
     }
 }
 
@@ -242,45 +194,27 @@ extern "C" fn encryption_key_manager_rename_file(
     let src_fname = match unsafe { CStr::from_ptr(src_fname).to_str() } {
         Ok(ret) => ret,
         Err(err) => {
-            return unsafe {
-                libc::strdup(
-                    CString::new(format!(
-                        "Encryption key manager encounter non-utf8 file name: {}",
-                        err
-                    ))
-                    .unwrap()
-                    .as_ptr(),
-                )
-            };
+            return copy_error(format!(
+                "Encryption key manager encounter non-utf8 file name: {}",
+                err
+            ));
         }
     };
     let dst_fname = match unsafe { CStr::from_ptr(dst_fname).to_str() } {
         Ok(ret) => ret,
         Err(err) => {
-            return unsafe {
-                libc::strdup(
-                    CString::new(format!(
-                        "Encryption key manager encounter non-utf8 file name: {}",
-                        err
-                    ))
-                    .unwrap()
-                    .as_ptr(),
-                )
-            };
+            return copy_error(format!(
+                "Encryption key manager encounter non-utf8 file name: {}",
+                err
+            ));
         }
     };
     match key_manager.rename_file(src_fname, dst_fname) {
         Ok(()) => ptr::null(),
-        Err(err) => unsafe {
-            libc::strdup(
-                CString::new(format!(
-                    "Encryption key manager delete file failure: {}",
-                    err
-                ))
-                .unwrap()
-                .as_ptr(),
-            )
-        },
+        Err(err) => copy_error(format!(
+            "Encryption key manager delete file failure: {}",
+            err
+        )),
     }
 }
 

@@ -65,166 +65,6 @@ pub trait EncryptionKeyManager: Sync + Send {
     fn rename_file(&self, src_fname: &str, dst_fname: &str) -> Result<()>;
 }
 
-pub struct DBEncryptionKeyManager {
-    pub inner: *mut DBEncryptionKeyManagerInstance,
-}
-
-impl Drop for DBEncryptionKeyManager {
-    fn drop(&mut self) {
-        unsafe {
-            crocksdb_ffi::crocksdb_encryption_key_manager_destroy(self.inner);
-        }
-    }
-}
-
-unsafe impl Send for DBEncryptionKeyManager {}
-unsafe impl Sync for DBEncryptionKeyManager {}
-
-// The implementation of EncryptionKeyManager is used to test calling the methods through FFI.
-#[cfg(test)]
-impl EncryptionKeyManager for DBEncryptionKeyManager {
-    fn get_file(&self, fname: &str) -> Result<FileEncryptionInfo> {
-        use std::io::{Error, ErrorKind};
-        use std::slice;
-        let ret: Result<FileEncryptionInfo>;
-        unsafe {
-            let file_info = crocksdb_ffi::crocksdb_file_encryption_info_create();
-            let err = crocksdb_ffi::crocksdb_encryption_key_manager_get_file(
-                self.inner,
-                CString::new(fname).unwrap().as_ptr(),
-                file_info,
-            );
-            if err == ptr::null() {
-                let mut key_len: size_t = 0;
-                let mut iv_len: size_t = 0;
-                let key: *const u8 = mem::transmute(
-                    crocksdb_ffi::crocksdb_file_encryption_info_key(file_info, &mut key_len),
-                );
-                let iv: *const u8 = mem::transmute(crocksdb_ffi::crocksdb_file_encryption_info_iv(
-                    file_info,
-                    &mut iv_len,
-                ));
-                ret = Ok(FileEncryptionInfo {
-                    method: crocksdb_ffi::crocksdb_file_encryption_info_method(file_info),
-                    key: slice::from_raw_parts(key, key_len).to_vec(),
-                    iv: slice::from_raw_parts(iv, iv_len).to_vec(),
-                });
-            } else {
-                ret = Err(Error::new(
-                    ErrorKind::Other,
-                    format!("{}", CStr::from_ptr(err).to_str().unwrap()),
-                ));
-                libc::free(err as _);
-            }
-            crocksdb_ffi::crocksdb_file_encryption_info_destroy(file_info);
-        }
-        ret
-    }
-
-    fn new_file(&self, fname: &str) -> Result<FileEncryptionInfo> {
-        use std::io::{Error, ErrorKind};
-        use std::slice;
-        let ret: Result<FileEncryptionInfo>;
-        unsafe {
-            let file_info = crocksdb_ffi::crocksdb_file_encryption_info_create();
-            let err = crocksdb_ffi::crocksdb_encryption_key_manager_new_file(
-                self.inner,
-                CString::new(fname).unwrap().as_ptr(),
-                file_info,
-            );
-            if err == ptr::null() {
-                let mut key_len: size_t = 0;
-                let mut iv_len: size_t = 0;
-                let key: *const u8 = mem::transmute(
-                    crocksdb_ffi::crocksdb_file_encryption_info_key(file_info, &mut key_len),
-                );
-                let iv: *const u8 = mem::transmute(crocksdb_ffi::crocksdb_file_encryption_info_iv(
-                    file_info,
-                    &mut iv_len,
-                ));
-                ret = Ok(FileEncryptionInfo {
-                    method: crocksdb_ffi::crocksdb_file_encryption_info_method(file_info),
-                    key: slice::from_raw_parts(key, key_len).to_vec(),
-                    iv: slice::from_raw_parts(iv, iv_len).to_vec(),
-                });
-            } else {
-                ret = Err(Error::new(
-                    ErrorKind::Other,
-                    format!("{}", CStr::from_ptr(err).to_str().unwrap()),
-                ));
-                libc::free(err as _);
-            }
-            crocksdb_ffi::crocksdb_file_encryption_info_destroy(file_info);
-        }
-        ret
-    }
-
-    fn delete_file(&self, fname: &str) -> Result<()> {
-        use std::io::{Error, ErrorKind};
-        let ret: Result<()>;
-        unsafe {
-            let err = crocksdb_ffi::crocksdb_encryption_key_manager_delete_file(
-                self.inner,
-                CString::new(fname).unwrap().as_ptr(),
-            );
-            if err == ptr::null() {
-                ret = Ok(());
-            } else {
-                ret = Err(Error::new(
-                    ErrorKind::Other,
-                    format!("{}", CStr::from_ptr(err).to_str().unwrap()),
-                ));
-                libc::free(err as _);
-            }
-        }
-        ret
-    }
-
-    fn link_file(&self, src_fname: &str, dst_fname: &str) -> Result<()> {
-        use std::io::{Error, ErrorKind};
-        let ret: Result<()>;
-        unsafe {
-            let err = crocksdb_ffi::crocksdb_encryption_key_manager_link_file(
-                self.inner,
-                CString::new(src_fname).unwrap().as_ptr(),
-                CString::new(dst_fname).unwrap().as_ptr(),
-            );
-            if err == ptr::null() {
-                ret = Ok(());
-            } else {
-                ret = Err(Error::new(
-                    ErrorKind::Other,
-                    format!("{}", CStr::from_ptr(err).to_str().unwrap()),
-                ));
-                libc::free(err as _);
-            }
-        }
-        ret
-    }
-
-    fn rename_file(&self, src_fname: &str, dst_fname: &str) -> Result<()> {
-        use std::io::{Error, ErrorKind};
-        let ret: Result<()>;
-        unsafe {
-            let err = crocksdb_ffi::crocksdb_encryption_key_manager_rename_file(
-                self.inner,
-                CString::new(src_fname).unwrap().as_ptr(),
-                CString::new(dst_fname).unwrap().as_ptr(),
-            );
-            if err == ptr::null() {
-                ret = Ok(());
-            } else {
-                ret = Err(Error::new(
-                    ErrorKind::Other,
-                    format!("{}", CStr::from_ptr(err).to_str().unwrap()),
-                ));
-                libc::free(err as _);
-            }
-        }
-        ret
-    }
-}
-
 extern "C" fn encryption_key_manager_destructor(ctx: *mut c_void) {
     unsafe {
         // Recover Arc from ctx and implicitly drop.
@@ -447,6 +287,13 @@ extern "C" fn encryption_key_manager_rename_file(
     }
 }
 
+pub struct DBEncryptionKeyManager {
+    pub inner: *mut DBEncryptionKeyManagerInstance,
+}
+
+unsafe impl Send for DBEncryptionKeyManager {}
+unsafe impl Sync for DBEncryptionKeyManager {}
+
 impl DBEncryptionKeyManager {
     pub fn new(key_manager: Arc<dyn EncryptionKeyManager>) -> DBEncryptionKeyManager {
         // The size of the raw pointer is of 16 bytes, and it doesn't fit in a C-style pointer.
@@ -466,6 +313,159 @@ impl DBEncryptionKeyManager {
             )
         };
         DBEncryptionKeyManager { inner: instance }
+    }
+}
+
+impl Drop for DBEncryptionKeyManager {
+    fn drop(&mut self) {
+        unsafe {
+            crocksdb_ffi::crocksdb_encryption_key_manager_destroy(self.inner);
+        }
+    }
+}
+
+// The implementation of EncryptionKeyManager is used to test calling the methods through FFI.
+#[cfg(test)]
+impl EncryptionKeyManager for DBEncryptionKeyManager {
+    fn get_file(&self, fname: &str) -> Result<FileEncryptionInfo> {
+        use std::io::{Error, ErrorKind};
+        use std::slice;
+        let ret: Result<FileEncryptionInfo>;
+        unsafe {
+            let file_info = crocksdb_ffi::crocksdb_file_encryption_info_create();
+            let err = crocksdb_ffi::crocksdb_encryption_key_manager_get_file(
+                self.inner,
+                CString::new(fname).unwrap().as_ptr(),
+                file_info,
+            );
+            if err == ptr::null() {
+                let mut key_len: size_t = 0;
+                let mut iv_len: size_t = 0;
+                let key: *const u8 = mem::transmute(
+                    crocksdb_ffi::crocksdb_file_encryption_info_key(file_info, &mut key_len),
+                );
+                let iv: *const u8 = mem::transmute(crocksdb_ffi::crocksdb_file_encryption_info_iv(
+                    file_info,
+                    &mut iv_len,
+                ));
+                ret = Ok(FileEncryptionInfo {
+                    method: crocksdb_ffi::crocksdb_file_encryption_info_method(file_info),
+                    key: slice::from_raw_parts(key, key_len).to_vec(),
+                    iv: slice::from_raw_parts(iv, iv_len).to_vec(),
+                });
+            } else {
+                ret = Err(Error::new(
+                    ErrorKind::Other,
+                    format!("{}", CStr::from_ptr(err).to_str().unwrap()),
+                ));
+                libc::free(err as _);
+            }
+            crocksdb_ffi::crocksdb_file_encryption_info_destroy(file_info);
+        }
+        ret
+    }
+
+    fn new_file(&self, fname: &str) -> Result<FileEncryptionInfo> {
+        use std::io::{Error, ErrorKind};
+        use std::slice;
+        let ret: Result<FileEncryptionInfo>;
+        unsafe {
+            let file_info = crocksdb_ffi::crocksdb_file_encryption_info_create();
+            let err = crocksdb_ffi::crocksdb_encryption_key_manager_new_file(
+                self.inner,
+                CString::new(fname).unwrap().as_ptr(),
+                file_info,
+            );
+            if err == ptr::null() {
+                let mut key_len: size_t = 0;
+                let mut iv_len: size_t = 0;
+                let key: *const u8 = mem::transmute(
+                    crocksdb_ffi::crocksdb_file_encryption_info_key(file_info, &mut key_len),
+                );
+                let iv: *const u8 = mem::transmute(crocksdb_ffi::crocksdb_file_encryption_info_iv(
+                    file_info,
+                    &mut iv_len,
+                ));
+                ret = Ok(FileEncryptionInfo {
+                    method: crocksdb_ffi::crocksdb_file_encryption_info_method(file_info),
+                    key: slice::from_raw_parts(key, key_len).to_vec(),
+                    iv: slice::from_raw_parts(iv, iv_len).to_vec(),
+                });
+            } else {
+                ret = Err(Error::new(
+                    ErrorKind::Other,
+                    format!("{}", CStr::from_ptr(err).to_str().unwrap()),
+                ));
+                libc::free(err as _);
+            }
+            crocksdb_ffi::crocksdb_file_encryption_info_destroy(file_info);
+        }
+        ret
+    }
+
+    fn delete_file(&self, fname: &str) -> Result<()> {
+        use std::io::{Error, ErrorKind};
+        let ret: Result<()>;
+        unsafe {
+            let err = crocksdb_ffi::crocksdb_encryption_key_manager_delete_file(
+                self.inner,
+                CString::new(fname).unwrap().as_ptr(),
+            );
+            if err == ptr::null() {
+                ret = Ok(());
+            } else {
+                ret = Err(Error::new(
+                    ErrorKind::Other,
+                    format!("{}", CStr::from_ptr(err).to_str().unwrap()),
+                ));
+                libc::free(err as _);
+            }
+        }
+        ret
+    }
+
+    fn link_file(&self, src_fname: &str, dst_fname: &str) -> Result<()> {
+        use std::io::{Error, ErrorKind};
+        let ret: Result<()>;
+        unsafe {
+            let err = crocksdb_ffi::crocksdb_encryption_key_manager_link_file(
+                self.inner,
+                CString::new(src_fname).unwrap().as_ptr(),
+                CString::new(dst_fname).unwrap().as_ptr(),
+            );
+            if err == ptr::null() {
+                ret = Ok(());
+            } else {
+                ret = Err(Error::new(
+                    ErrorKind::Other,
+                    format!("{}", CStr::from_ptr(err).to_str().unwrap()),
+                ));
+                libc::free(err as _);
+            }
+        }
+        ret
+    }
+
+    fn rename_file(&self, src_fname: &str, dst_fname: &str) -> Result<()> {
+        use std::io::{Error, ErrorKind};
+        let ret: Result<()>;
+        unsafe {
+            let err = crocksdb_ffi::crocksdb_encryption_key_manager_rename_file(
+                self.inner,
+                CString::new(src_fname).unwrap().as_ptr(),
+                CString::new(dst_fname).unwrap().as_ptr(),
+            );
+            if err == ptr::null() {
+                ret = Ok(());
+            } else {
+                ret = Err(Error::new(
+                    ErrorKind::Other,
+                    format!("{}", CStr::from_ptr(err).to_str().unwrap()),
+                ));
+                libc::free(err as _);
+            }
+        }
+        ret
     }
 }
 

@@ -87,7 +87,7 @@ extern "C" fn encryption_key_manager_get_file(
                         err
                     ))
                     .unwrap()
-                    .into_raw(),
+                    .as_ptr(),
                 )
             };
         }
@@ -103,7 +103,7 @@ extern "C" fn encryption_key_manager_get_file(
             libc::strdup(
                 CString::new(format!("Encryption key manager get file failure: {}", err))
                     .unwrap()
-                    .into_raw(),
+                    .as_ptr(),
             )
         },
     }
@@ -125,7 +125,7 @@ extern "C" fn encryption_key_manager_new_file(
                         err
                     ))
                     .unwrap()
-                    .into_raw(),
+                    .as_ptr(),
                 )
             };
         }
@@ -141,7 +141,7 @@ extern "C" fn encryption_key_manager_new_file(
             libc::strdup(
                 CString::new(format!("Encryption key manager new file failure: {}", err))
                     .unwrap()
-                    .into_raw(),
+                    .as_ptr(),
             )
         },
     }
@@ -162,7 +162,7 @@ extern "C" fn encryption_key_manager_delete_file(
                         err
                     ))
                     .unwrap()
-                    .into_raw(),
+                    .as_ptr(),
                 )
             };
         }
@@ -176,7 +176,7 @@ extern "C" fn encryption_key_manager_delete_file(
                     err
                 ))
                 .unwrap()
-                .into_raw(),
+                .as_ptr(),
             )
         },
     }
@@ -198,7 +198,7 @@ extern "C" fn encryption_key_manager_link_file(
                         err
                     ))
                     .unwrap()
-                    .into_raw(),
+                    .as_ptr(),
                 )
             };
         }
@@ -213,7 +213,7 @@ extern "C" fn encryption_key_manager_link_file(
                         err
                     ))
                     .unwrap()
-                    .into_raw(),
+                    .as_ptr(),
                 )
             };
         }
@@ -227,7 +227,7 @@ extern "C" fn encryption_key_manager_link_file(
                     err
                 ))
                 .unwrap()
-                .into_raw(),
+                .as_ptr(),
             )
         },
     }
@@ -249,7 +249,7 @@ extern "C" fn encryption_key_manager_rename_file(
                         err
                     ))
                     .unwrap()
-                    .into_raw(),
+                    .as_ptr(),
                 )
             };
         }
@@ -264,7 +264,7 @@ extern "C" fn encryption_key_manager_rename_file(
                         err
                     ))
                     .unwrap()
-                    .into_raw(),
+                    .as_ptr(),
                 )
             };
         }
@@ -278,7 +278,7 @@ extern "C" fn encryption_key_manager_rename_file(
                     err
                 ))
                 .unwrap()
-                .into_raw(),
+                .as_ptr(),
             )
         },
     }

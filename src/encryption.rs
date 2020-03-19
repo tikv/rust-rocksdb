@@ -65,7 +65,7 @@ pub trait EncryptionKeyManager: Sync + Send {
 }
 
 // Copy rust-owned error message to C-owned string. Caller is responsible to delete the result.
-fn copy_error<T: Into<Vec<u8>>>(err: T) -> *const char {
+fn copy_error<T: Into<Vec<u8>>>(err: T) -> *const c_char {
     let cstr = CString::new(err).unwrap();
     unsafe { libc::strdup(cstr.as_ptr()) }
 }

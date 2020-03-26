@@ -158,6 +158,12 @@ pub struct DBWriteStallInfo(c_void);
 pub struct DBStatusPtr(c_void);
 #[repr(C)]
 pub struct DBMapProperty(c_void);
+#[cfg(feature = "encryption")]
+#[repr(C)]
+pub struct DBFileEncryptionInfo(c_void);
+#[cfg(feature = "encryption")]
+#[repr(C)]
+pub struct DBEncryptionKeyManagerInstance(c_void);
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 #[repr(C)]
@@ -389,6 +395,24 @@ pub enum DBBackgroundErrorReason {
     MemTable = 4,
 }
 
+#[cfg(feature = "encryption")]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[repr(C)]
+pub enum DBEncryptionMethod {
+    Unknown = 0,
+    Plaintext = 1,
+    Aes128Ctr = 2,
+    Aes192Ctr = 3,
+    Aes256Ctr = 4,
+}
+
+#[cfg(feature = "encryption")]
+impl fmt::Display for DBEncryptionMethod {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
 /// # Safety
 ///
 /// ptr must point to a valid CStr value
@@ -578,6 +602,7 @@ extern "C" {
     pub fn crocksdb_options_set_bytes_per_sync(options: *mut Options, bytes: u64);
     pub fn crocksdb_options_set_enable_pipelined_write(options: *mut Options, v: bool);
     pub fn crocksdb_options_set_enable_multi_batch_write(options: *mut Options, v: bool);
+    pub fn crocksdb_options_is_enable_multi_batch_write(options: *mut Options) -> bool;
     pub fn crocksdb_options_set_unordered_write(options: *mut Options, v: bool);
     pub fn crocksdb_options_set_allow_concurrent_memtable_write(options: *mut Options, v: bool);
     pub fn crocksdb_options_set_manual_wal_flush(options: *mut Options, v: bool);
@@ -1436,6 +1461,101 @@ extern "C" {
     );
     pub fn crocksdb_ingestexternalfileoptions_destroy(opt: *mut IngestExternalFileOptions);
 
+    // KeyManagedEncryptedEnv
+    #[cfg(feature = "encryption")]
+    pub fn crocksdb_file_encryption_info_create() -> *mut DBFileEncryptionInfo;
+    #[cfg(feature = "encryption")]
+    pub fn crocksdb_file_encryption_info_destroy(file_info: *mut DBFileEncryptionInfo);
+    #[cfg(feature = "encryption")]
+    pub fn crocksdb_file_encryption_info_method(
+        file_info: *mut DBFileEncryptionInfo,
+    ) -> DBEncryptionMethod;
+    #[cfg(feature = "encryption")]
+    pub fn crocksdb_file_encryption_info_key(
+        file_info: *mut DBFileEncryptionInfo,
+        key_len: *mut size_t,
+    ) -> *const c_char;
+    #[cfg(feature = "encryption")]
+    pub fn crocksdb_file_encryption_info_iv(
+        file_info: *mut DBFileEncryptionInfo,
+        iv_len: *mut size_t,
+    ) -> *const c_char;
+    #[cfg(feature = "encryption")]
+    pub fn crocksdb_file_encryption_info_set_method(
+        file_info: *mut DBFileEncryptionInfo,
+        method: DBEncryptionMethod,
+    );
+    #[cfg(feature = "encryption")]
+    pub fn crocksdb_file_encryption_info_set_key(
+        file_info: *mut DBFileEncryptionInfo,
+        key: *const c_char,
+        key_len: size_t,
+    );
+    #[cfg(feature = "encryption")]
+    pub fn crocksdb_file_encryption_info_set_iv(
+        file_info: *mut DBFileEncryptionInfo,
+        iv: *const c_char,
+        iv_len: size_t,
+    );
+
+    #[cfg(feature = "encryption")]
+    pub fn crocksdb_encryption_key_manager_create(
+        state: *mut c_void,
+        destructor: extern "C" fn(*mut c_void),
+        get_file: extern "C" fn(
+            *mut c_void,
+            *const c_char,
+            *mut DBFileEncryptionInfo,
+        ) -> *const c_char,
+        new_file: extern "C" fn(
+            *mut c_void,
+            *const c_char,
+            *mut DBFileEncryptionInfo,
+        ) -> *const c_char,
+        delete_file: extern "C" fn(*mut c_void, *const c_char) -> *const c_char,
+        link_file: extern "C" fn(*mut c_void, *const c_char, *const c_char) -> *const c_char,
+        rename_file: extern "C" fn(*mut c_void, *const c_char, *const c_char) -> *const c_char,
+    ) -> *mut DBEncryptionKeyManagerInstance;
+    #[cfg(feature = "encryption")]
+    pub fn crocksdb_encryption_key_manager_destroy(
+        key_manager: *mut DBEncryptionKeyManagerInstance,
+    );
+    #[cfg(feature = "encryption")]
+    pub fn crocksdb_encryption_key_manager_get_file(
+        key_manager: *mut DBEncryptionKeyManagerInstance,
+        fname: *const c_char,
+        file_info: *mut DBFileEncryptionInfo,
+    ) -> *const c_char;
+    #[cfg(feature = "encryption")]
+    pub fn crocksdb_encryption_key_manager_new_file(
+        key_manager: *mut DBEncryptionKeyManagerInstance,
+        fname: *const c_char,
+        file_info: *mut DBFileEncryptionInfo,
+    ) -> *const c_char;
+    #[cfg(feature = "encryption")]
+    pub fn crocksdb_encryption_key_manager_delete_file(
+        key_manager: *mut DBEncryptionKeyManagerInstance,
+        fname: *const c_char,
+    ) -> *const c_char;
+    #[cfg(feature = "encryption")]
+    pub fn crocksdb_encryption_key_manager_link_file(
+        key_manager: *mut DBEncryptionKeyManagerInstance,
+        src_fname: *const c_char,
+        dst_fname: *const c_char,
+    ) -> *const c_char;
+    #[cfg(feature = "encryption")]
+    pub fn crocksdb_encryption_key_manager_rename_file(
+        key_manager: *mut DBEncryptionKeyManagerInstance,
+        src_fname: *const c_char,
+        dst_fname: *const c_char,
+    ) -> *const c_char;
+
+    #[cfg(feature = "encryption")]
+    pub fn crocksdb_key_managed_encrypted_env_create(
+        base_env: *mut DBEnv,
+        key_manager: *mut DBEncryptionKeyManagerInstance,
+    ) -> *mut DBEnv;
+
     // SstFileReader
     pub fn crocksdb_sstfilereader_create(io_options: *const Options) -> *mut SstFileReader;
 
@@ -2084,6 +2204,7 @@ extern "C" {
     pub fn ctitandb_options_set_min_blob_size(opts: *mut DBTitanDBOptions, size: u64);
     pub fn ctitandb_options_blob_file_compression(opts: *mut DBTitanDBOptions)
         -> DBCompressionType;
+    pub fn ctitandb_options_set_gc_merge_rewrite(opts: *mut DBTitanDBOptions, enable: bool);
     pub fn ctitandb_options_set_blob_file_compression(
         opts: *mut DBTitanDBOptions,
         t: DBCompressionType,

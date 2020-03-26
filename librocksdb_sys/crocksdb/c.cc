@@ -14,6 +14,7 @@
 #include "rocksdb/comparator.h"
 #include "rocksdb/convenience.h"
 #include "rocksdb/db.h"
+#include "rocksdb/encryption.h"
 #include "rocksdb/env.h"
 #include "rocksdb/env_encryption.h"
 #include "rocksdb/filter_policy.h"
@@ -177,6 +178,13 @@ using rocksdb::titandb::TitanReadOptions;
 using rocksdb::titandb::TitanBlobRunMode;
 
 using rocksdb::MemoryAllocator;
+
+#ifdef OPENSSL
+using rocksdb::encryption::EncryptionMethod;
+using rocksdb::encryption::FileEncryptionInfo;
+using rocksdb::encryption::KeyManager;
+using rocksdb::encryption::NewKeyManagedEncryptedEnv;
+#endif
 
 using std::shared_ptr;
 
@@ -514,7 +522,7 @@ struct crocksdb_mergeoperator_t : public MergeOperator {
 struct crocksdb_env_t {
   Env* rep;
   bool is_default;
-  EncryptionProvider* encryption_provoider;
+  EncryptionProvider* encryption_provider;
   BlockCipher* block_cipher;
 };
 
@@ -557,6 +565,16 @@ struct crocksdb_slicetransform_t : public SliceTransform {
 struct crocksdb_universal_compaction_options_t {
   rocksdb::CompactionOptionsUniversal *rep;
 };
+
+#ifdef OPENSSL
+struct crocksdb_file_encryption_info_t {
+  FileEncryptionInfo* rep;
+};
+
+struct crocksdb_encryption_key_manager_t {
+  std::shared_ptr<KeyManager> rep;
+};
+#endif
 
 static bool SaveError(char** errptr, const Status& s) {
   assert(errptr != nullptr);
@@ -981,12 +999,11 @@ void crocksdb_write_multi_batch(
     crocksdb_writebatch_t** batches,
     size_t batch_size,
     char** errptr) {
-  thread_local std::vector<WriteBatch*> ws;
-  ws.clear();
+  std::vector<WriteBatch*> ws;
   for (size_t i = 0; i < batch_size; i ++) {
     ws.push_back(&batches[i]->rep);
   }
-  SaveError(errptr, db->rep->MultiThreadWrite(options->rep, ws));
+  SaveError(errptr, db->rep->MultiBatchWrite(options->rep, std::move(ws)));
 }
 
 char* crocksdb_get(
@@ -2651,6 +2668,10 @@ void crocksdb_options_set_enable_multi_batch_write(crocksdb_options_t *opt,
   opt->rep.enable_multi_thread_write = v;
 }
 
+unsigned char crocksdb_options_is_enable_multi_batch_write(crocksdb_options_t *opt) {
+  return opt->rep.enable_multi_thread_write;
+}
+
 void crocksdb_options_set_unordered_write(crocksdb_options_t* opt,
                                                 unsigned char v) {
   opt->rep.unordered_write = v;
@@ -3536,7 +3557,7 @@ crocksdb_env_t* crocksdb_default_env_create() {
   crocksdb_env_t* result = new crocksdb_env_t;
   result->rep = Env::Default();
   result->block_cipher = nullptr;
-  result->encryption_provoider = nullptr;
+  result->encryption_provider = nullptr;
   result->is_default = true;
   return result;
 }
@@ -3545,7 +3566,7 @@ crocksdb_env_t* crocksdb_mem_env_create() {
   crocksdb_env_t* result = new crocksdb_env_t;
   result->rep = rocksdb::NewMemEnv(Env::Default());
   result->block_cipher = nullptr;
-  result->encryption_provoider = nullptr;
+  result->encryption_provider = nullptr;
   result->is_default = false;
   return result;
 }
@@ -3583,9 +3604,9 @@ crocksdb_ctr_encrypted_env_create(crocksdb_env_t* base_env,
   auto result = new crocksdb_env_t;
   result->block_cipher = new CTRBlockCipher(
       ciphertext_len, std::string(ciphertext, ciphertext_len));
-  result->encryption_provoider =
+  result->encryption_provider =
       new CTREncryptionProvider(*result->block_cipher);
-  result->rep = NewEncryptedEnv(base_env->rep, result->encryption_provoider);
+  result->rep = NewEncryptedEnv(base_env->rep, result->encryption_provider);
   result->is_default = false;
 
   return result;
@@ -3614,7 +3635,7 @@ void crocksdb_env_delete_file(crocksdb_env_t* env, const char* path, char** errp
 void crocksdb_env_destroy(crocksdb_env_t* env) {
   if (!env->is_default) delete env->rep;
   if (env->block_cipher) delete env->block_cipher;
-  if (env->encryption_provoider) delete env->encryption_provoider;
+  if (env->encryption_provider) delete env->encryption_provider;
   delete env;
 }
 
@@ -3655,6 +3676,267 @@ void crocksdb_sequential_file_destroy(crocksdb_sequential_file_t* file) {
   delete file->rep;
   delete file;
 }
+
+#ifdef OPENSSL
+crocksdb_file_encryption_info_t* crocksdb_file_encryption_info_create() {
+  crocksdb_file_encryption_info_t* file_info = new crocksdb_file_encryption_info_t;
+  file_info->rep = new FileEncryptionInfo;
+  return file_info;
+}
+
+void crocksdb_file_encryption_info_destroy(
+    crocksdb_file_encryption_info_t* file_info) {
+  delete file_info->rep;
+  delete file_info;
+}
+
+crocksdb_encryption_method_t crocksdb_file_encryption_info_method(
+    crocksdb_file_encryption_info_t* file_info) {
+  assert(file_info != nullptr);
+  assert(file_info->rep != nullptr);
+  switch (file_info->rep->method) {
+    case EncryptionMethod::kUnknown:
+      return crocksdb_encryption_method_t::kUnknown;
+    case EncryptionMethod::kPlaintext:
+      return crocksdb_encryption_method_t::kPlaintext;
+    case EncryptionMethod::kAES128_CTR:
+      return crocksdb_encryption_method_t::kAES128_CTR;
+    case EncryptionMethod::kAES192_CTR:
+      return crocksdb_encryption_method_t::kAES192_CTR;
+    case EncryptionMethod::kAES256_CTR:
+      return crocksdb_encryption_method_t::kAES256_CTR;
+    default:
+      assert(false);
+  }
+}
+
+const char* crocksdb_file_encryption_info_key(
+    crocksdb_file_encryption_info_t* file_info, size_t* keylen) {
+  assert(file_info != nullptr);
+  assert(file_info->rep != nullptr);
+  assert(keylen != nullptr);
+  *keylen = file_info->rep->key.size();
+  return file_info->rep->key.c_str();
+}
+
+const char* crocksdb_file_encryption_info_iv(
+    crocksdb_file_encryption_info_t* file_info, size_t* ivlen) {
+  assert(file_info != nullptr);
+  assert(file_info->rep != nullptr);
+  assert(ivlen != nullptr);
+  *ivlen = file_info->rep->iv.size();
+  return file_info->rep->iv.c_str();
+}
+
+void crocksdb_file_encryption_info_set_method(
+    crocksdb_file_encryption_info_t* file_info, crocksdb_encryption_method_t method) {
+  assert(file_info != nullptr);
+  switch (method) {
+    case kUnknown:
+      file_info->rep->method = EncryptionMethod::kUnknown;
+      break;
+    case kPlaintext:
+      file_info->rep->method = EncryptionMethod::kPlaintext;
+      break;
+    case kAES128_CTR:
+      file_info->rep->method = EncryptionMethod::kAES128_CTR;
+      break;
+    case kAES192_CTR:
+      file_info->rep->method = EncryptionMethod::kAES192_CTR;
+      break;
+    case kAES256_CTR:
+      file_info->rep->method = EncryptionMethod::kAES256_CTR;
+      break;
+    default:
+      assert(false);
+  };
+}
+
+void crocksdb_file_encryption_info_set_key(
+    crocksdb_file_encryption_info_t* file_info, const char* key, size_t keylen) {
+  assert(file_info != nullptr);
+  file_info->rep->key = std::string(key, keylen);
+}
+
+void crocksdb_file_encryption_info_set_iv(
+    crocksdb_file_encryption_info_t* file_info, const char* iv, size_t ivlen) {
+  assert(file_info != nullptr);
+  file_info->rep->iv = std::string(iv, ivlen);
+}
+
+struct crocksdb_encryption_key_manager_impl_t : public KeyManager {
+  void* state;
+  void (*destructor)(void*);
+  crocksdb_encryption_key_manager_get_file_cb get_file;
+  crocksdb_encryption_key_manager_new_file_cb new_file;
+  crocksdb_encryption_key_manager_delete_file_cb delete_file;
+  crocksdb_encryption_key_manager_link_file_cb link_file;
+  crocksdb_encryption_key_manager_rename_file_cb rename_file;
+
+  virtual ~crocksdb_encryption_key_manager_impl_t() {
+    destructor(state);
+  }
+
+  Status GetFile(
+      const std::string& fname, FileEncryptionInfo* file_info) override {
+    crocksdb_file_encryption_info_t info;
+    info.rep = file_info;
+    const char* ret = get_file(state, fname.c_str(), &info);
+    Status s;
+    if (ret != nullptr) {
+      s = Status::Corruption(std::string(ret));
+      delete ret;
+    }
+    return s;
+  }
+  
+  Status NewFile(
+      const std::string& fname, FileEncryptionInfo* file_info) override {
+    crocksdb_file_encryption_info_t info;
+    info.rep = file_info;
+    const char* ret = new_file(state, fname.c_str(), &info);
+    Status s;
+    if (ret != nullptr) {
+      s = Status::Corruption(std::string(ret));
+      delete ret;
+    }
+    return s;
+  }
+  
+  Status DeleteFile(const std::string& fname) override {
+    const char* ret = delete_file(state, fname.c_str());
+    Status s;
+    if (ret != nullptr) {
+      s = Status::Corruption(std::string(ret));
+      delete ret;
+    }
+    return s;
+  }
+
+  Status LinkFile(
+      const std::string& src_fname, const std::string& dst_fname) override {
+    const char* ret = link_file(state, src_fname.c_str(), dst_fname.c_str());
+    Status s;
+    if (ret != nullptr) {
+      s = Status::Corruption(std::string(ret));
+      delete ret;
+    }
+    return s;
+  }
+
+  Status RenameFile(
+      const std::string& src_fname, const std::string& dst_fname) override {
+    const char* ret = rename_file(state, src_fname.c_str(), dst_fname.c_str());
+    Status s;
+    if (ret != nullptr) {
+      s = Status::Corruption(std::string(ret));
+      delete ret;
+    }
+    return s;
+  }
+};
+
+crocksdb_encryption_key_manager_t* crocksdb_encryption_key_manager_create(
+    void* state, void (*destructor)(void*),
+    crocksdb_encryption_key_manager_get_file_cb get_file,
+    crocksdb_encryption_key_manager_new_file_cb new_file,
+    crocksdb_encryption_key_manager_delete_file_cb delete_file,
+    crocksdb_encryption_key_manager_link_file_cb link_file,
+    crocksdb_encryption_key_manager_rename_file_cb rename_file) {
+  std::shared_ptr<crocksdb_encryption_key_manager_impl_t> key_manager_impl =
+      std::make_shared<crocksdb_encryption_key_manager_impl_t>();
+  key_manager_impl->state = state;
+  key_manager_impl->destructor = destructor;
+  key_manager_impl->get_file = get_file;
+  key_manager_impl->new_file = new_file;
+  key_manager_impl->delete_file = delete_file;
+  key_manager_impl->link_file = link_file;
+  key_manager_impl->rename_file = rename_file;
+  crocksdb_encryption_key_manager_t* key_manager = new crocksdb_encryption_key_manager_t;
+  key_manager->rep = key_manager_impl;
+  return key_manager;
+}
+
+void crocksdb_encryption_key_manager_destroy(crocksdb_encryption_key_manager_t* key_manager) {
+  delete key_manager;
+}
+
+
+const char* crocksdb_encryption_key_manager_get_file(
+    crocksdb_encryption_key_manager_t* key_manager, const char* fname,
+    crocksdb_file_encryption_info_t* file_info) {
+  assert(key_manager != nullptr && key_manager->rep != nullptr);
+  assert(fname != nullptr);
+  assert(file_info != nullptr && file_info->rep != nullptr);
+  Status s = key_manager->rep->GetFile(fname, file_info->rep);
+  if (!s.ok()) {
+    return strdup(s.ToString().c_str());
+  }
+  return nullptr;
+}
+
+const char* crocksdb_encryption_key_manager_new_file(
+    crocksdb_encryption_key_manager_t* key_manager, const char* fname,
+    crocksdb_file_encryption_info_t* file_info) {
+  assert(key_manager != nullptr && key_manager->rep != nullptr);
+  assert(fname != nullptr);
+  assert(file_info != nullptr && file_info->rep != nullptr);
+  Status s = key_manager->rep->NewFile(fname, file_info->rep);
+  if (!s.ok()) {
+    return strdup(s.ToString().c_str());
+  }
+  return nullptr;
+}
+
+const char* crocksdb_encryption_key_manager_delete_file(
+    crocksdb_encryption_key_manager_t* key_manager, const char* fname) {
+  assert(key_manager != nullptr && key_manager->rep != nullptr);
+  assert(fname != nullptr);
+  Status s = key_manager->rep->DeleteFile(fname);
+  if (!s.ok()) {
+    return strdup(s.ToString().c_str());
+  }
+  return nullptr;
+}
+
+const char* crocksdb_encryption_key_manager_link_file(
+    crocksdb_encryption_key_manager_t* key_manager, const char* src_fname,
+    const char* dst_fname) {
+  assert(key_manager != nullptr && key_manager->rep != nullptr);
+  assert(src_fname != nullptr);
+  assert(dst_fname != nullptr);
+  Status s = key_manager->rep->LinkFile(src_fname, dst_fname);
+  if (!s.ok()) {
+    return strdup(s.ToString().c_str());
+  }
+  return nullptr;
+}
+
+const char* crocksdb_encryption_key_manager_rename_file(
+    crocksdb_encryption_key_manager_t* key_manager, const char* src_fname,
+    const char* dst_fname) {
+  assert(key_manager != nullptr && key_manager->rep != nullptr);
+  assert(src_fname != nullptr);
+  assert(dst_fname != nullptr);
+  Status s = key_manager->rep->RenameFile(src_fname, dst_fname);
+  if (!s.ok()) {
+    return strdup(s.ToString().c_str());
+  }
+  return nullptr;
+}
+
+crocksdb_env_t* crocksdb_key_managed_encrypted_env_create(
+    crocksdb_env_t* base_env, crocksdb_encryption_key_manager_t* key_manager) {
+  assert(base_env != nullptr);
+  assert(key_manager != nullptr);
+  crocksdb_env_t* result = new crocksdb_env_t;
+  result->rep = NewKeyManagedEncryptedEnv(base_env->rep, key_manager->rep);
+  result->block_cipher = nullptr;
+  result->encryption_provider = nullptr;
+  result->is_default = false;
+  return result;
+}
+#endif
 
 crocksdb_sstfilereader_t* crocksdb_sstfilereader_create(
     const crocksdb_options_t* io_options) {
@@ -5317,6 +5599,11 @@ int ctitandb_options_blob_file_compression(ctitandb_options_t* opts) {
 void ctitandb_options_set_blob_file_compression(ctitandb_options_t* opts,
                                                 int type) {
   opts->rep.blob_file_compression = static_cast<CompressionType>(type);
+}
+
+void ctitandb_options_set_gc_merge_rewrite(ctitandb_options_t* opts,
+                                               unsigned char enable) {
+  opts->rep.gc_merge_rewrite = enable;
 }
 
 void ctitandb_decode_blob_index(const char* value, size_t value_size,

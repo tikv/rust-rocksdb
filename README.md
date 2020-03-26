@@ -3,7 +3,7 @@
 [![Build Status](https://travis-ci.org/tikv/rust-rocksdb.svg)](https://travis-ci.org/tikv/rust-rocksdb)
 [![Dependency Status](https://deps.rs/repo/github/tikv/rust-rocksdb/status.svg)](https://deps.rs/repo/github/tikv/rust-rocksdb)
 
-This library has been tested against RocksDB 6.4 on Linux and macOS. 
+This library has been tested against RocksDB 6.4 on Linux and macOS.
 
 ## Status
   - [x] basic open/put/get/delete/close

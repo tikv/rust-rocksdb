@@ -9,14 +9,12 @@ pub trait Logger: Send + Sync {
     fn logv(&self, format: *const c_char, ap: VaList);
 }
 
-#[allow(dead_code)]
 extern "C" fn destructor(ctx: *mut c_void) {
     unsafe {
         Box::from_raw(ctx as *mut Box<dyn Logger>);
     }
 }
 
-#[allow(dead_code)]
 extern "C" fn logv(ctx: *mut c_void, format: *const c_char, ap: VaList) {
     unsafe {
         let logger = &*(ctx as *mut Box<dyn Logger>);
@@ -24,20 +22,18 @@ extern "C" fn logv(ctx: *mut c_void, format: *const c_char, ap: VaList) {
     }
 }
 
-#[allow(dead_code)]
 pub fn new_logger<L: Logger>(l: L) -> *mut DBLogger {
-    let p: Box<dyn Logger> = Box::new(l);
     unsafe {
-        let logger_impl = crocksdb_ffi::crocksdb_logger_impl_create(
+        let p: Box<dyn Logger> = Box::new(l);
+        let logger_impl = crocksdb_ffi::crocksdb_logger_impl_create();
+        crocksdb_ffi::crocksdb_logger_create_from_impl(
             Box::into_raw(Box::new(p)) as *mut c_void,
             destructor,
             logv,
-        );
-        crocksdb_ffi::crocksdb_logger_create_from_impl(logger_impl)
+        )
     }
 }
 
-#[allow(dead_code)]
 pub fn create_env_logger(fname: &str, mut env: DBEnv) -> *mut DBLogger {
     let name = CString::new(fname.as_bytes()).unwrap();
     unsafe { crocksdb_ffi::crocksdb_create_env_logger(name.as_ptr(), &mut env) }

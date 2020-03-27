@@ -1714,12 +1714,11 @@ extern "C" {
         name: extern "C" fn(*mut c_void) -> *const c_char,
     ) -> *mut DBSliceTransform;
     pub fn crocksdb_slicetransform_destroy(transform: *mut DBSliceTransform);
-    pub fn crocksdb_logger_create_from_impl(logger_impl: *mut DBLoggerImpl) -> *mut DBLogger;
-    pub fn crocksdb_logger_impl_create(
+    pub fn crocksdb_logger_create_from_impl(
         state: *mut c_void,
         destructor: extern "C" fn(*mut c_void),
         logv: extern "C" fn(ctx: *mut c_void, format: *const c_char, ap: VaList),
-    ) -> *mut DBLoggerImpl;
+    ) -> *mut DBLogger;
     pub fn crocksdb_create_env_logger(fname: *const libc::c_char, env: *mut DBEnv)
         -> *mut DBLogger;
     pub fn crocksdb_create_log_from_options(

@@ -9,6 +9,11 @@
 
 #include "crocksdb/c.h"
 
+#include <stdlib.h>
+
+#include <limits>
+
+#include "db/column_family.h"
 #include "rocksdb/cache.h"
 #include "rocksdb/compaction_filter.h"
 #include "rocksdb/comparator.h"
@@ -18,6 +23,7 @@
 #include "rocksdb/env.h"
 #include "rocksdb/env_encryption.h"
 #include "rocksdb/filter_policy.h"
+#include "rocksdb/iostats_context.h"
 #include "rocksdb/iterator.h"
 #include "rocksdb/ldb_tool.h"
 #include "rocksdb/listener.h"
@@ -38,22 +44,14 @@
 #include "rocksdb/utilities/debug.h"
 #include "rocksdb/utilities/options_util.h"
 #include "rocksdb/write_batch.h"
-#include "rocksdb/iostats_context.h"
-
-#include "db/column_family.h"
-#include "table/sst_file_writer_collectors.h"
+#include "src/blob_format.h"
 #include "table/block_based/block_based_table_factory.h"
+#include "table/sst_file_writer_collectors.h"
 #include "table/table_reader.h"
-#include "util/file_reader_writer.h"
-#include "util/coding.h"
-
 #include "titan/db.h"
 #include "titan/options.h"
-#include "src/blob_format.h"
-
-#include <stdlib.h>
-
-#include <limits>
+#include "util/coding.h"
+#include "util/file_reader_writer.h"
 
 #if !defined(ROCKSDB_MAJOR) || !defined(ROCKSDB_MINOR) || !defined(ROCKSDB_PATCH)
 #error Only rocksdb 5.7.3+ is supported.
@@ -2335,20 +2333,15 @@ void crocksdb_options_set_env(crocksdb_options_t* opt, crocksdb_env_t* env) {
   opt->rep.env = (env ? env->rep : nullptr);
 }
 
-crocksdb_logger_t* crocksdb_logger_create_from_impl(
-    crocksdb_logger_impl_t* li) {
-  crocksdb_logger_t* logger = new crocksdb_logger_t;
-  logger->rep = std::shared_ptr<Logger>(li);
-  return logger;
-}
-
-crocksdb_logger_impl_t* crocksdb_logger_impl_create(void* rep,
+crocksdb_logger_t* crocksdb_logger_create_from_impl(void* rep,
                                                     void (*destructor_)(void*),
                                                     logv_cb logv) {
-  crocksdb_logger_impl_t* logger = new crocksdb_logger_impl_t;
-  logger->rep = rep;
-  logger->destructor_ = destructor_;
-  logger->logv_internal_ = logv;
+  crocksdb_logger_t* logger = new crocksdb_logger_t;
+  crocksdb_logger_impl_t* li = new crocksdb_li_impl_t;
+  li->rep = rep;
+  li->destructor_ = destructor_;
+  li->logv_internal_ = logv;
+  logger->rep = std::shared_ptr<Logger>(li);
   return logger;
 }
 
@@ -2670,7 +2663,8 @@ void crocksdb_options_set_enable_multi_batch_write(crocksdb_options_t *opt,
   opt->rep.enable_multi_thread_write = v;
 }
 
-unsigned char crocksdb_options_is_enable_multi_batch_write(crocksdb_options_t *opt) {
+unsigned char crocksdb_options_is_enable_multi_batch_write(
+    crocksdb_options_t* opt) {
   return opt->rep.enable_multi_thread_write;
 }
 
@@ -3681,7 +3675,8 @@ void crocksdb_sequential_file_destroy(crocksdb_sequential_file_t* file) {
 
 #ifdef OPENSSL
 crocksdb_file_encryption_info_t* crocksdb_file_encryption_info_create() {
-  crocksdb_file_encryption_info_t* file_info = new crocksdb_file_encryption_info_t;
+  crocksdb_file_encryption_info_t* file_info =
+      new crocksdb_file_encryption_info_t;
   file_info->rep = new FileEncryptionInfo;
   return file_info;
 }
@@ -3731,7 +3726,8 @@ const char* crocksdb_file_encryption_info_iv(
 }
 
 void crocksdb_file_encryption_info_set_method(
-    crocksdb_file_encryption_info_t* file_info, crocksdb_encryption_method_t method) {
+    crocksdb_file_encryption_info_t* file_info,
+    crocksdb_encryption_method_t method) {
   assert(file_info != nullptr);
   switch (method) {
     case kUnknown:
@@ -3755,7 +3751,8 @@ void crocksdb_file_encryption_info_set_method(
 }
 
 void crocksdb_file_encryption_info_set_key(
-    crocksdb_file_encryption_info_t* file_info, const char* key, size_t keylen) {
+    crocksdb_file_encryption_info_t* file_info, const char* key,
+    size_t keylen) {
   assert(file_info != nullptr);
   file_info->rep->key = std::string(key, keylen);
 }
@@ -3775,12 +3772,10 @@ struct crocksdb_encryption_key_manager_impl_t : public KeyManager {
   crocksdb_encryption_key_manager_link_file_cb link_file;
   crocksdb_encryption_key_manager_rename_file_cb rename_file;
 
-  virtual ~crocksdb_encryption_key_manager_impl_t() {
-    destructor(state);
-  }
+  virtual ~crocksdb_encryption_key_manager_impl_t() { destructor(state); }
 
-  Status GetFile(
-      const std::string& fname, FileEncryptionInfo* file_info) override {
+  Status GetFile(const std::string& fname,
+                 FileEncryptionInfo* file_info) override {
     crocksdb_file_encryption_info_t info;
     info.rep = file_info;
     const char* ret = get_file(state, fname.c_str(), &info);
@@ -3791,9 +3786,9 @@ struct crocksdb_encryption_key_manager_impl_t : public KeyManager {
     }
     return s;
   }
-  
-  Status NewFile(
-      const std::string& fname, FileEncryptionInfo* file_info) override {
+
+  Status NewFile(const std::string& fname,
+                 FileEncryptionInfo* file_info) override {
     crocksdb_file_encryption_info_t info;
     info.rep = file_info;
     const char* ret = new_file(state, fname.c_str(), &info);
@@ -3804,7 +3799,7 @@ struct crocksdb_encryption_key_manager_impl_t : public KeyManager {
     }
     return s;
   }
-  
+
   Status DeleteFile(const std::string& fname) override {
     const char* ret = delete_file(state, fname.c_str());
     Status s;
@@ -3815,8 +3810,8 @@ struct crocksdb_encryption_key_manager_impl_t : public KeyManager {
     return s;
   }
 
-  Status LinkFile(
-      const std::string& src_fname, const std::string& dst_fname) override {
+  Status LinkFile(const std::string& src_fname,
+                  const std::string& dst_fname) override {
     const char* ret = link_file(state, src_fname.c_str(), dst_fname.c_str());
     Status s;
     if (ret != nullptr) {
@@ -3826,8 +3821,8 @@ struct crocksdb_encryption_key_manager_impl_t : public KeyManager {
     return s;
   }
 
-  Status RenameFile(
-      const std::string& src_fname, const std::string& dst_fname) override {
+  Status RenameFile(const std::string& src_fname,
+                    const std::string& dst_fname) override {
     const char* ret = rename_file(state, src_fname.c_str(), dst_fname.c_str());
     Status s;
     if (ret != nullptr) {
@@ -3854,15 +3849,16 @@ crocksdb_encryption_key_manager_t* crocksdb_encryption_key_manager_create(
   key_manager_impl->delete_file = delete_file;
   key_manager_impl->link_file = link_file;
   key_manager_impl->rename_file = rename_file;
-  crocksdb_encryption_key_manager_t* key_manager = new crocksdb_encryption_key_manager_t;
+  crocksdb_encryption_key_manager_t* key_manager =
+      new crocksdb_encryption_key_manager_t;
   key_manager->rep = key_manager_impl;
   return key_manager;
 }
 
-void crocksdb_encryption_key_manager_destroy(crocksdb_encryption_key_manager_t* key_manager) {
+void crocksdb_encryption_key_manager_destroy(
+    crocksdb_encryption_key_manager_t* key_manager) {
   delete key_manager;
 }
-
 
 const char* crocksdb_encryption_key_manager_get_file(
     crocksdb_encryption_key_manager_t* key_manager, const char* fname,
@@ -5605,7 +5601,7 @@ void ctitandb_options_set_blob_file_compression(ctitandb_options_t* opts,
 }
 
 void ctitandb_options_set_gc_merge_rewrite(ctitandb_options_t* opts,
-                                               unsigned char enable) {
+                                           unsigned char enable) {
   opts->rep.gc_merge_rewrite = enable;
 }
 

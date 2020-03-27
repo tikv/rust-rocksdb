@@ -2337,7 +2337,7 @@ crocksdb_logger_t* crocksdb_logger_create_from_impl(void* rep,
                                                     void (*destructor_)(void*),
                                                     logv_cb logv) {
   crocksdb_logger_t* logger = new crocksdb_logger_t;
-  crocksdb_logger_impl_t* li = new crocksdb_li_impl_t;
+  crocksdb_logger_impl_t* li = new crocksdb_logger_impl_t;
   li->rep = rep;
   li->destructor_ = destructor_;
   li->logv_internal_ = logv;

@@ -30,6 +30,8 @@ pub use compaction_filter::{
     CompactionFilter, CompactionFilterContext, CompactionFilterFactory,
     CompactionFilterFactoryHandle, CompactionFilterHandle, DBCompactionFilter,
 };
+#[cfg(feature = "encryption")]
+pub use encryption::{DBEncryptionMethod, EncryptionKeyManager, FileEncryptionInfo};
 pub use event_listener::{
     CompactionJobInfo, EventListener, FlushJobInfo, IngestionInfo, WriteStallInfo,
 };
@@ -69,6 +71,8 @@ pub use rocksdb::Kv;
 
 mod compaction_filter;
 pub mod comparator;
+#[cfg(feature = "encryption")]
+mod encryption;
 mod event_listener;
 pub mod logger;
 pub mod merge_operator;

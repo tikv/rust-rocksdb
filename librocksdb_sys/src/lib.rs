@@ -105,8 +105,6 @@ pub struct DBRateLimiter(c_void);
 #[repr(C)]
 pub struct DBLogger(c_void);
 #[repr(C)]
-pub struct DBLoggerImpl(c_void);
-#[repr(C)]
 pub struct DBCompactOptions(c_void);
 #[repr(C)]
 pub struct DBFifoCompactionOptions(c_void);
@@ -1714,7 +1712,7 @@ extern "C" {
         name: extern "C" fn(*mut c_void) -> *const c_char,
     ) -> *mut DBSliceTransform;
     pub fn crocksdb_slicetransform_destroy(transform: *mut DBSliceTransform);
-    pub fn crocksdb_logger_create_from_impl(
+    pub fn crocksdb_logger_create(
         state: *mut c_void,
         destructor: extern "C" fn(*mut c_void),
         logv: extern "C" fn(ctx: *mut c_void, format: *const c_char, ap: VaList),

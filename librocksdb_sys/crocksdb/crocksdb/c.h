@@ -896,9 +896,8 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_paranoid_checks(
     crocksdb_options_t*, unsigned char);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_env(crocksdb_options_t*,
                                                         crocksdb_env_t*);
-extern C_ROCKSDB_LIBRARY_API crocksdb_logger_t*
-crocksdb_logger_create_from_impl(void* rep, void (*destructor_)(void*),
-                                 crocksdb_logger_logv_cb logv);
+extern C_ROCKSDB_LIBRARY_API crocksdb_logger_t* crocksdb_logger_create(
+    void* rep, void (*destructor_)(void*), crocksdb_logger_logv_cb logv);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_info_log(crocksdb_options_t*,
                                                              crocksdb_logger_t*);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_info_log_level(

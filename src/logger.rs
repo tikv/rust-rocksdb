@@ -25,7 +25,7 @@ extern "C" fn logv(ctx: *mut c_void, format: *const c_char, ap: VaList) {
 pub fn new_logger<L: Logger>(l: L) -> *mut DBLogger {
     unsafe {
         let p: Box<dyn Logger> = Box::new(l);
-        crocksdb_ffi::crocksdb_logger_create_from_impl(
+        crocksdb_ffi::crocksdb_logger_create(
             Box::into_raw(Box::new(p)) as *mut c_void,
             destructor,
             logv,

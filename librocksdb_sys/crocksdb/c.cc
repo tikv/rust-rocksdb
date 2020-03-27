@@ -2333,9 +2333,8 @@ void crocksdb_options_set_env(crocksdb_options_t* opt, crocksdb_env_t* env) {
   opt->rep.env = (env ? env->rep : nullptr);
 }
 
-crocksdb_logger_t* crocksdb_logger_create_from_impl(void* rep,
-                                                    void (*destructor_)(void*),
-                                                    logv_cb logv) {
+crocksdb_logger_t* crocksdb_logger_create_from_impl(
+    void* rep, void (*destructor_)(void*), crocksdb_logger_logv_cb logv) {
   crocksdb_logger_t* logger = new crocksdb_logger_t;
   crocksdb_logger_impl_t* li = new crocksdb_logger_impl_t;
   li->rep = rep;
@@ -2344,8 +2343,6 @@ crocksdb_logger_t* crocksdb_logger_create_from_impl(void* rep,
   logger->rep = std::shared_ptr<Logger>(li);
   return logger;
 }
-
-void crocksdb_logger_impl_destroy(crocksdb_logger_impl_t* t) { delete t; }
 
 void crocksdb_options_set_info_log(crocksdb_options_t* opt,
                                    crocksdb_logger_t* l) {

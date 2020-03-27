@@ -1726,7 +1726,6 @@ extern "C" {
         options: *mut Options,
         err: *mut *mut c_char,
     ) -> *mut DBLogger;
-    pub fn crocksdb_logger_impl_destroy(logger: *mut DBLoggerImpl);
     pub fn crocksdb_log_destroy(logger: *mut DBLogger);
     pub fn crocksdb_get_pinned(
         db: *mut DBInstance,

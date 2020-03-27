@@ -1026,6 +1026,7 @@ impl DBOptions {
         Ok(())
     }
 
+    // Set the logger to options.
     pub fn set_info_log<L: Logger>(&self, l: L) {
         let logger = new_logger(l);
         unsafe {

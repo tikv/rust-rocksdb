@@ -810,7 +810,7 @@ typedef void (*on_background_error_cb)(void*, crocksdb_backgrounderrorreason_t,
                                        crocksdb_status_ptr_t*);
 typedef void (*on_stall_conditions_changed_cb)(void*, const crocksdb_writestallinfo_t*);
 
-typedef void (*logv_cb)(void*, const char*, va_list);
+typedef void (*crocksdb_logger_logv_cb)(void*, const char*, va_list);
 
 extern C_ROCKSDB_LIBRARY_API crocksdb_eventlistener_t*
 crocksdb_eventlistener_create(
@@ -898,7 +898,7 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_env(crocksdb_options_t*,
                                                         crocksdb_env_t*);
 extern C_ROCKSDB_LIBRARY_API crocksdb_logger_t*
 crocksdb_logger_create_from_impl(void* rep, void (*destructor_)(void*),
-                                 logv_cb logv);
+                                 crocksdb_logger_logv_cb logv);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_info_log(crocksdb_options_t*,
                                                              crocksdb_logger_t*);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_info_log_level(

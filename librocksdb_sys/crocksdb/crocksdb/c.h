@@ -91,7 +91,7 @@ typedef struct crocksdb_filterpolicy_t    crocksdb_filterpolicy_t;
 typedef struct crocksdb_flushoptions_t    crocksdb_flushoptions_t;
 typedef struct crocksdb_iterator_t        crocksdb_iterator_t;
 typedef struct crocksdb_logger_t          crocksdb_logger_t;
-typedef struct crocksdb_logger_impl_t     crocksdb_logger_impl_t;
+typedef struct crocksdb_logger_impl_t crocksdb_logger_impl_t;
 typedef struct crocksdb_mergeoperator_t   crocksdb_mergeoperator_t;
 typedef struct crocksdb_options_t         crocksdb_options_t;
 typedef struct crocksdb_column_family_descriptor
@@ -796,8 +796,7 @@ typedef void (*on_background_error_cb)(void*, crocksdb_backgrounderrorreason_t,
                                        crocksdb_status_ptr_t*);
 typedef void (*on_stall_conditions_changed_cb)(void*, const crocksdb_writestallinfo_t*);
 
-typedef void (*logv_cb)(
-    void* ,const char* , va_list );
+typedef void (*logv_cb)(void*, const char*, va_list);
 
 extern C_ROCKSDB_LIBRARY_API crocksdb_eventlistener_t*
 crocksdb_eventlistener_create(
@@ -883,9 +882,11 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_paranoid_checks(
     crocksdb_options_t*, unsigned char);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_env(crocksdb_options_t*,
                                                         crocksdb_env_t*);
-extern C_ROCKSDB_LIBRARY_API crocksdb_logger_t* crocksdb_logger_create_from_impl(crocksdb_logger_impl_t* li);
-extern C_ROCKSDB_LIBRARY_API crocksdb_logger_impl_t* crocksdb_logger_impl_create(
-    void* rep, void (*destructor_)(void*),logv_cb logv);
+extern C_ROCKSDB_LIBRARY_API crocksdb_logger_t*
+crocksdb_logger_create_from_impl(crocksdb_logger_impl_t* li);
+extern C_ROCKSDB_LIBRARY_API crocksdb_logger_impl_t*
+crocksdb_logger_impl_create(void* rep, void (*destructor_)(void*),
+                            logv_cb logv);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_info_log(crocksdb_options_t*,
                                                              crocksdb_logger_t*);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_info_log_level(
@@ -1651,7 +1652,8 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_delete_files_in_ranges_cf(
 // to free memory that was malloc()ed
 extern C_ROCKSDB_LIBRARY_API void crocksdb_free(void* ptr);
 
-extern C_ROCKSDB_LIBRARY_API crocksdb_logger_t *crocksdb_create_env_logger(const char *fname,crocksdb_env_t *env);
+extern C_ROCKSDB_LIBRARY_API crocksdb_logger_t* crocksdb_create_env_logger(
+    const char* fname, crocksdb_env_t* env);
 extern C_ROCKSDB_LIBRARY_API crocksdb_logger_t *
 crocksdb_create_log_from_options(const char *path, crocksdb_options_t *opts,
                                  char **errptr);

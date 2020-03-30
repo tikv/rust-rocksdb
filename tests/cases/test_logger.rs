@@ -26,7 +26,7 @@ struct TestLogger {
 }
 
 impl Logger for TestLogger {
-    fn logv(&self, _format: *const c_char, _ap: VaList) {
+    fn logv(&self, _log_level: InfoLogLevel, _format: *const c_char, _ap: VaList) {
         self.print.fetch_add(1, Ordering::SeqCst);
     }
 }

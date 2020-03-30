@@ -1715,7 +1715,12 @@ extern "C" {
     pub fn crocksdb_logger_create(
         state: *mut c_void,
         destructor: extern "C" fn(*mut c_void),
-        logv: extern "C" fn(ctx: *mut c_void, format: *const c_char, ap: VaList),
+        logv: extern "C" fn(
+            ctx: *mut c_void,
+            log_level: DBInfoLogLevel,
+            format: *const c_char,
+            ap: VaList,
+        ),
     ) -> *mut DBLogger;
     pub fn crocksdb_create_env_logger(fname: *const libc::c_char, env: *mut DBEnv)
         -> *mut DBLogger;

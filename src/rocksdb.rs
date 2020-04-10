@@ -2747,7 +2747,7 @@ pub fn run_ldb_tool(ldb_args: &[String], opts: &DBOptions) {
     }
 }
 
-pub fn run_sst_dump_tool(sst_dump_args: &Vec<String>, opts: &DBOptions) {
+pub fn run_sst_dump_tool(sst_dump_args: &[String], opts: &DBOptions) {
     unsafe {
         let sst_dump_args_cstrs: Vec<_> = sst_dump_args
             .iter()

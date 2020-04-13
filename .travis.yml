@@ -1,5 +1,4 @@
 dist: trusty
-sudo: required
 language: rust
 
 os:
@@ -8,7 +7,7 @@ os:
 rust:
   - nightly
 
-matrix:
+jobs:
   include:
   - os: osx
     osx_image: xcode11.3

@@ -696,136 +696,164 @@ impl DBOptions {
     }
 
     pub fn set_titandb_options(&mut self, opts: &TitanDBOptions) {
-        self.titan_inner = unsafe { crocksdb_ffi::ctitandb_options_copy(opts.inner) }
+        unsafe {
+            self.titan_inner = crocksdb_ffi::ctitandb_options_copy(opts.inner);
+            crocksdb_ffi::ctitandb_options_set_rocksdb_options(self.titan_inner, self.inner);
+        }
+    }
+
+    fn get_opt_inner(&self) -> *mut Options {
+        if self.titan_inner.is_null() {
+            self.inner
+        } else {
+            // When titan enabled, it copies rocksdb options to titan options,
+            // so return the rocksdb options part of titan option for later operations.
+            unsafe { crocksdb_ffi::ctitandb_options_get_rocksdb_options(self.titan_inner) }
+        }
     }
 
     pub fn increase_parallelism(&mut self, parallelism: i32) {
         unsafe {
-            crocksdb_ffi::crocksdb_options_increase_parallelism(self.inner, parallelism);
+            crocksdb_ffi::crocksdb_options_increase_parallelism(self.get_opt_inner(), parallelism);
         }
     }
 
     pub fn add_event_listener<L: EventListener>(&mut self, l: L) {
         let handle = new_event_listener(l);
-        unsafe { crocksdb_ffi::crocksdb_options_add_eventlistener(self.inner, handle) }
+        unsafe { crocksdb_ffi::crocksdb_options_add_eventlistener(self.get_opt_inner(), handle) }
     }
 
     pub fn create_if_missing(&mut self, create_if_missing: bool) {
         unsafe {
-            crocksdb_ffi::crocksdb_options_set_create_if_missing(self.inner, create_if_missing);
+            crocksdb_ffi::crocksdb_options_set_create_if_missing(
+                self.get_opt_inner(),
+                create_if_missing,
+            );
         }
     }
 
     pub fn set_env(&mut self, env: Arc<Env>) {
         unsafe {
-            crocksdb_ffi::crocksdb_options_set_env(self.inner, env.inner);
+            crocksdb_ffi::crocksdb_options_set_env(self.get_opt_inner(), env.inner);
             self.env = Some(env);
         }
     }
 
     pub fn set_max_open_files(&mut self, nfiles: c_int) {
         unsafe {
-            crocksdb_ffi::crocksdb_options_set_max_open_files(self.inner, nfiles);
+            crocksdb_ffi::crocksdb_options_set_max_open_files(self.get_opt_inner(), nfiles);
         }
     }
 
     pub fn set_max_total_wal_size(&mut self, size: u64) {
         unsafe {
-            crocksdb_ffi::crocksdb_options_set_max_total_wal_size(self.inner, size);
+            crocksdb_ffi::crocksdb_options_set_max_total_wal_size(self.get_opt_inner(), size);
         }
     }
 
     pub fn set_use_fsync(&mut self, useit: bool) {
         unsafe {
             if useit {
-                crocksdb_ffi::crocksdb_options_set_use_fsync(self.inner, 1)
+                crocksdb_ffi::crocksdb_options_set_use_fsync(self.get_opt_inner(), 1)
             } else {
-                crocksdb_ffi::crocksdb_options_set_use_fsync(self.inner, 0)
+                crocksdb_ffi::crocksdb_options_set_use_fsync(self.get_opt_inner(), 0)
             }
         }
     }
 
     pub fn set_bytes_per_sync(&mut self, nbytes: u64) {
         unsafe {
-            crocksdb_ffi::crocksdb_options_set_bytes_per_sync(self.inner, nbytes);
+            crocksdb_ffi::crocksdb_options_set_bytes_per_sync(self.get_opt_inner(), nbytes);
         }
     }
 
     pub fn set_table_cache_num_shard_bits(&mut self, nbits: c_int) {
         unsafe {
-            crocksdb_ffi::crocksdb_options_set_table_cache_numshardbits(self.inner, nbits);
+            crocksdb_ffi::crocksdb_options_set_table_cache_numshardbits(
+                self.get_opt_inner(),
+                nbits,
+            );
         }
     }
 
     pub fn set_writable_file_max_buffer_size(&mut self, nbytes: c_int) {
         unsafe {
-            crocksdb_ffi::crocksdb_options_set_writable_file_max_buffer_size(self.inner, nbytes);
+            crocksdb_ffi::crocksdb_options_set_writable_file_max_buffer_size(
+                self.get_opt_inner(),
+                nbytes,
+            );
         }
     }
 
     pub fn set_use_direct_reads(&mut self, v: bool) {
         unsafe {
-            crocksdb_ffi::crocksdb_options_set_use_direct_reads(self.inner, v);
+            crocksdb_ffi::crocksdb_options_set_use_direct_reads(self.get_opt_inner(), v);
         }
     }
 
     pub fn set_use_direct_io_for_flush_and_compaction(&mut self, v: bool) {
         unsafe {
             crocksdb_ffi::crocksdb_options_set_use_direct_io_for_flush_and_compaction(
-                self.inner, v,
+                self.get_opt_inner(),
+                v,
             );
         }
     }
 
     pub fn set_max_manifest_file_size(&mut self, size: u64) {
         unsafe {
-            crocksdb_ffi::crocksdb_options_set_max_manifest_file_size(self.inner, size);
+            crocksdb_ffi::crocksdb_options_set_max_manifest_file_size(self.get_opt_inner(), size);
         }
     }
 
     pub fn set_max_background_jobs(&mut self, n: c_int) {
         unsafe {
-            crocksdb_ffi::crocksdb_options_set_max_background_jobs(self.inner, n);
+            crocksdb_ffi::crocksdb_options_set_max_background_jobs(self.get_opt_inner(), n);
         }
     }
 
     pub fn get_max_background_jobs(&self) -> i32 {
-        unsafe { crocksdb_ffi::crocksdb_options_get_max_background_jobs(self.inner) as i32 }
+        unsafe {
+            crocksdb_ffi::crocksdb_options_get_max_background_jobs(self.get_opt_inner()) as i32
+        }
     }
 
     pub fn set_max_subcompactions(&mut self, n: u32) {
         unsafe {
-            crocksdb_ffi::crocksdb_options_set_max_subcompactions(self.inner, n);
+            crocksdb_ffi::crocksdb_options_set_max_subcompactions(self.get_opt_inner(), n);
         }
     }
 
     pub fn set_wal_bytes_per_sync(&mut self, n: u64) {
         unsafe {
-            crocksdb_ffi::crocksdb_options_set_wal_bytes_per_sync(self.inner, n);
+            crocksdb_ffi::crocksdb_options_set_wal_bytes_per_sync(self.get_opt_inner(), n);
         }
     }
 
     pub fn set_wal_recovery_mode(&mut self, mode: DBRecoveryMode) {
         unsafe {
-            crocksdb_ffi::crocksdb_options_set_wal_recovery_mode(self.inner, mode);
+            crocksdb_ffi::crocksdb_options_set_wal_recovery_mode(self.get_opt_inner(), mode);
         }
     }
 
     pub fn set_delayed_write_rate(&mut self, rate: u64) {
         unsafe {
-            crocksdb_ffi::crocksdb_options_set_delayed_write_rate(self.inner, rate);
+            crocksdb_ffi::crocksdb_options_set_delayed_write_rate(self.get_opt_inner(), rate);
         }
     }
 
     pub fn enable_statistics(&mut self, v: bool) {
         unsafe {
-            crocksdb_ffi::crocksdb_options_enable_statistics(self.inner, v);
+            crocksdb_ffi::crocksdb_options_enable_statistics(self.get_opt_inner(), v);
         }
     }
 
     pub fn get_statistics_ticker_count(&self, ticker_type: DBStatisticsTickerType) -> u64 {
         unsafe {
-            crocksdb_ffi::crocksdb_options_statistics_get_ticker_count(self.inner, ticker_type)
+            crocksdb_ffi::crocksdb_options_statistics_get_ticker_count(
+                self.get_opt_inner(),
+                ticker_type,
+            )
         }
     }
 
@@ -835,7 +863,7 @@ impl DBOptions {
     ) -> u64 {
         unsafe {
             crocksdb_ffi::crocksdb_options_statistics_get_and_reset_ticker_count(
-                self.inner,
+                self.get_opt_inner(),
                 ticker_type,
             )
         }
@@ -848,7 +876,7 @@ impl DBOptions {
         unsafe {
             let mut data = HistogramData::default();
             let ret = crocksdb_ffi::crocksdb_options_statistics_get_histogram(
-                self.inner,
+                self.get_opt_inner(),
                 hist_type,
                 &mut data.median,
                 &mut data.percentile95,
@@ -870,7 +898,8 @@ impl DBOptions {
     ) -> Option<String> {
         unsafe {
             let value = crocksdb_ffi::crocksdb_options_statistics_get_histogram_string(
-                self.inner, hist_type,
+                self.get_opt_inner(),
+                hist_type,
             );
 
             if value.is_null() {
@@ -885,7 +914,7 @@ impl DBOptions {
 
     pub fn get_statistics(&self) -> Option<String> {
         unsafe {
-            let value = crocksdb_ffi::crocksdb_options_statistics_get_string(self.inner);
+            let value = crocksdb_ffi::crocksdb_options_statistics_get_string(self.get_opt_inner());
 
             if value.is_null() {
                 return None;
@@ -900,76 +929,91 @@ impl DBOptions {
 
     pub fn reset_statistics(&self) {
         unsafe {
-            crocksdb_ffi::crocksdb_options_reset_statistics(self.inner);
+            crocksdb_ffi::crocksdb_options_reset_statistics(self.get_opt_inner());
         }
     }
 
     pub fn set_stats_dump_period_sec(&mut self, period: usize) {
         unsafe {
-            crocksdb_ffi::crocksdb_options_set_stats_dump_period_sec(self.inner, period);
+            crocksdb_ffi::crocksdb_options_set_stats_dump_period_sec(self.get_opt_inner(), period);
         }
     }
 
     pub fn set_db_log_dir(&mut self, path: &str) {
         let path = CString::new(path.as_bytes()).unwrap();
         unsafe {
-            crocksdb_ffi::crocksdb_options_set_db_log_dir(self.inner, path.as_ptr());
+            crocksdb_ffi::crocksdb_options_set_db_log_dir(self.get_opt_inner(), path.as_ptr());
         }
     }
 
     pub fn set_wal_dir(&mut self, path: &str) {
         let path = CString::new(path.as_bytes()).unwrap();
         unsafe {
-            crocksdb_ffi::crocksdb_options_set_wal_dir(self.inner, path.as_ptr());
+            crocksdb_ffi::crocksdb_options_set_wal_dir(self.get_opt_inner(), path.as_ptr());
         }
     }
 
     pub fn set_wal_ttl_seconds(&mut self, ttl: u64) {
         unsafe {
-            crocksdb_ffi::crocksdb_options_set_wal_ttl_seconds(self.inner, ttl as u64);
+            crocksdb_ffi::crocksdb_options_set_wal_ttl_seconds(self.get_opt_inner(), ttl as u64);
         }
     }
 
     pub fn set_wal_size_limit_mb(&mut self, limit: u64) {
         unsafe {
-            crocksdb_ffi::crocksdb_options_set_wal_size_limit_mb(self.inner, limit as u64);
+            crocksdb_ffi::crocksdb_options_set_wal_size_limit_mb(
+                self.get_opt_inner(),
+                limit as u64,
+            );
         }
     }
 
     pub fn set_max_log_file_size(&mut self, size: u64) {
         unsafe {
-            crocksdb_ffi::crocksdb_options_set_max_log_file_size(self.inner, size as size_t);
+            crocksdb_ffi::crocksdb_options_set_max_log_file_size(
+                self.get_opt_inner(),
+                size as size_t,
+            );
         }
     }
 
     pub fn set_log_file_time_to_roll(&mut self, ttl: u64) {
         unsafe {
-            crocksdb_ffi::crocksdb_options_set_log_file_time_to_roll(self.inner, ttl as size_t);
+            crocksdb_ffi::crocksdb_options_set_log_file_time_to_roll(
+                self.get_opt_inner(),
+                ttl as size_t,
+            );
         }
     }
 
     pub fn set_info_log_level(&mut self, level: DBInfoLogLevel) {
         unsafe {
-            crocksdb_ffi::crocksdb_options_set_info_log_level(self.inner, level);
+            crocksdb_ffi::crocksdb_options_set_info_log_level(self.get_opt_inner(), level);
         }
     }
 
     pub fn set_keep_log_file_num(&mut self, num: u64) {
         unsafe {
-            crocksdb_ffi::crocksdb_options_set_keep_log_file_num(self.inner, num as size_t);
+            crocksdb_ffi::crocksdb_options_set_keep_log_file_num(
+                self.get_opt_inner(),
+                num as size_t,
+            );
         }
     }
 
     pub fn set_recycle_log_file_num(&mut self, num: u64) {
         unsafe {
-            crocksdb_ffi::crocksdb_options_set_recycle_log_file_num(self.inner, num as size_t);
+            crocksdb_ffi::crocksdb_options_set_recycle_log_file_num(
+                self.get_opt_inner(),
+                num as size_t,
+            );
         }
     }
 
     pub fn set_compaction_readahead_size(&mut self, size: u64) {
         unsafe {
             crocksdb_ffi::crocksdb_options_set_compaction_readahead_size(
-                self.inner,
+                self.get_opt_inner(),
                 size as size_t,
             );
         }
@@ -982,7 +1026,10 @@ impl DBOptions {
             DEFAULT_FAIRNESS,
         );
         unsafe {
-            crocksdb_ffi::crocksdb_options_set_ratelimiter(self.inner, rate_limiter.inner);
+            crocksdb_ffi::crocksdb_options_set_ratelimiter(
+                self.get_opt_inner(),
+                rate_limiter.inner,
+            );
         }
     }
 
@@ -1000,7 +1047,10 @@ impl DBOptions {
             auto_tuned,
         );
         unsafe {
-            crocksdb_ffi::crocksdb_options_set_ratelimiter(self.inner, rate_limiter.inner);
+            crocksdb_ffi::crocksdb_options_set_ratelimiter(
+                self.get_opt_inner(),
+                rate_limiter.inner,
+            );
         }
     }
 
@@ -1017,8 +1067,11 @@ impl DBOptions {
         };
 
         unsafe {
-            let logger = ffi_try!(crocksdb_create_log_from_options(cpath.as_ptr(), self.inner));
-            crocksdb_ffi::crocksdb_options_set_info_log(self.inner, logger);
+            let logger = ffi_try!(crocksdb_create_log_from_options(
+                cpath.as_ptr(),
+                self.get_opt_inner()
+            ));
+            crocksdb_ffi::crocksdb_options_set_info_log(self.get_opt_inner(), logger);
             // logger uses shared_ptr, it is OK to destroy here.
             crocksdb_ffi::crocksdb_log_destroy(logger);
         }
@@ -1030,41 +1083,44 @@ impl DBOptions {
     pub fn set_info_log<L: Logger>(&self, l: L) {
         let logger = new_logger(l);
         unsafe {
-            crocksdb_ffi::crocksdb_options_set_info_log(self.inner, logger);
+            crocksdb_ffi::crocksdb_options_set_info_log(self.get_opt_inner(), logger);
         }
     }
 
     pub fn enable_pipelined_write(&self, v: bool) {
         unsafe {
-            crocksdb_ffi::crocksdb_options_set_enable_pipelined_write(self.inner, v);
+            crocksdb_ffi::crocksdb_options_set_enable_pipelined_write(self.get_opt_inner(), v);
         }
     }
 
     pub fn enable_multi_batch_write(&self, v: bool) {
         unsafe {
-            crocksdb_ffi::crocksdb_options_set_enable_multi_batch_write(self.inner, v);
+            crocksdb_ffi::crocksdb_options_set_enable_multi_batch_write(self.get_opt_inner(), v);
         }
     }
 
     pub fn is_enable_multi_batch_write(&self) -> bool {
-        unsafe { crocksdb_ffi::crocksdb_options_is_enable_multi_batch_write(self.inner) }
+        unsafe { crocksdb_ffi::crocksdb_options_is_enable_multi_batch_write(self.get_opt_inner()) }
     }
 
     pub fn enable_unordered_write(&self, v: bool) {
         unsafe {
-            crocksdb_ffi::crocksdb_options_set_unordered_write(self.inner, v);
+            crocksdb_ffi::crocksdb_options_set_unordered_write(self.get_opt_inner(), v);
         }
     }
 
     pub fn allow_concurrent_memtable_write(&self, v: bool) {
         unsafe {
-            crocksdb_ffi::crocksdb_options_set_allow_concurrent_memtable_write(self.inner, v);
+            crocksdb_ffi::crocksdb_options_set_allow_concurrent_memtable_write(
+                self.get_opt_inner(),
+                v,
+            );
         }
     }
 
     pub fn manual_wal_flush(&self, v: bool) {
         unsafe {
-            crocksdb_ffi::crocksdb_options_set_manual_wal_flush(self.inner, v);
+            crocksdb_ffi::crocksdb_options_set_manual_wal_flush(self.get_opt_inner(), v);
         }
     }
 
@@ -1083,7 +1139,7 @@ impl DBOptions {
 
         unsafe {
             crocksdb_ffi::crocksdb_options_set_db_paths(
-                self.inner,
+                self.get_opt_inner(),
                 cpaths.as_ptr(),
                 cpath_lens.as_ptr(),
                 sizes.as_ptr(),
@@ -1093,12 +1149,13 @@ impl DBOptions {
     }
 
     pub fn get_db_paths_num(&self) -> usize {
-        unsafe { crocksdb_ffi::crocksdb_options_get_db_paths_num(self.inner) }
+        unsafe { crocksdb_ffi::crocksdb_options_get_db_paths_num(self.get_opt_inner()) }
     }
 
     pub fn get_db_path(&self, idx: usize) -> Option<String> {
         unsafe {
-            let ptr = crocksdb_ffi::crocksdb_options_get_db_path(self.inner, idx as size_t);
+            let ptr =
+                crocksdb_ffi::crocksdb_options_get_db_path(self.get_opt_inner(), idx as size_t);
             if ptr.is_null() {
                 return None;
             }
@@ -1108,27 +1165,29 @@ impl DBOptions {
     }
 
     pub fn get_path_target_size(&self, idx: usize) -> u64 {
-        unsafe { crocksdb_ffi::crocksdb_options_get_path_target_size(self.inner, idx as size_t) }
+        unsafe {
+            crocksdb_ffi::crocksdb_options_get_path_target_size(self.get_opt_inner(), idx as size_t)
+        }
     }
 
     /// Set paranoid checks. The default value is `true`. We can set it to `false`
     /// to skip manifest checks.
     pub fn set_paranoid_checks(&self, enable: bool) {
         unsafe {
-            crocksdb_ffi::crocksdb_options_set_paranoid_checks(self.inner, enable as u8);
+            crocksdb_ffi::crocksdb_options_set_paranoid_checks(self.get_opt_inner(), enable as u8);
         }
     }
 
     pub fn set_doubly_skiplist(&self) {
         unsafe {
-            crocksdb_ffi::crocksdb_options_set_doubly_skip_list_rep(self.inner);
+            crocksdb_ffi::crocksdb_options_set_doubly_skip_list_rep(self.get_opt_inner());
         }
     }
 
     pub fn get_memtable_name(&self) -> Option<&str> {
         unsafe {
             let memtable_name =
-                crocksdb_ffi::crocksdb_options_get_memtable_factory_name(self.inner);
+                crocksdb_ffi::crocksdb_options_get_memtable_factory_name(self.get_opt_inner());
             if memtable_name.is_null() {
                 return None;
             }
@@ -1215,15 +1274,26 @@ impl ColumnFamilyOptions {
     }
 
     pub fn set_titandb_options(&mut self, opts: &TitanDBOptions) {
-        if !opts.inner.is_null() {
-            self.titan_inner = unsafe { crocksdb_ffi::ctitandb_options_copy(opts.inner) }
+        unsafe {
+            self.titan_inner = crocksdb_ffi::ctitandb_options_copy(opts.inner);
+            crocksdb_ffi::ctitandb_options_set_rocksdb_options(self.titan_inner, self.inner);
+        }
+    }
+
+    fn get_opt_inner(&self) -> *mut Options {
+        if self.titan_inner.is_null() {
+            self.inner
+        } else {
+            // When titan enabled, it copies rocksdb options to titan options,
+            // so return the rocksdb options part of titan option for later operations.
+            unsafe { crocksdb_ffi::ctitandb_options_get_rocksdb_options(self.titan_inner) }
         }
     }
 
     pub fn optimize_level_style_compaction(&mut self, memtable_memory_budget: i32) {
         unsafe {
             crocksdb_ffi::crocksdb_options_optimize_level_style_compaction(
-                self.inner,
+                self.get_opt_inner(),
                 memtable_memory_budget,
             );
         }
@@ -1231,7 +1301,7 @@ impl ColumnFamilyOptions {
 
     pub fn set_env(&mut self, env: Arc<Env>) {
         unsafe {
-            crocksdb_ffi::crocksdb_options_set_env(self.inner, env.inner);
+            crocksdb_ffi::crocksdb_options_set_env(self.get_opt_inner(), env.inner);
             self.env = Some(env);
         }
     }
@@ -1259,7 +1329,10 @@ impl ColumnFamilyOptions {
                 Err(e) => return Err(format!("failed to convert to cstring: {:?}", e)),
             };
             let filter = new_compaction_filter(c_name, filter);
-            crocksdb_ffi::crocksdb_options_set_compaction_filter(self.inner, filter.inner);
+            crocksdb_ffi::crocksdb_options_set_compaction_filter(
+                self.get_opt_inner(),
+                filter.inner,
+            );
             self.filter = Some(filter);
             Ok(())
         }
@@ -1282,7 +1355,10 @@ impl ColumnFamilyOptions {
         };
         unsafe {
             let factory = new_compaction_filter_factory(c_name, factory)?;
-            crocksdb_ffi::crocksdb_options_set_compaction_filter_factory(self.inner, factory.inner);
+            crocksdb_ffi::crocksdb_options_set_compaction_filter_factory(
+                self.get_opt_inner(),
+                factory.inner,
+            );
             std::mem::forget(factory); // Deconstructor will be called after `self` is dropped.
             Ok(())
         }
@@ -1295,24 +1371,27 @@ impl ColumnFamilyOptions {
     ) {
         unsafe {
             let f = new_table_properties_collector_factory(fname, factory);
-            crocksdb_ffi::crocksdb_options_add_table_properties_collector_factory(self.inner, f);
+            crocksdb_ffi::crocksdb_options_add_table_properties_collector_factory(
+                self.get_opt_inner(),
+                f,
+            );
         }
     }
 
     pub fn compression(&mut self, t: DBCompressionType) {
         unsafe {
-            crocksdb_ffi::crocksdb_options_set_compression(self.inner, t);
+            crocksdb_ffi::crocksdb_options_set_compression(self.get_opt_inner(), t);
         }
     }
 
     pub fn get_compression(&self) -> DBCompressionType {
-        unsafe { crocksdb_ffi::crocksdb_options_get_compression(self.inner) }
+        unsafe { crocksdb_ffi::crocksdb_options_get_compression(self.get_opt_inner()) }
     }
 
     pub fn compression_per_level(&mut self, level_types: &[DBCompressionType]) {
         unsafe {
             crocksdb_ffi::crocksdb_options_set_compression_per_level(
-                self.inner,
+                self.get_opt_inner(),
                 level_types.as_ptr(),
                 level_types.len() as size_t,
             )
@@ -1322,17 +1401,18 @@ impl ColumnFamilyOptions {
     pub fn get_compression_per_level(&self) -> Vec<DBCompressionType> {
         unsafe {
             let size =
-                crocksdb_ffi::crocksdb_options_get_compression_level_number(self.inner) as usize;
+                crocksdb_ffi::crocksdb_options_get_compression_level_number(self.get_opt_inner())
+                    as usize;
             let mut ret = Vec::with_capacity(size);
             let pret = ret.as_mut_ptr();
-            crocksdb_ffi::crocksdb_options_get_compression_per_level(self.inner, pret);
+            crocksdb_ffi::crocksdb_options_get_compression_per_level(self.get_opt_inner(), pret);
             ret.set_len(size);
             ret
         }
     }
 
     pub fn bottommost_compression(&self, c: DBCompressionType) {
-        unsafe { crocksdb_ffi::crocksdb_set_bottommost_compression(self.inner, c) }
+        unsafe { crocksdb_ffi::crocksdb_set_bottommost_compression(self.get_opt_inner(), c) }
     }
 
     pub fn add_merge_operator(&mut self, name: &str, merge_fn: MergeFn) {
@@ -1351,7 +1431,7 @@ impl ColumnFamilyOptions {
                 None,
                 merge_operator::name_callback,
             );
-            crocksdb_ffi::crocksdb_options_set_merge_operator(self.inner, mo);
+            crocksdb_ffi::crocksdb_options_set_merge_operator(self.get_opt_inner(), mo);
         }
     }
 
@@ -1369,44 +1449,50 @@ impl ColumnFamilyOptions {
                 compare_callback,
                 comparator::name_callback,
             );
-            crocksdb_ffi::crocksdb_options_set_comparator(self.inner, cmp);
+            crocksdb_ffi::crocksdb_options_set_comparator(self.get_opt_inner(), cmp);
         }
     }
 
     pub fn set_block_cache_size_mb(&mut self, cache_size: u64) {
         unsafe {
-            crocksdb_ffi::crocksdb_options_optimize_for_point_lookup(self.inner, cache_size);
+            crocksdb_ffi::crocksdb_options_optimize_for_point_lookup(
+                self.get_opt_inner(),
+                cache_size,
+            );
         }
     }
 
     pub fn set_min_write_buffer_number(&mut self, nbuf: c_int) {
         unsafe {
-            crocksdb_ffi::crocksdb_options_set_min_write_buffer_number_to_merge(self.inner, nbuf);
+            crocksdb_ffi::crocksdb_options_set_min_write_buffer_number_to_merge(
+                self.get_opt_inner(),
+                nbuf,
+            );
         }
     }
 
     pub fn set_max_write_buffer_number(&mut self, nbuf: c_int) {
         unsafe {
-            crocksdb_ffi::crocksdb_options_set_max_write_buffer_number(self.inner, nbuf);
+            crocksdb_ffi::crocksdb_options_set_max_write_buffer_number(self.get_opt_inner(), nbuf);
         }
     }
 
     pub fn set_write_buffer_size(&mut self, size: u64) {
         unsafe {
-            crocksdb_ffi::crocksdb_options_set_write_buffer_size(self.inner, size);
+            crocksdb_ffi::crocksdb_options_set_write_buffer_size(self.get_opt_inner(), size);
         }
     }
 
     pub fn set_max_bytes_for_level_base(&mut self, size: u64) {
         unsafe {
-            crocksdb_ffi::crocksdb_options_set_max_bytes_for_level_base(self.inner, size);
+            crocksdb_ffi::crocksdb_options_set_max_bytes_for_level_base(self.get_opt_inner(), size);
         }
     }
 
     pub fn set_max_bytes_for_level_multiplier(&mut self, mul: i32) {
         unsafe {
             crocksdb_ffi::crocksdb_options_set_max_bytes_for_level_multiplier(
-                self.inner,
+                self.get_opt_inner(),
                 f64::from(mul),
             );
         }
@@ -1414,152 +1500,180 @@ impl ColumnFamilyOptions {
 
     pub fn get_max_bytes_for_level_multiplier(&mut self) -> i32 {
         unsafe {
-            crocksdb_ffi::crocksdb_options_get_max_bytes_for_level_multiplier(self.inner) as i32
+            crocksdb_ffi::crocksdb_options_get_max_bytes_for_level_multiplier(self.get_opt_inner())
+                as i32
         }
     }
 
     pub fn set_max_compaction_bytes(&mut self, bytes: u64) {
         unsafe {
-            crocksdb_ffi::crocksdb_options_set_max_compaction_bytes(self.inner, bytes);
+            crocksdb_ffi::crocksdb_options_set_max_compaction_bytes(self.get_opt_inner(), bytes);
         }
     }
 
     pub fn set_level_compaction_dynamic_level_bytes(&mut self, v: bool) {
         unsafe {
-            crocksdb_ffi::crocksdb_options_set_level_compaction_dynamic_level_bytes(self.inner, v);
+            crocksdb_ffi::crocksdb_options_set_level_compaction_dynamic_level_bytes(
+                self.get_opt_inner(),
+                v,
+            );
         }
     }
 
     pub fn get_level_compaction_dynamic_level_bytes(&self) -> bool {
         unsafe {
-            crocksdb_ffi::crocksdb_options_get_level_compaction_dynamic_level_bytes(self.inner)
+            crocksdb_ffi::crocksdb_options_get_level_compaction_dynamic_level_bytes(
+                self.get_opt_inner(),
+            )
         }
     }
 
     pub fn set_soft_pending_compaction_bytes_limit(&mut self, size: u64) {
         unsafe {
             crocksdb_ffi::crocksdb_options_set_soft_pending_compaction_bytes_limit(
-                self.inner, size,
+                self.get_opt_inner(),
+                size,
             );
         }
     }
 
     pub fn get_soft_pending_compaction_bytes_limit(&self) -> u64 {
         unsafe {
-            crocksdb_ffi::crocksdb_options_get_soft_pending_compaction_bytes_limit(self.inner)
+            crocksdb_ffi::crocksdb_options_get_soft_pending_compaction_bytes_limit(
+                self.get_opt_inner(),
+            )
         }
     }
 
     pub fn set_hard_pending_compaction_bytes_limit(&mut self, size: u64) {
         unsafe {
             crocksdb_ffi::crocksdb_options_set_hard_pending_compaction_bytes_limit(
-                self.inner, size,
+                self.get_opt_inner(),
+                size,
             );
         }
     }
 
     pub fn get_hard_pending_compaction_bytes_limit(&self) -> u64 {
         unsafe {
-            crocksdb_ffi::crocksdb_options_get_hard_pending_compaction_bytes_limit(self.inner)
+            crocksdb_ffi::crocksdb_options_get_hard_pending_compaction_bytes_limit(
+                self.get_opt_inner(),
+            )
         }
     }
 
     pub fn set_target_file_size_base(&mut self, size: u64) {
         unsafe {
-            crocksdb_ffi::crocksdb_options_set_target_file_size_base(self.inner, size);
+            crocksdb_ffi::crocksdb_options_set_target_file_size_base(self.get_opt_inner(), size);
         }
     }
 
     pub fn get_target_file_size_base(&self) -> u64 {
-        unsafe { crocksdb_ffi::crocksdb_options_get_target_file_size_base(self.inner) }
+        unsafe { crocksdb_ffi::crocksdb_options_get_target_file_size_base(self.get_opt_inner()) }
     }
 
     pub fn set_min_write_buffer_number_to_merge(&mut self, to_merge: c_int) {
         unsafe {
             crocksdb_ffi::crocksdb_options_set_min_write_buffer_number_to_merge(
-                self.inner, to_merge,
+                self.get_opt_inner(),
+                to_merge,
             );
         }
     }
 
     pub fn set_level_zero_file_num_compaction_trigger(&mut self, n: c_int) {
         unsafe {
-            crocksdb_ffi::crocksdb_options_set_level0_file_num_compaction_trigger(self.inner, n);
+            crocksdb_ffi::crocksdb_options_set_level0_file_num_compaction_trigger(
+                self.get_opt_inner(),
+                n,
+            );
         }
     }
 
     pub fn set_level_zero_slowdown_writes_trigger(&mut self, n: c_int) {
         unsafe {
-            crocksdb_ffi::crocksdb_options_set_level0_slowdown_writes_trigger(self.inner, n);
+            crocksdb_ffi::crocksdb_options_set_level0_slowdown_writes_trigger(
+                self.get_opt_inner(),
+                n,
+            );
         }
     }
 
     pub fn get_level_zero_slowdown_writes_trigger(&self) -> u32 {
         unsafe {
-            crocksdb_ffi::crocksdb_options_get_level0_slowdown_writes_trigger(self.inner) as u32
+            crocksdb_ffi::crocksdb_options_get_level0_slowdown_writes_trigger(self.get_opt_inner())
+                as u32
         }
     }
 
     pub fn set_level_zero_stop_writes_trigger(&mut self, n: c_int) {
         unsafe {
-            crocksdb_ffi::crocksdb_options_set_level0_stop_writes_trigger(self.inner, n);
+            crocksdb_ffi::crocksdb_options_set_level0_stop_writes_trigger(self.get_opt_inner(), n);
         }
     }
 
     pub fn get_level_zero_stop_writes_trigger(&self) -> u32 {
-        unsafe { crocksdb_ffi::crocksdb_options_get_level0_stop_writes_trigger(self.inner) as u32 }
+        unsafe {
+            crocksdb_ffi::crocksdb_options_get_level0_stop_writes_trigger(self.get_opt_inner())
+                as u32
+        }
     }
 
     pub fn set_compaction_style(&mut self, style: crocksdb_ffi::DBCompactionStyle) {
         unsafe {
-            crocksdb_ffi::crocksdb_options_set_compaction_style(self.inner, style);
+            crocksdb_ffi::crocksdb_options_set_compaction_style(self.get_opt_inner(), style);
         }
     }
 
     pub fn compaction_priority(&mut self, priority: crocksdb_ffi::CompactionPriority) {
         unsafe {
-            crocksdb_ffi::crocksdb_options_set_compaction_priority(self.inner, priority);
+            crocksdb_ffi::crocksdb_options_set_compaction_priority(self.get_opt_inner(), priority);
         }
     }
 
     pub fn set_disable_auto_compactions(&mut self, disable: bool) {
         unsafe {
             if disable {
-                crocksdb_ffi::crocksdb_options_set_disable_auto_compactions(self.inner, 1)
+                crocksdb_ffi::crocksdb_options_set_disable_auto_compactions(self.get_opt_inner(), 1)
             } else {
-                crocksdb_ffi::crocksdb_options_set_disable_auto_compactions(self.inner, 0)
+                crocksdb_ffi::crocksdb_options_set_disable_auto_compactions(self.get_opt_inner(), 0)
             }
         }
     }
 
     pub fn get_disable_auto_compactions(&self) -> bool {
-        unsafe { crocksdb_ffi::crocksdb_options_get_disable_auto_compactions(self.inner) == 1 }
+        unsafe {
+            crocksdb_ffi::crocksdb_options_get_disable_auto_compactions(self.get_opt_inner()) == 1
+        }
     }
 
     pub fn set_block_based_table_factory(&mut self, factory: &BlockBasedOptions) {
         unsafe {
-            crocksdb_ffi::crocksdb_options_set_block_based_table_factory(self.inner, factory.inner);
+            crocksdb_ffi::crocksdb_options_set_block_based_table_factory(
+                self.get_opt_inner(),
+                factory.inner,
+            );
         }
     }
 
     pub fn set_report_bg_io_stats(&mut self, enable: bool) {
         unsafe {
             if enable {
-                crocksdb_ffi::crocksdb_options_set_report_bg_io_stats(self.inner, 1);
+                crocksdb_ffi::crocksdb_options_set_report_bg_io_stats(self.get_opt_inner(), 1);
             } else {
-                crocksdb_ffi::crocksdb_options_set_report_bg_io_stats(self.inner, 0);
+                crocksdb_ffi::crocksdb_options_set_report_bg_io_stats(self.get_opt_inner(), 0);
             }
         }
     }
 
     pub fn set_num_levels(&mut self, n: c_int) {
         unsafe {
-            crocksdb_ffi::crocksdb_options_set_num_levels(self.inner, n);
+            crocksdb_ffi::crocksdb_options_set_num_levels(self.get_opt_inner(), n);
         }
     }
 
     pub fn get_num_levels(&self) -> usize {
-        unsafe { crocksdb_ffi::crocksdb_options_get_num_levels(self.inner) as usize }
+        unsafe { crocksdb_ffi::crocksdb_options_get_num_levels(self.get_opt_inner()) as usize }
     }
 
     pub fn set_prefix_extractor<S>(
@@ -1576,14 +1690,14 @@ impl ColumnFamilyOptions {
                 Err(e) => return Err(format!("failed to convert to cstring: {:?}", e)),
             };
             let transform = new_slice_transform(c_name, transform)?;
-            crocksdb_ffi::crocksdb_options_set_prefix_extractor(self.inner, transform);
+            crocksdb_ffi::crocksdb_options_set_prefix_extractor(self.get_opt_inner(), transform);
             Ok(())
         }
     }
 
     pub fn set_optimize_filters_for_hits(&mut self, v: bool) {
         unsafe {
-            crocksdb_ffi::crocksdb_options_set_optimize_filters_for_hits(self.inner, v);
+            crocksdb_ffi::crocksdb_options_set_optimize_filters_for_hits(self.get_opt_inner(), v);
         }
     }
 
@@ -1602,7 +1716,8 @@ impl ColumnFamilyOptions {
             };
             let transform = new_slice_transform(c_name, transform)?;
             crocksdb_ffi::crocksdb_options_set_memtable_insert_with_hint_prefix_extractor(
-                self.inner, transform,
+                self.get_opt_inner(),
+                transform,
             );
             Ok(())
         }
@@ -1610,18 +1725,21 @@ impl ColumnFamilyOptions {
 
     pub fn set_memtable_prefix_bloom_size_ratio(&mut self, ratio: f64) {
         unsafe {
-            crocksdb_ffi::crocksdb_options_set_memtable_prefix_bloom_size_ratio(self.inner, ratio);
+            crocksdb_ffi::crocksdb_options_set_memtable_prefix_bloom_size_ratio(
+                self.get_opt_inner(),
+                ratio,
+            );
         }
     }
 
     pub fn set_force_consistency_checks(&mut self, v: bool) {
         unsafe {
-            crocksdb_ffi::crocksdb_options_set_force_consistency_checks(self.inner, v);
+            crocksdb_ffi::crocksdb_options_set_force_consistency_checks(self.get_opt_inner(), v);
         }
     }
 
     pub fn get_block_cache_usage(&self) -> u64 {
-        unsafe { crocksdb_ffi::crocksdb_options_get_block_cache_usage(self.inner) as u64 }
+        unsafe { crocksdb_ffi::crocksdb_options_get_block_cache_usage(self.get_opt_inner()) as u64 }
     }
 
     pub fn get_blob_cache_usage(&self) -> u64 {
@@ -1631,7 +1749,7 @@ impl ColumnFamilyOptions {
     pub fn set_block_cache_capacity(&self, capacity: u64) -> Result<(), String> {
         unsafe {
             ffi_try!(crocksdb_options_set_block_cache_capacity(
-                self.inner,
+                self.get_opt_inner(),
                 capacity as usize
             ));
             Ok(())
@@ -1639,7 +1757,9 @@ impl ColumnFamilyOptions {
     }
 
     pub fn get_block_cache_capacity(&self) -> u64 {
-        unsafe { crocksdb_ffi::crocksdb_options_get_block_cache_capacity(self.inner) as u64 }
+        unsafe {
+            crocksdb_ffi::crocksdb_options_get_block_cache_capacity(self.get_opt_inner()) as u64
+        }
     }
 
     pub fn set_blob_cache_capacity(&self, capacity: u64) -> Result<(), String> {
@@ -1658,26 +1778,32 @@ impl ColumnFamilyOptions {
 
     pub fn set_fifo_compaction_options(&mut self, fifo_opts: FifoCompactionOptions) {
         unsafe {
-            crocksdb_ffi::crocksdb_options_set_fifo_compaction_options(self.inner, fifo_opts.inner);
+            crocksdb_ffi::crocksdb_options_set_fifo_compaction_options(
+                self.get_opt_inner(),
+                fifo_opts.inner,
+            );
         }
     }
 
     pub fn set_vector_memtable_factory(&mut self, reserved_bytes: u64) {
         unsafe {
-            crocksdb_ffi::crocksdb_options_set_vector_memtable_factory(self.inner, reserved_bytes);
+            crocksdb_ffi::crocksdb_options_set_vector_memtable_factory(
+                self.get_opt_inner(),
+                reserved_bytes,
+            );
         }
     }
 
     pub fn set_doubly_skiplist(&self) {
         unsafe {
-            crocksdb_ffi::crocksdb_options_set_doubly_skip_list_rep(self.inner);
+            crocksdb_ffi::crocksdb_options_set_doubly_skip_list_rep(self.get_opt_inner());
         }
     }
 
     pub fn get_memtable_factory_name(&self) -> Option<&str> {
         unsafe {
             let memtable_name =
-                crocksdb_ffi::crocksdb_options_get_memtable_factory_name(self.inner);
+                crocksdb_ffi::crocksdb_options_get_memtable_factory_name(self.get_opt_inner());
             if memtable_name.is_null() {
                 return None;
             }

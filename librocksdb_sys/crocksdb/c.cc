@@ -228,7 +228,7 @@ struct crocksdb_logger_impl_t : public Logger {
   void (*destructor_)(void*);
   void (*logv_internal_)(void* logger, int log_level, const char* log);
 
-  void log_help_(void* logger, int log_level,const char* format, va_list ap) {
+  void log_help_(void* logger, int log_level, const char* format, va_list ap) {
     const int kBufferSize = 1024;
     char buffer[kBufferSize];
     vsnprintf(buffer, kBufferSize, format, ap);
@@ -239,7 +239,8 @@ struct crocksdb_logger_impl_t : public Logger {
     log_help_(rep, InfoLogLevel::INFO_LEVEL, format, ap);
   }
 
-  void Logv(const InfoLogLevel log_level, const char* format, va_list ap) override {
+  void Logv(const InfoLogLevel log_level, const char* format,
+            va_list ap) override {
     log_help_(rep, log_level, format, ap);
   }
 

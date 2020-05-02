@@ -229,7 +229,7 @@ struct crocksdb_logger_impl_t : public Logger {
   void (*logv_internal_)(void* logger, int log_level, const char* log);
 
   void log_help_(void* logger, int log_level, const char* format, va_list ap) {
-    const int kBufferSize = 1024;
+    constexpr int kBufferSize = 1024;
     char buffer[kBufferSize];
     vsnprintf(buffer, kBufferSize, format, ap);
     logv_internal_(rep, log_level, buffer);

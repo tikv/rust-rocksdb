@@ -20,7 +20,7 @@ extern "C" fn logv(ctx: *mut c_void, log_level: InfoLogLevel, log: *const c_char
     unsafe {
         let logger = &*(ctx as *mut Box<dyn Logger>);
         let log = CStr::from_ptr(log);
-        logger.logv(log_level, log.to_str().unwrap());
+        logger.logv(log_level, &log.to_string_lossy());
     }
 }
 

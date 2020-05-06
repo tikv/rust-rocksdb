@@ -13,30 +13,42 @@
 // limitations under the License.
 //
 
+// FIXME: we should remove this line after we add safe doc to all the unsafe functions
+// see: https://rust-lang.github.io/rust-clippy/master/index.html#missing_safety_doc
+#![allow(clippy::missing_safety_doc)]
+
 extern crate core;
 extern crate libc;
 #[macro_use]
 pub extern crate librocksdb_sys;
 #[cfg(test)]
-extern crate tempdir;
+extern crate tempfile;
 
-pub use compaction_filter::CompactionFilter;
+pub use compaction_filter::{
+    new_compaction_filter, new_compaction_filter_factory, new_compaction_filter_raw,
+    CompactionFilter, CompactionFilterContext, CompactionFilterFactory,
+    CompactionFilterFactoryHandle, CompactionFilterHandle, DBCompactionFilter,
+};
+#[cfg(feature = "encryption")]
+pub use encryption::{DBEncryptionMethod, EncryptionKeyManager, FileEncryptionInfo};
 pub use event_listener::{
     CompactionJobInfo, EventListener, FlushJobInfo, IngestionInfo, WriteStallInfo,
 };
 pub use librocksdb_sys::{
     self as crocksdb_ffi, new_bloom_filter, CompactionPriority, CompactionReason,
-    DBBottommostLevelCompaction, DBCompactionStyle, DBCompressionType, DBEntryType, DBInfoLogLevel,
-    DBRateLimiterMode, DBRecoveryMode, DBStatisticsHistogramType, DBStatisticsTickerType,
-    WriteStallCondition,
+    DBBackgroundErrorReason, DBBottommostLevelCompaction, DBCompactionStyle, DBCompressionType,
+    DBEntryType, DBInfoLogLevel, DBRateLimiterMode, DBRecoveryMode, DBStatisticsHistogramType,
+    DBStatisticsTickerType, DBStatusPtr, DBTitanDBBlobRunMode, IndexType, WriteStallCondition,
 };
+pub use logger::Logger;
 pub use merge_operator::MergeOperands;
 pub use metadata::{ColumnFamilyMetaData, LevelMetaData, SstFileMetaData};
 pub use perf_context::{get_perf_level, set_perf_level, IOStatsContext, PerfContext, PerfLevel};
 pub use rocksdb::{
-    load_latest_options, run_ldb_tool, set_external_sst_file_global_seq_no, BackupEngine, CFHandle,
-    Cache, DBIterator, DBVector, Env, ExternalSstFileInfo, Kv, Range, SeekKey, SequentialFile,
-    SstFileWriter, Writable, WriteBatch, DB,
+    load_latest_options, run_ldb_tool, run_sst_dump_tool, set_external_sst_file_global_seq_no,
+    BackupEngine, CFHandle, Cache, DBIterator, DBVector, Env, ExternalSstFileInfo, MapProperty,
+    MemoryAllocator, Range, SeekKey, SequentialFile, SstFileReader, SstFileWriter, Writable,
+    WriteBatch, DB,
 };
 pub use rocksdb_options::{
     BlockBasedOptions, CColumnFamilyDescriptor, ColumnFamilyOptions, CompactOptions,
@@ -54,9 +66,15 @@ pub use table_properties_collector::TablePropertiesCollector;
 pub use table_properties_collector_factory::TablePropertiesCollectorFactory;
 pub use titan::{TitanBlobIndex, TitanDBOptions};
 
+#[allow(deprecated)]
+pub use rocksdb::Kv;
+
 mod compaction_filter;
 pub mod comparator;
+#[cfg(feature = "encryption")]
+mod encryption;
 mod event_listener;
+pub mod logger;
 pub mod merge_operator;
 mod metadata;
 mod perf_context;
@@ -67,5 +85,11 @@ mod table_filter;
 mod table_properties;
 mod table_properties_collector;
 mod table_properties_collector_factory;
+pub mod table_properties_rc;
+mod table_properties_rc_handles;
 mod titan;
-mod util;
+
+#[cfg(test)]
+fn tempdir_with_prefix(prefix: &str) -> tempfile::TempDir {
+    tempfile::Builder::new().prefix(prefix).tempdir().expect("")
+}

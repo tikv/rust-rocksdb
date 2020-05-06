@@ -13,11 +13,12 @@
 // limitations under the License.
 
 use crocksdb_ffi::{
-    self, DBBackupEngine, DBCFHandle, DBCache, DBCompressionType, DBEnv, DBInstance,
+    self, DBBackupEngine, DBCFHandle, DBCache, DBCompressionType, DBEnv, DBInstance, DBMapProperty,
     DBPinnableSlice, DBSequentialFile, DBStatisticsHistogramType, DBStatisticsTickerType,
-    DBWriteBatch,
+    DBTablePropertiesCollection, DBTitanDBOptions, DBWriteBatch,
 };
 use libc::{self, c_char, c_int, c_void, size_t};
+use librocksdb_sys::DBMemoryAllocator;
 use metadata::ColumnFamilyMetaData;
 use rocksdb_options::{
     CColumnFamilyDescriptor, ColumnFamilyDescriptor, ColumnFamilyOptions, CompactOptions,
@@ -33,11 +34,16 @@ use std::io;
 use std::mem;
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
+use std::rc::Rc;
 use std::str::from_utf8;
 use std::sync::Arc;
 use std::{fs, ptr, slice};
-use table_properties::TablePropertiesCollection;
-use util::is_power_of_two;
+
+#[cfg(feature = "encryption")]
+use encryption::{DBEncryptionKeyManager, EncryptionKeyManager};
+use table_properties::{TableProperties, TablePropertiesCollection};
+use table_properties_rc::TablePropertiesCollection as RcTablePropertiesCollection;
+use titan::TitanDBOptions;
 
 pub struct CFHandle {
     inner: *mut DBCFHandle,
@@ -57,10 +63,18 @@ impl Drop for CFHandle {
     }
 }
 
-fn ensure_default_cf_exists<'a>(list: &mut Vec<ColumnFamilyDescriptor<'a>>, ttls: &mut Vec<i32>) {
+fn ensure_default_cf_exists<'a>(
+    list: &mut Vec<ColumnFamilyDescriptor<'a>>,
+    ttls: &mut Vec<i32>,
+    is_titan: bool,
+) {
     let contains = list.iter().any(|ref cf| cf.is_default());
     if !contains {
-        list.push(ColumnFamilyDescriptor::default());
+        let mut desc = ColumnFamilyDescriptor::default();
+        if is_titan {
+            desc.options.set_titandb_options(&TitanDBOptions::new());
+        }
+        list.push(desc);
         if ttls.len() > 0 {
             ttls.push(0);
         }
@@ -81,9 +95,48 @@ fn split_descriptors<'a>(
 
 fn build_cstring_list(str_list: &[&str]) -> Vec<CString> {
     str_list
-        .into_iter()
+        .iter()
         .map(|s| CString::new(s.as_bytes()).unwrap())
         .collect()
+}
+
+pub struct MapProperty {
+    inner: *mut DBMapProperty,
+}
+
+impl Drop for MapProperty {
+    fn drop(&mut self) {
+        unsafe {
+            crocksdb_ffi::crocksdb_destroy_map_property(self.inner);
+        }
+    }
+}
+
+impl MapProperty {
+    pub fn new() -> MapProperty {
+        unsafe {
+            MapProperty {
+                inner: crocksdb_ffi::crocksdb_create_map_property(),
+            }
+        }
+    }
+
+    pub fn get_property_value(&self, property: &str) -> String {
+        let propname = CString::new(property.as_bytes()).unwrap();
+        unsafe {
+            let value = crocksdb_ffi::crocksdb_map_property_value(self.inner, propname.as_ptr());
+            return CStr::from_ptr(value).to_str().unwrap().to_owned();
+        }
+    }
+
+    pub fn get_property_int_value(&self, property: &str) -> u64 {
+        let propname = CString::new(property.as_bytes()).unwrap();
+        unsafe {
+            let value =
+                crocksdb_ffi::crocksdb_map_property_int_value(self.inner, propname.as_ptr());
+            return value as u64;
+        }
+    }
 }
 
 pub struct DB {
@@ -104,6 +157,12 @@ impl Debug for DB {
 unsafe impl Send for DB {}
 unsafe impl Sync for DB {}
 
+impl DB {
+    pub fn is_titan(&self) -> bool {
+        !self.opts.titan_inner.is_null()
+    }
+}
+
 pub struct WriteBatch {
     inner: *mut DBWriteBatch,
 }
@@ -115,7 +174,7 @@ pub struct Snapshot<D: Deref<Target = DB>> {
     snap: UnsafeSnap,
 }
 
-pub struct DBIterator<D: Deref<Target = DB>> {
+pub struct DBIterator<D> {
     _db: D,
     _readopts: ReadOptions,
     inner: *mut crocksdb_ffi::DBIterator,
@@ -136,7 +195,15 @@ impl<'a> From<&'a [u8]> for SeekKey<'a> {
 impl<D: Deref<Target = DB>> DBIterator<D> {
     pub fn new(db: D, readopts: ReadOptions) -> DBIterator<D> {
         unsafe {
-            let iterator = crocksdb_ffi::crocksdb_create_iterator(db.inner, readopts.get_inner());
+            let iterator = if db.is_titan() {
+                crocksdb_ffi::ctitandb_create_iterator(
+                    db.inner,
+                    readopts.get_inner(),
+                    readopts.get_titan_inner(),
+                )
+            } else {
+                crocksdb_ffi::crocksdb_create_iterator(db.inner, readopts.get_inner())
+            };
 
             DBIterator {
                 _db: db,
@@ -146,7 +213,33 @@ impl<D: Deref<Target = DB>> DBIterator<D> {
         }
     }
 
-    pub fn seek(&mut self, key: SeekKey) -> bool {
+    pub fn new_cf(db: D, cf_handle: &CFHandle, readopts: ReadOptions) -> DBIterator<D> {
+        unsafe {
+            let iterator = if db.is_titan() {
+                crocksdb_ffi::ctitandb_create_iterator_cf(
+                    db.inner,
+                    readopts.get_inner(),
+                    readopts.get_titan_inner(),
+                    cf_handle.inner,
+                )
+            } else {
+                crocksdb_ffi::crocksdb_create_iterator_cf(
+                    db.inner,
+                    readopts.get_inner(),
+                    cf_handle.inner,
+                )
+            };
+            DBIterator {
+                _db: db,
+                _readopts: readopts,
+                inner: iterator,
+            }
+        }
+    }
+}
+
+impl<D> DBIterator<D> {
+    pub fn seek(&mut self, key: SeekKey) -> Result<bool, String> {
         unsafe {
             match key {
                 SeekKey::Start => crocksdb_ffi::crocksdb_iter_seek_to_first(self.inner),
@@ -159,7 +252,7 @@ impl<D: Deref<Target = DB>> DBIterator<D> {
         self.valid()
     }
 
-    pub fn seek_for_prev(&mut self, key: SeekKey) -> bool {
+    pub fn seek_for_prev(&mut self, key: SeekKey) -> Result<bool, String> {
         unsafe {
             match key {
                 SeekKey::Start => crocksdb_ffi::crocksdb_iter_seek_to_first(self.inner),
@@ -174,22 +267,24 @@ impl<D: Deref<Target = DB>> DBIterator<D> {
         self.valid()
     }
 
-    pub fn prev(&mut self) -> bool {
+    pub fn prev(&mut self) -> Result<bool, String> {
         unsafe {
             crocksdb_ffi::crocksdb_iter_prev(self.inner);
         }
         self.valid()
     }
 
-    pub fn next(&mut self) -> bool {
+    #[allow(clippy::should_implement_trait)]
+    pub fn next(&mut self) -> Result<bool, String> {
         unsafe {
             crocksdb_ffi::crocksdb_iter_next(self.inner);
         }
         self.valid()
     }
 
+    /// Get the key pointed by the iterator. Must be called when `self.valid() == Ok(true)`.
     pub fn key(&self) -> &[u8] {
-        assert!(self.valid());
+        debug_assert_eq!(self.valid(), Ok(true));
         let mut key_len: size_t = 0;
         let key_len_ptr: *mut size_t = &mut key_len;
         unsafe {
@@ -198,8 +293,9 @@ impl<D: Deref<Target = DB>> DBIterator<D> {
         }
     }
 
+    /// Get the value pointed by the iterator. Must be called when `self.valid() == Ok(true)`.
     pub fn value(&self) -> &[u8] {
-        assert!(self.valid());
+        debug_assert_eq!(self.valid(), Ok(true));
         let mut val_len: size_t = 0;
         let val_len_ptr: *mut size_t = &mut val_len;
         unsafe {
@@ -208,56 +304,53 @@ impl<D: Deref<Target = DB>> DBIterator<D> {
         }
     }
 
+    #[deprecated]
     pub fn kv(&self) -> Option<(Vec<u8>, Vec<u8>)> {
-        if self.valid() {
+        if self.valid().unwrap() {
             Some((self.key().to_vec(), self.value().to_vec()))
         } else {
             None
         }
     }
 
-    pub fn valid(&self) -> bool {
-        unsafe { crocksdb_ffi::crocksdb_iter_valid(self.inner) }
+    pub fn valid(&self) -> Result<bool, String> {
+        let valid = unsafe { crocksdb_ffi::crocksdb_iter_valid(self.inner) };
+        if !valid {
+            self.status()?;
+        }
+        Ok(valid)
     }
 
-    pub fn status(&self) -> Result<(), String> {
+    fn status(&self) -> Result<(), String> {
         unsafe {
             ffi_try!(crocksdb_iter_get_error(self.inner));
         }
         Ok(())
     }
-
-    pub fn new_cf(db: D, cf_handle: &CFHandle, readopts: ReadOptions) -> DBIterator<D> {
-        unsafe {
-            let iterator = crocksdb_ffi::crocksdb_create_iterator_cf(
-                db.inner,
-                readopts.get_inner(),
-                cf_handle.inner,
-            );
-            DBIterator {
-                _db: db,
-                _readopts: readopts,
-                inner: iterator,
-            }
-        }
-    }
 }
 
+#[deprecated]
 pub type Kv = (Vec<u8>, Vec<u8>);
 
-impl<'b, D: Deref<Target = DB>> Iterator for &'b mut DBIterator<D> {
+#[deprecated]
+impl<'b, D> Iterator for &'b mut DBIterator<D> {
+    #[allow(deprecated)]
     type Item = Kv;
 
-    fn next(&mut self) -> Option<Kv> {
-        let kv = self.kv();
-        if kv.is_some() {
-            DBIterator::next(self);
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.valid() {
+            Ok(true) => {}
+            Ok(false) => return None,
+            Err(e) => panic!("invalid iterator: {}", e),
         }
-        kv
+        let k = self.key().to_vec();
+        let v = self.value().to_vec();
+        let _ = DBIterator::next(self);
+        Some((k, v))
     }
 }
 
-impl<D: Deref<Target = DB>> Drop for DBIterator<D> {
+impl<D> Drop for DBIterator<D> {
     fn drop(&mut self) {
         unsafe {
             crocksdb_ffi::crocksdb_iter_destroy(self.inner);
@@ -265,7 +358,7 @@ impl<D: Deref<Target = DB>> Drop for DBIterator<D> {
     }
 }
 
-unsafe impl<D: Deref<Target = DB> + Send> Send for DBIterator<D> {}
+unsafe impl<D: Send> Send for DBIterator<D> {}
 
 unsafe impl<D: Deref<Target = DB> + Send + Sync> Send for Snapshot<D> {}
 
@@ -370,7 +463,6 @@ pub struct Range<'a> {
 
 impl<'a> Range<'a> {
     pub fn new(start_key: &'a [u8], end_key: &'a [u8]) -> Range<'a> {
-        assert!(start_key <= end_key);
         Range {
             start_key: start_key,
             end_key: end_key,
@@ -476,7 +568,7 @@ impl DB {
 
         let mut descs = cfds.into_iter().map(|t| t.into()).collect();
         let mut ttls_vec = ttls.to_vec();
-        ensure_default_cf_exists(&mut descs, &mut ttls_vec);
+        ensure_default_cf_exists(&mut descs, &mut ttls_vec, !opts.titan_inner.is_null());
 
         let (names, options) = split_descriptors(descs);
         let cstrings = build_cstring_list(&names);
@@ -492,11 +584,7 @@ impl DB {
             .map(|x| x.titan_inner as *const crocksdb_ffi::DBTitanDBOptions)
             .collect();
 
-        let readonly = if error_if_log_file_exist.is_some() {
-            true
-        } else {
-            false
-        };
+        let readonly = error_if_log_file_exist.is_some();
 
         let with_ttl = if ttls_vec.len() > 0 {
             if ttls_vec.len() == cf_names.len() {
@@ -680,6 +768,25 @@ impl DB {
         Ok(())
     }
 
+    pub fn multi_batch_write(
+        &self,
+        batches: &[WriteBatch],
+        writeopts: &WriteOptions,
+    ) -> Result<(), String> {
+        unsafe {
+            let b: Vec<*mut DBWriteBatch> = batches.iter().map(|w| w.inner).collect();
+            if !b.is_empty() {
+                ffi_try!(crocksdb_write_multi_batch(
+                    self.inner,
+                    writeopts.inner,
+                    b.as_ptr(),
+                    b.len()
+                ));
+            }
+        }
+        Ok(())
+    }
+
     pub fn write(&self, batch: &WriteBatch) -> Result<(), String> {
         self.write_opt(batch, &WriteOptions::new())
     }
@@ -749,11 +856,20 @@ impl DB {
         };
         let cname_ptr = cname.as_ptr();
         unsafe {
-            let cf_handler = ffi_try!(crocksdb_create_column_family(
-                self.inner,
-                cfd.options.inner,
-                cname_ptr
-            ));
+            let cf_handler = if !self.is_titan() {
+                ffi_try!(crocksdb_create_column_family(
+                    self.inner,
+                    cfd.options.inner,
+                    cname_ptr
+                ))
+            } else {
+                ffi_try!(ctitandb_create_column_family(
+                    self.inner,
+                    cfd.options.inner,
+                    cfd.options.titan_inner,
+                    cname_ptr
+                ))
+            };
             let handle = CFHandle { inner: cf_handler };
             self._cf_opts.push(cfd.options);
             Ok(match self.cfs.entry(cfd.name.to_owned()) {
@@ -769,7 +885,7 @@ impl DB {
     pub fn drop_cf(&mut self, name: &str) -> Result<(), String> {
         let cf = self.cfs.remove(name);
         if cf.is_none() {
-            return Err(format!("Invalid column family: {}", name).clone());
+            return Err(format!("Invalid column family: {}", name));
         }
 
         unsafe {
@@ -1186,14 +1302,25 @@ impl DB {
         include_end: bool,
     ) -> Result<(), String> {
         unsafe {
-            ffi_try!(crocksdb_delete_files_in_range(
-                self.inner,
-                start_key.as_ptr(),
-                start_key.len() as size_t,
-                end_key.as_ptr(),
-                end_key.len() as size_t,
-                include_end
-            ));
+            if self.is_titan() {
+                ffi_try!(ctitandb_delete_files_in_range(
+                    self.inner,
+                    start_key.as_ptr(),
+                    start_key.len() as size_t,
+                    end_key.as_ptr(),
+                    end_key.len() as size_t,
+                    include_end
+                ));
+            } else {
+                ffi_try!(crocksdb_delete_files_in_range(
+                    self.inner,
+                    start_key.as_ptr(),
+                    start_key.len() as size_t,
+                    end_key.as_ptr(),
+                    end_key.len() as size_t,
+                    include_end
+                ));
+            }
             Ok(())
         }
     }
@@ -1206,15 +1333,27 @@ impl DB {
         include_end: bool,
     ) -> Result<(), String> {
         unsafe {
-            ffi_try!(crocksdb_delete_files_in_range_cf(
-                self.inner,
-                cf.inner,
-                start_key.as_ptr(),
-                start_key.len() as size_t,
-                end_key.as_ptr(),
-                end_key.len() as size_t,
-                include_end
-            ));
+            if self.is_titan() {
+                ffi_try!(ctitandb_delete_files_in_range_cf(
+                    self.inner,
+                    cf.inner,
+                    start_key.as_ptr(),
+                    start_key.len() as size_t,
+                    end_key.as_ptr(),
+                    end_key.len() as size_t,
+                    include_end
+                ));
+            } else {
+                ffi_try!(crocksdb_delete_files_in_range_cf(
+                    self.inner,
+                    cf.inner,
+                    start_key.as_ptr(),
+                    start_key.len() as size_t,
+                    end_key.as_ptr(),
+                    end_key.len() as size_t,
+                    include_end
+                ));
+            }
             Ok(())
         }
     }
@@ -1230,16 +1369,29 @@ impl DB {
         let limit_keys: Vec<*const u8> = ranges.iter().map(|x| x.end_key.as_ptr()).collect();
         let limit_keys_lens: Vec<_> = ranges.iter().map(|x| x.end_key.len()).collect();
         unsafe {
-            ffi_try!(crocksdb_delete_files_in_ranges_cf(
-                self.inner,
-                cf.inner,
-                start_keys.as_ptr(),
-                start_keys_lens.as_ptr(),
-                limit_keys.as_ptr(),
-                limit_keys_lens.as_ptr(),
-                ranges.len(),
-                include_end
-            ));
+            if self.is_titan() {
+                ffi_try!(ctitandb_delete_files_in_ranges_cf(
+                    self.inner,
+                    cf.inner,
+                    start_keys.as_ptr(),
+                    start_keys_lens.as_ptr(),
+                    limit_keys.as_ptr(),
+                    limit_keys_lens.as_ptr(),
+                    ranges.len(),
+                    include_end
+                ));
+            } else {
+                ffi_try!(crocksdb_delete_files_in_ranges_cf(
+                    self.inner,
+                    cf.inner,
+                    start_keys.as_ptr(),
+                    start_keys_lens.as_ptr(),
+                    limit_keys.as_ptr(),
+                    limit_keys_lens.as_ptr(),
+                    ranges.len(),
+                    include_end
+                ));
+            }
         }
         Ok(())
     }
@@ -1338,6 +1490,22 @@ impl DB {
         }
     }
 
+    pub fn get_map_property_cf(&self, cf: &CFHandle, name: &str) -> Option<MapProperty> {
+        unsafe {
+            let info = MapProperty::new();
+            let cname = CString::new(name.as_bytes()).unwrap();
+            if !crocksdb_ffi::crocksdb_get_map_property_cf(
+                self.inner,
+                cf.inner,
+                cname.as_ptr(),
+                info.inner,
+            ) {
+                return None;
+            }
+            Some(info)
+        }
+    }
+
     pub fn set_db_options(&self, options: &[(&str, &str)]) -> Result<(), String> {
         unsafe {
             let name_strs: Vec<_> = options
@@ -1364,14 +1532,24 @@ impl DB {
         let cf = self.cf_handle("default").unwrap();
         unsafe {
             let inner = crocksdb_ffi::crocksdb_get_options_cf(self.inner, cf.inner);
-            ColumnFamilyOptions::from_raw(inner)
+            let titan_inner = if self.is_titan() {
+                crocksdb_ffi::ctitandb_get_titan_options_cf(self.inner, cf.inner)
+            } else {
+                ptr::null_mut::<DBTitanDBOptions>()
+            };
+            ColumnFamilyOptions::from_raw(inner, titan_inner)
         }
     }
 
     pub fn get_options_cf(&self, cf: &CFHandle) -> ColumnFamilyOptions {
         unsafe {
             let inner = crocksdb_ffi::crocksdb_get_options_cf(self.inner, cf.inner);
-            ColumnFamilyOptions::from_raw(inner)
+            let titan_inner = if self.is_titan() {
+                crocksdb_ffi::ctitandb_get_titan_options_cf(self.inner, cf.inner)
+            } else {
+                ptr::null_mut::<DBTitanDBOptions>()
+            };
+            ColumnFamilyOptions::from_raw(inner, titan_inner)
         }
     }
 
@@ -1517,10 +1695,25 @@ impl DB {
         self.get_options_cf(cf).get_block_cache_usage()
     }
 
+    pub fn get_blob_cache_usage(&self) -> u64 {
+        self.get_options().get_blob_cache_usage()
+    }
+
+    pub fn get_blob_cache_usage_cf(&self, cf: &CFHandle) -> u64 {
+        self.get_options_cf(cf).get_blob_cache_usage()
+    }
+
     pub fn get_properties_of_all_tables(&self) -> Result<TablePropertiesCollection, String> {
         unsafe {
             let props = ffi_try!(crocksdb_get_properties_of_all_tables(self.inner));
             Ok(TablePropertiesCollection::from_raw(props))
+        }
+    }
+
+    pub fn get_properties_of_all_tables_rc(&self) -> Result<RcTablePropertiesCollection, String> {
+        unsafe {
+            let props = ffi_try!(crocksdb_get_properties_of_all_tables(self.inner));
+            Ok(RcTablePropertiesCollection::new(props))
         }
     }
 
@@ -1541,6 +1734,34 @@ impl DB {
         cf: &CFHandle,
         ranges: &[Range],
     ) -> Result<TablePropertiesCollection, String> {
+        // Safety: transfers ownership of new non-null pointer
+        unsafe {
+            let props = self.get_properties_of_tables_in_range_common(cf, ranges)?;
+            Ok(TablePropertiesCollection::from_raw(props))
+        }
+    }
+
+    /// Like `get_properties_of_table_in_range` but the returned family
+    /// of types don't contain any lifetimes. This is suitable for wrapping
+    /// in further abstractions without needing abstract associated lifetime
+    /// parameters. Used by tikv's `engine_rocks`.
+    pub fn get_properties_of_tables_in_range_rc(
+        &self,
+        cf: &CFHandle,
+        ranges: &[Range],
+    ) -> Result<RcTablePropertiesCollection, String> {
+        // Safety: transfers ownership of new non-null pointer
+        unsafe {
+            let props = self.get_properties_of_tables_in_range_common(cf, ranges)?;
+            Ok(RcTablePropertiesCollection::new(props))
+        }
+    }
+
+    fn get_properties_of_tables_in_range_common(
+        &self,
+        cf: &CFHandle,
+        ranges: &[Range],
+    ) -> Result<*mut DBTablePropertiesCollection, String> {
         let start_keys: Vec<*const u8> = ranges.iter().map(|x| x.start_key.as_ptr()).collect();
         let start_keys_lens: Vec<_> = ranges.iter().map(|x| x.start_key.len()).collect();
         let limit_keys: Vec<*const u8> = ranges.iter().map(|x| x.end_key.as_ptr()).collect();
@@ -1555,7 +1776,7 @@ impl DB {
                 limit_keys.as_ptr(),
                 limit_keys_lens.as_ptr()
             ));
-            Ok(TablePropertiesCollection::from_raw(props))
+            Ok(props)
         }
     }
 
@@ -1973,6 +2194,107 @@ impl Drop for BackupEngine {
     }
 }
 
+// SstFileReader is used to read sst files that are generated by DB or
+// SstFileWriter.
+pub struct SstFileReader {
+    inner: *mut crocksdb_ffi::SstFileReader,
+    _opt: ColumnFamilyOptions,
+}
+
+unsafe impl Send for SstFileReader {}
+
+impl SstFileReader {
+    /// Creates a new SstFileReader.
+    pub fn new(opt: ColumnFamilyOptions) -> Self {
+        unsafe {
+            Self {
+                inner: crocksdb_ffi::crocksdb_sstfilereader_create(opt.inner),
+                _opt: opt,
+            }
+        }
+    }
+
+    /// Opens a local SST file for reading.
+    pub fn open(&mut self, name: &str) -> Result<(), String> {
+        let path =
+            CString::new(name.to_owned()).map_err(|e| format!("invalid path {}: {:?}", name, e))?;
+        unsafe {
+            ffi_try!(crocksdb_sstfilereader_open(self.inner, path.as_ptr()));
+        }
+        Ok(())
+    }
+
+    pub fn iter(&self) -> DBIterator<&Self> {
+        self.iter_opt(ReadOptions::new())
+    }
+
+    pub fn iter_opt(&self, readopts: ReadOptions) -> DBIterator<&Self> {
+        unsafe {
+            DBIterator {
+                inner: crocksdb_ffi::crocksdb_sstfilereader_new_iterator(
+                    self.inner,
+                    readopts.get_inner(),
+                ),
+                _db: self,
+                _readopts: readopts,
+            }
+        }
+    }
+
+    /// Create an iterator out of a reference-counted SstFileReader.
+    ///
+    /// This exists due to restrictions on lifetimes in associated types.
+    /// See RocksSstIterator in TiKV's engine_rocks.
+    pub fn iter_rc(this: Rc<Self>) -> DBIterator<Rc<Self>> {
+        Self::iter_opt_rc(this, ReadOptions::new())
+    }
+
+    pub fn iter_opt_rc(this: Rc<Self>, readopts: ReadOptions) -> DBIterator<Rc<Self>> {
+        unsafe {
+            DBIterator {
+                inner: crocksdb_ffi::crocksdb_sstfilereader_new_iterator(
+                    this.inner,
+                    readopts.get_inner(),
+                ),
+                _db: this,
+                _readopts: readopts,
+            }
+        }
+    }
+
+    pub fn read_table_properties<F: FnOnce(&TableProperties)>(&self, mut action: F) {
+        extern "C" fn callback<F: FnOnce(&TableProperties)>(
+            ctx: *mut c_void,
+            ptr: *const crocksdb_ffi::DBTableProperties,
+        ) {
+            unsafe {
+                let caller = ptr::read(ctx as *mut F);
+                caller(TableProperties::from_ptr(ptr));
+            }
+        }
+
+        unsafe {
+            crocksdb_ffi::crocksdb_sstfilereader_read_table_properties(
+                self.inner,
+                &mut action as *mut F as *mut c_void,
+                callback::<F>,
+            );
+            mem::forget(action);
+        }
+    }
+
+    pub fn verify_checksum(&self) -> Result<(), String> {
+        unsafe { ffi_try!(crocksdb_sstfilereader_verify_checksum(self.inner)) };
+        Ok(())
+    }
+}
+
+impl Drop for SstFileReader {
+    fn drop(&mut self) {
+        unsafe { crocksdb_ffi::crocksdb_sstfilereader_destroy(self.inner) }
+    }
+}
+
 /// SstFileWriter is used to create sst files that can be added to database later
 /// All keys in files generated by SstFileWriter will have sequence number = 0
 pub struct SstFileWriter {
@@ -2015,11 +2337,9 @@ impl SstFileWriter {
             Ok(p) => p,
         };
         unsafe {
-            Ok(ffi_try!(crocksdb_sstfilewriter_open(
-                self.inner,
-                path.as_ptr()
-            )))
+            ffi_try!(crocksdb_sstfilewriter_open(self.inner, path.as_ptr()));
         }
+        Ok(())
     }
 
     /// Add key, value to currently opened file
@@ -2200,7 +2520,7 @@ impl Env {
     // The recommanded block size are 1024, 512 and 256.
     pub fn new_ctr_encrypted_env(base_env: Arc<Env>, ciphertext: &[u8]) -> Result<Env, String> {
         let len = ciphertext.len();
-        if len > 2048 || !is_power_of_two(len) {
+        if len > 2048 || !len.is_power_of_two() {
             return Err(
                 "ciphertext length must be less or equal to 2048, and must be power of 2"
                     .to_owned(),
@@ -2209,7 +2529,7 @@ impl Env {
         let env = unsafe {
             crocksdb_ffi::crocksdb_ctr_encrypted_env_create(
                 base_env.inner,
-                mem::transmute(&ciphertext[0]),
+                ciphertext.as_ptr() as *const c_char,
                 len,
             )
         };
@@ -2222,6 +2542,25 @@ impl Env {
     // Create a ctr encrypted env with the default env
     pub fn new_default_ctr_encrypted_env(ciphertext: &[u8]) -> Result<Env, String> {
         Env::new_ctr_encrypted_env(Arc::new(Env::default()), ciphertext)
+    }
+
+    // Create an encrypted env that accepts an external key manager.
+    #[cfg(feature = "encryption")]
+    pub fn new_key_managed_encrypted_env(
+        base_env: Arc<Env>,
+        key_manager: Arc<dyn EncryptionKeyManager>,
+    ) -> Result<Env, String> {
+        let db_key_manager = DBEncryptionKeyManager::new(key_manager);
+        let env = unsafe {
+            crocksdb_ffi::crocksdb_key_managed_encrypted_env_create(
+                base_env.inner,
+                db_key_manager.inner,
+            )
+        };
+        Ok(Env {
+            inner: env,
+            base: Some(base_env),
+        })
     }
 
     pub fn new_sequential_file(
@@ -2282,6 +2621,8 @@ impl SequentialFile {
     }
 }
 
+unsafe impl Send for SequentialFile {}
+
 impl io::Read for SequentialFile {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         unsafe {
@@ -2317,8 +2658,11 @@ pub struct Cache {
 
 impl Cache {
     pub fn new_lru_cache(opt: LRUCacheOptions) -> Cache {
-        Cache {
-            inner: crocksdb_ffi::new_lru_cache(opt.inner),
+        // This is ok because LRUCacheOptions always contains a valid pointer
+        unsafe {
+            Cache {
+                inner: crocksdb_ffi::new_lru_cache(opt.inner),
+            }
         }
     }
 }
@@ -2327,6 +2671,30 @@ impl Drop for Cache {
     fn drop(&mut self) {
         unsafe {
             crocksdb_ffi::crocksdb_cache_destroy(self.inner);
+        }
+    }
+}
+
+pub struct MemoryAllocator {
+    pub inner: *mut DBMemoryAllocator,
+}
+
+impl MemoryAllocator {
+    #[cfg(feature = "jemalloc")]
+    pub fn new_jemalloc_memory_allocator() -> Result<MemoryAllocator, String> {
+        unsafe {
+            let allocator = MemoryAllocator {
+                inner: ffi_try!(crocksdb_jemalloc_nodump_allocator_create()),
+            };
+            Ok(allocator)
+        }
+    }
+}
+
+impl Drop for MemoryAllocator {
+    fn drop(&mut self) {
+        unsafe {
+            crocksdb_ffi::crocksdb_memory_allocator_destroy(self.inner);
         }
     }
 }
@@ -2359,14 +2727,14 @@ pub fn load_latest_options(
     let dbpath = CString::new(dbpath.as_bytes()).map_err(|_| ERR_CONVERT_PATH.to_owned())?;
     let db_options = DBOptions::new();
     unsafe {
-        let mut raw_cf_descs: *mut *mut crocksdb_ffi::ColumnFamilyDescriptor = ptr::null_mut();
+        let raw_cf_descs: *mut *mut crocksdb_ffi::ColumnFamilyDescriptor = ptr::null_mut();
         let mut cf_descs_len: size_t = 0;
 
         let ok = ffi_try!(crocksdb_load_latest_options(
             dbpath.as_ptr(),
             env.inner,
             db_options.inner,
-            &mut raw_cf_descs,
+            &raw_cf_descs,
             &mut cf_descs_len,
             ignore_unknown_options
         ));
@@ -2375,7 +2743,7 @@ pub fn load_latest_options(
         }
         let cf_descs_list = slice::from_raw_parts(raw_cf_descs, cf_descs_len);
         let cf_descs = cf_descs_list
-            .into_iter()
+            .iter()
             .map(|raw_cf_desc| CColumnFamilyDescriptor::from_raw(*raw_cf_desc))
             .collect();
 
@@ -2385,7 +2753,7 @@ pub fn load_latest_options(
     }
 }
 
-pub fn run_ldb_tool(ldb_args: &Vec<String>, opts: &DBOptions) {
+pub fn run_ldb_tool(ldb_args: &[String], opts: &DBOptions) {
     unsafe {
         let ldb_args_cstrs: Vec<_> = ldb_args
             .iter()
@@ -2400,19 +2768,35 @@ pub fn run_ldb_tool(ldb_args: &Vec<String>, opts: &DBOptions) {
     }
 }
 
+pub fn run_sst_dump_tool(sst_dump_args: &[String], opts: &DBOptions) {
+    unsafe {
+        let sst_dump_args_cstrs: Vec<_> = sst_dump_args
+            .iter()
+            .map(|s| CString::new(s.as_bytes()).unwrap())
+            .collect();
+        let args: Vec<_> = sst_dump_args_cstrs.iter().map(|s| s.as_ptr()).collect();
+        crocksdb_ffi::crocksdb_run_sst_dump_tool(
+            args.len() as i32,
+            args.as_ptr() as *const *const c_char,
+            opts.inner,
+        );
+    }
+}
+
 #[cfg(test)]
 mod test {
-    use super::*;
     use std::fs;
     use std::path::Path;
     use std::str;
     use std::string::String;
     use std::thread;
-    use tempdir::TempDir;
+
+    use super::*;
+    use crate::tempdir_with_prefix;
 
     #[test]
     fn external() {
-        let path = TempDir::new("_rust_rocksdb_externaltest").expect("");
+        let path = tempdir_with_prefix("_rust_rocksdb_externaltest");
         let db = DB::open_default(path.path().to_str().unwrap()).unwrap();
         let p = db.put(b"k1", b"v1111");
         assert!(p.is_ok());
@@ -2425,7 +2809,7 @@ mod test {
     #[allow(unused_variables)]
     #[test]
     fn errors_do_stuff() {
-        let path = TempDir::new("_rust_rocksdb_error").expect("");
+        let path = tempdir_with_prefix("_rust_rocksdb_error");
         let path_str = path.path().to_str().unwrap();
         let db = DB::open_default(path_str).unwrap();
         let opts = DBOptions::new();
@@ -2444,7 +2828,7 @@ mod test {
 
     #[test]
     fn writebatch_works() {
-        let path = TempDir::new("_rust_rocksdb_writebacktest").expect("");
+        let path = tempdir_with_prefix("_rust_rocksdb_writebacktest");
         let db = DB::open_default(path.path().to_str().unwrap()).unwrap();
 
         // test put
@@ -2515,14 +2899,14 @@ mod test {
 
     #[test]
     fn iterator_test() {
-        let path = TempDir::new("_rust_rocksdb_iteratortest").expect("");
+        let path = tempdir_with_prefix("_rust_rocksdb_iteratortest");
 
         let db = DB::open_default(path.path().to_str().unwrap()).unwrap();
         db.put(b"k1", b"v1111").expect("");
         db.put(b"k2", b"v2222").expect("");
         db.put(b"k3", b"v3333").expect("");
         let mut iter = db.iter();
-        iter.seek(SeekKey::Start);
+        iter.seek(SeekKey::Start).unwrap();
         for (k, v) in &mut iter {
             println!(
                 "Hello {}: {}",
@@ -2534,7 +2918,7 @@ mod test {
 
     #[test]
     fn approximate_size_test() {
-        let path = TempDir::new("_rust_rocksdb_iteratortest").expect("");
+        let path = tempdir_with_prefix("_rust_rocksdb_iteratortest");
         let db = DB::open_default(path.path().to_str().unwrap()).unwrap();
         for i in 1..8000 {
             db.put(
@@ -2562,7 +2946,7 @@ mod test {
 
     #[test]
     fn property_test() {
-        let path = TempDir::new("_rust_rocksdb_propertytest").expect("");
+        let path = tempdir_with_prefix("_rust_rocksdb_propertytest");
         let db = DB::open_default(path.path().to_str().unwrap()).unwrap();
         db.put(b"a1", b"v1").unwrap();
         db.flush(true).unwrap();
@@ -2577,7 +2961,7 @@ mod test {
 
     #[test]
     fn list_column_families_test() {
-        let path = TempDir::new("_rust_rocksdb_list_column_families_test").expect("");
+        let path = tempdir_with_prefix("_rust_rocksdb_list_column_families_test");
         let mut cfs = ["default", "cf1", "cf2", "cf3"];
         {
             let mut cfs_opts = vec![];
@@ -2608,13 +2992,13 @@ mod test {
         let key = b"foo";
         let value = b"bar";
 
-        let db_dir = TempDir::new("_rust_rocksdb_backuptest").unwrap();
+        let db_dir = tempdir_with_prefix("_rust_rocksdb_backuptest");
         let db = DB::open_default(db_dir.path().to_str().unwrap()).unwrap();
         let p = db.put(key, value);
         assert!(p.is_ok());
 
         // Make a backup.
-        let backup_dir = TempDir::new("_rust_rocksdb_backuptest_backup").unwrap();
+        let backup_dir = tempdir_with_prefix("_rust_rocksdb_backuptest_backup");
         let backup_engine = db.backup_at(backup_dir.path().to_str().unwrap()).unwrap();
 
         // Restore it.
@@ -2623,7 +3007,7 @@ mod test {
         ropt2.set_keep_log_files(true);
         let ropts = [ropt1, ropt2];
         for ropt in &ropts {
-            let restore_dir = TempDir::new("_rust_rocksdb_backuptest_restore").unwrap();
+            let restore_dir = tempdir_with_prefix("_rust_rocksdb_backuptest_restore");
             let restored_db = DB::restore_from(
                 &backup_engine,
                 restore_dir.path().to_str().unwrap(),
@@ -2639,7 +3023,7 @@ mod test {
 
     #[test]
     fn log_dir_test() {
-        let db_dir = TempDir::new("_rust_rocksdb_logdirtest").unwrap();
+        let db_dir = tempdir_with_prefix("_rust_rocksdb_logdirtest");
         let db_path = db_dir.path().to_str().unwrap();
         let log_path = format!("{}", Path::new(&db_path).join("log_path").display());
         fs::create_dir_all(&log_path).unwrap();
@@ -2665,7 +3049,7 @@ mod test {
 
     #[test]
     fn single_delete_test() {
-        let path = TempDir::new("_rust_rocksdb_singledeletetest").expect("");
+        let path = tempdir_with_prefix("_rust_rocksdb_singledeletetest");
         let db = DB::open_default(path.path().to_str().unwrap()).unwrap();
 
         db.put(b"a", b"v1").unwrap();
@@ -2700,7 +3084,7 @@ mod test {
 
     #[test]
     fn test_pause_bg_work() {
-        let path = TempDir::new("_rust_rocksdb_pause_bg_work").expect("");
+        let path = tempdir_with_prefix("_rust_rocksdb_pause_bg_work");
         let db = DB::open_default(path.path().to_str().unwrap()).unwrap();
         let db = Arc::new(db);
         let db1 = db.clone();
@@ -2755,7 +3139,7 @@ mod test {
 
     #[test]
     fn block_cache_usage() {
-        let path = TempDir::new("_rust_rocksdb_block_cache_usage").expect("");
+        let path = tempdir_with_prefix("_rust_rocksdb_block_cache_usage");
         let db = DB::open_default(path.path().to_str().unwrap()).unwrap();
 
         for i in 0..200 {
@@ -2773,7 +3157,7 @@ mod test {
 
     #[test]
     fn flush_cf() {
-        let path = TempDir::new("_rust_rocksdb_flush_cf").expect("");
+        let path = tempdir_with_prefix("_rust_rocksdb_flush_cf");
         let mut opts = DBOptions::new();
         opts.create_if_missing(true);
         let mut db = DB::open(opts, path.path().to_str().unwrap()).unwrap();
@@ -2803,7 +3187,7 @@ mod test {
             println!("{:?}", c);
             println!("{}", c as u32);
             match c as u32 {
-                0...5 | 7 | 0x40 => assert!(true),
+                0..=5 | 7 | 0x40 => assert!(true),
                 _ => assert!(false),
             }
         }
@@ -2813,7 +3197,7 @@ mod test {
     fn test_get_all_key_versions() {
         let mut opts = DBOptions::new();
         opts.create_if_missing(true);
-        let path = TempDir::new("_rust_rocksdb_get_all_key_version_test").expect("");
+        let path = tempdir_with_prefix("_rust_rocksdb_get_all_key_version_test");
         let db = DB::open(opts, path.path().to_str().unwrap()).unwrap();
 
         let samples = vec![
@@ -2839,7 +3223,7 @@ mod test {
     fn test_get_approximate_memtable_stats() {
         let mut opts = DBOptions::new();
         opts.create_if_missing(true);
-        let path = TempDir::new("_rust_rocksdb_get_approximate_memtable_stats").expect("");
+        let path = tempdir_with_prefix("_rust_rocksdb_get_approximate_memtable_stats");
         let db = DB::open(opts, path.path().to_str().unwrap()).unwrap();
 
         let samples = [
@@ -2869,7 +3253,7 @@ mod test {
     fn test_set_options() {
         let mut opts = DBOptions::new();
         opts.create_if_missing(true);
-        let path = TempDir::new("_rust_rocksdb_set_option").expect("");
+        let path = tempdir_with_prefix("_rust_rocksdb_set_option");
 
         let db = DB::open(opts, path.path().to_str().unwrap()).unwrap();
         let cf = db.cf_handle("default").unwrap();
@@ -2890,7 +3274,7 @@ mod test {
 
     #[test]
     fn test_load_latest_options() {
-        let path = TempDir::new("_rust_rocksdb_load_latest_option").expect("");
+        let path = tempdir_with_prefix("_rust_rocksdb_load_latest_option");
         let dbpath = path.path().to_str().unwrap().clone();
         let cf_name: &str = "cf_dynamic_level_bytes";
 
@@ -2925,7 +3309,7 @@ mod test {
 
     #[test]
     fn test_sequence_number() {
-        let path = TempDir::new("_rust_rocksdb_sequence_number").expect("");
+        let path = tempdir_with_prefix("_rust_rocksdb_sequence_number");
 
         let mut opts = DBOptions::new();
         opts.create_if_missing(true);
@@ -2943,7 +3327,7 @@ mod test {
 
     #[test]
     fn test_atomic_flush() {
-        let path = TempDir::new("_rust_rocksdb_test_atomic_flush").unwrap();
+        let path = tempdir_with_prefix("_rust_rocksdb_test_atomic_flush");
         let cfs = ["default", "cf1", "cf2", "cf3"];
         let mut cfs_opts = vec![];
         for _ in 0..cfs.len() {
@@ -2974,12 +3358,62 @@ mod test {
         let db = DB::open_cf(
             opts,
             path.path().to_str().unwrap(),
-            cfs.into_iter().map(|cf| *cf).zip(cfs_opts).collect(),
+            cfs.iter().map(|cf| *cf).zip(cfs_opts).collect(),
         )
         .unwrap();
         for cf in &cfs {
             let handle = db.cf_handle(cf).unwrap();
             assert_eq!(db.get_cf(handle, b"k").unwrap().unwrap(), cf.as_bytes());
         }
+    }
+
+    #[test]
+    fn test_map_property() {
+        let path = tempdir_with_prefix("_rust_rocksdb_get_map_property");
+        let dbpath = path.path().to_str().unwrap().clone();
+
+        let mut opts = DBOptions::new();
+        opts.create_if_missing(true);
+        let db = DB::open(opts, dbpath).unwrap();
+
+        let cf_handle = db.cf_handle("default").unwrap();
+        let mp = db.get_map_property_cf(cf_handle, "rocksdb.cfstats");
+        assert!(mp.is_some());
+    }
+
+    #[test]
+    fn test_multi_batch_write() {
+        let mut opts = DBOptions::new();
+        opts.create_if_missing(true);
+        opts.enable_multi_batch_write(true);
+        let path = tempdir_with_prefix("_rust_rocksdb_multi_batch");
+
+        let db = DB::open(opts, path.path().to_str().unwrap()).unwrap();
+        let cf = db.cf_handle("default").unwrap();
+        let mut data = Vec::new();
+        for s in &[b"ab", b"cd", b"ef"] {
+            let w = WriteBatch::new();
+            w.put_cf(cf, s.to_vec().as_slice(), b"a").unwrap();
+            data.push(w);
+        }
+        db.multi_batch_write(&data, &WriteOptions::new()).unwrap();
+        for s in &[b"ab", b"cd", b"ef"] {
+            let v = db.get_cf(cf, s.to_vec().as_slice()).unwrap();
+            assert!(v.is_some());
+            assert_eq!(v.unwrap().to_utf8().unwrap(), "a");
+        }
+    }
+
+    #[test]
+    fn test_get_db_path_from_option() {
+        let mut opts = DBOptions::new();
+        opts.create_if_missing(true);
+        let dir = tempdir_with_prefix("_rust_rocksdb_get_db_path_from_option");
+        let path = dir.path().to_str().unwrap();
+        let db = DB::open(opts, path).unwrap();
+        let path_num = db.get_db_options().get_db_paths_num();
+        assert_eq!(1, path_num);
+        let first_path = db.get_db_options().get_db_path(0).unwrap();
+        assert_eq!(path, first_path.as_str());
     }
 }

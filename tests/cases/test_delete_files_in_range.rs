@@ -13,9 +13,10 @@
 
 use std::ops;
 
-use rand::{self, Rng};
+use rand::{self, RngCore};
 use rocksdb::*;
-use tempdir::TempDir;
+
+use super::tempdir_with_prefix;
 
 fn initial_data(path: &str) -> DB {
     let mut opts = DBOptions::new();
@@ -54,7 +55,7 @@ fn generate_file_bottom_level(db: &DB, handle: &CFHandle, range: ops::Range<u32>
 
 #[test]
 fn test_delete_files_in_range_with_iter() {
-    let path = TempDir::new("_rust_rocksdb_test_delete_files_in_range_with_iter").expect("");
+    let path = tempdir_with_prefix("_rust_rocksdb_test_delete_files_in_range_with_iter");
     let path_str = path.path().to_str().unwrap();
     let db = initial_data(path_str);
 
@@ -65,9 +66,9 @@ fn test_delete_files_in_range_with_iter() {
     db.delete_files_in_range(b"key2", b"key7", false).unwrap();
 
     let mut count = 0;
-    assert!(iter.seek(SeekKey::Start));
-    while iter.valid() {
-        iter.next();
+    assert!(iter.seek(SeekKey::Start).unwrap());
+    while iter.valid().unwrap() {
+        iter.next().unwrap();
         count = count + 1;
     }
 
@@ -77,7 +78,7 @@ fn test_delete_files_in_range_with_iter() {
 
 #[test]
 fn test_delete_files_in_range_with_snap() {
-    let path = TempDir::new("_rust_rocksdb_test_delete_files_in_range_with_snap").expect("");
+    let path = tempdir_with_prefix("_rust_rocksdb_test_delete_files_in_range_with_snap");
     let path_str = path.path().to_str().unwrap();
     let db = initial_data(path_str);
 
@@ -88,11 +89,11 @@ fn test_delete_files_in_range_with_snap() {
     db.delete_files_in_range(b"key2", b"key7", false).unwrap();
 
     let mut iter = snap.iter();
-    assert!(iter.seek(SeekKey::Start));
+    assert!(iter.seek(SeekKey::Start).unwrap());
 
     let mut count = 0;
-    while iter.valid() {
-        iter.next();
+    while iter.valid().unwrap() {
+        iter.next().unwrap();
         count = count + 1;
     }
 
@@ -103,7 +104,7 @@ fn test_delete_files_in_range_with_snap() {
 #[test]
 fn test_delete_files_in_range_with_delete_range() {
     // Regression test for https://github.com/facebook/rocksdb/issues/2833.
-    let path = TempDir::new("_rocksdb_test_delete_files_in_range_with_delete_range").expect("");
+    let path = tempdir_with_prefix("_rocksdb_test_delete_files_in_range_with_delete_range");
     let path_str = path.path().to_str().unwrap();
 
     let sst_size = 1 << 10;
@@ -158,17 +159,17 @@ fn test_delete_files_in_range_with_delete_range() {
     db.compact_range(None, None);
 
     let mut it = db.iter();
-    it.seek(SeekKey::Start);
-    assert!(it.valid());
+    it.seek(SeekKey::Start).unwrap();
+    assert!(it.valid().unwrap());
     assert_eq!(it.key(), b"4");
-    assert!(it.next());
+    assert!(it.next().unwrap());
     assert_eq!(it.key(), b"5");
-    assert!(!it.next());
+    assert!(!it.next().unwrap());
 }
 
 #[test]
 fn test_delete_files_in_ranges() {
-    let path = TempDir::new("_rust_rocksdb_test_delete_files_in_multi_ranges").expect("");
+    let path = tempdir_with_prefix("_rust_rocksdb_test_delete_files_in_multi_ranges");
     let path_str = path.path().to_str().unwrap();
     let db = initial_data(path_str);
 
@@ -185,19 +186,18 @@ fn test_delete_files_in_ranges() {
 
     // Check that ["key0", "key5"] have been deleted, but ["key6", "key8"] still exist.
     let mut iter = db.iter();
-    iter.seek(SeekKey::Start);
+    iter.seek(SeekKey::Start).unwrap();
     for i in 6..9 {
-        assert!(iter.valid());
+        assert!(iter.valid().unwrap());
         let k = format!("key{}", i);
         assert_eq!(iter.key(), k.as_bytes());
-        iter.next();
+        iter.next().unwrap();
     }
-    assert!(!iter.valid());
+    assert!(!iter.valid().unwrap());
 
     // Delete the last file.
     let ranges = vec![Range::new(b"key6", b"key8")];
     db.delete_files_in_ranges_cf(cf, &ranges, true).unwrap();
     let mut iter = db.iter();
-    iter.seek(SeekKey::Start);
-    assert!(!iter.valid());
+    assert!(!iter.seek(SeekKey::Start).unwrap());
 }

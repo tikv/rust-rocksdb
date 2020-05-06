@@ -2,7 +2,7 @@ use std::ffi::{CStr, CString};
 use std::ops::Deref;
 
 use crocksdb_ffi::{self, DBCompressionType, DBTitanBlobIndex, DBTitanDBOptions};
-use librocksdb_sys::ctitandb_encode_blob_index;
+use librocksdb_sys::{ctitandb_encode_blob_index, DBTitanDBBlobRunMode};
 use rocksdb::Cache;
 use rocksdb_options::LRUCacheOptions;
 use std::ops::DerefMut;
@@ -33,8 +33,10 @@ impl TitanDBOptions {
 
     pub fn set_dirname(&mut self, name: &str) {
         let s = CString::new(name).unwrap();
+        // Safety: set_dirname copies the C string into std::string. We
+        // still own s and must drop it.
         unsafe {
-            crocksdb_ffi::ctitandb_options_set_dirname(self.inner, s.into_raw());
+            crocksdb_ffi::ctitandb_options_set_dirname(self.inner, s.as_ptr());
         }
     }
 
@@ -64,9 +66,33 @@ impl TitanDBOptions {
         }
     }
 
+    pub fn set_level_merge(&mut self, enable: bool) {
+        unsafe {
+            crocksdb_ffi::ctitandb_options_set_level_merge(self.inner, enable);
+        }
+    }
+
+    pub fn set_range_merge(&mut self, enable: bool) {
+        unsafe {
+            crocksdb_ffi::ctitandb_options_set_range_merge(self.inner, enable);
+        }
+    }
+
+    pub fn set_max_sorted_runs(&mut self, size: i32) {
+        unsafe {
+            crocksdb_ffi::ctitandb_options_set_max_sorted_runs(self.inner, size);
+        }
+    }
+
     pub fn set_max_background_gc(&mut self, size: i32) {
         unsafe {
             crocksdb_ffi::ctitandb_options_set_max_background_gc(self.inner, size);
+        }
+    }
+
+    pub fn set_purge_obsolete_files_period(&mut self, period: usize) {
+        unsafe {
+            crocksdb_ffi::ctitandb_options_set_purge_obsolete_files_period_sec(self.inner, period);
         }
     }
 
@@ -115,6 +141,18 @@ impl TitanDBOptions {
     pub fn set_merge_small_file_threshold(&mut self, size: u64) {
         unsafe {
             crocksdb_ffi::ctitandb_options_set_merge_small_file_threshold(self.inner, size);
+        }
+    }
+
+    pub fn set_blob_run_mode(&mut self, t: DBTitanDBBlobRunMode) {
+        unsafe {
+            crocksdb_ffi::ctitandb_options_set_blob_run_mode(self.inner, t);
+        }
+    }
+
+    pub fn set_gc_merge_rewrite(&mut self, enable: bool) {
+        unsafe {
+            crocksdb_ffi::ctitandb_options_set_gc_merge_rewrite(self.inner, enable);
         }
     }
 }

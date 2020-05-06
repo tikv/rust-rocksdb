@@ -11,11 +11,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use cases::test_ingest_external_file::gen_sst;
-use rocksdb::*;
 use std::sync::atomic::*;
 use std::sync::Arc;
-use tempdir::TempDir;
+
+use rocksdb::*;
+
+use super::tempdir_with_prefix;
+use super::test_ingest_external_file::gen_sst;
 
 #[derive(Default, Clone)]
 struct EventCounter {
@@ -121,9 +123,20 @@ impl EventListener for StallEventCounter {
     }
 }
 
+#[derive(Default, Clone)]
+struct BackgroundErrorCounter {
+    background_error: Arc<AtomicUsize>,
+}
+
+impl EventListener for BackgroundErrorCounter {
+    fn on_background_error(&self, _: DBBackgroundErrorReason, _: Result<(), String>) {
+        self.background_error.fetch_add(1, Ordering::SeqCst);
+    }
+}
+
 #[test]
 fn test_event_listener_stall_conditions_changed() {
-    let path = TempDir::new("_rust_rocksdb_event_listener_stall_conditions").expect("");
+    let path = tempdir_with_prefix("_rust_rocksdb_event_listener_stall_conditions");
     let path_str = path.path().to_str().unwrap();
 
     let mut opts = DBOptions::new();
@@ -168,7 +181,7 @@ fn test_event_listener_stall_conditions_changed() {
 
 #[test]
 fn test_event_listener_basic() {
-    let path = TempDir::new("_rust_rocksdb_event_listener_flush").expect("");
+    let path = tempdir_with_prefix("_rust_rocksdb_event_listener_flush");
     let path_str = path.path().to_str().unwrap();
 
     let mut opts = DBOptions::new();
@@ -214,7 +227,7 @@ fn test_event_listener_basic() {
 
 #[test]
 fn test_event_listener_ingestion() {
-    let path = TempDir::new("_rust_rocksdb_event_listener_ingestion").expect("");
+    let path = tempdir_with_prefix("_rust_rocksdb_event_listener_ingestion");
     let path_str = path.path().to_str().unwrap();
 
     let mut opts = DBOptions::new();
@@ -223,7 +236,7 @@ fn test_event_listener_ingestion() {
     opts.create_if_missing(true);
     let db = DB::open(opts, path_str).unwrap();
 
-    let gen_path = TempDir::new("_rust_rocksdb_ingest_sst_gen").expect("");
+    let gen_path = tempdir_with_prefix("_rust_rocksdb_ingest_sst_gen");
     let test_sstfile = gen_path.path().join("test_sst_file");
     let test_sstfile_str = test_sstfile.to_str().unwrap();
 
@@ -242,4 +255,24 @@ fn test_event_listener_ingestion() {
     assert_eq!(db.get(b"k1").unwrap().unwrap(), b"v1");
     assert_eq!(db.get(b"k2").unwrap().unwrap(), b"v2");
     assert_ne!(counter.ingestion.load(Ordering::SeqCst), 0);
+}
+
+#[test]
+fn test_event_listener_background_error() {
+    // TODO(yiwu): should create a test Env object which inject some IO error, to
+    // actually trigger background error.
+    let path = tempdir_with_prefix("_rust_rocksdb_event_listener_ingestion");
+    let path_str = path.path().to_str().unwrap();
+
+    let mut opts = DBOptions::new();
+    let counter = BackgroundErrorCounter::default();
+    opts.add_event_listener(counter.clone());
+    opts.create_if_missing(true);
+    let db = DB::open(opts, path_str).unwrap();
+
+    for i in 1..10 {
+        db.put(format!("{:04}", i).as_bytes(), b"value").unwrap();
+        db.flush(false).unwrap();
+    }
+    assert_eq!(counter.background_error.load(Ordering::SeqCst), 0);
 }

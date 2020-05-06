@@ -12,7 +12,8 @@
 // limitations under the License.
 
 use rocksdb::*;
-use tempdir::TempDir;
+
+use super::tempdir_with_prefix;
 
 struct FixedPrefixTransform {
     pub prefix_len: usize,
@@ -30,7 +31,7 @@ impl SliceTransform for FixedPrefixTransform {
 
 #[test]
 fn test_prefix_extractor_compatibility() {
-    let path = TempDir::new("_rust_rocksdb_prefix_extractor_compatibility").expect("");
+    let path = tempdir_with_prefix("_rust_rocksdb_prefix_extractor_compatibility");
     let keys = vec![
         b"k1-0", b"k1-1", b"k1-2", b"k1-3", b"k1-4", b"k1-5", b"k1-6", b"k1-7", b"k1-8",
     ];
@@ -86,13 +87,13 @@ fn test_prefix_extractor_compatibility() {
         db.put_opt(b"k1-8", b"c", &wopts).unwrap();
 
         let mut iter = db.iter();
-        iter.seek(SeekKey::Key(b"k1-0"));
+        iter.seek(SeekKey::Key(b"k1-0")).unwrap();
         let mut key_count = 0;
-        while iter.valid() {
+        while iter.valid().unwrap() {
             // If sst file has no prefix bloom, don't use prefix seek model.
             assert_eq!(keys[key_count], iter.key());
             key_count = key_count + 1;
-            iter.next();
+            iter.next().unwrap();
         }
         assert!(key_count == 9);
     }

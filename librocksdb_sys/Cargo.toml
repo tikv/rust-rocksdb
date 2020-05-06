@@ -6,35 +6,39 @@ build = "build.rs"
 links = "rocksdb"
 
 [dependencies]
+bzip2-sys = "0.1.8+1.0.8" 
 libc = "0.2.11"
+libtitan_sys = { path = "libtitan_sys" }
+libz-sys = { version = "1.0.25", features = ["static"] }
+openssl-sys = { version = "0.9.54", optional = true, features = ["vendored"] }
+zstd-sys = "1.4.15+zstd.1.4.4"
 
 [dev-dependencies]
-tempdir = "0.3"
+tempfile = "3.1"
 
 [features]
 default = []
+encryption = ["openssl-sys"]
+jemalloc = ["jemalloc-sys"]
 # portable doesn't require static link, though it's meaningless
 # when not using with static-link right now in this crate.
-portable = []
-sse = []
+portable = ["libtitan_sys/portable"]
+sse = ["libtitan_sys/sse"]
+static_libcpp = []
 
 [build-dependencies]
 cc = "1.0.3"
 cmake = "0.1"
+bindgen = "0.51"
 
-[dependencies.libz-sys]
-version = "1.0.25"
-features = ["static"]
-
-[dependencies.bzip2-sys]
-git = "https://github.com/alexcrichton/bzip2-rs.git"
+[dependencies.jemalloc-sys]
+version = "0.1.7"
+optional = true
+features = ["unprefixed_malloc_on_supported_platforms"]
 
 [dependencies.lz4-sys]
 git = "https://github.com/busyjay/lz4-rs.git"
 branch = "adjust-build"
-
-[dependencies.zstd-sys]
-git = "https://github.com/gyscos/zstd-rs.git"
 
 [dependencies.snappy-sys]
 git = "https://github.com/busyjay/rust-snappy.git"

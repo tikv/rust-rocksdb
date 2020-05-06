@@ -19,6 +19,7 @@ pub enum PerfLevel {
     Disable,
     EnableCount,
     EnableTimeExceptForMutex,
+    EnableTimeAndCPUTimeExceptForMutex,
     EnableTime,
     OutOfBounds,
 }
@@ -30,8 +31,9 @@ pub fn get_perf_level() -> PerfLevel {
         1 => PerfLevel::Disable,
         2 => PerfLevel::EnableCount,
         3 => PerfLevel::EnableTimeExceptForMutex,
-        4 => PerfLevel::EnableTime,
-        5 => PerfLevel::OutOfBounds,
+        4 => PerfLevel::EnableTimeAndCPUTimeExceptForMutex,
+        5 => PerfLevel::EnableTime,
+        6 => PerfLevel::OutOfBounds,
         _ => unreachable!(),
     }
 }
@@ -42,8 +44,9 @@ pub fn set_perf_level(level: PerfLevel) {
         PerfLevel::Disable => 1,
         PerfLevel::EnableCount => 2,
         PerfLevel::EnableTimeExceptForMutex => 3,
-        PerfLevel::EnableTime => 4,
-        PerfLevel::OutOfBounds => 5,
+        PerfLevel::EnableTimeAndCPUTimeExceptForMutex => 4,
+        PerfLevel::EnableTime => 5,
+        PerfLevel::OutOfBounds => 6,
     };
     unsafe {
         crocksdb_ffi::crocksdb_set_perf_level(v);
@@ -203,6 +206,18 @@ impl PerfContext {
         unsafe { crocksdb_ffi::crocksdb_perf_context_db_mutex_lock_nanos(self.inner) }
     }
 
+    pub fn write_thread_wait_nanos(&self) -> u64 {
+        unsafe { crocksdb_ffi::crocksdb_perf_context_write_thread_wait_nanos(self.inner) }
+    }
+
+    pub fn write_scheduling_flushes_compactions_time(&self) -> u64 {
+        unsafe {
+            crocksdb_ffi::crocksdb_perf_context_write_scheduling_flushes_compactions_time(
+                self.inner,
+            )
+        }
+    }
+
     pub fn db_condition_wait_nanos(&self) -> u64 {
         unsafe { crocksdb_ffi::crocksdb_perf_context_db_condition_wait_nanos(self.inner) }
     }
@@ -334,6 +349,14 @@ impl PerfContext {
     pub fn env_new_logger_nanos(&self) -> u64 {
         unsafe { crocksdb_ffi::crocksdb_perf_context_env_new_logger_nanos(self.inner) }
     }
+
+    pub fn encrypt_data_nanos(&self) -> u64 {
+        unsafe { crocksdb_ffi::crocksdb_perf_context_encrypt_data_nanos(self.inner) }
+    }
+
+    pub fn decrypt_data_nanos(&self) -> u64 {
+        unsafe { crocksdb_ffi::crocksdb_perf_context_decrypt_data_nanos(self.inner) }
+    }
 }
 
 pub struct IOStatsContext {
@@ -396,16 +419,15 @@ impl IOStatsContext {
 
 #[cfg(test)]
 mod test {
-    use super::*;
-
-    use tempdir::TempDir;
-
     use rocksdb::{SeekKey, Writable, DB};
     use rocksdb_options::{DBOptions, WriteOptions};
 
+    use super::*;
+    use crate::tempdir_with_prefix;
+
     #[test]
     fn test_perf_context() {
-        let temp_dir = TempDir::new("test_perf_context").unwrap();
+        let temp_dir = tempdir_with_prefix("test_perf_context");
         let mut opts = DBOptions::new();
         opts.create_if_missing(true);
         let db = DB::open(opts, temp_dir.path().to_str().unwrap()).unwrap();
@@ -419,13 +441,12 @@ mod test {
             }
         }
 
+        set_perf_level(PerfLevel::EnableCount);
         let mut ctx = PerfContext::get();
 
         let mut iter = db.iter();
-        assert!(iter.seek(SeekKey::Start));
-        while iter.valid() {
-            iter.next();
-        }
+        assert!(iter.seek(SeekKey::Start).unwrap());
+        while iter.next().unwrap() {}
         assert_eq!(ctx.internal_key_skipped_count(), n);
         assert_eq!(ctx.internal_delete_skipped_count(), n / 2);
         assert_eq!(ctx.seek_internal_seek_time(), 0);
@@ -439,9 +460,9 @@ mod test {
         assert_eq!(get_perf_level(), PerfLevel::EnableTime);
 
         let mut iter = db.iter();
-        assert!(iter.seek(SeekKey::End));
-        while iter.valid() {
-            iter.prev();
+        assert!(iter.seek(SeekKey::End).unwrap());
+        while iter.valid().unwrap() {
+            iter.prev().unwrap();
         }
         assert_eq!(ctx.internal_key_skipped_count(), n + n / 2);
         assert_eq!(ctx.internal_delete_skipped_count(), n / 2);
@@ -450,7 +471,7 @@ mod test {
 
     #[test]
     fn test_iostats_context() {
-        let temp_dir = TempDir::new("test_iostats_context").unwrap();
+        let temp_dir = tempdir_with_prefix("test_iostats_context");
         let mut opts = DBOptions::new();
         opts.create_if_missing(true);
         let db = DB::open(opts, temp_dir.path().to_str().unwrap()).unwrap();

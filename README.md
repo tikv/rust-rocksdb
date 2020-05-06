@@ -1,12 +1,15 @@
 # rust-rocksdb
 
-This library has been tested against RocksDB 5.15 on Linux and macOS.
+[![Build Status](https://travis-ci.org/tikv/rust-rocksdb.svg)](https://travis-ci.org/tikv/rust-rocksdb)
+[![Dependency Status](https://deps.rs/repo/github/tikv/rust-rocksdb/status.svg)](https://deps.rs/repo/github/tikv/rust-rocksdb)
+
+This library has been tested against RocksDB 6.4 on Linux and macOS.
 
 ## Status
   - [x] basic open/put/get/delete/close
   - [x] rustic merge operator
   - [x] write batch (thanks @dgrnbrg!)
-   - [x] save ponit
+  - [x] save point
   - [x] compaction filter, style
   - [x] LRU cache
   - [x] destroy/repair
@@ -34,13 +37,21 @@ $ git submodule update --init --recursive # if you just cloned the repository
 $ cargo build
 ```
 
+Bindings are pre-generated for x86_64 Linux. For other platforms, bindings are generated at compile time.
+
+If the content in librocksdb_sys/crocksdb/crocksdb/c.h is updated, you may need to regenerate bindings:
+
+```
+$ ./scripts/generate-bindings.sh
+```
+
 ## Running
 
 ###### Cargo.toml
 
 ```rust
 [dependencies.rocksdb]
-git = "https://github.com/pingcap/rust-rocksdb.git"
+git = "https://github.com/tikv/rust-rocksdb.git"
 ```
 
 ###### Code

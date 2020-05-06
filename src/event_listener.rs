@@ -12,12 +12,13 @@
 // limitations under the License.
 
 use crocksdb_ffi::{
-    self, CompactionReason, DBCompactionJobInfo, DBEventListener, DBFlushJobInfo, DBIngestionInfo,
-    DBInstance, DBWriteStallInfo, WriteStallCondition,
+    self, CompactionReason, DBBackgroundErrorReason, DBCompactionJobInfo, DBEventListener,
+    DBFlushJobInfo, DBIngestionInfo, DBInstance, DBStatusPtr, DBWriteStallInfo,
+    WriteStallCondition,
 };
 use libc::c_void;
 use std::path::Path;
-use std::{mem, slice, str};
+use std::{slice, str};
 use {TableProperties, TablePropertiesCollectionView};
 
 macro_rules! fetch_str {
@@ -29,6 +30,7 @@ macro_rules! fetch_str {
     })
 }
 
+#[repr(transparent)]
 pub struct FlushJobInfo(DBFlushJobInfo);
 
 impl FlushJobInfo {
@@ -57,6 +59,7 @@ impl FlushJobInfo {
     }
 }
 
+#[repr(transparent)]
 pub struct CompactionJobInfo(DBCompactionJobInfo);
 
 impl CompactionJobInfo {
@@ -127,6 +130,7 @@ impl CompactionJobInfo {
     }
 }
 
+#[repr(transparent)]
 pub struct IngestionInfo(DBIngestionInfo);
 
 impl IngestionInfo {
@@ -151,6 +155,7 @@ impl IngestionInfo {
     }
 }
 
+#[repr(transparent)]
 pub struct WriteStallInfo(DBWriteStallInfo);
 
 impl WriteStallInfo {
@@ -178,12 +183,13 @@ pub trait EventListener: Send + Sync {
     fn on_flush_completed(&self, _: &FlushJobInfo) {}
     fn on_compaction_completed(&self, _: &CompactionJobInfo) {}
     fn on_external_file_ingested(&self, _: &IngestionInfo) {}
+    fn on_background_error(&self, _: DBBackgroundErrorReason, _: Result<(), String>) {}
     fn on_stall_conditions_changed(&self, _: &WriteStallInfo) {}
 }
 
 extern "C" fn destructor(ctx: *mut c_void) {
     unsafe {
-        Box::from_raw(ctx as *mut Box<EventListener>);
+        Box::from_raw(ctx as *mut Box<dyn EventListener>);
     }
 }
 
@@ -194,7 +200,12 @@ extern "C" fn on_flush_completed(
     _: *mut DBInstance,
     info: *const DBFlushJobInfo,
 ) {
-    let (ctx, info) = unsafe { (&*(ctx as *mut Box<EventListener>), mem::transmute(&*info)) };
+    let (ctx, info) = unsafe {
+        (
+            &*(ctx as *mut Box<dyn EventListener>),
+            &*(info as *const FlushJobInfo),
+        )
+    };
     ctx.on_flush_completed(info);
 }
 
@@ -203,7 +214,12 @@ extern "C" fn on_compaction_completed(
     _: *mut DBInstance,
     info: *const DBCompactionJobInfo,
 ) {
-    let (ctx, info) = unsafe { (&*(ctx as *mut Box<EventListener>), mem::transmute(&*info)) };
+    let (ctx, info) = unsafe {
+        (
+            &*(ctx as *mut Box<dyn EventListener>),
+            &*(info as *const CompactionJobInfo),
+        )
+    };
     ctx.on_compaction_completed(info);
 }
 
@@ -212,17 +228,44 @@ extern "C" fn on_external_file_ingested(
     _: *mut DBInstance,
     info: *const DBIngestionInfo,
 ) {
-    let (ctx, info) = unsafe { (&*(ctx as *mut Box<EventListener>), mem::transmute(&*info)) };
+    let (ctx, info) = unsafe {
+        (
+            &*(ctx as *mut Box<dyn EventListener>),
+            &*(info as *const IngestionInfo),
+        )
+    };
     ctx.on_external_file_ingested(info);
 }
 
+extern "C" fn on_background_error(
+    ctx: *mut c_void,
+    reason: DBBackgroundErrorReason,
+    status: *mut DBStatusPtr,
+) {
+    let (ctx, result) = unsafe {
+        (
+            &*(ctx as *mut Box<dyn EventListener>),
+            || -> Result<(), String> {
+                ffi_try!(crocksdb_status_ptr_get_error(status));
+                Ok(())
+            }(),
+        )
+    };
+    ctx.on_background_error(reason, result);
+}
+
 extern "C" fn on_stall_conditions_changed(ctx: *mut c_void, info: *const DBWriteStallInfo) {
-    let (ctx, info) = unsafe { (&*(ctx as *mut Box<EventListener>), mem::transmute(&*info)) };
+    let (ctx, info) = unsafe {
+        (
+            &*(ctx as *mut Box<dyn EventListener>),
+            &*(info as *const WriteStallInfo),
+        )
+    };
     ctx.on_stall_conditions_changed(info);
 }
 
 pub fn new_event_listener<L: EventListener>(l: L) -> *mut DBEventListener {
-    let p: Box<EventListener> = Box::new(l);
+    let p: Box<dyn EventListener> = Box::new(l);
     unsafe {
         crocksdb_ffi::crocksdb_eventlistener_create(
             Box::into_raw(Box::new(p)) as *mut c_void,
@@ -230,6 +273,7 @@ pub fn new_event_listener<L: EventListener>(l: L) -> *mut DBEventListener {
             on_flush_completed,
             on_compaction_completed,
             on_external_file_ingested,
+            on_background_error,
             on_stall_conditions_changed,
         )
     }

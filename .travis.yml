@@ -1,32 +1,34 @@
 dist: trusty
-sudo: required
 language: rust
 
 os:
   - linux
 
 rust:
-  - stable
-  - beta
   - nightly
 
-matrix:
+jobs:
   include:
   - os: osx
-    rust: stable
+    osx_image: xcode11.3
+    rust: nightly
+  - os: linux
+    rust: nightly
+    env: FEATURES="encryption,jemalloc,portable,sse"
 
 env:
   global:
   - RUST_BACKTRACE=1
 
-cache:
-  directories:
-  - target
+cache: false
 
 before_script:
   - rustup component add rustfmt-preview
+  - rustup component add clippy
 
 script:
+  # copile rocksdb may cost more than 10 minutes, see https://docs.travis-ci.com/user/common-build-problems/#build-times-out-because-no-output-was-received
+  - travis_wait make clippy
   - cargo fmt --all -- --check
-  - cargo build
-  - cargo test --all
+  - cargo build --features=$FEATURES
+  - cargo test --all --features=$FEATURES

@@ -12,7 +12,7 @@
 // limitations under the License.
 
 use crocksdb_ffi::{self, DBTablePropertiesCollector, DBTablePropertiesCollectorFactory};
-use libc::{c_char, c_void, uint32_t};
+use libc::{c_char, c_void};
 use std::ffi::CString;
 use table_properties_collector::{new_table_properties_collector, TablePropertiesCollector};
 
@@ -20,18 +20,18 @@ use table_properties_collector::{new_table_properties_collector, TableProperties
 /// Internals create a new `TablePropertiesCollector` for each new table.
 pub trait TablePropertiesCollectorFactory {
     /// Has to be thread-safe.
-    fn create_table_properties_collector(&mut self, cf: u32) -> Box<TablePropertiesCollector>;
+    fn create_table_properties_collector(&mut self, cf: u32) -> Box<dyn TablePropertiesCollector>;
 }
 
 struct TablePropertiesCollectorFactoryHandle {
     name: CString,
-    rep: Box<TablePropertiesCollectorFactory>,
+    rep: Box<dyn TablePropertiesCollectorFactory>,
 }
 
 impl TablePropertiesCollectorFactoryHandle {
     fn new(
         name: &str,
-        rep: Box<TablePropertiesCollectorFactory>,
+        rep: Box<dyn TablePropertiesCollectorFactory>,
     ) -> TablePropertiesCollectorFactoryHandle {
         TablePropertiesCollectorFactoryHandle {
             name: CString::new(name).unwrap(),
@@ -55,7 +55,7 @@ extern "C" fn destruct(handle: *mut c_void) {
 
 extern "C" fn create_table_properties_collector(
     handle: *mut c_void,
-    cf: uint32_t,
+    cf: u32,
 ) -> *mut DBTablePropertiesCollector {
     unsafe {
         let handle = &mut *(handle as *mut TablePropertiesCollectorFactoryHandle);
@@ -66,7 +66,7 @@ extern "C" fn create_table_properties_collector(
 
 pub unsafe fn new_table_properties_collector_factory(
     fname: &str,
-    factory: Box<TablePropertiesCollectorFactory>,
+    factory: Box<dyn TablePropertiesCollectorFactory>,
 ) -> *mut DBTablePropertiesCollectorFactory {
     let handle = TablePropertiesCollectorFactoryHandle::new(fname, factory);
     crocksdb_ffi::crocksdb_table_properties_collector_factory_create(

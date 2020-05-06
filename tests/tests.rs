@@ -1,7 +1,8 @@
-extern crate byteorder;
+#![feature(c_variadic)]
 extern crate crc;
+extern crate libc;
 extern crate rand;
 extern crate rocksdb;
-extern crate tempdir;
+extern crate tempfile;
 
 mod cases;

@@ -11,11 +11,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use rocksdb::*;
 use std::fs;
 use std::io::{Read, Write};
 use std::sync::Arc;
-use tempdir::TempDir;
+
+use rocksdb::*;
+
+use super::tempdir_with_prefix;
 
 pub fn gen_sst(
     opt: ColumnFamilyOptions,
@@ -99,11 +101,11 @@ fn concat_merge(_: &[u8], existing_val: Option<&[u8]>, operands: &mut MergeOpera
 
 #[test]
 fn test_ingest_external_file() {
-    let path = TempDir::new("_rust_rocksdb_ingest_sst").expect("");
+    let path = tempdir_with_prefix("_rust_rocksdb_ingest_sst");
     let mut db = create_default_database(&path);
     db.create_cf("cf1").unwrap();
     let handle = db.cf_handle("cf1").unwrap();
-    let gen_path = TempDir::new("_rust_rocksdb_ingest_sst_gen").expect("");
+    let gen_path = tempdir_with_prefix("_rust_rocksdb_ingest_sst_gen");
     let test_sstfile = gen_path.path().join("test_sst_file");
     let test_sstfile_str = test_sstfile.to_str().unwrap();
     let default_options = db.get_options();
@@ -153,14 +155,14 @@ fn test_ingest_external_file() {
 
 #[test]
 fn test_ingest_external_file_new() {
-    let path = TempDir::new("_rust_rocksdb_ingest_sst_new").expect("");
+    let path = tempdir_with_prefix("_rust_rocksdb_ingest_sst_new");
     let path_str = path.path().to_str().unwrap();
     let mut opts = DBOptions::new();
     opts.create_if_missing(true);
     let mut cf_opts = ColumnFamilyOptions::new();
     cf_opts.add_merge_operator("merge operator", concat_merge);
     let db = DB::open_cf(opts, path_str, vec![("default", cf_opts)]).unwrap();
-    let gen_path = TempDir::new("_rust_rocksdb_ingest_sst_gen_new").expect("");
+    let gen_path = tempdir_with_prefix("_rust_rocksdb_ingest_sst_gen_new");
     let test_sstfile = gen_path.path().join("test_sst_file_new");
     let test_sstfile_str = test_sstfile.to_str().unwrap();
     let default_options = db.get_options();
@@ -213,9 +215,9 @@ fn test_ingest_external_file_new() {
 
 #[test]
 fn test_ingest_external_file_new_cf() {
-    let path = TempDir::new("_rust_rocksdb_ingest_sst_new_cf").expect("");
+    let path = tempdir_with_prefix("_rust_rocksdb_ingest_sst_new_cf");
     let mut db = create_default_database(&path);
-    let gen_path = TempDir::new("_rust_rocksdb_ingest_sst_gen_new_cf").expect("");
+    let gen_path = tempdir_with_prefix("_rust_rocksdb_ingest_sst_gen_new_cf");
     let test_sstfile = gen_path.path().join("test_sst_file_new_cf");
     let test_sstfile_str = test_sstfile.to_str().unwrap();
     let mut cf_opts = ColumnFamilyOptions::new();
@@ -280,23 +282,23 @@ fn gen_sst_from_cf(opt: ColumnFamilyOptions, db: &DB, cf: &CFHandle, path: &str)
     let mut writer = SstFileWriter::new_cf(env_opt, opt, cf);
     writer.open(path).unwrap();
     let mut iter = db.iter_cf(cf);
-    iter.seek(SeekKey::Start);
-    while iter.valid() {
+    iter.seek(SeekKey::Start).unwrap();
+    while iter.valid().unwrap() {
         writer.put(iter.key(), iter.value()).unwrap();
-        iter.next();
+        iter.next().unwrap();
     }
     let info = writer.finish().unwrap();
     assert_eq!(info.file_path().to_str().unwrap(), path);
-    iter.seek(SeekKey::Start);
+    iter.seek(SeekKey::Start).unwrap();
     assert_eq!(info.smallest_key(), iter.key());
-    iter.seek(SeekKey::End);
+    iter.seek(SeekKey::End).unwrap();
     assert_eq!(info.largest_key(), iter.key());
     assert_eq!(info.sequence_number(), 0);
     assert!(info.file_size() > 0);
     assert!(info.num_entries() > 0);
 }
 
-fn create_default_database(path: &TempDir) -> DB {
+fn create_default_database(path: &tempfile::TempDir) -> DB {
     let path_str = path.path().to_str().unwrap();
     let mut opts = DBOptions::new();
     opts.create_if_missing(true);
@@ -314,9 +316,9 @@ fn create_cfs(db: &mut DB, cfs: &[&str]) {
 #[test]
 fn test_ingest_simulate_real_world() {
     const ALL_CFS: [&str; 3] = ["lock", "write", "default"];
-    let path = TempDir::new("_rust_rocksdb_ingest_real_world_1").expect("");
+    let path = tempdir_with_prefix("_rust_rocksdb_ingest_real_world_1");
     let mut db = create_default_database(&path);
-    let gen_path = TempDir::new("_rust_rocksdb_ingest_real_world_new_cf").expect("");
+    let gen_path = tempdir_with_prefix("_rust_rocksdb_ingest_real_world_new_cf");
     create_cfs(&mut db, &ALL_CFS);
     for cf in &ALL_CFS {
         let handle = db.cf_handle(cf).unwrap();
@@ -329,7 +331,7 @@ fn test_ingest_simulate_real_world() {
         );
     }
 
-    let path2 = TempDir::new("_rust_rocksdb_ingest_real_world_2").expect("");
+    let path2 = tempdir_with_prefix("_rust_rocksdb_ingest_real_world_2");
     let mut db2 = create_default_database(&path2);
     for cf in &ALL_CFS {
         if *cf != "default" {
@@ -389,7 +391,7 @@ fn test_ingest_simulate_real_world() {
 
 #[test]
 fn test_mem_sst_file_writer() {
-    let path = TempDir::new("_rust_mem_sst_file_writer").expect("");
+    let path = tempdir_with_prefix("_rust_mem_sst_file_writer");
     let db = create_default_database(&path);
 
     let env = Arc::new(Env::new_mem());
@@ -440,9 +442,9 @@ fn test_mem_sst_file_writer() {
 
 #[test]
 fn test_set_external_sst_file_global_seq_no() {
-    let db_path = TempDir::new("_rust_rocksdb_set_external_sst_file_global_seq_no_db").expect("");
+    let db_path = tempdir_with_prefix("_rust_rocksdb_set_external_sst_file_global_seq_no_db");
     let db = create_default_database(&db_path);
-    let path = TempDir::new("_rust_rocksdb_set_external_sst_file_global_seq_no").expect("");
+    let path = tempdir_with_prefix("_rust_rocksdb_set_external_sst_file_global_seq_no");
     let file = path.path().join("sst_file");
     let sstfile_str = file.to_str().unwrap();
     gen_sst(
@@ -471,9 +473,9 @@ fn test_set_external_sst_file_global_seq_no() {
 
 #[test]
 fn test_ingest_external_file_optimized() {
-    let path = TempDir::new("_rust_rocksdb_ingest_sst_optimized").expect("");
+    let path = tempdir_with_prefix("_rust_rocksdb_ingest_sst_optimized");
     let db = create_default_database(&path);
-    let gen_path = TempDir::new("_rust_rocksdb_ingest_sst_gen_new_cf").expect("");
+    let gen_path = tempdir_with_prefix("_rust_rocksdb_ingest_sst_gen_new_cf");
     let test_sstfile = gen_path.path().join("test_sst_file_optimized");
     let test_sstfile_str = test_sstfile.to_str().unwrap();
     let handle = db.cf_handle("default").unwrap();
@@ -504,4 +506,51 @@ fn test_ingest_external_file_optimized() {
     assert_eq!(db.get_cf(handle, b"k1").unwrap().unwrap(), b"a");
     assert_eq!(db.get_cf(handle, b"k2").unwrap().unwrap(), b"b");
     assert_eq!(db.get_cf(handle, b"k3").unwrap().unwrap(), b"c");
+}
+
+#[test]
+fn test_read_sst() {
+    let dir = tempdir_with_prefix("_rust_rocksdb_test_read_sst");
+    let sst_path = dir.path().join("sst");
+    let sst_path_str = sst_path.to_str().unwrap();
+    gen_sst_put(ColumnFamilyOptions::new(), None, sst_path_str);
+
+    let mut reader = SstFileReader::new(ColumnFamilyOptions::default());
+    reader.open(sst_path_str).unwrap();
+    reader.verify_checksum().unwrap();
+    reader.read_table_properties(|props| {
+        assert_eq!(props.num_entries(), 3);
+    });
+    let mut it = reader.iter();
+    it.seek(SeekKey::Start).unwrap();
+    assert_eq!(
+        it.collect::<Vec<_>>(),
+        vec![
+            (b"k1".to_vec(), b"a".to_vec()),
+            (b"k2".to_vec(), b"b".to_vec()),
+            (b"k3".to_vec(), b"c".to_vec()),
+        ]
+    );
+}
+
+#[test]
+fn test_read_invalid_sst() {
+    let dir = tempdir_with_prefix("_rust_rocksdb_test_read_invalid_sst");
+    let sst_path = dir.path().join("sst");
+    let sst_path_str = sst_path.to_str().unwrap();
+    gen_sst_put(ColumnFamilyOptions::new(), None, sst_path_str);
+
+    // corrupt one byte.
+    {
+        use std::io::{Seek, SeekFrom};
+
+        let mut f = fs::OpenOptions::new().write(true).open(&sst_path).unwrap();
+        f.seek(SeekFrom::Start(9)).unwrap();
+        f.write(b"!").unwrap();
+    }
+
+    let mut reader = SstFileReader::new(ColumnFamilyOptions::default());
+    reader.open(sst_path_str).unwrap();
+    let error_message = reader.verify_checksum().unwrap_err();
+    assert!(error_message.contains("checksum mismatch"));
 }

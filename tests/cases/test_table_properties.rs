@@ -11,15 +11,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
+use std::collections::HashMap;
+use std::fmt;
+
 use rocksdb::{
     ColumnFamilyOptions, DBEntryType, DBOptions, Range, ReadOptions, SeekKey, TableFilter,
     TableProperties, TablePropertiesCollection, TablePropertiesCollector,
     TablePropertiesCollectorFactory, UserCollectedProperties, Writable, DB,
 };
-use std::collections::HashMap;
-use std::fmt;
-use tempdir::TempDir;
+
+use super::tempdir_with_prefix;
 
 enum Props {
     NumKeys = 0,
@@ -29,13 +30,13 @@ enum Props {
 }
 
 fn encode_u32(x: u32) -> Vec<u8> {
-    let mut w = Vec::new();
-    w.write_u32::<LittleEndian>(x).unwrap();
-    w
+    x.to_le_bytes().to_vec()
 }
 
-fn decode_u32(mut x: &[u8]) -> u32 {
-    x.read_u32::<LittleEndian>().unwrap()
+fn decode_u32(x: &[u8]) -> u32 {
+    let mut dst = [0u8; 4];
+    dst.copy_from_slice(&x[..4]);
+    u32::from_le_bytes(dst)
 }
 
 struct ExampleCollector {
@@ -132,7 +133,7 @@ impl ExampleFactory {
 }
 
 impl TablePropertiesCollectorFactory for ExampleFactory {
-    fn create_table_properties_collector(&mut self, _: u32) -> Box<TablePropertiesCollector> {
+    fn create_table_properties_collector(&mut self, _: u32) -> Box<dyn TablePropertiesCollector> {
         Box::new(ExampleCollector::new())
     }
 }
@@ -169,7 +170,7 @@ fn test_table_properties_collector_factory() {
     opts.create_if_missing(true);
     cf_opts.add_table_properties_collector_factory("example-collector", Box::new(f));
 
-    let path = TempDir::new("_rust_rocksdb_collectortest").expect("");
+    let path = tempdir_with_prefix("_rust_rocksdb_collectortest");
     let db = DB::open_cf(
         opts,
         path.path().to_str().unwrap(),
@@ -243,7 +244,7 @@ fn test_table_properties_with_table_filter() {
     opts.create_if_missing(true);
     cf_opts.add_table_properties_collector_factory("example-collector", Box::new(f));
 
-    let path = TempDir::new("_rust_rocksdb_collector_with_table_filter").expect("");
+    let path = tempdir_with_prefix("_rust_rocksdb_collector_with_table_filter");
     let db = DB::open_cf(
         opts,
         path.path().to_str().unwrap(),
@@ -282,7 +283,7 @@ fn test_table_properties_with_table_filter() {
     let mut iter = db.iter_opt(ropts);
     let key = b"key";
     let key5 = b"key5";
-    assert!(iter.seek(SeekKey::from(key.as_ref())));
+    assert!(iter.seek(SeekKey::from(key.as_ref())).unwrap());
     // First sst will be skipped
     assert_eq!(iter.key(), key5.as_ref());
 }

@@ -14,11 +14,12 @@
 //
 
 use rocksdb::{ColumnFamilyOptions, DBOptions, MergeOperands, Writable, DB};
-use tempdir::TempDir;
+
+use super::tempdir_with_prefix;
 
 #[test]
 pub fn test_column_family() {
-    let path = TempDir::new("_rust_rocksdb_cftest").expect("");
+    let path = tempdir_with_prefix("_rust_rocksdb_cftest");
     let path_str = path.path().to_str().unwrap();
 
     // should be able to create column families
@@ -146,4 +147,15 @@ fn test_provided_merge(
         }
     }
     result
+}
+
+#[test]
+pub fn test_column_family_option_use_doubly_skiplist() {
+    let cf_opts = ColumnFamilyOptions::new();
+    let memtable_name = cf_opts.get_memtable_factory_name();
+    assert!(memtable_name.is_some());
+    assert_eq!("SkipListFactory", memtable_name.unwrap());
+    cf_opts.set_doubly_skiplist();
+    let memtable_name = cf_opts.get_memtable_factory_name();
+    assert_eq!("DoublySkipListFactory", memtable_name.unwrap());
 }

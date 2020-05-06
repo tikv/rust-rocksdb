@@ -5575,10 +5575,6 @@ void ctitandb_options_set_rocksdb_options(ctitandb_options_t* opts, const crocks
   *(ColumnFamilyOptions*)&opts->rep = rocksdb_opts->rep;
 }
 
-crocksdb_options_t* ctitandb_options_get_rocksdb_options(ctitandb_options_t* opts) {
-  return new crocksdb_options_t{static_cast<Options>(opts->rep)};
-}
-
 ctitandb_options_t* ctitandb_get_titan_options_cf(
     const crocksdb_t* db,
     crocksdb_column_family_handle_t* column_family) {

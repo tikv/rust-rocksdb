@@ -681,10 +681,9 @@ impl DB {
 
         unsafe {
             // the options provided when opening db may sanitized, so get the latest options.
-            if opts.titan_inner.is_null() {
-                crocksdb_ffi::crocksdb_options_destroy(opts.inner);
-                opts.inner = crocksdb_ffi::crocksdb_get_db_options(db);
-            } else {
+            crocksdb_ffi::crocksdb_options_destroy(opts.inner);
+            opts.inner = crocksdb_ffi::crocksdb_get_db_options(db);
+            if !opts.titan_inner.is_null() {
                 crocksdb_ffi::ctitandb_options_destroy(opts.titan_inner);
                 opts.titan_inner = crocksdb_ffi::ctitandb_get_titan_db_options(db);
             }

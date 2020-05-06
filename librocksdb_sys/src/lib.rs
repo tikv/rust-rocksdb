@@ -2203,7 +2203,6 @@ extern "C" {
         opts: *mut DBTitanDBOptions,
         rocksdb_opts: *const Options,
     );
-    pub fn ctitandb_options_get_rocksdb_options(opts: *mut DBTitanDBOptions) -> *mut Options;
     pub fn ctitandb_get_titan_options_cf(
         db: *mut DBInstance,
         cf: *mut DBCFHandle,

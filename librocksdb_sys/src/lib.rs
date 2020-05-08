@@ -19,7 +19,6 @@ extern crate libc;
 extern crate tempfile;
 
 use std::ffi::CStr;
-use std::ffi::VaList;
 use std::fmt;
 
 use libc::{c_char, c_double, c_int, c_uchar, c_void, size_t};
@@ -796,6 +795,7 @@ extern "C" {
     pub fn crocksdb_options_get_db_path(options: *mut Options, idx: size_t) -> *const c_char;
     pub fn crocksdb_options_get_path_target_size(options: *mut Options, idx: size_t) -> u64;
     pub fn crocksdb_options_set_vector_memtable_factory(options: *mut Options, reserved_bytes: u64);
+    pub fn crocksdb_options_set_atomic_flush(option: *mut Options, enable: bool);
     pub fn crocksdb_filterpolicy_create_bloom_full(bits_per_key: c_int) -> *mut DBFilterPolicy;
     pub fn crocksdb_filterpolicy_create_bloom(bits_per_key: c_int) -> *mut DBFilterPolicy;
     pub fn crocksdb_open(
@@ -1209,6 +1209,13 @@ extern "C" {
     pub fn crocksdb_flush_cf(
         db: *mut DBInstance,
         cf: *mut DBCFHandle,
+        options: *const DBFlushOptions,
+        err: *mut *mut c_char,
+    );
+    pub fn crocksdb_flush_cfs(
+        db: *mut DBInstance,
+        cfs: *const *mut DBCFHandle,
+        num_cfs: size_t,
         options: *const DBFlushOptions,
         err: *mut *mut c_char,
     );
@@ -1715,12 +1722,7 @@ extern "C" {
     pub fn crocksdb_logger_create(
         state: *mut c_void,
         destructor: extern "C" fn(*mut c_void),
-        logv: extern "C" fn(
-            ctx: *mut c_void,
-            log_level: DBInfoLogLevel,
-            format: *const c_char,
-            ap: VaList,
-        ),
+        logv: extern "C" fn(ctx: *mut c_void, log_level: DBInfoLogLevel, log: *const c_char),
     ) -> *mut DBLogger;
     pub fn crocksdb_create_env_logger(fname: *const libc::c_char, env: *mut DBEnv)
         -> *mut DBLogger;

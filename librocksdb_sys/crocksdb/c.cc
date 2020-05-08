@@ -226,16 +226,22 @@ struct crocksdb_logger_impl_t : public Logger {
   void* rep;
 
   void (*destructor_)(void*);
-  void (*logv_internal_)(void* logger, int log_level, const char* format,
-                         va_list ap);
+  void (*logv_internal_)(void* logger, int log_level, const char* log);
+
+  void log_help_(void* logger, int log_level, const char* format, va_list ap) {
+    constexpr int kBufferSize = 1024;
+    char buffer[kBufferSize];
+    vsnprintf(buffer, kBufferSize, format, ap);
+    logv_internal_(rep, log_level, buffer);
+  }
 
   void Logv(const char* format, va_list ap) override {
-    logv_internal_(rep, InfoLogLevel::INFO_LEVEL, format, ap);
+    log_help_(rep, InfoLogLevel::INFO_LEVEL, format, ap);
   }
 
   void Logv(const InfoLogLevel log_level, const char* format,
             va_list ap) override {
-    logv_internal_(rep, log_level, format, ap);
+    log_help_(rep, log_level, format, ap);
   }
 
   virtual ~crocksdb_logger_impl_t() { (*destructor_)(rep); }
@@ -1372,6 +1378,19 @@ void crocksdb_flush_cf(
     const crocksdb_flushoptions_t* options,
     char** errptr) {
   SaveError(errptr, db->rep->Flush(options->rep, column_family->rep));
+}
+
+void crocksdb_flush_cfs(
+  crocksdb_t* db,
+  const crocksdb_column_family_handle_t** column_familys,
+  int num_handles,
+  const crocksdb_flushoptions_t* options,
+  char** errptr) {
+  std::vector<rocksdb::ColumnFamilyHandle*> handles(num_handles);
+  for (int i = 0; i < num_handles; i++) {
+    handles[i] = column_familys[i]->rep;
+  }
+  SaveError(errptr, db->rep->Flush(options->rep, handles));
 }
 
 void crocksdb_flush_wal(
@@ -2977,6 +2996,10 @@ void crocksdb_options_set_ratelimiter(crocksdb_options_t *opt, crocksdb_ratelimi
 
 void crocksdb_options_set_vector_memtable_factory(crocksdb_options_t* opt, uint64_t reserved_bytes) {
   opt->rep.memtable_factory.reset(new VectorRepFactory(reserved_bytes));
+}
+
+void crocksdb_options_set_atomic_flush(crocksdb_options_t* opt, unsigned char enable) {
+  opt->rep.atomic_flush = enable;
 }
 
 unsigned char crocksdb_load_latest_options(const char* dbpath, crocksdb_env_t* env,

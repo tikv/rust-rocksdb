@@ -495,6 +495,10 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_flush_cf(
     crocksdb_t* db, crocksdb_column_family_handle_t* column_family,
     const crocksdb_flushoptions_t* options, char** errptr);
 
+extern C_ROCKSDB_LIBRARY_API void crocksdb_flush_cfs(
+  crocksdb_t* db, const crocksdb_column_family_handle_t** column_familys,
+  int num_handles, const crocksdb_flushoptions_t* options, char** errptr);
+
 extern C_ROCKSDB_LIBRARY_API void crocksdb_flush_wal(
     crocksdb_t* db, unsigned char sync, char** errptr);
 
@@ -808,9 +812,9 @@ typedef void (*on_external_file_ingested_cb)(
     void*, crocksdb_t*, const crocksdb_externalfileingestioninfo_t*);
 typedef void (*on_background_error_cb)(void*, crocksdb_backgrounderrorreason_t,
                                        crocksdb_status_ptr_t*);
-typedef void (*on_stall_conditions_changed_cb)(void*, const crocksdb_writestallinfo_t*);
-typedef void (*crocksdb_logger_logv_cb)(void*, int log_level, const char*,
-                                        va_list);
+typedef void (*on_stall_conditions_changed_cb)(
+    void*, const crocksdb_writestallinfo_t*);
+typedef void (*crocksdb_logger_logv_cb)(void*, int log_level, const char*);
 
 extern C_ROCKSDB_LIBRARY_API crocksdb_eventlistener_t*
 crocksdb_eventlistener_create(
@@ -1176,6 +1180,8 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_ratelimiter(
     crocksdb_options_t* opt, crocksdb_ratelimiter_t* limiter);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_vector_memtable_factory(
     crocksdb_options_t* opt, uint64_t reserved_bytes);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_atomic_flush(
+    crocksdb_options_t* opt, unsigned char enable);
 
 enum {
   compaction_by_compensated_size = 0,

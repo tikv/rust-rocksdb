@@ -1,5 +1,8 @@
 # rust-rocksdb
 
+[![Build Status](https://travis-ci.org/tikv/rust-rocksdb.svg)](https://travis-ci.org/tikv/rust-rocksdb)
+[![Dependency Status](https://deps.rs/repo/github/tikv/rust-rocksdb/status.svg)](https://deps.rs/repo/github/tikv/rust-rocksdb)
+
 This library has been tested against RocksDB 6.4 on Linux and macOS.
 
 ## Status
@@ -32,6 +35,14 @@ Feedback and pull requests welcome! If a particular feature of RocksDB is import
 ```
 $ git submodule update --init --recursive # if you just cloned the repository
 $ cargo build
+```
+
+Bindings are pre-generated for x86_64 Linux. For other platforms, bindings are generated at compile time.
+
+If the content in librocksdb_sys/crocksdb/crocksdb/c.h is updated, you may need to regenerate bindings:
+
+```
+$ ./scripts/generate-bindings.sh
 ```
 
 ## Running

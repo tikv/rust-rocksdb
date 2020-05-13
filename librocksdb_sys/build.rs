@@ -11,6 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+extern crate bindgen;
 extern crate cc;
 extern crate cmake;
 
@@ -24,7 +25,53 @@ use std::{env, str};
 // See https://github.com/gnzlbg/jemallocator/blob/bfc89192971e026e6423d9ee5aaa02bc56585c58/jemalloc-sys/build.rs#L45
 const NO_JEMALLOC_TARGETS: &[&str] = &["android", "dragonfly", "musl", "darwin"];
 
+// Generate the bindings to rocksdb C-API.
+// Try to disable the generation of platform-related bindings.
+fn bindgen_rocksdb(file_path: &PathBuf) {
+    let bindings = bindgen::Builder::default()
+        .header("crocksdb/crocksdb/c.h")
+        .ctypes_prefix("libc")
+        .generate()
+        .expect("unable to generate rocksdb bindings");
+
+    bindings
+        .write_to_file(file_path)
+        .expect("unable to write rocksdb bindings");
+}
+
+// Determine if need to update bindings. Supported platforms do not
+// need to be updated by default unless the UPDATE_BIND is specified.
+// Other platforms use bindgen to generate the bindings every time.
+fn config_binding_path() {
+    let file_path: PathBuf;
+
+    let target = env::var("TARGET").unwrap_or_else(|_| "".to_owned());
+    match target.as_str() {
+        "x86_64-unknown-linux-gnu" | "aarch64-unknown-linux-gnu" => {
+            file_path = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap())
+                .join("bindings")
+                .join(format!("{}-bindings.rs", target));
+            if env::var("UPDATE_BIND")
+                .map(|s| s.as_str() == "1")
+                .unwrap_or(false)
+            {
+                bindgen_rocksdb(&file_path);
+            }
+        }
+        _ => {
+            file_path = PathBuf::from(env::var("OUT_DIR").unwrap()).join("rocksdb-bindings.rs");
+            bindgen_rocksdb(&file_path);
+        }
+    };
+    println!(
+        "cargo:rustc-env=BINDING_PATH={}",
+        file_path.to_str().unwrap()
+    );
+}
+
 fn main() {
+    println!("cargo:rerun-if-env-changed=UPDATE_BIND");
+
     let mut build = build_rocksdb();
 
     build.cpp(true).file("crocksdb/c.cc");
@@ -64,10 +111,13 @@ fn link_cpp(build: &mut Build) {
         return;
     }
     // remove lib prefix and .a postfix.
-    println!(
-        "cargo:rustc-link-lib=static={}",
-        &stdlib[3..stdlib.len() - 2]
-    );
+    let libname = &stdlib[3..stdlib.len() - 2];
+    // optional static linking
+    if cfg!(feature = "static_libcpp") {
+        println!("cargo:rustc-link-lib=static={}", &libname);
+    } else {
+        println!("cargo:rustc-link-lib=dylib={}", &libname);
+    }
     println!(
         "cargo:rustc-link-search=native={}",
         path.parent().unwrap().display()
@@ -78,6 +128,10 @@ fn link_cpp(build: &mut Build) {
 fn build_rocksdb() -> Build {
     let target = env::var("TARGET").expect("TARGET was not set");
     let mut cfg = Config::new("rocksdb");
+    if cfg!(feature = "encryption") {
+        cfg.register_dep("OPENSSL").define("WITH_OPENSSL", "ON");
+        println!("cargo:rustc-link-lib=static=crypto");
+    }
     if cfg!(feature = "jemalloc") && NO_JEMALLOC_TARGETS.iter().all(|i| !target.contains(i)) {
         cfg.register_dep("JEMALLOC").define("WITH_JEMALLOC", "ON");
         println!("cargo:rustc-link-lib=static=jemalloc");
@@ -118,7 +172,7 @@ fn build_rocksdb() -> Build {
     let build_dir = format!("{}/build", dst.display());
     let mut build = Build::new();
     if cfg!(target_os = "windows") {
-        let profile = match &*env::var("PROFILE").unwrap_or("debug".to_owned()) {
+        let profile = match &*env::var("PROFILE").unwrap_or_else(|_| "debug".to_owned()) {
             "bench" | "release" => "Release",
             _ => "Debug",
         };
@@ -134,6 +188,8 @@ fn build_rocksdb() -> Build {
         build.define("OS_FREEBSD", None);
     }
 
+    config_binding_path();
+
     let cur_dir = env::current_dir().unwrap();
     build.include(cur_dir.join("rocksdb").join("include"));
     build.include(cur_dir.join("rocksdb"));
@@ -143,6 +199,9 @@ fn build_rocksdb() -> Build {
     // Adding rocksdb specific compile macros.
     // TODO: should make sure crocksdb compile options is the same as rocksdb and titan.
     build.define("ROCKSDB_SUPPORT_THREAD_LOCAL", None);
+    if cfg!(feature = "encryption") {
+        build.define("OPENSSL", None);
+    }
 
     println!("cargo:rustc-link-lib=static=rocksdb");
     println!("cargo:rustc-link-lib=static=titan");

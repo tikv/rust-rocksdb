@@ -11,7 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//
+#![feature(c_variadic)]
 
 extern crate bzip2_sys;
 extern crate libc;
@@ -79,6 +79,10 @@ pub struct DBComparator(c_void);
 pub struct DBFlushOptions(c_void);
 #[repr(C)]
 pub struct DBCompactionFilter(c_void);
+#[repr(C)]
+pub struct DBCompactionFilterFactory(c_void);
+#[repr(C)]
+pub struct DBCompactionFilterContext(c_void);
 #[repr(C)]
 pub struct EnvOptions(c_void);
 #[repr(C)]
@@ -151,6 +155,12 @@ pub struct DBWriteStallInfo(c_void);
 pub struct DBStatusPtr(c_void);
 #[repr(C)]
 pub struct DBMapProperty(c_void);
+#[cfg(feature = "encryption")]
+#[repr(C)]
+pub struct DBFileEncryptionInfo(c_void);
+#[cfg(feature = "encryption")]
+#[repr(C)]
+pub struct DBEncryptionKeyManagerInstance(c_void);
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 #[repr(C)]
@@ -180,6 +190,9 @@ pub fn new_bloom_filter(bits: c_int) -> *mut DBFilterPolicy {
     unsafe { crocksdb_filterpolicy_create_bloom(bits) }
 }
 
+/// # Safety
+///
+/// `DBLRUCacheOptions` should pointer to a valid cache options
 pub unsafe fn new_lru_cache(opt: *mut DBLRUCacheOptions) -> *mut DBCache {
     crocksdb_cache_create_lru(opt)
 }
@@ -379,6 +392,27 @@ pub enum DBBackgroundErrorReason {
     MemTable = 4,
 }
 
+#[cfg(feature = "encryption")]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[repr(C)]
+pub enum DBEncryptionMethod {
+    Unknown = 0,
+    Plaintext = 1,
+    Aes128Ctr = 2,
+    Aes192Ctr = 3,
+    Aes256Ctr = 4,
+}
+
+#[cfg(feature = "encryption")]
+impl fmt::Display for DBEncryptionMethod {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
+/// # Safety
+///
+/// ptr must point to a valid CStr value
 pub unsafe fn error_message(ptr: *mut c_char) -> String {
     let c_str = CStr::from_ptr(ptr);
     let s = format!("{}", c_str.to_string_lossy());
@@ -554,12 +588,18 @@ extern "C" {
         options: *mut Options,
         filter: *mut DBCompactionFilter,
     );
+    pub fn crocksdb_options_set_compaction_filter_factory(
+        options: *mut Options,
+        filter: *mut DBCompactionFilterFactory,
+    );
     pub fn crocksdb_options_set_create_if_missing(options: *mut Options, v: bool);
     pub fn crocksdb_options_set_max_open_files(options: *mut Options, files: c_int);
     pub fn crocksdb_options_set_max_total_wal_size(options: *mut Options, size: u64);
     pub fn crocksdb_options_set_use_fsync(options: *mut Options, v: c_int);
     pub fn crocksdb_options_set_bytes_per_sync(options: *mut Options, bytes: u64);
     pub fn crocksdb_options_set_enable_pipelined_write(options: *mut Options, v: bool);
+    pub fn crocksdb_options_set_enable_multi_batch_write(options: *mut Options, v: bool);
+    pub fn crocksdb_options_is_enable_multi_batch_write(options: *mut Options) -> bool;
     pub fn crocksdb_options_set_unordered_write(options: *mut Options, v: bool);
     pub fn crocksdb_options_set_allow_concurrent_memtable_write(options: *mut Options, v: bool);
     pub fn crocksdb_options_set_manual_wal_flush(options: *mut Options, v: bool);
@@ -751,7 +791,11 @@ extern "C" {
         target_size: *const u64,
         num_paths: c_int,
     );
+    pub fn crocksdb_options_get_db_paths_num(options: *mut Options) -> usize;
+    pub fn crocksdb_options_get_db_path(options: *mut Options, idx: size_t) -> *const c_char;
+    pub fn crocksdb_options_get_path_target_size(options: *mut Options, idx: size_t) -> u64;
     pub fn crocksdb_options_set_vector_memtable_factory(options: *mut Options, reserved_bytes: u64);
+    pub fn crocksdb_options_set_atomic_flush(option: *mut Options, enable: bool);
     pub fn crocksdb_filterpolicy_create_bloom_full(bits_per_key: c_int) -> *mut DBFilterPolicy;
     pub fn crocksdb_filterpolicy_create_bloom(bits_per_key: c_int) -> *mut DBFilterPolicy;
     pub fn crocksdb_open(
@@ -987,6 +1031,13 @@ extern "C" {
         batch: *mut DBWriteBatch,
         err: *mut *mut c_char,
     );
+    pub fn crocksdb_write_multi_batch(
+        db: *mut DBInstance,
+        writeopts: *const DBWriteOptions,
+        batch: *const *mut DBWriteBatch,
+        batchlen: size_t,
+        err: *mut *mut c_char,
+    );
     pub fn crocksdb_writebatch_create() -> *mut DBWriteBatch;
     pub fn crocksdb_writebatch_create_with_capacity(cap: size_t) -> *mut DBWriteBatch;
     pub fn crocksdb_writebatch_create_from(rep: *const u8, size: size_t) -> *mut DBWriteBatch;
@@ -1161,6 +1212,13 @@ extern "C" {
         options: *const DBFlushOptions,
         err: *mut *mut c_char,
     );
+    pub fn crocksdb_flush_cfs(
+        db: *mut DBInstance,
+        cfs: *const *mut DBCFHandle,
+        num_cfs: size_t,
+        options: *const DBFlushOptions,
+        err: *mut *mut c_char,
+    );
     pub fn crocksdb_flush_wal(db: *mut DBInstance, sync: bool, err: *mut *mut c_char);
     pub fn crocksdb_sync_wal(db: *mut DBInstance, err: *mut *mut c_char);
 
@@ -1213,6 +1271,7 @@ extern "C" {
     );
     pub fn crocksdb_compactoptions_set_change_level(opt: *mut DBCompactOptions, v: bool);
     pub fn crocksdb_compactoptions_set_target_level(opt: *mut DBCompactOptions, v: i32);
+    pub fn crocksdb_compactoptions_set_target_path_id(opt: *mut DBCompactOptions, v: i32);
     pub fn crocksdb_compactoptions_set_max_subcompactions(opt: *mut DBCompactOptions, v: i32);
     pub fn crocksdb_compactoptions_set_bottommost_level_compaction(
         opt: *mut DBCompactOptions,
@@ -1332,6 +1391,26 @@ extern "C" {
     );
     pub fn crocksdb_compactionfilter_destroy(filter: *mut DBCompactionFilter);
 
+    // Compaction filter context
+    pub fn crocksdb_compactionfiltercontext_is_full_compaction(
+        context: *const DBCompactionFilterContext,
+    ) -> bool;
+    pub fn crocksdb_compactionfiltercontext_is_manual_compaction(
+        context: *const DBCompactionFilterContext,
+    ) -> bool;
+
+    // Compaction filter factory
+    pub fn crocksdb_compactionfilterfactory_create(
+        state: *mut c_void,
+        destructor: extern "C" fn(*mut c_void),
+        create_compaction_filter: extern "C" fn(
+            *mut c_void,
+            *const DBCompactionFilterContext,
+        ) -> *mut DBCompactionFilter,
+        name: extern "C" fn(*mut c_void) -> *const c_char,
+    ) -> *mut DBCompactionFilterFactory;
+    pub fn crocksdb_compactionfilterfactory_destroy(factory: *mut DBCompactionFilterFactory);
+
     // Env
     pub fn crocksdb_default_env_create() -> *mut DBEnv;
     pub fn crocksdb_mem_env_create() -> *mut DBEnv;
@@ -1387,6 +1466,101 @@ extern "C" {
         allow_blocking_flush: bool,
     );
     pub fn crocksdb_ingestexternalfileoptions_destroy(opt: *mut IngestExternalFileOptions);
+
+    // KeyManagedEncryptedEnv
+    #[cfg(feature = "encryption")]
+    pub fn crocksdb_file_encryption_info_create() -> *mut DBFileEncryptionInfo;
+    #[cfg(feature = "encryption")]
+    pub fn crocksdb_file_encryption_info_destroy(file_info: *mut DBFileEncryptionInfo);
+    #[cfg(feature = "encryption")]
+    pub fn crocksdb_file_encryption_info_method(
+        file_info: *mut DBFileEncryptionInfo,
+    ) -> DBEncryptionMethod;
+    #[cfg(feature = "encryption")]
+    pub fn crocksdb_file_encryption_info_key(
+        file_info: *mut DBFileEncryptionInfo,
+        key_len: *mut size_t,
+    ) -> *const c_char;
+    #[cfg(feature = "encryption")]
+    pub fn crocksdb_file_encryption_info_iv(
+        file_info: *mut DBFileEncryptionInfo,
+        iv_len: *mut size_t,
+    ) -> *const c_char;
+    #[cfg(feature = "encryption")]
+    pub fn crocksdb_file_encryption_info_set_method(
+        file_info: *mut DBFileEncryptionInfo,
+        method: DBEncryptionMethod,
+    );
+    #[cfg(feature = "encryption")]
+    pub fn crocksdb_file_encryption_info_set_key(
+        file_info: *mut DBFileEncryptionInfo,
+        key: *const c_char,
+        key_len: size_t,
+    );
+    #[cfg(feature = "encryption")]
+    pub fn crocksdb_file_encryption_info_set_iv(
+        file_info: *mut DBFileEncryptionInfo,
+        iv: *const c_char,
+        iv_len: size_t,
+    );
+
+    #[cfg(feature = "encryption")]
+    pub fn crocksdb_encryption_key_manager_create(
+        state: *mut c_void,
+        destructor: extern "C" fn(*mut c_void),
+        get_file: extern "C" fn(
+            *mut c_void,
+            *const c_char,
+            *mut DBFileEncryptionInfo,
+        ) -> *const c_char,
+        new_file: extern "C" fn(
+            *mut c_void,
+            *const c_char,
+            *mut DBFileEncryptionInfo,
+        ) -> *const c_char,
+        delete_file: extern "C" fn(*mut c_void, *const c_char) -> *const c_char,
+        link_file: extern "C" fn(*mut c_void, *const c_char, *const c_char) -> *const c_char,
+        rename_file: extern "C" fn(*mut c_void, *const c_char, *const c_char) -> *const c_char,
+    ) -> *mut DBEncryptionKeyManagerInstance;
+    #[cfg(feature = "encryption")]
+    pub fn crocksdb_encryption_key_manager_destroy(
+        key_manager: *mut DBEncryptionKeyManagerInstance,
+    );
+    #[cfg(feature = "encryption")]
+    pub fn crocksdb_encryption_key_manager_get_file(
+        key_manager: *mut DBEncryptionKeyManagerInstance,
+        fname: *const c_char,
+        file_info: *mut DBFileEncryptionInfo,
+    ) -> *const c_char;
+    #[cfg(feature = "encryption")]
+    pub fn crocksdb_encryption_key_manager_new_file(
+        key_manager: *mut DBEncryptionKeyManagerInstance,
+        fname: *const c_char,
+        file_info: *mut DBFileEncryptionInfo,
+    ) -> *const c_char;
+    #[cfg(feature = "encryption")]
+    pub fn crocksdb_encryption_key_manager_delete_file(
+        key_manager: *mut DBEncryptionKeyManagerInstance,
+        fname: *const c_char,
+    ) -> *const c_char;
+    #[cfg(feature = "encryption")]
+    pub fn crocksdb_encryption_key_manager_link_file(
+        key_manager: *mut DBEncryptionKeyManagerInstance,
+        src_fname: *const c_char,
+        dst_fname: *const c_char,
+    ) -> *const c_char;
+    #[cfg(feature = "encryption")]
+    pub fn crocksdb_encryption_key_manager_rename_file(
+        key_manager: *mut DBEncryptionKeyManagerInstance,
+        src_fname: *const c_char,
+        dst_fname: *const c_char,
+    ) -> *const c_char;
+
+    #[cfg(feature = "encryption")]
+    pub fn crocksdb_key_managed_encrypted_env_create(
+        base_env: *mut DBEnv,
+        key_manager: *mut DBEncryptionKeyManagerInstance,
+    ) -> *mut DBEnv;
 
     // SstFileReader
     pub fn crocksdb_sstfilereader_create(io_options: *const Options) -> *mut SstFileReader;
@@ -1546,13 +1720,19 @@ extern "C" {
         name: extern "C" fn(*mut c_void) -> *const c_char,
     ) -> *mut DBSliceTransform;
     pub fn crocksdb_slicetransform_destroy(transform: *mut DBSliceTransform);
+    pub fn crocksdb_logger_create(
+        state: *mut c_void,
+        destructor: extern "C" fn(*mut c_void),
+        logv: extern "C" fn(ctx: *mut c_void, log_level: DBInfoLogLevel, log: *const c_char),
+    ) -> *mut DBLogger;
+    pub fn crocksdb_create_env_logger(fname: *const libc::c_char, env: *mut DBEnv)
+        -> *mut DBLogger;
     pub fn crocksdb_create_log_from_options(
         path: *const c_char,
         options: *mut Options,
         err: *mut *mut c_char,
     ) -> *mut DBLogger;
     pub fn crocksdb_log_destroy(logger: *mut DBLogger);
-
     pub fn crocksdb_get_pinned(
         db: *mut DBInstance,
         readopts: *const DBReadOptions,
@@ -1936,6 +2116,10 @@ extern "C" {
     pub fn crocksdb_perf_context_write_delay_time(ctx: *mut DBPerfContext) -> u64;
     pub fn crocksdb_perf_context_write_pre_and_post_process_time(ctx: *mut DBPerfContext) -> u64;
     pub fn crocksdb_perf_context_db_mutex_lock_nanos(ctx: *mut DBPerfContext) -> u64;
+    pub fn crocksdb_perf_context_write_thread_wait_nanos(ctx: *mut DBPerfContext) -> u64;
+    pub fn crocksdb_perf_context_write_scheduling_flushes_compactions_time(
+        ctx: *mut DBPerfContext,
+    ) -> u64;
     pub fn crocksdb_perf_context_db_condition_wait_nanos(ctx: *mut DBPerfContext) -> u64;
     pub fn crocksdb_perf_context_merge_operator_time_nanos(ctx: *mut DBPerfContext) -> u64;
     pub fn crocksdb_perf_context_read_index_block_nanos(ctx: *mut DBPerfContext) -> u64;
@@ -1972,6 +2156,8 @@ extern "C" {
     pub fn crocksdb_perf_context_env_lock_file_nanos(ctx: *mut DBPerfContext) -> u64;
     pub fn crocksdb_perf_context_env_unlock_file_nanos(ctx: *mut DBPerfContext) -> u64;
     pub fn crocksdb_perf_context_env_new_logger_nanos(ctx: *mut DBPerfContext) -> u64;
+    pub fn crocksdb_perf_context_encrypt_data_nanos(ctx: *mut DBPerfContext) -> u64;
+    pub fn crocksdb_perf_context_decrypt_data_nanos(ctx: *mut DBPerfContext) -> u64;
 
     pub fn crocksdb_get_iostats_context() -> *mut DBIOStatsContext;
     pub fn crocksdb_iostats_context_reset(ctx: *mut DBIOStatsContext);
@@ -1987,17 +2173,20 @@ extern "C" {
     pub fn crocksdb_iostats_context_logger_nanos(ctx: *mut DBIOStatsContext) -> u64;
 
     pub fn crocksdb_run_ldb_tool(argc: c_int, argv: *const *const c_char, opts: *const Options);
+    pub fn crocksdb_run_sst_dump_tool(
+        argc: c_int,
+        argv: *const *const c_char,
+        opts: *const Options,
+    );
 }
 
 // Titan
 extern "C" {
     pub fn ctitandb_open_column_families(
         path: *const c_char,
-        options: *const Options,
         titan_options: *const DBTitanDBOptions,
         num_column_families: c_int,
         column_family_names: *const *const c_char,
-        column_family_options: *const *const Options,
         titan_column_family_options: *const *const DBTitanDBOptions,
         column_family_handles: *const *mut DBCFHandle,
         err: *mut *mut c_char,
@@ -2005,7 +2194,6 @@ extern "C" {
 
     pub fn ctitandb_create_column_family(
         db: *mut DBInstance,
-        column_family_options: *const Options,
         titan_column_family_options: *const DBTitanDBOptions,
         column_family_name: *const c_char,
         err: *mut *mut c_char,
@@ -2014,16 +2202,22 @@ extern "C" {
     pub fn ctitandb_options_create() -> *mut DBTitanDBOptions;
     pub fn ctitandb_options_destroy(opts: *mut DBTitanDBOptions);
     pub fn ctitandb_options_copy(opts: *mut DBTitanDBOptions) -> *mut DBTitanDBOptions;
+    pub fn ctitandb_options_set_rocksdb_options(
+        opts: *mut DBTitanDBOptions,
+        rocksdb_opts: *const Options,
+    );
     pub fn ctitandb_get_titan_options_cf(
         db: *mut DBInstance,
         cf: *mut DBCFHandle,
     ) -> *mut DBTitanDBOptions;
+    pub fn ctitandb_get_titan_db_options(db: *mut DBInstance) -> *mut DBTitanDBOptions;
     pub fn ctitandb_options_dirname(opts: *mut DBTitanDBOptions) -> *const c_char;
     pub fn ctitandb_options_set_dirname(opts: *mut DBTitanDBOptions, name: *const c_char);
     pub fn ctitandb_options_min_blob_size(opts: *mut DBTitanDBOptions) -> u64;
     pub fn ctitandb_options_set_min_blob_size(opts: *mut DBTitanDBOptions, size: u64);
     pub fn ctitandb_options_blob_file_compression(opts: *mut DBTitanDBOptions)
         -> DBCompressionType;
+    pub fn ctitandb_options_set_gc_merge_rewrite(opts: *mut DBTitanDBOptions, enable: bool);
     pub fn ctitandb_options_set_blob_file_compression(
         opts: *mut DBTitanDBOptions,
         t: DBCompressionType,

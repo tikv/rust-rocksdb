@@ -8,6 +8,7 @@ mod test_encryption;
 mod test_event_listener;
 mod test_ingest_external_file;
 mod test_iterator;
+mod test_logger;
 mod test_metadata;
 mod test_multithreaded;
 mod test_prefix_extractor;
@@ -17,6 +18,7 @@ mod test_rocksdb_options;
 mod test_slice_transform;
 mod test_statistics;
 mod test_table_properties;
+mod test_table_properties_rc;
 mod test_titan;
 mod test_ttl;
 

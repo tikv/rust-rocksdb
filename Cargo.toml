@@ -16,18 +16,18 @@ exclude = [
 
 [features]
 default = []
+encryption = ["librocksdb_sys/encryption"]
 jemalloc = ["librocksdb_sys/jemalloc"]
 portable = ["librocksdb_sys/portable"]
 sse = ["librocksdb_sys/sse"]
+static_libcpp = ["librocksdb_sys/static_libcpp"]
 valgrind = []
 
 [dependencies]
 libc = "0.2.11"
-
-[dependencies.librocksdb_sys]
-path = "librocksdb_sys"
+librocksdb_sys = { path = "librocksdb_sys" }
 
 [dev-dependencies]
-rand = "0.7"
 crc = "1.8"
+rand = "0.7"
 tempfile = "3.1"

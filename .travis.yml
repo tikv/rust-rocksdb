@@ -24,8 +24,8 @@ cache:
   - target
 
 before_script:
-  - rustup toolchain install nightly-2019-12-20
-  - rustup default nightly-2019-12-20
+  - rustup toolchain install nightly-2020-04-23
+  - rustup default nightly-2020-04-23
   - rustup component add rustfmt
 
 script:

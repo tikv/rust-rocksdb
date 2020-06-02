@@ -3151,9 +3151,9 @@ unsigned char crocksdb_compactionfiltercontext_is_manual_compaction(
   return context->rep.is_manual_compaction;
 }
 
-unsigned char crocksdb_compactionfiltercontext_bottommost_level(
+unsigned char crocksdb_compactionfiltercontext_is_bottommost_level(
     crocksdb_compactionfiltercontext_t* context) {
-  return context->rep.bottommost_level;
+  return context->rep.is_bottommost_level;
 }
 
 crocksdb_compactionfilterfactory_t* crocksdb_compactionfilterfactory_create(

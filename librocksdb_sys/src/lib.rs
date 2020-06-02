@@ -1397,7 +1397,7 @@ extern "C" {
     pub fn crocksdb_compactionfiltercontext_is_manual_compaction(
         context: *const DBCompactionFilterContext,
     ) -> bool;
-    pub fn crocksdb_compactionfiltercontext_bottommost_level(
+    pub fn crocksdb_compactionfiltercontext_is_bottommost_level(
         context: *const DBCompactionFilterContext,
     ) -> bool;
 

@@ -1249,7 +1249,7 @@ crocksdb_compactionfiltercontext_is_manual_compaction(
     crocksdb_compactionfiltercontext_t* context);
 
 extern C_ROCKSDB_LIBRARY_API unsigned char
-crocksdb_compactionfiltercontext_bottommost_level(
+crocksdb_compactionfiltercontext_is_bottommost_level(
     crocksdb_compactionfiltercontext_t* context);
 
 /* Compaction Filter Factory */

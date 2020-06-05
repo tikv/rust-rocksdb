@@ -7,6 +7,13 @@ os:
 rust:
   - nightly
 
+addons:
+  apt:
+    sources:
+      - llvm-toolchain-bionic-7
+    packages:
+      - clang-format-7
+
 jobs:
   include:
   - os: linux

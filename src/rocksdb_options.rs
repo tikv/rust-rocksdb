@@ -1006,6 +1006,20 @@ impl DBOptions {
         }
     }
 
+    pub fn set_ratelimiter_bytes_per_second(
+        &mut self,
+        rate_bytes_per_sec: i64,
+    ) -> Result<(), String> {
+        let limiter = unsafe { crocksdb_ffi::crocksdb_options_get_ratelimiter(self.inner) };
+        if limiter.is_null() {
+            return Err("Failed to get rate limiter".to_owned());
+        }
+
+        let rate_limiter = RateLimiter { inner: limiter };
+        rate_limiter.set_bytes_per_second(rate_bytes_per_sec);
+        Ok(())
+    }
+
     // Create a info log with `path` and save to options logger field directly.
     // TODO: export more logger options like level, roll size, time, etc...
     pub fn create_info_log(&self, path: &str) -> Result<(), String> {

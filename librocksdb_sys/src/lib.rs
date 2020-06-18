@@ -2197,7 +2197,7 @@ extern "C" {
     ) -> *const c_char;
     pub fn crocksdb_sst_partitioner_state_current_output_file_size(
         state: *mut DBSstPartitionerState,
-    ) -> c_int;
+    ) -> u64;
     pub fn crocksdb_sst_partitioner_state_set_next_key(
         state: *mut DBSstPartitionerState,
         next_key: *const c_char,
@@ -2270,8 +2270,11 @@ extern "C" {
     pub fn crocksdb_sst_partitioner_factory_create(
         underlying: *mut c_void,
         destructor: extern "C" fn(*mut c_void),
-        name_cb: extern "C" fn(*mut c_void),
-        create_partitioner_cb: extern "C" fn(*mut c_void, *mut DBSstPartitionerContext),
+        name_cb: extern "C" fn(*mut c_void) -> *const c_char,
+        create_partitioner_cb: extern "C" fn(
+            *mut c_void,
+            *mut DBSstPartitionerContext,
+        ) -> *mut DBSstPartitioner,
     ) -> *mut DBSstPartitionerFactory;
     pub fn crocksdb_sst_partitioner_factory_destroy(factory: *mut DBSstPartitionerFactory);
     pub fn crocksdb_sst_partitioner_factory_name(

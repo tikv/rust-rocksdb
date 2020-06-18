@@ -190,6 +190,7 @@ fn test_set_ratelimiter_bytes_per_second() {
             .is_ok(),
         true
     );
+    assert_eq!(opts.get_ratelimiter_bytes_per_second().unwrap(), 200 * 1024 * 1024);
     drop(db);
 }
 

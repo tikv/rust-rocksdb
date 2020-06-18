@@ -255,6 +255,9 @@ mod test {
         let factory_name =
             unsafe { CStr::from_ptr(crocksdb_ffi::crocksdb_sst_partitioner_factory_name(factory)) };
         assert_eq!(*FACTORY_NAME.as_c_str(), *factory_name);
+        unsafe {
+            crocksdb_ffi::crocksdb_sst_partitioner_factory_destroy(factory);
+        }
     }
 
     #[test]
@@ -289,16 +292,22 @@ mod test {
                 LARGEST_KEY.len(),
             );
         }
-        let _partitioner = unsafe {
+        let partitioner = unsafe {
             crocksdb_ffi::crocksdb_sst_partitioner_factory_create_partitioner(factory, context)
         };
-        let sl = s.lock().unwrap();
-        assert_eq!(1, sl.call_create_partitioner);
-        assert_eq!(IS_FULL_COMPACTION, sl.is_full_compaction.unwrap());
-        assert_eq!(IS_MANUAL_COMPACTION, sl.is_manual_compaction.unwrap());
-        assert_eq!(OUTPUT_LEVEL, sl.output_level.unwrap());
-        assert_eq!(SMALLEST_KEY, sl.smallest_key.as_ref().unwrap().as_slice());
-        assert_eq!(LARGEST_KEY, sl.largest_key.as_ref().unwrap().as_slice());
+        {
+            let sl = s.lock().unwrap();
+            assert_eq!(1, sl.call_create_partitioner);
+            assert_eq!(IS_FULL_COMPACTION, sl.is_full_compaction.unwrap());
+            assert_eq!(IS_MANUAL_COMPACTION, sl.is_manual_compaction.unwrap());
+            assert_eq!(OUTPUT_LEVEL, sl.output_level.unwrap());
+            assert_eq!(SMALLEST_KEY, sl.smallest_key.as_ref().unwrap().as_slice());
+            assert_eq!(LARGEST_KEY, sl.largest_key.as_ref().unwrap().as_slice());
+        }
+        unsafe {
+            crocksdb_ffi::crocksdb_sst_partitioner_destroy(partitioner);
+            crocksdb_ffi::crocksdb_sst_partitioner_factory_destroy(factory);
+        }
     }
 
     #[test]
@@ -314,9 +323,7 @@ mod test {
         let partitioner = unsafe {
             crocksdb_ffi::crocksdb_sst_partitioner_factory_create_partitioner(factory, context)
         };
-        let state = unsafe {
-            crocksdb_ffi::crocksdb_sst_partitioner_state_create()
-        };
+        let state = unsafe { crocksdb_ffi::crocksdb_sst_partitioner_state_create() };
         unsafe {
             crocksdb_ffi::crocksdb_sst_partitioner_state_set_next_key(
                 state,
@@ -332,15 +339,21 @@ mod test {
             crocksdb_ffi::crocksdb_sst_partitioner_should_partition(partitioner, state) != 0
         };
         assert_eq!(SHOULD_PARTITION, should_partition);
-        let sl = s.lock().unwrap();
-        assert_eq!(1, sl.call_create_partitioner);
-        assert_eq!(1, sl.call_should_partition);
-        assert_eq!(0, sl.call_reset);
-        assert_eq!(NEXT_KEY, sl.next_key.as_ref().unwrap().as_slice());
-        assert_eq!(
-            CURRENT_OUTPUT_FILE_SIZE,
-            sl.current_output_file_size.unwrap()
-        );
+        {
+            let sl = s.lock().unwrap();
+            assert_eq!(1, sl.call_create_partitioner);
+            assert_eq!(1, sl.call_should_partition);
+            assert_eq!(0, sl.call_reset);
+            assert_eq!(NEXT_KEY, sl.next_key.as_ref().unwrap().as_slice());
+            assert_eq!(
+                CURRENT_OUTPUT_FILE_SIZE,
+                sl.current_output_file_size.unwrap()
+            );
+        }
+        unsafe {
+            crocksdb_ffi::crocksdb_sst_partitioner_destroy(partitioner);
+            crocksdb_ffi::crocksdb_sst_partitioner_factory_destroy(factory);
+        }
     }
 
     #[test]
@@ -360,11 +373,17 @@ mod test {
                 RESET_KEY.len(),
             );
         }
-        let sl = s.lock().unwrap();
-        assert_eq!(1, sl.call_create_partitioner);
-        assert_eq!(0, sl.call_should_partition);
-        assert_eq!(1, sl.call_reset);
-        assert_eq!(RESET_KEY, sl.reset_key.as_ref().unwrap().as_slice());
+        {
+            let sl = s.lock().unwrap();
+            assert_eq!(1, sl.call_create_partitioner);
+            assert_eq!(0, sl.call_should_partition);
+            assert_eq!(1, sl.call_reset);
+            assert_eq!(RESET_KEY, sl.reset_key.as_ref().unwrap().as_slice());
+        }
+        unsafe {
+            crocksdb_ffi::crocksdb_sst_partitioner_destroy(partitioner);
+            crocksdb_ffi::crocksdb_sst_partitioner_factory_destroy(factory);
+        }
     }
 
     #[test]

@@ -186,11 +186,11 @@ fn test_set_ratelimiter_bytes_per_second() {
     let db = DB::open(opts, path.path().to_str().unwrap()).unwrap();
     let mut opts = db.get_db_options();
     assert!(
-        opts.set_ratelimiter_bytes_per_second(200 * 1024 * 1024)
+        opts.set_rate_bytes_per_sec(200 * 1024 * 1024)
             .is_ok(),
         true
     );
-    assert_eq!(opts.get_ratelimiter_bytes_per_second().unwrap(), 200 * 1024 * 1024);
+    assert_eq!(opts.get_rate_bytes_per_sec().unwrap(), 200 * 1024 * 1024);
     drop(db);
 }
 

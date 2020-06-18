@@ -1006,7 +1006,7 @@ impl DBOptions {
         }
     }
 
-    pub fn set_ratelimiter_bytes_per_second(
+    pub fn set_rate_bytes_per_sec(
         &mut self,
         rate_bytes_per_sec: i64,
     ) -> Result<(), String> {
@@ -1021,7 +1021,7 @@ impl DBOptions {
         Ok(())
     }
 
-    pub fn get_ratelimiter_bytes_per_second(
+    pub fn get_rate_bytes_per_sec(
         &mut self,
     ) -> Result<i64, String> {
         let limiter = unsafe { crocksdb_ffi::crocksdb_options_get_ratelimiter(self.inner) };

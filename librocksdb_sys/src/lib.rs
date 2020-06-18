@@ -2219,7 +2219,7 @@ extern "C" {
         partitioner: *mut DBSstPartitioner,
         state: *mut DBSstPartitionerState,
     ) -> c_uchar;
-    pub fn crocksdb_sst_partitoiner_reset(
+    pub fn crocksdb_sst_partitioner_reset(
         partitioner: *mut DBSstPartitioner,
         key: *const c_char,
         key_len: size_t,

@@ -23,6 +23,9 @@ extern crate libc;
 pub extern crate librocksdb_sys;
 #[cfg(test)]
 extern crate tempfile;
+#[cfg(test)]
+#[macro_use]
+extern crate lazy_static;
 
 pub use compaction_filter::{
     new_compaction_filter, new_compaction_filter_factory, new_compaction_filter_raw,

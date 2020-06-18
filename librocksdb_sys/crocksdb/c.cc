@@ -5618,7 +5618,7 @@ void crocksdb_sst_partitioner_context_set_is_full_compaction(
 void crocksdb_sst_partitioner_context_set_is_manual_compaction(
     crocksdb_sst_partitioner_context_t* context,
     unsigned char is_manual_compaction) {
-  context->rep->is_full_compaction = is_manual_compaction;
+  context->rep->is_manual_compaction = is_manual_compaction;
 }
 
 void crocksdb_sst_partitioner_context_set_output_level(

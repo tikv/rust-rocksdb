@@ -2907,7 +2907,8 @@ void crocksdb_options_set_ratelimiter(crocksdb_options_t* opt,
   limiter->rep = nullptr;
 }
 
-crocksdb_ratelimiter_t* crocksdb_options_get_ratelimiter(crocksdb_options_t* opt) {
+crocksdb_ratelimiter_t* crocksdb_options_get_ratelimiter(
+    crocksdb_options_t* opt) {
   if (opt->rep.rate_limiter != nullptr) {
     crocksdb_ratelimiter_t* limiter = new crocksdb_ratelimiter_t;
     limiter->rep = opt->rep.rate_limiter.get();

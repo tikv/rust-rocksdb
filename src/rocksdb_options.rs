@@ -1015,8 +1015,9 @@ impl DBOptions {
             return Err("Failed to get rate limiter".to_owned());
         }
 
-        let rate_limiter = RateLimiter { inner: limiter };
-        rate_limiter.set_bytes_per_second(rate_bytes_per_sec);
+        unsafe {
+            crocksdb_ffi::crocksdb_ratelimiter_set_bytes_per_second(limiter, rate_bytes_per_sec);
+        }
         Ok(())
     }
 

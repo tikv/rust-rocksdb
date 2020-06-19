@@ -4,7 +4,7 @@ use crocksdb_ffi::{
     self, DBSstPartitioner, DBSstPartitionerContext, DBSstPartitionerFactory, DBSstPartitionerState,
 };
 use libc::{c_char, c_uchar, c_void, size_t};
-use std::{ffi::CString, mem, slice};
+use std::{ffi::CString, mem, ptr, slice};
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct SstPartitionerState<'a> {
@@ -63,7 +63,10 @@ extern "C" fn sst_partitioner_reset(ctx: *mut c_void, key: *const c_char, key_le
 
 pub trait SstPartitionerFactory: Sync + Send {
     fn name(&self) -> &CString;
-    fn create_partitioner(&self, context: &SstPartitionerContext) -> Box<dyn SstPartitioner>;
+    fn create_partitioner(
+        &self,
+        context: &SstPartitionerContext,
+    ) -> Option<Box<dyn SstPartitioner>>;
 }
 
 extern "C" fn sst_partitioner_factory_destroy(ctx: *mut c_void) {
@@ -107,15 +110,19 @@ extern "C" fn sst_partitioner_factory_create_partitioner(
             largest_key: slice::from_raw_parts(largest_key, largest_key_len),
         }
     };
-    let partitioner = factory.create_partitioner(&context);
-    let ctx = Box::into_raw(Box::new(partitioner)) as *mut c_void;
-    unsafe {
-        crocksdb_ffi::crocksdb_sst_partitioner_create(
-            ctx,
-            sst_partitioner_destructor,
-            sst_partitioner_should_partition,
-            sst_partitioner_reset,
-        )
+    match factory.create_partitioner(&context) {
+        None => ptr::null_mut(),
+        Some(partitioner) => {
+            let ctx = Box::into_raw(Box::new(partitioner)) as *mut c_void;
+            unsafe {
+                crocksdb_ffi::crocksdb_sst_partitioner_create(
+                    ctx,
+                    sst_partitioner_destructor,
+                    sst_partitioner_should_partition,
+                    sst_partitioner_reset,
+                )
+            }
+        }
     }
 }
 
@@ -150,6 +157,7 @@ mod test {
         pub drop_partitioner: usize,
         pub drop_factory: usize,
         pub should_partition_result: bool,
+        pub no_partitioner: bool,
 
         // SstPartitionerState fields
         pub next_key: Option<Vec<u8>>,
@@ -174,6 +182,7 @@ mod test {
                 drop_partitioner: 0,
                 drop_factory: 0,
                 should_partition_result: false,
+                no_partitioner: false,
                 next_key: None,
                 current_output_file_size: None,
                 reset_key: None,
@@ -227,18 +236,24 @@ mod test {
             &FACTORY_NAME
         }
 
-        fn create_partitioner(&self, context: &SstPartitionerContext) -> Box<dyn SstPartitioner> {
+        fn create_partitioner(
+            &self,
+            context: &SstPartitionerContext,
+        ) -> Option<Box<dyn SstPartitioner>> {
             let mut s = self.state.lock().unwrap();
             s.call_create_partitioner += 1;
+            if s.no_partitioner {
+                return None;
+            }
             s.is_full_compaction = Some(context.is_full_compaction);
             s.is_manual_compaction = Some(context.is_manual_compaction);
             s.output_level = Some(context.output_level);
             s.smallest_key = Some(context.smallest_key.to_vec());
             s.largest_key = Some(context.largest_key.to_vec());
 
-            Box::new(TestSstPartitioner {
+            Some(Box::new(TestSstPartitioner {
                 state: self.state.clone(),
-            })
+            }))
         }
     }
 
@@ -306,6 +321,22 @@ mod test {
         }
         unsafe {
             crocksdb_ffi::crocksdb_sst_partitioner_destroy(partitioner);
+            crocksdb_ffi::crocksdb_sst_partitioner_factory_destroy(factory);
+        }
+    }
+
+    #[test]
+    fn factory_create_no_partitioner() {
+        let s = Arc::new(Mutex::new(TestState::default()));
+        s.lock().unwrap().no_partitioner = true;
+        let factory = new_sst_partitioner_factory(TestSstPartitionerFactory { state: s.clone() });
+        let context = unsafe { crocksdb_ffi::crocksdb_sst_partitioner_context_create() };
+        let partitioner = unsafe {
+            crocksdb_ffi::crocksdb_sst_partitioner_factory_create_partitioner(factory, context)
+        };
+        assert_eq!(1, s.lock().unwrap().call_create_partitioner);
+        assert_eq!(ptr::null_mut(), partitioner);
+        unsafe {
             crocksdb_ffi::crocksdb_sst_partitioner_factory_destroy(factory);
         }
     }

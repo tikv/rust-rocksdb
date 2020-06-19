@@ -5654,6 +5654,9 @@ struct crocksdb_sst_partitioner_factory_impl_t : public SstPartitionerFactory {
     context.rep = const_cast<SstPartitioner::Context*>(&partitioner_context);
     crocksdb_sst_partitioner_t* partitioner =
         create_partitioner_cb(underlying, &context);
+    if (partitioner == nullptr) {
+      return nullptr;
+    }
     std::unique_ptr<SstPartitioner> rep = std::move(partitioner->rep);
     crocksdb_sst_partitioner_destroy(partitioner);
     return rep;
@@ -5690,8 +5693,13 @@ const char* crocksdb_sst_partitioner_factory_name(
 crocksdb_sst_partitioner_t* crocksdb_sst_partitioner_factory_create_partitioner(
     crocksdb_sst_partitioner_factory_t* factory,
     crocksdb_sst_partitioner_context_t* context) {
+  std::unique_ptr<SstPartitioner> rep =
+      factory->rep->CreatePartitioner(*context->rep);
+  if (rep == nullptr) {
+    return nullptr;
+  }
   crocksdb_sst_partitioner_t* partitioner = new crocksdb_sst_partitioner_t;
-  partitioner->rep = factory->rep->CreatePartitioner(*context->rep);
+  partitioner->rep = std::move(rep);
   return partitioner;
 }
 

@@ -4,7 +4,7 @@ use crocksdb_ffi::{
     self, DBSstPartitioner, DBSstPartitionerContext, DBSstPartitionerFactory, DBSstPartitionerState,
 };
 use libc::{c_char, c_uchar, c_void, size_t};
-use std::{ffi::CString, mem, ptr, slice};
+use std::{ffi::CString, ptr, slice};
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct SstPartitionerState<'a> {
@@ -40,9 +40,8 @@ extern "C" fn sst_partitioner_should_partition<P: SstPartitioner>(
     let partitioner = unsafe { &*(ctx as *mut P) };
     let state = unsafe {
         let mut key_len: usize = 0;
-        let next_key: *const u8 = mem::transmute(
-            crocksdb_ffi::crocksdb_sst_partitioner_state_next_key(state, &mut key_len),
-        );
+        let next_key =
+            crocksdb_ffi::crocksdb_sst_partitioner_state_next_key(state, &mut key_len) as *const u8;
         SstPartitionerState {
             next_key: slice::from_raw_parts(next_key, key_len),
             current_output_file_size:
@@ -59,7 +58,7 @@ extern "C" fn sst_partitioner_reset<P: SstPartitioner>(
 ) {
     let partitioner = unsafe { &*(ctx as *mut P) };
     let key_buf = unsafe {
-        let key_ptr: *const u8 = mem::transmute(key);
+        let key_ptr = key as *const u8;
         slice::from_raw_parts(key_ptr, key_len)
     };
     partitioner.reset(key_buf);
@@ -93,17 +92,15 @@ extern "C" fn sst_partitioner_factory_create_partitioner<F: SstPartitionerFactor
     let factory = unsafe { &*(ctx as *mut F) };
     let context = unsafe {
         let mut smallest_key_len: usize = 0;
-        let smallest_key: *const u8 =
-            mem::transmute(crocksdb_ffi::crocksdb_sst_partitioner_context_smallest_key(
-                context,
-                &mut smallest_key_len,
-            ));
+        let smallest_key = crocksdb_ffi::crocksdb_sst_partitioner_context_smallest_key(
+            context,
+            &mut smallest_key_len,
+        ) as *const u8;
         let mut largest_key_len: usize = 0;
-        let largest_key: *const u8 =
-            mem::transmute(crocksdb_ffi::crocksdb_sst_partitioner_context_largest_key(
-                context,
-                &mut largest_key_len,
-            ));
+        let largest_key = crocksdb_ffi::crocksdb_sst_partitioner_context_largest_key(
+            context,
+            &mut largest_key_len,
+        ) as *const u8;
         SstPartitionerContext {
             is_full_compaction: crocksdb_ffi::crocksdb_sst_partitioner_context_is_full_compaction(
                 context,
@@ -148,7 +145,6 @@ pub fn new_sst_partitioner_factory<F: SstPartitionerFactory>(
 mod test {
     use std::{
         ffi::{CStr, CString},
-        mem,
         sync::{Arc, Mutex},
     };
 
@@ -301,12 +297,12 @@ mod test {
             crocksdb_ffi::crocksdb_sst_partitioner_context_set_output_level(context, OUTPUT_LEVEL);
             crocksdb_ffi::crocksdb_sst_partitioner_context_set_smallest_key(
                 context,
-                mem::transmute(SMALLEST_KEY.as_ptr()),
+                SMALLEST_KEY.as_ptr() as *const c_char,
                 SMALLEST_KEY.len(),
             );
             crocksdb_ffi::crocksdb_sst_partitioner_context_set_largest_key(
                 context,
-                mem::transmute(LARGEST_KEY.as_ptr()),
+                LARGEST_KEY.as_ptr() as *const c_char,
                 LARGEST_KEY.len(),
             );
         }
@@ -361,7 +357,7 @@ mod test {
         unsafe {
             crocksdb_ffi::crocksdb_sst_partitioner_state_set_next_key(
                 state,
-                mem::transmute(NEXT_KEY.as_ptr()),
+                NEXT_KEY.as_ptr() as *const c_char,
                 NEXT_KEY.len(),
             );
             crocksdb_ffi::crocksdb_sst_partitioner_state_set_current_output_file_size(
@@ -403,7 +399,7 @@ mod test {
         unsafe {
             crocksdb_ffi::crocksdb_sst_partitioner_reset(
                 partitioner,
-                mem::transmute(RESET_KEY.as_ptr()),
+                RESET_KEY.as_ptr() as *const c_char,
                 RESET_KEY.len(),
             );
         }

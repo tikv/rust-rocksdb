@@ -5649,7 +5649,7 @@ struct crocksdb_sst_partitioner_factory_impl_t : public SstPartitionerFactory {
   const char* Name() const override { return name_cb(underlying); }
 
   std::unique_ptr<SstPartitioner> CreatePartitioner(
-      const SstPartitioner::Context& partitioner_context) const {
+      const SstPartitioner::Context& partitioner_context) const override {
     crocksdb_sst_partitioner_context_t context;
     context.rep = const_cast<SstPartitioner::Context*>(&partitioner_context);
     crocksdb_sst_partitioner_t* partitioner =

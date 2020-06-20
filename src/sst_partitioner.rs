@@ -26,18 +26,18 @@ pub trait SstPartitioner {
     fn reset(&self, key: &[u8]);
 }
 
-extern "C" fn sst_partitioner_destructor(ctx: *mut c_void) {
+extern "C" fn sst_partitioner_destructor<P: SstPartitioner>(ctx: *mut c_void) {
     unsafe {
         // Recover from raw pointer and implicitly drop.
-        Box::from_raw(ctx as *mut Box<dyn SstPartitioner>);
+        Box::from_raw(ctx as *mut P);
     }
 }
 
-extern "C" fn sst_partitioner_should_partition(
+extern "C" fn sst_partitioner_should_partition<P: SstPartitioner>(
     ctx: *mut c_void,
     state: *mut DBSstPartitionerState,
 ) -> c_uchar {
-    let partitioner = unsafe { &*(ctx as *mut Box<dyn SstPartitioner>) };
+    let partitioner = unsafe { &*(ctx as *mut P) };
     let state = unsafe {
         let mut key_len: usize = 0;
         let next_key: *const u8 = mem::transmute(
@@ -52,8 +52,12 @@ extern "C" fn sst_partitioner_should_partition(
     partitioner.should_partition(&state) as _
 }
 
-extern "C" fn sst_partitioner_reset(ctx: *mut c_void, key: *const c_char, key_len: size_t) {
-    let partitioner = unsafe { &*(ctx as *mut Box<dyn SstPartitioner>) };
+extern "C" fn sst_partitioner_reset<P: SstPartitioner>(
+    ctx: *mut c_void,
+    key: *const c_char,
+    key_len: size_t,
+) {
+    let partitioner = unsafe { &*(ctx as *mut P) };
     let key_buf = unsafe {
         let key_ptr: *const u8 = mem::transmute(key);
         slice::from_raw_parts(key_ptr, key_len)
@@ -62,30 +66,31 @@ extern "C" fn sst_partitioner_reset(ctx: *mut c_void, key: *const c_char, key_le
 }
 
 pub trait SstPartitionerFactory: Sync + Send {
+    type Partitioner: SstPartitioner + 'static;
+
     fn name(&self) -> &CString;
-    fn create_partitioner(
-        &self,
-        context: &SstPartitionerContext,
-    ) -> Option<Box<dyn SstPartitioner>>;
+    fn create_partitioner(&self, context: &SstPartitionerContext) -> Option<Self::Partitioner>;
 }
 
-extern "C" fn sst_partitioner_factory_destroy(ctx: *mut c_void) {
+extern "C" fn sst_partitioner_factory_destroy<F: SstPartitionerFactory>(ctx: *mut c_void) {
     unsafe {
         // Recover from raw pointer and implicitly drop.
-        Box::from_raw(ctx as *mut Box<dyn SstPartitionerFactory>);
+        Box::from_raw(ctx as *mut F);
     }
 }
 
-extern "C" fn sst_partitioner_factory_name(ctx: *mut c_void) -> *const c_char {
-    let factory = unsafe { &*(ctx as *mut Box<dyn SstPartitionerFactory>) };
+extern "C" fn sst_partitioner_factory_name<F: SstPartitionerFactory>(
+    ctx: *mut c_void,
+) -> *const c_char {
+    let factory = unsafe { &*(ctx as *mut F) };
     factory.name().as_ptr()
 }
 
-extern "C" fn sst_partitioner_factory_create_partitioner(
+extern "C" fn sst_partitioner_factory_create_partitioner<F: SstPartitionerFactory>(
     ctx: *mut c_void,
     context: *mut DBSstPartitionerContext,
 ) -> *mut DBSstPartitioner {
-    let factory = unsafe { &*(ctx as *mut Box<dyn SstPartitionerFactory>) };
+    let factory = unsafe { &*(ctx as *mut F) };
     let context = unsafe {
         let mut smallest_key_len: usize = 0;
         let smallest_key: *const u8 =
@@ -117,9 +122,9 @@ extern "C" fn sst_partitioner_factory_create_partitioner(
             unsafe {
                 crocksdb_ffi::crocksdb_sst_partitioner_create(
                     ctx,
-                    sst_partitioner_destructor,
-                    sst_partitioner_should_partition,
-                    sst_partitioner_reset,
+                    sst_partitioner_destructor::<F::Partitioner>,
+                    sst_partitioner_should_partition::<F::Partitioner>,
+                    sst_partitioner_reset::<F::Partitioner>,
                 )
             }
         }
@@ -129,13 +134,12 @@ extern "C" fn sst_partitioner_factory_create_partitioner(
 pub fn new_sst_partitioner_factory<F: SstPartitionerFactory>(
     factory: F,
 ) -> *mut DBSstPartitionerFactory {
-    let factory: Box<dyn SstPartitionerFactory> = Box::new(factory);
     unsafe {
         crocksdb_ffi::crocksdb_sst_partitioner_factory_create(
             Box::into_raw(Box::new(factory)) as *mut c_void,
-            sst_partitioner_factory_destroy,
-            sst_partitioner_factory_name,
-            sst_partitioner_factory_create_partitioner,
+            sst_partitioner_factory_destroy::<F>,
+            sst_partitioner_factory_name::<F>,
+            sst_partitioner_factory_create_partitioner::<F>,
         )
     }
 }
@@ -232,14 +236,13 @@ mod test {
     }
 
     impl SstPartitionerFactory for TestSstPartitionerFactory {
+        type Partitioner = TestSstPartitioner;
+
         fn name(&self) -> &CString {
             &FACTORY_NAME
         }
 
-        fn create_partitioner(
-            &self,
-            context: &SstPartitionerContext,
-        ) -> Option<Box<dyn SstPartitioner>> {
+        fn create_partitioner(&self, context: &SstPartitionerContext) -> Option<Self::Partitioner> {
             let mut s = self.state.lock().unwrap();
             s.call_create_partitioner += 1;
             if s.no_partitioner {
@@ -251,9 +254,9 @@ mod test {
             s.smallest_key = Some(context.smallest_key.to_vec());
             s.largest_key = Some(context.largest_key.to_vec());
 
-            Some(Box::new(TestSstPartitioner {
+            Some(TestSstPartitioner {
                 state: self.state.clone(),
-            }))
+            })
         }
     }
 

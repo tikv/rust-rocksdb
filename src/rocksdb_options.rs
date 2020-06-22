@@ -1018,14 +1018,14 @@ impl DBOptions {
         Ok(())
     }
 
-    pub fn get_rate_bytes_per_sec(&self) -> Result<i64, String> {
+    pub fn get_rate_bytes_per_sec(&self) -> Option<i64> {
         let limiter = unsafe { crocksdb_ffi::crocksdb_options_get_ratelimiter(self.inner) };
         if limiter.is_null() {
-            return Err("Failed to get rate limiter".to_owned());
+            return None
         }
 
         let rate = unsafe { crocksdb_ffi::crocksdb_ratelimiter_get_bytes_per_second(limiter) };
-        Ok(rate)
+        Some(rate)
     }
 
     // Create a info log with `path` and save to options logger field directly.

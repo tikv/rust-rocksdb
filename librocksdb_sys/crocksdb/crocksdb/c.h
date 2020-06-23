@@ -1221,6 +1221,8 @@ crocksdb_ratelimiter_create_with_auto_tuned(int64_t rate_bytes_per_sec,
                                             unsigned char auto_tuned);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_ratelimiter_destroy(
     crocksdb_ratelimiter_t*);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_ratelimiter_delete(
+    crocksdb_ratelimiter_t*);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_ratelimiter_set_bytes_per_second(
     crocksdb_ratelimiter_t* limiter, int64_t rate_bytes_per_sec);
 extern C_ROCKSDB_LIBRARY_API int64_t

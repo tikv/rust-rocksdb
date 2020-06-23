@@ -1014,6 +1014,7 @@ impl DBOptions {
 
         unsafe {
             crocksdb_ffi::crocksdb_ratelimiter_set_bytes_per_second(limiter, rate_bytes_per_sec);
+            crocksdb_ffi::crocksdb_ratelimiter_delete(limiter);
         }
         Ok(())
     }
@@ -1021,7 +1022,7 @@ impl DBOptions {
     pub fn get_rate_bytes_per_sec(&self) -> Option<i64> {
         let limiter = unsafe { crocksdb_ffi::crocksdb_options_get_ratelimiter(self.inner) };
         if limiter.is_null() {
-            return None
+            return None;
         }
 
         let rate = unsafe { crocksdb_ffi::crocksdb_ratelimiter_get_bytes_per_second(limiter) };

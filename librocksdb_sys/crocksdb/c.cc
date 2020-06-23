@@ -2987,6 +2987,12 @@ void crocksdb_ratelimiter_destroy(crocksdb_ratelimiter_t* limiter) {
   delete limiter;
 }
 
+void crocksdb_ratelimiter_delete(crocksdb_ratelimiter_t* limiter) {
+  if (limiter) {
+    delete limiter;
+  }
+}
+
 void crocksdb_ratelimiter_set_bytes_per_second(crocksdb_ratelimiter_t* limiter,
                                                int64_t rate_bytes_per_sec) {
   limiter->rep->SetBytesPerSecond(rate_bytes_per_sec);

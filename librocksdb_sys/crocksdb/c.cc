@@ -2944,7 +2944,18 @@ void crocksdb_options_set_ratelimiter(crocksdb_options_t *opt, crocksdb_ratelimi
   limiter->rep = nullptr;
 }
 
-void crocksdb_options_set_vector_memtable_factory(crocksdb_options_t* opt, uint64_t reserved_bytes) {
+crocksdb_ratelimiter_t* crocksdb_options_get_ratelimiter(
+    crocksdb_options_t* opt) {
+  if (opt->rep.rate_limiter != nullptr) {
+    crocksdb_ratelimiter_t* limiter = new crocksdb_ratelimiter_t;
+    limiter->rep = opt->rep.rate_limiter.get();
+    return limiter;
+  }
+  return nullptr;
+}
+
+void crocksdb_options_set_vector_memtable_factory(crocksdb_options_t* opt,
+                                                  uint64_t reserved_bytes) {
   opt->rep.memtable_factory.reset(new VectorRepFactory(reserved_bytes));
 }
 

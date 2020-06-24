@@ -765,7 +765,6 @@ extern "C" {
         auto_tuned: bool,
     ) -> *mut DBRateLimiter;
     pub fn crocksdb_ratelimiter_destroy(limiter: *mut DBRateLimiter);
-    pub fn crocksdb_ratelimiter_delete(limiter: *mut DBRateLimiter);
     pub fn crocksdb_ratelimiter_set_bytes_per_second(
         limiter: *mut DBRateLimiter,
         bytes_per_sec: i64,

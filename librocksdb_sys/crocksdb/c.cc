@@ -279,7 +279,7 @@ struct crocksdb_logger_impl_t : public Logger {
       char* large_buffer = new char[kLargeBufferSize];
       vsnprintf(large_buffer, kLargeBufferSize, format, ap);
       logv_internal_(rep, log_level, large_buffer);
-      delete large_buffer;
+      delete[] large_buffer;
     }
   }
 

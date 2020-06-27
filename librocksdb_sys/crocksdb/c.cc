@@ -269,15 +269,17 @@ struct crocksdb_logger_impl_t : public Logger {
 
   void log_help_(void* logger, int log_level, const char* format, va_list ap) {
     // Try twice, first with buffer on stack, second with buffer on heap.
-    constexpr size_t kBufferSize = 500;
-    constexpr size_t kLargeBufferSize = 65536;
+    constexpr int kBufferSize = 500;
     char buffer[kBufferSize];
-    int num = vsnprintf(buffer, kBufferSize, format, ap);
+    va_list ap_copy;
+    va_copy(ap_copy, ap);
+    int num = vsnprintf(buffer, kBufferSize, format, ap_copy);
+    va_end(ap_copy);
     if (num < kBufferSize) {
       logv_internal_(rep, log_level, buffer);
     } else {
-      char* large_buffer = new char[kLargeBufferSize];
-      vsnprintf(large_buffer, kLargeBufferSize, format, ap);
+      char* large_buffer = new char[num + 1];
+      vsnprintf(large_buffer, static_cast<size_t>(num) + 1, format, ap);
       logv_internal_(rep, log_level, large_buffer);
       delete[] large_buffer;
     }

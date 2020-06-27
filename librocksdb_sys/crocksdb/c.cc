@@ -286,12 +286,12 @@ struct crocksdb_logger_impl_t : public Logger {
   }
 
   void Logv(const char* format, va_list ap) override {
-    log_help_(rep, InfoLogLevel::INFO_LEVEL, format, ap);
+    log_help_(rep, static_cast<int>(InfoLogLevel::HEADER_LEVEL), format, ap);
   }
 
   void Logv(const InfoLogLevel log_level, const char* format,
             va_list ap) override {
-    log_help_(rep, log_level, format, ap);
+    log_help_(rep, static_cast<int>(log_level), format, ap);
   }
 
   virtual ~crocksdb_logger_impl_t() { (*destructor_)(rep); }

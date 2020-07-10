@@ -30,20 +30,21 @@ endif()
 
 # Append rocksdb modules
 list(APPEND CMAKE_MODULE_PATH "${ROCKSDB_DIR}/cmake/modules/")
+include("cmake_modules/rocksdb_flags.cmake")
 
 include_directories("${ROCKSDB_DIR}")
 include_directories("${ROCKSDB_DIR}/include")
 include_directories("rocksdb-cloud")
-include_directories("rocksbd-cloud/include")
+include_directories("rocksdb-cloud/include")
 
-file(GLOB SOURCES cloud/*.cc)
+file(GLOB SOURCES rocksdb-cloud/cloud/*.cc)
 
 add_library(cloud STATIC ${SOURCES} $<TARGET_OBJECTS:cloud_env>)
 
 option(WITH_CLOUD_TESTS "Build with tests." ON)
 option(WITH_CLOUD_TOOLS "Build with tools." ON)
 
-if(GIT_FOUND AND EXISTS "${PROJECT_SOURCE_DIR}/.git")
+if(GIT_FOUND AND EXISTS "${CLOUD_DIR}/.git")
   if(WIN32)
     execute_process(COMMAND $ENV{COMSPEC} /C ${GIT_EXECUTABLE} rev-parse HEAD OUTPUT_VARIABLE GIT_SHA)
   else()
@@ -56,8 +57,13 @@ string(REGEX REPLACE "[^0-9a-f]+" "" GIT_SHA "${GIT_SHA}")
 
 add_library(cloud_env OBJECT "rocksdb-cloud/cloud/cloud_env.cc")
 target_include_directories(cloud_env PRIVATE "rocksdb-cloud/cloud")
+target_include_directories(cloud_env PRIVATE "rocksdb-cloud/include")
 
 include(GNUInstallDirs)
+install(DIRECTORY include/rocksdb/cloud
+  COMPONENT devel
+  DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
+)
 install(TARGETS cloud
   COMPONENT devel
   ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"

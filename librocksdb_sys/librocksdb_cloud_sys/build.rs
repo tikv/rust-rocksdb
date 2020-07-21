@@ -13,5 +13,5 @@ fn main() {
         .very_verbose(true)
         .build();
     println!("cargo:rustc-link-search=native={}/build", dst.display());
-    println!("cargo:rustc-link-lib=static=rocksdb-cloud");
+    println!("cargo:rustc-link-lib=static=cloud");
 }

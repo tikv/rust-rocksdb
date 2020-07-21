@@ -44,6 +44,8 @@ add_library(cloud STATIC ${SOURCES} $<TARGET_OBJECTS:cloud_env>)
 option(WITH_CLOUD_TESTS "Build with tests." ON)
 option(WITH_CLOUD_TOOLS "Build with tools." ON)
 
+include_directories(SYSTEM ${ROCKSDB_DIR}/third-party/gtest-1.7.0/fused-src)
+
 if(GIT_FOUND AND EXISTS "${CLOUD_DIR}/.git")
   if(WIN32)
     execute_process(COMMAND $ENV{COMSPEC} /C ${GIT_EXECUTABLE} rev-parse HEAD OUTPUT_VARIABLE GIT_SHA)

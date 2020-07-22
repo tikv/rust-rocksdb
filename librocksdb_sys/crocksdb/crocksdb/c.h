@@ -2348,6 +2348,9 @@ extern C_ROCKSDB_LIBRARY_API void ctitandb_delete_files_in_ranges_cf(
     const char* const* limit_keys, const size_t* limit_keys_lens,
     size_t num_ranges, unsigned char include_end, char** errptr);
 
+/* RocksDB Cloud */
+extern C_ROCKSDB_LIBRARY_API crocksdb_env_t* cloud_env_create();
+
 #ifdef __cplusplus
 } /* end extern "C" */
 #endif

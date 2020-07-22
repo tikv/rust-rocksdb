@@ -13,6 +13,7 @@
 
 #include <limits>
 
+#include "rocksdb/cloud/cloud_env_options.h"
 #include "db/column_family.h"
 #include "rocksdb/cache.h"
 #include "rocksdb/compaction_filter.h"
@@ -177,6 +178,9 @@ using rocksdb::titandb::TitanDB;
 using rocksdb::titandb::TitanDBOptions;
 using rocksdb::titandb::TitanOptions;
 using rocksdb::titandb::TitanReadOptions;
+
+using rocksdb::CloudEnv;
+using rocksdb::CloudEnvOptions;
 
 using rocksdb::MemoryAllocator;
 
@@ -5852,5 +5856,65 @@ void ctitandb_delete_files_in_ranges_cf(
   }
   SaveError(errptr, static_cast<TitanDB*>(db->rep)->DeleteFilesInRanges(
                         cf->rep, &ranges[0], num_ranges, include_end));
+}
+
+/* RocksDB Cloud */
+crocksdb_env_t* cloud_env_create() {
+  // Retrieve path to local dir where db is stored,
+  // name of storage bucket and region of cloud store
+  // TODO: Set all from env variables?
+  std::string kDBPath = "/tmp/rocksdb_cloud_durable";
+  std::string kBucketSuffix = "cloud.durable.example.";
+  std::string kRegion = getenv("AWS_REGION"); 
+
+  // cloud environment config options here
+  CloudEnvOptions cloud_env_options;
+  
+  // Store a reference to a cloud env. A new cloud env object should be
+  // associated
+  // with every new cloud-db.
+  std::unique_ptr<CloudEnv> cloud_env;
+
+  // Retrieve aws access keys from env
+  char* keyid = getenv("AWS_ACCESS_KEY_ID");
+  char* secret = getenv("AWS_SECRET_ACCESS_KEY");
+  if (keyid == nullptr || secret == nullptr) {
+    fprintf(
+        stderr,
+        "Please set env variables "
+        "AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY with cloud credentials");
+    return NULL;
+  }
+  cloud_env_options.credentials.access_key_id.assign(keyid);
+  cloud_env_options.credentials.secret_key.assign(secret);
+
+  // Append the user name to the bucket name in an attempt to make it
+  // globally unique. S3 bucket-names need to be globally unique.
+  // If you want to rerun this example, then unique user-name suffix here.
+  char* user = getenv("USER");
+  kBucketSuffix.append(user);
+
+  // create a bucket name for debugging purposes
+  const std::string bucketName = "tikv." + kBucketSuffix;
+
+  // Create a new AWS cloud env Status
+  CloudEnv* cenv;
+  Status s = CloudEnv::NewAwsEnv(Env::Default(),
+                          kBucketSuffix, kDBPath, kRegion,
+                          kBucketSuffix, kDBPath, kRegion,
+                          cloud_env_options, nullptr, &cenv);
+  if (!s.ok()) {
+    fprintf(stderr, "Unable to create cloud env in bucket %s. %s\n",
+            bucketName.c_str(), s.ToString().c_str());
+    return NULL;
+  }
+  cloud_env.reset(cenv);
+
+  crocksdb_env_t* result = new crocksdb_env_t;
+  result->rep = cloud_env.get();
+  result->block_cipher = nullptr;
+  result->encryption_provider = nullptr;
+  result->is_default = true;
+  return result;
 }
 }  // end extern "C"

@@ -2311,6 +2311,12 @@ extern "C" {
     );
 }
 
+// RocksDB Cloud
+extern "C" {
+    // NewAWSEnv
+    pub fn cloud_env_create() -> *mut DBEnv;
+}
+
 #[cfg(test)]
 mod test {
     use super::*;

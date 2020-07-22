@@ -46,6 +46,8 @@ use libc::{c_char, c_double, c_int, c_uchar, c_void, size_t};
 #[repr(C)]
 pub struct Options(c_void);
 #[repr(C)]
+pub struct CloudEnvOptions(c_void);
+#[repr(C)]
 pub struct ColumnFamilyDescriptor(c_void);
 #[repr(C)]
 pub struct DBInstance(c_void);
@@ -2315,6 +2317,10 @@ extern "C" {
 extern "C" {
     // NewAWSEnv
     pub fn cloud_env_create() -> *mut DBEnv;
+
+    // CloudEnvOptions
+    pub fn cloud_envoptions_create() -> *mut CloudEnvOptions;
+    pub fn cloud_envoptions_destroy(opt: *mut CloudEnvOptions);
 }
 
 #[cfg(test)]

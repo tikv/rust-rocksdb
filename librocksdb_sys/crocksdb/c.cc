@@ -5859,6 +5859,10 @@ void ctitandb_delete_files_in_ranges_cf(
 }
 
 /* RocksDB Cloud */
+struct cloud_envoptions_t {
+  CloudEnvOptions rep;
+};
+
 crocksdb_env_t* cloud_env_create() {
   // Retrieve path to local dir where db is stored,
   // name of storage bucket and region of cloud store
@@ -5916,4 +5920,12 @@ crocksdb_env_t* cloud_env_create() {
   result->is_default = true;
   return result;
 }
+
+cloud_envoptions_t* cloud_envoptions_create() {
+  cloud_envoptions_t* opt = new cloud_envoptions_t;
+  return opt;
+}
+
+void cloud_envoptions_destroy(cloud_envoptions_t* opt) { delete opt; }
+
 }  // end extern "C"

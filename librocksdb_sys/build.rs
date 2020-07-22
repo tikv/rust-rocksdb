@@ -195,7 +195,12 @@ fn build_rocksdb() -> Build {
     build.include(cur_dir.join("rocksdb"));
     build.include(cur_dir.join("libtitan_sys").join("titan").join("include"));
     build.include(cur_dir.join("libtitan_sys").join("titan"));
-    build.include(cur_dir.join("librocksdb_cloud_sys").join("rocksdb-cloud").join("include"));
+    build.include(
+        cur_dir
+            .join("librocksdb_cloud_sys")
+            .join("rocksdb-cloud")
+            .join("include"),
+    );
     build.include(cur_dir.join("librocksdb_cloud_sys").join("rocksdb-cloud"));
 
     // Adding rocksdb specific compile macros.

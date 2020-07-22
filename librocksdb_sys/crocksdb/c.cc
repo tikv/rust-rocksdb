@@ -13,9 +13,9 @@
 
 #include <limits>
 
-#include "rocksdb/cloud/cloud_env_options.h"
 #include "db/column_family.h"
 #include "rocksdb/cache.h"
+#include "rocksdb/cloud/cloud_env_options.h"
 #include "rocksdb/compaction_filter.h"
 #include "rocksdb/comparator.h"
 #include "rocksdb/convenience.h"
@@ -5865,11 +5865,11 @@ crocksdb_env_t* cloud_env_create() {
   // TODO: Set all from env variables?
   std::string kDBPath = "/tmp/rocksdb_cloud_durable";
   std::string kBucketSuffix = "cloud.durable.example.";
-  std::string kRegion = getenv("AWS_REGION"); 
+  std::string kRegion = getenv("AWS_REGION");
 
   // cloud environment config options here
   CloudEnvOptions cloud_env_options;
-  
+
   // Store a reference to a cloud env. A new cloud env object should be
   // associated
   // with every new cloud-db.
@@ -5899,10 +5899,9 @@ crocksdb_env_t* cloud_env_create() {
 
   // Create a new AWS cloud env Status
   CloudEnv* cenv;
-  Status s = CloudEnv::NewAwsEnv(Env::Default(),
-                          kBucketSuffix, kDBPath, kRegion,
-                          kBucketSuffix, kDBPath, kRegion,
-                          cloud_env_options, nullptr, &cenv);
+  Status s = CloudEnv::NewAwsEnv(Env::Default(), kBucketSuffix, kDBPath,
+                                 kRegion, kBucketSuffix, kDBPath, kRegion,
+                                 cloud_env_options, nullptr, &cenv);
   if (!s.ok()) {
     fprintf(stderr, "Unable to create cloud env in bucket %s. %s\n",
             bucketName.c_str(), s.ToString().c_str());

@@ -5859,6 +5859,7 @@ void ctitandb_delete_files_in_ranges_cf(
 }
 
 /* RocksDB Cloud */
+#ifdef USE_CLOUD
 struct cloud_envoptions_t {
   CloudEnvOptions rep;
 };
@@ -5927,5 +5928,5 @@ cloud_envoptions_t* cloud_envoptions_create() {
 }
 
 void cloud_envoptions_destroy(cloud_envoptions_t* opt) { delete opt; }
-
+#endif
 }  // end extern "C"

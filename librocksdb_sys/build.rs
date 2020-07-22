@@ -128,6 +128,11 @@ fn link_cpp(build: &mut Build) {
 fn build_rocksdb() -> Build {
     let target = env::var("TARGET").expect("TARGET was not set");
     let mut cfg = Config::new("rocksdb");
+    // Conditionally compile with support for RocksDB-Cloud, setting USE_AWS
+    if cfg!(feature = "cloud") {
+        cfg.env("USE_AWS", "1").env("USE_CLOUD", "1");
+        println!("cargo:rustc-link-lib=static=cloud");
+    }
     if cfg!(feature = "encryption") {
         cfg.register_dep("OPENSSL").define("WITH_OPENSSL", "ON");
         println!("cargo:rustc-link-lib=static=crypto");
@@ -211,7 +216,6 @@ fn build_rocksdb() -> Build {
     }
 
     println!("cargo:rustc-link-lib=static=rocksdb");
-    println!("cargo:rustc-link-lib=static=cloud");
     println!("cargo:rustc-link-lib=static=titan");
     println!("cargo:rustc-link-lib=static=z");
     println!("cargo:rustc-link-lib=static=bz2");

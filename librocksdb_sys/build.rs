@@ -195,6 +195,8 @@ fn build_rocksdb() -> Build {
     build.include(cur_dir.join("rocksdb"));
     build.include(cur_dir.join("libtitan_sys").join("titan").join("include"));
     build.include(cur_dir.join("libtitan_sys").join("titan"));
+    build.include(cur_dir.join("librocksdb_cloud_sys").join("rocksdb-cloud").join("include"));
+    build.include(cur_dir.join("librocksdb_cloud_sys").join("rocksdb-cloud"));
 
     // Adding rocksdb specific compile macros.
     // TODO: should make sure crocksdb compile options is the same as rocksdb and titan.
@@ -204,6 +206,7 @@ fn build_rocksdb() -> Build {
     }
 
     println!("cargo:rustc-link-lib=static=rocksdb");
+    println!("cargo:rustc-link-lib=static=cloud");
     println!("cargo:rustc-link-lib=static=titan");
     println!("cargo:rustc-link-lib=static=z");
     println!("cargo:rustc-link-lib=static=bz2");

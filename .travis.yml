@@ -18,7 +18,7 @@ jobs:
   include:
   - os: linux
     rust: nightly
-    env: FEATURES="encryption,jemalloc,portable,sse"
+    env: FEATURES="encryption,jemalloc,portable,sse,cloud"
   - os: linux
     arch: arm64
     rust: nightly

@@ -2543,6 +2543,17 @@ impl Env {
         }
     }
 
+    // Create an cloud env to operate with AWS S3.
+    #[cfg(feature = "cloud")]
+    pub fn new_aws_env() -> Env {
+        unsafe {
+            Env {
+                inner: crocksdb_ffi::cloud_env_create(),
+                base: None,
+            }
+        }
+    }
+
     // Create a ctr encrypted env with a given base env and a given ciper text.
     // The length of ciper text must be 2^n, and must be less or equal to 2048.
     // The recommanded block size are 1024, 512 and 256.

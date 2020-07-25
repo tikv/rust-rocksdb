@@ -10,5 +10,5 @@
 
 [submodule "rocksdb-cloud"]
 	path = librocksdb_sys/librocksdb_cloud_sys/rocksdb-cloud
-	url = https://github.com/de-sh/rocksdb-cloud
-	branch = plugin
+	url = https://github.com/tikv/rocksdb
+	branch = 6.4.cloud

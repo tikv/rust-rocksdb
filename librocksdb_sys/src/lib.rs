@@ -2316,11 +2316,15 @@ extern "C" {
 // RocksDB Cloud
 extern "C" {
     // NewAWSEnv
-    pub fn cloud_env_create() -> *mut DBEnv;
+    pub fn crocksdb_cloud_aws_env_create(
+        base_env: *mut DBEnv,
+        opts: *mut CloudEnvOptions,
+        err: *mut *mut c_char,
+    ) -> *mut DBEnv;
 
     // CloudEnvOptions
-    pub fn cloud_envoptions_create() -> *mut CloudEnvOptions;
-    pub fn cloud_envoptions_destroy(opt: *mut CloudEnvOptions);
+    pub fn crocksdb_cloud_envoptions_create() -> *mut CloudEnvOptions;
+    pub fn crocksdb_cloud_envoptions_destroy(opt: *mut CloudEnvOptions);
 }
 
 #[cfg(test)]

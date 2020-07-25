@@ -39,6 +39,8 @@ use std::str::from_utf8;
 use std::sync::Arc;
 use std::{fs, ptr, slice};
 
+#[cfg(feature = "cloud")]
+use cloud::CloudEnvOptions;
 #[cfg(feature = "encryption")]
 use encryption::{DBEncryptionKeyManager, EncryptionKeyManager};
 use table_properties::{TableProperties, TablePropertiesCollection};
@@ -2545,13 +2547,18 @@ impl Env {
 
     // Create an cloud env to operate with AWS S3.
     #[cfg(feature = "cloud")]
-    pub fn new_aws_env() -> Env {
-        unsafe {
-            Env {
-                inner: crocksdb_ffi::cloud_env_create(),
-                base: None,
-            }
+    pub fn new_aws_env(base_env: Arc<Env>, opts: CloudEnvOptions) -> Result<Env, String> {
+        let mut err = ptr::null_mut();
+        let env = unsafe {
+            crocksdb_ffi::crocksdb_cloud_aws_env_create(base_env.inner, opts.inner, &mut err)
+        };
+        if !err.is_null() {
+            return Err(unsafe { crocksdb_ffi::error_message(err) });
         }
+        Ok(Env {
+            inner: env,
+            base: Some(base_env),
+        })
     }
 
     // Create a ctr encrypted env with a given base env and a given ciper text.
@@ -3454,5 +3461,11 @@ mod test {
         assert_eq!(1, path_num);
         let first_path = db.get_db_options().get_db_path(0).unwrap();
         assert_eq!(path, first_path.as_str());
+    }
+
+    #[cfg(feature = "cloud")]
+    #[test]
+    fn test_cloud_aws_env_creation() {
+        let _db = Env::new_aws_env(Arc::new(Env::default()), CloudEnvOptions::new());
     }
 }

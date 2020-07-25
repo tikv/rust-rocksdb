@@ -5860,57 +5860,21 @@ void ctitandb_delete_files_in_ranges_cf(
 
 /* RocksDB Cloud */
 #ifdef USE_CLOUD
-struct cloud_envoptions_t {
+struct crocksdb_cloud_envoptions_t {
   CloudEnvOptions rep;
 };
 
-crocksdb_env_t* cloud_env_create() {
-  // Retrieve path to local dir where db is stored,
-  // name of storage bucket and region of cloud store
-  // TODO: Set all from env variables?
-  std::string kDBPath = "/tmp/rocksdb_cloud_durable";
-  std::string kBucketSuffix = "cloud.durable.example.";
-  std::string kRegion = getenv("AWS_REGION");
-
-  // cloud environment config options here
-  CloudEnvOptions cloud_env_options;
-
+crocksdb_env_t* crocksdb_cloud_aws_env_create(
+    crocksdb_env_t* base_env, crocksdb_cloud_envoptions_t* cloud_options,
+    char** errptr) {
   // Store a reference to a cloud env. A new cloud env object should be
-  // associated
-  // with every new cloud-db.
+  // associated with every new cloud-db.
   std::unique_ptr<CloudEnv> cloud_env;
 
-  // Retrieve aws access keys from env
-  char* keyid = getenv("AWS_ACCESS_KEY_ID");
-  char* secret = getenv("AWS_SECRET_ACCESS_KEY");
-  if (keyid == nullptr || secret == nullptr) {
-    fprintf(
-        stderr,
-        "Please set env variables "
-        "AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY with cloud credentials");
-    return NULL;
-  }
-  cloud_env_options.credentials.access_key_id.assign(keyid);
-  cloud_env_options.credentials.secret_key.assign(secret);
-
-  // Append the user name to the bucket name in an attempt to make it
-  // globally unique. S3 bucket-names need to be globally unique.
-  // If you want to rerun this example, then unique user-name suffix here.
-  char* user = getenv("USER");
-  kBucketSuffix.append(user);
-
-  // create a bucket name for debugging purposes
-  const std::string bucketName = "tikv." + kBucketSuffix;
-
-  // Create a new AWS cloud env Status
   CloudEnv* cenv;
-  Status s = CloudEnv::NewAwsEnv(Env::Default(), kBucketSuffix, kDBPath,
-                                 kRegion, kBucketSuffix, kDBPath, kRegion,
-                                 cloud_env_options, nullptr, &cenv);
-  if (!s.ok()) {
-    fprintf(stderr, "Unable to create cloud env in bucket %s. %s\n",
-            bucketName.c_str(), s.ToString().c_str());
-    return NULL;
+  if (SaveError(errptr, CloudEnv::NewAwsEnv(base_env->rep, cloud_options->rep,
+                                            nullptr, &cenv))) {
+    return nullptr;
   }
   cloud_env.reset(cenv);
 
@@ -5922,11 +5886,13 @@ crocksdb_env_t* cloud_env_create() {
   return result;
 }
 
-cloud_envoptions_t* cloud_envoptions_create() {
-  cloud_envoptions_t* opt = new cloud_envoptions_t;
+crocksdb_cloud_envoptions_t* crocksdb_cloud_envoptions_create() {
+  crocksdb_cloud_envoptions_t* opt = new crocksdb_cloud_envoptions_t;
   return opt;
 }
 
-void cloud_envoptions_destroy(cloud_envoptions_t* opt) { delete opt; }
+void crocksdb_cloud_envoptions_destroy(crocksdb_cloud_envoptions_t* opt) {
+  delete opt;
+}
 #endif
 }  // end extern "C"

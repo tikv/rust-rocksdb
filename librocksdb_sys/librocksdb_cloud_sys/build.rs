@@ -9,9 +9,9 @@ fn main() {
     let dst = cfg
         .define("ROCKSDB_DIR", cur_dir.join("..").join("rocksdb"))
         .env("USE_AWS", "1")
-        .build_target("cloud")
+        .build_target("rocksdb_cloud")
         .very_verbose(true)
         .build();
     println!("cargo:rustc-link-search=native={}/build", dst.display());
-    println!("cargo:rustc-link-lib=static=cloud");
+    println!("cargo:rustc-link-lib=static=rocksdb_cloud");
 }

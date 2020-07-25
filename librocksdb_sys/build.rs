@@ -130,8 +130,7 @@ fn build_rocksdb() -> Build {
     let mut cfg = Config::new("rocksdb");
     // Conditionally compile with support for RocksDB-Cloud, setting USE_AWS
     if cfg!(feature = "cloud") {
-        cfg.env("USE_AWS", "1").env("USE_CLOUD", "1");
-        println!("cargo:rustc-link-lib=static=cloud");
+        println!("cargo:rustc-link-lib=static=rocksdb_cloud");
     }
     if cfg!(feature = "encryption") {
         cfg.register_dep("OPENSSL").define("WITH_OPENSSL", "ON");
@@ -213,6 +212,9 @@ fn build_rocksdb() -> Build {
     build.define("ROCKSDB_SUPPORT_THREAD_LOCAL", None);
     if cfg!(feature = "encryption") {
         build.define("OPENSSL", None);
+    }
+    if cfg!(feature = "cloud") {
+        build.define("USE_AWS", None).define("USE_CLOUD", None);
     }
 
     println!("cargo:rustc-link-lib=static=rocksdb");

@@ -1,9 +1,6 @@
 dist: bionic
 language: rust
 
-os:
-  - linux
-
 rust:
   - nightly
 
@@ -44,12 +41,10 @@ before_script:
   # since some tests use more FDs than the default limit.
   - if [ "${FEATURES}" == "cloud" ]; then
       echo "limit maxfiles 1024 unlimited" | sudo tee -a /etc/launchd.conf;
-      # Download AWS-CPP-SDK.
       pushd /tmp;
       wget https://github.com/aws/aws-sdk-cpp/archive/1.8.14.tar.gz -O /tmp/aws-sdk.tar.gz;
       tar -xvf /tmp/aws-sdk.tar.gz > /dev/null;
       popd;
-      # Configure and install.
       pushd /tmp/aws-sdk-cpp-1.8.14;
       cmake -DBUILD_ONLY='kinesis;core;s3;transfer' -DCMAKE_BUILD_TYPE=RelWithDebInfo -DENABLE_TESTING=OFF .;
       make -j4 all;

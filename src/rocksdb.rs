@@ -2547,10 +2547,35 @@ impl Env {
 
     // Create an cloud env to operate with AWS S3.
     #[cfg(feature = "cloud")]
-    pub fn new_aws_env(base_env: Arc<Env>, opts: CloudEnvOptions) -> Result<Env, String> {
+    pub fn new_aws_env(
+        base_env: Arc<Env>,
+        src_cloud_bucket: &str,
+        src_cloud_object: &str,
+        src_cloud_region: &str,
+        dest_cloud_bucket: &str,
+        dest_cloud_object: &str,
+        dest_cloud_region: &str,
+        opts: CloudEnvOptions,
+    ) -> Result<Env, String> {
         let mut err = ptr::null_mut();
+        let src_cloud_bucket = CString::new(src_cloud_bucket).unwrap();
+        let src_cloud_object = CString::new(src_cloud_object).unwrap();
+        let src_cloud_region = CString::new(src_cloud_region).unwrap();
+        let dest_cloud_bucket = CString::new(dest_cloud_bucket).unwrap();
+        let dest_cloud_object = CString::new(dest_cloud_object).unwrap();
+        let dest_cloud_region = CString::new(dest_cloud_region).unwrap();
         let env = unsafe {
-            crocksdb_ffi::crocksdb_cloud_aws_env_create(base_env.inner, opts.inner, &mut err)
+            crocksdb_ffi::crocksdb_cloud_aws_env_create(
+                base_env.inner,
+                src_cloud_bucket.as_ptr(),
+                src_cloud_object.as_ptr(),
+                src_cloud_region.as_ptr(),
+                dest_cloud_bucket.as_ptr(),
+                dest_cloud_object.as_ptr(),
+                dest_cloud_region.as_ptr(),
+                opts.inner,
+                &mut err,
+            )
         };
         if !err.is_null() {
             return Err(unsafe { crocksdb_ffi::error_message(err) });

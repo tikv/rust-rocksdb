@@ -2318,6 +2318,12 @@ extern "C" {
     // NewAWSEnv
     pub fn crocksdb_cloud_aws_env_create(
         base_env: *mut DBEnv,
+        src_cloud_bucket: *const c_char,
+        src_cloud_object: *const c_char,
+        src_cloud_region: *const c_char,
+        dest_cloud_bucket: *const c_char,
+        dest_cloud_object: *const c_char,
+        dest_cloud_region: *const c_char,
         opts: *mut CloudEnvOptions,
         err: *mut *mut c_char,
     ) -> *mut DBEnv;

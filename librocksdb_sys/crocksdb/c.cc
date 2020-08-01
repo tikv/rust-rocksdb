@@ -5868,8 +5868,8 @@ crocksdb_env_t* crocksdb_cloud_aws_env_create(
     crocksdb_env_t* base_env, const char* src_cloud_bucket,
     const char* src_cloud_object, const char* src_cloud_region,
     const char* dest_cloud_bucket, const char* dest_cloud_object,
-    const char* dest_cloud_region,
-    crocksdb_cloud_envoptions_t* cloud_options, char** errptr) {
+    const char* dest_cloud_region, crocksdb_cloud_envoptions_t* cloud_options,
+    char** errptr) {
   // Store a reference to a cloud env. A new cloud env object should be
   // associated with every new cloud-db.
   CloudEnv* cloud_env;
@@ -5880,7 +5880,7 @@ crocksdb_env_t* crocksdb_cloud_aws_env_create(
                     base_env->rep, src_cloud_bucket, src_cloud_object,
                     src_cloud_region, dest_cloud_bucket, dest_cloud_object,
                     dest_cloud_region, cloud_options->rep, nullptr, &cenv))) {
-    assert(cenv != nullptr);  
+    assert(cenv != nullptr);
     return nullptr;
   }
   cloud_env = cenv;

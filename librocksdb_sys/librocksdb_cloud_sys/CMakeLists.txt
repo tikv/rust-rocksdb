@@ -1,3 +1,4 @@
+# Copyright 2020 TiKV Project Authors. Licensed under Apache-2.0.
 cmake_minimum_required(VERSION 3.0)
 project(rocksdb_cloud)
 enable_language(CXX)

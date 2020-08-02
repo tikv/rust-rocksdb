@@ -3491,17 +3491,17 @@ mod test {
     #[cfg(feature = "cloud")]
     #[test]
     fn test_cloud_aws_env_creation() {
-        let kDBPath = "/tmp/rocksdb_main_db";
-        let kBucketSuffix = "cloud.clone.example.";
-        let kRegion = "us-west-2";
+        let k_db_path = "/tmp/rocksdb_main_db";
+        let k_bucket_suffix = "cloud.clone.example.";
+        let k_region = "us-west-2";
         let _db = Env::new_aws_env(
             Arc::new(Env::default()),
-            &kBucketSuffix,
-            &kDBPath,
-            &kRegion,
-            &kBucketSuffix,
-            &kDBPath,
-            &kRegion,
+            &k_bucket_suffix,
+            &k_db_path,
+            &k_region,
+            &k_bucket_suffix,
+            &k_db_path,
+            &k_region,
             CloudEnvOptions::new(),
         );
     }

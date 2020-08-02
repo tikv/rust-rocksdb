@@ -5886,7 +5886,7 @@ crocksdb_env_t* crocksdb_cloud_aws_env_create(
   cloud_env = cenv;
 
   crocksdb_env_t* result = new crocksdb_env_t;
-  result->rep = cloud_env->GetBaseEnv();
+  result->rep = static_cast<Env*>(cloud_env);
   result->block_cipher = nullptr;
   result->encryption_provider = nullptr;
   result->is_default = true;

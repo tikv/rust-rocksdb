@@ -10,4 +10,4 @@ cloud = []
 
 [build-dependencies]
 cc = "1.0.3"
-cmake = "0.1.44"
+cmake = "0.1"

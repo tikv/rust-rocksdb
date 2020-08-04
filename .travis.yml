@@ -7,7 +7,7 @@ rust:
 cache:
   cargo: false
   directories:
-  - "$BUILD_DIR/aws"
+  - "/tmp/aws-sdk-cpp-1.8.14"
 
 addons:
   apt:
@@ -55,7 +55,7 @@ before_script:
   - rustup component add clippy
 
 script:
-  # copile rocksdb may cost more than 10 minutes, see https://docs.travis-ci.com/user/common-build-problems/#build-times-out-because-no-output-was-received
+  # compiling rocksdb may cost more than 10 minutes, see https://docs.travis-ci.com/user/common-build-problems/#build-times-out-because-no-output-was-received
   - if [ "${TASK}" == "clang-format" ]; then
       bash ./travis-build/travis-format.sh;
     else

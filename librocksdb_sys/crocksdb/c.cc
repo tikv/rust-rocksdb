@@ -15,6 +15,7 @@
 
 #include "db/column_family.h"
 #include "rocksdb/cache.h"
+#include "rocksdb/cloud/cloud_env_options.h"
 #include "rocksdb/compaction_filter.h"
 #include "rocksdb/comparator.h"
 #include "rocksdb/convenience.h"
@@ -181,6 +182,9 @@ using rocksdb::titandb::TitanDBOptions;
 using rocksdb::titandb::TitanOptions;
 using rocksdb::titandb::TitanReadOptions;
 
+using rocksdb::CloudEnv;
+using rocksdb::CloudEnvOptions;
+
 using rocksdb::MemoryAllocator;
 
 #ifdef OPENSSL
@@ -271,19 +275,30 @@ struct crocksdb_logger_impl_t : public Logger {
   void (*logv_internal_)(void* logger, int log_level, const char* log);
 
   void log_help_(void* logger, int log_level, const char* format, va_list ap) {
-    constexpr int kBufferSize = 1024;
+    // Try twice, first with buffer on stack, second with buffer on heap.
+    constexpr int kBufferSize = 500;
     char buffer[kBufferSize];
-    vsnprintf(buffer, kBufferSize, format, ap);
-    logv_internal_(rep, log_level, buffer);
+    va_list ap_copy;
+    va_copy(ap_copy, ap);
+    int num = vsnprintf(buffer, kBufferSize, format, ap_copy);
+    va_end(ap_copy);
+    if (num < kBufferSize) {
+      logv_internal_(rep, log_level, buffer);
+    } else {
+      char* large_buffer = new char[num + 1];
+      vsnprintf(large_buffer, static_cast<size_t>(num) + 1, format, ap);
+      logv_internal_(rep, log_level, large_buffer);
+      delete[] large_buffer;
+    }
   }
 
   void Logv(const char* format, va_list ap) override {
-    log_help_(rep, InfoLogLevel::INFO_LEVEL, format, ap);
+    log_help_(rep, static_cast<int>(InfoLogLevel::HEADER_LEVEL), format, ap);
   }
 
   void Logv(const InfoLogLevel log_level, const char* format,
             va_list ap) override {
-    log_help_(rep, log_level, format, ap);
+    log_help_(rep, static_cast<int>(log_level), format, ap);
   }
 
   virtual ~crocksdb_logger_impl_t() { (*destructor_)(rep); }
@@ -322,7 +337,7 @@ struct crocksdb_externalsstfileinfo_t {
   ExternalSstFileInfo rep;
 };
 struct crocksdb_ratelimiter_t {
-  RateLimiter* rep;
+  std::shared_ptr<RateLimiter> rep;
 };
 struct crocksdb_histogramdata_t {
   HistogramData rep;
@@ -2935,8 +2950,18 @@ unsigned char crocksdb_options_statistics_get_histogram(
 
 void crocksdb_options_set_ratelimiter(crocksdb_options_t* opt,
                                       crocksdb_ratelimiter_t* limiter) {
-  opt->rep.rate_limiter.reset(limiter->rep);
+  opt->rep.rate_limiter = limiter->rep;
   limiter->rep = nullptr;
+}
+
+crocksdb_ratelimiter_t* crocksdb_options_get_ratelimiter(
+    crocksdb_options_t* opt) {
+  if (opt->rep.rate_limiter != nullptr) {
+    crocksdb_ratelimiter_t* limiter = new crocksdb_ratelimiter_t;
+    limiter->rep = opt->rep.rate_limiter;
+    return limiter;
+  }
+  return nullptr;
 }
 
 void crocksdb_options_set_vector_memtable_factory(crocksdb_options_t* opt,
@@ -2976,8 +3001,8 @@ crocksdb_ratelimiter_t* crocksdb_ratelimiter_create(int64_t rate_bytes_per_sec,
                                                     int64_t refill_period_us,
                                                     int32_t fairness) {
   crocksdb_ratelimiter_t* rate_limiter = new crocksdb_ratelimiter_t;
-  rate_limiter->rep =
-      NewGenericRateLimiter(rate_bytes_per_sec, refill_period_us, fairness);
+  rate_limiter->rep = std::shared_ptr<RateLimiter>(
+      NewGenericRateLimiter(rate_bytes_per_sec, refill_period_us, fairness));
   return rate_limiter;
 }
 
@@ -2997,14 +3022,14 @@ crocksdb_ratelimiter_t* crocksdb_ratelimiter_create_with_auto_tuned(
       m = RateLimiter::Mode::kAllIo;
       break;
   }
-  rate_limiter->rep = NewGenericRateLimiter(
-      rate_bytes_per_sec, refill_period_us, fairness, m, auto_tuned);
+  rate_limiter->rep = std::shared_ptr<RateLimiter>(NewGenericRateLimiter(
+      rate_bytes_per_sec, refill_period_us, fairness, m, auto_tuned));
   return rate_limiter;
 }
 
 void crocksdb_ratelimiter_destroy(crocksdb_ratelimiter_t* limiter) {
   if (limiter->rep) {
-    delete limiter->rep;
+    limiter->rep.reset();
   }
   delete limiter;
 }
@@ -6089,4 +6114,49 @@ void ctitandb_delete_files_in_ranges_cf(
   SaveError(errptr, static_cast<TitanDB*>(db->rep)->DeleteFilesInRanges(
                         cf->rep, &ranges[0], num_ranges, include_end));
 }
+
+/* RocksDB Cloud */
+#ifdef USE_CLOUD
+struct crocksdb_cloud_envoptions_t {
+  CloudEnvOptions rep;
+};
+
+crocksdb_env_t* crocksdb_cloud_aws_env_create(
+    crocksdb_env_t* base_env, const char* src_cloud_bucket,
+    const char* src_cloud_object, const char* src_cloud_region,
+    const char* dest_cloud_bucket, const char* dest_cloud_object,
+    const char* dest_cloud_region, crocksdb_cloud_envoptions_t* cloud_options,
+    char** errptr) {
+  // Store a reference to a cloud env. A new cloud env object should be
+  // associated with every new cloud-db.
+  CloudEnv* cloud_env;
+
+  CloudEnv* cenv;
+  if (SaveError(errptr,
+                CloudEnv::NewAwsEnv(
+                    base_env->rep, src_cloud_bucket, src_cloud_object,
+                    src_cloud_region, dest_cloud_bucket, dest_cloud_object,
+                    dest_cloud_region, cloud_options->rep, nullptr, &cenv))) {
+    assert(cenv != nullptr);
+    return nullptr;
+  }
+  cloud_env = cenv;
+
+  crocksdb_env_t* result = new crocksdb_env_t;
+  result->rep = static_cast<Env*>(cloud_env);
+  result->block_cipher = nullptr;
+  result->encryption_provider = nullptr;
+  result->is_default = true;
+  return result;
+}
+
+crocksdb_cloud_envoptions_t* crocksdb_cloud_envoptions_create() {
+  crocksdb_cloud_envoptions_t* opt = new crocksdb_cloud_envoptions_t;
+  return opt;
+}
+
+void crocksdb_cloud_envoptions_destroy(crocksdb_cloud_envoptions_t* opt) {
+  delete opt;
+}
+#endif
 }  // end extern "C"

@@ -46,6 +46,8 @@ use libc::{c_char, c_double, c_int, c_uchar, c_void, size_t};
 #[repr(C)]
 pub struct Options(c_void);
 #[repr(C)]
+pub struct CloudEnvOptions(c_void);
+#[repr(C)]
 pub struct ColumnFamilyDescriptor(c_void);
 #[repr(C)]
 pub struct DBInstance(c_void);
@@ -662,6 +664,13 @@ extern "C" {
         compression_style_no: DBCompressionType,
     );
     pub fn crocksdb_options_get_compression(options: *mut Options) -> DBCompressionType;
+    pub fn crocksdb_options_set_compression_options(
+        options: *mut Options,
+        window_bits: c_int,
+        level: c_int,
+        strategy: c_int,
+        max_dict_bytes: c_int,
+    );
     pub fn crocksdb_options_set_compression_per_level(
         options: *mut Options,
         level_values: *const DBCompressionType,
@@ -742,6 +751,7 @@ extern "C" {
     pub fn crocksdb_options_set_delayed_write_rate(options: *mut Options, rate: u64);
     pub fn crocksdb_options_set_force_consistency_checks(options: *mut Options, v: bool);
     pub fn crocksdb_options_set_ratelimiter(options: *mut Options, limiter: *mut DBRateLimiter);
+    pub fn crocksdb_options_get_ratelimiter(options: *mut Options) -> *mut DBRateLimiter;
     pub fn crocksdb_options_set_info_log(options: *mut Options, logger: *mut DBLogger);
     pub fn crocksdb_options_get_block_cache_usage(options: *const Options) -> usize;
     pub fn crocksdb_options_set_block_cache_capacity(
@@ -2419,6 +2429,26 @@ extern "C" {
         include_end: bool,
         errptr: *mut *mut c_char,
     );
+}
+
+// RocksDB Cloud
+extern "C" {
+    // NewAWSEnv
+    pub fn crocksdb_cloud_aws_env_create(
+        base_env: *mut DBEnv,
+        src_cloud_bucket: *const c_char,
+        src_cloud_object: *const c_char,
+        src_cloud_region: *const c_char,
+        dest_cloud_bucket: *const c_char,
+        dest_cloud_object: *const c_char,
+        dest_cloud_region: *const c_char,
+        opts: *mut CloudEnvOptions,
+        err: *mut *mut c_char,
+    ) -> *mut DBEnv;
+
+    // CloudEnvOptions
+    pub fn crocksdb_cloud_envoptions_create() -> *mut CloudEnvOptions;
+    pub fn crocksdb_cloud_envoptions_destroy(opt: *mut CloudEnvOptions);
 }
 
 #[cfg(test)]

@@ -992,12 +992,13 @@ impl DBOptions {
     pub fn set_ratelimiter_with_auto_tuned(
         &mut self,
         rate_bytes_per_sec: i64,
+        refill_period_us: i64,
         mode: DBRateLimiterMode,
         auto_tuned: bool,
     ) {
         let rate_limiter = RateLimiter::new_with_auto_tuned(
             rate_bytes_per_sec,
-            DEFAULT_REFILL_PERIOD_US,
+            refill_period_us,
             DEFAULT_FAIRNESS,
             mode,
             auto_tuned,
@@ -1005,6 +1006,35 @@ impl DBOptions {
         unsafe {
             crocksdb_ffi::crocksdb_options_set_ratelimiter(self.inner, rate_limiter.inner);
         }
+    }
+
+    pub fn set_rate_bytes_per_sec(&mut self, rate_bytes_per_sec: i64) -> Result<(), String> {
+        let limiter = unsafe { crocksdb_ffi::crocksdb_options_get_ratelimiter(self.inner) };
+        if limiter.is_null() {
+            return Err("Failed to get rate limiter".to_owned());
+        }
+
+        let rate_limiter = RateLimiter { inner: limiter };
+
+        unsafe {
+            crocksdb_ffi::crocksdb_ratelimiter_set_bytes_per_second(
+                rate_limiter.inner,
+                rate_bytes_per_sec,
+            );
+        }
+        Ok(())
+    }
+
+    pub fn get_rate_bytes_per_sec(&self) -> Option<i64> {
+        let limiter = unsafe { crocksdb_ffi::crocksdb_options_get_ratelimiter(self.inner) };
+        if limiter.is_null() {
+            return None;
+        }
+
+        let rate_limiter = RateLimiter { inner: limiter };
+        let rate =
+            unsafe { crocksdb_ffi::crocksdb_ratelimiter_get_bytes_per_second(rate_limiter.inner) };
+        Some(rate)
     }
 
     // Create a info log with `path` and save to options logger field directly.
@@ -1316,6 +1346,24 @@ impl ColumnFamilyOptions {
 
     pub fn get_compression(&self) -> DBCompressionType {
         unsafe { crocksdb_ffi::crocksdb_options_get_compression(self.inner) }
+    }
+
+    pub fn set_compression_options(
+        &mut self,
+        window_bits: i32,
+        level: i32,
+        strategy: i32,
+        max_dict_bytes: i32,
+    ) {
+        unsafe {
+            crocksdb_ffi::crocksdb_options_set_compression_options(
+                self.inner,
+                window_bits,
+                level,
+                strategy,
+                max_dict_bytes,
+            )
+        }
     }
 
     pub fn compression_per_level(&mut self, level_types: &[DBCompressionType]) {

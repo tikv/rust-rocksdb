@@ -171,8 +171,27 @@ fn test_set_ratelimiter_with_auto_tuned() {
     let path = tempdir_with_prefix("_rust_rocksdb_test_set_rate_limiter_with_auto_tuned");
     let mut opts = DBOptions::new();
     opts.create_if_missing(true);
-    opts.set_ratelimiter_with_auto_tuned(100 * 1024 * 1024, DBRateLimiterMode::AllIo, true);
+    opts.set_ratelimiter_with_auto_tuned(
+        100 * 1024 * 1024,
+        10 * 100000,
+        DBRateLimiterMode::AllIo,
+        true,
+    );
     let db = DB::open(opts, path.path().to_str().unwrap()).unwrap();
+    drop(db);
+}
+
+#[test]
+fn test_set_ratelimiter_bytes_per_second() {
+    let path = tempdir_with_prefix("_rust_rocksdb_test_set_rate_limiter_bytes_per_second");
+    let mut opts = DBOptions::new();
+    opts.create_if_missing(true);
+    // compaction and flush rate limited below 100MB/sec
+    opts.set_ratelimiter(100 * 1024 * 1024);
+    let db = DB::open(opts, path.path().to_str().unwrap()).unwrap();
+    let mut opts = db.get_db_options();
+    assert!(opts.set_rate_bytes_per_sec(200 * 1024 * 1024).is_ok(), true);
+    assert_eq!(opts.get_rate_bytes_per_sec().unwrap(), 200 * 1024 * 1024);
     drop(db);
 }
 

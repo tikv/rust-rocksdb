@@ -70,6 +70,7 @@ extern "C" {
 
 /* Exported types */
 
+typedef struct crocksdb_cloud_envoptions_t crocksdb_cloud_envoptions_t;
 typedef struct crocksdb_t crocksdb_t;
 typedef struct crocksdb_status_ptr_t crocksdb_status_ptr_t;
 typedef struct crocksdb_backup_engine_t crocksdb_backup_engine_t;
@@ -1199,6 +1200,8 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_fifo_compaction_options(
     crocksdb_options_t* opt, crocksdb_fifo_compaction_options_t* fifo);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_ratelimiter(
     crocksdb_options_t* opt, crocksdb_ratelimiter_t* limiter);
+extern C_ROCKSDB_LIBRARY_API crocksdb_ratelimiter_t*
+crocksdb_options_get_ratelimiter(crocksdb_options_t* opt);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_vector_memtable_factory(
     crocksdb_options_t* opt, uint64_t reserved_bytes);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_atomic_flush(
@@ -2453,6 +2456,21 @@ extern C_ROCKSDB_LIBRARY_API void ctitandb_delete_files_in_ranges_cf(
     const char* const* start_keys, const size_t* start_keys_lens,
     const char* const* limit_keys, const size_t* limit_keys_lens,
     size_t num_ranges, unsigned char include_end, char** errptr);
+
+/* RocksDB Cloud */
+
+#ifdef USE_CLOUD
+extern C_ROCKSDB_LIBRARY_API crocksdb_env_t* crocksdb_cloud_aws_env_create(
+    crocksdb_env_t* base_env, const char* src_cloud_bucket,
+    const char* src_cloud_object, const char* src_cloud_region,
+    const char* dest_cloud_bucket, const char* dest_cloud_object,
+    const char* dest_cloud_region, crocksdb_cloud_envoptions_t* cloud_options,
+    char** errptr);
+extern C_ROCKSDB_LIBRARY_API crocksdb_cloud_envoptions_t*
+crocksdb_cloud_envoptions_create();
+extern C_ROCKSDB_LIBRARY_API void crocksdb_cloud_envoptions_destroy(
+    crocksdb_cloud_envoptions_t* opt);
+#endif
 
 #ifdef __cplusplus
 } /* end extern "C" */

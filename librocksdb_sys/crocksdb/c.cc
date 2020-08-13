@@ -116,6 +116,8 @@ using rocksdb::NewEncryptedEnv;
 using rocksdb::NewGenericRateLimiter;
 using rocksdb::NewLRUCache;
 using rocksdb::Options;
+using rocksdb::PartitionerRequest;
+using rocksdb::PartitionerResult;
 using rocksdb::PinnableSlice;
 using rocksdb::RandomAccessFile;
 using rocksdb::Range;
@@ -640,12 +642,14 @@ struct crocksdb_sst_partitioner_t {
   std::unique_ptr<SstPartitioner> rep;
 };
 
-struct crocksdb_sst_partitioner_context_t {
-  SstPartitioner::Context* rep;
+struct crocksdb_sst_partitioner_request_t {
+  PartitionerRequest* rep;
+  Slice prev_user_key;
+  Slice current_user_key;
 };
 
-struct crocksdb_sst_partitioner_state_t {
-  SstPartitioner::State* rep;
+struct crocksdb_sst_partitioner_context_t {
+  SstPartitioner::Context* rep;
 };
 
 struct crocksdb_sst_partitioner_factory_t {
@@ -5505,73 +5509,92 @@ uint64_t crocksdb_iostats_context_logger_nanos(
   return ctx->rep.logger_nanos;
 }
 
-crocksdb_sst_partitioner_state_t* crocksdb_sst_partitioner_state_create() {
-  auto* rep = new SstPartitioner::State;
-  auto* state = new crocksdb_sst_partitioner_state_t;
-  state->rep = rep;
-  return state;
+crocksdb_sst_partitioner_request_t* crocksdb_sst_partitioner_request_create() {
+  auto* req = new crocksdb_sst_partitioner_request_t;
+  req->rep =
+      new PartitionerRequest(req->prev_user_key, req->current_user_key, 0);
+  return req;
 }
 
-void crocksdb_sst_partitioner_state_destroy(
-    crocksdb_sst_partitioner_state_t* state) {
-  delete state->rep;
-  delete state;
+void crocksdb_sst_partitioner_request_destroy(
+    crocksdb_sst_partitioner_request_t* req) {
+  delete req->rep;
+  delete req;
 }
 
-const char* crocksdb_sst_partitioner_state_next_key(
-    crocksdb_sst_partitioner_state_t* state, size_t* len) {
-  auto& next_key = state->rep->next_key;
-  *len = next_key.size();
-  return next_key.data();
+const char* crocksdb_sst_partitioner_request_prev_user_key(
+    crocksdb_sst_partitioner_request_t* req, size_t* len) {
+  const Slice* prev_key = req->rep->prev_user_key;
+  *len = prev_key->size();
+  return prev_key->data();
 }
 
-uint64_t crocksdb_sst_partitioner_state_current_output_file_size(
-    crocksdb_sst_partitioner_state_t* state) {
-  return state->rep->current_output_file_size;
+const char* crocksdb_sst_partitioner_request_current_user_key(
+    crocksdb_sst_partitioner_request_t* req, size_t* len) {
+  const Slice* current_key = req->rep->current_user_key;
+  *len = current_key->size();
+  return current_key->data();
 }
 
-void crocksdb_sst_partitioner_state_set_next_key(
-    crocksdb_sst_partitioner_state_t* state, const char* next_key, size_t len) {
-  state->rep->next_key = Slice(next_key, len);
+uint64_t crocksdb_sst_partitioner_request_current_output_file_size(
+    crocksdb_sst_partitioner_request_t* req) {
+  return req->rep->current_output_file_size;
 }
 
-void crocksdb_sst_partitioner_state_set_current_output_file_size(
-    crocksdb_sst_partitioner_state_t* state,
+void crocksdb_sst_partitioner_request_set_prev_user_key(
+    crocksdb_sst_partitioner_request_t* req, const char* key, size_t len) {
+  req->prev_user_key = Slice(key, len);
+  req->rep->prev_user_key = &req->prev_user_key;
+}
+
+void crocksdb_sst_partitioner_request_set_current_user_key(
+    crocksdb_sst_partitioner_request_t* req, const char* key, size_t len) {
+  req->current_user_key = Slice(key, len);
+  req->rep->current_user_key = &req->current_user_key;
+}
+
+void crocksdb_sst_partitioner_request_set_current_output_file_size(
+    crocksdb_sst_partitioner_request_t* req,
     uint64_t current_output_file_size) {
-  state->rep->current_output_file_size = current_output_file_size;
+  req->rep->current_output_file_size = current_output_file_size;
 }
 
 struct crocksdb_sst_partitioner_impl_t : public SstPartitioner {
   void* underlying;
   void (*destructor)(void*);
   crocksdb_sst_partitioner_should_partition_cb should_partition_cb;
-  crocksdb_sst_partitioner_reset_cb reset_cb;
+  crocksdb_sst_partitioner_can_do_trivial_move_cb can_do_trivial_move_cb;
 
   virtual ~crocksdb_sst_partitioner_impl_t() { destructor(underlying); }
 
   const char* Name() const override { return "crocksdb_sst_partitioner_impl"; }
 
-  bool ShouldPartition(const State& partitioner_state) override {
-    crocksdb_sst_partitioner_state_t state;
-    state.rep = const_cast<State*>(&partitioner_state);
-    return should_partition_cb(underlying, &state);
+  PartitionerResult ShouldPartition(
+      const PartitionerRequest& request) override {
+    crocksdb_sst_partitioner_request_t req;
+    req.rep = const_cast<PartitionerRequest*>(&request);
+    return static_cast<PartitionerResult>(
+        should_partition_cb(underlying, &req));
   }
 
-  void Reset(const Slice& key) override {
-    return reset_cb(underlying, key.data(), key.size());
+  bool CanDoTrivialMove(const Slice& smallest_user_key,
+                        const Slice& largest_user_key) override {
+    return can_do_trivial_move_cb(
+        underlying, smallest_user_key.data(), smallest_user_key.size(),
+        largest_user_key.data(), largest_user_key.size());
   }
 };
 
 crocksdb_sst_partitioner_t* crocksdb_sst_partitioner_create(
     void* underlying, void (*destructor)(void*),
     crocksdb_sst_partitioner_should_partition_cb should_partition_cb,
-    crocksdb_sst_partitioner_reset_cb reset_cb) {
+    crocksdb_sst_partitioner_can_do_trivial_move_cb can_do_trivial_move_cb) {
   crocksdb_sst_partitioner_impl_t* sst_partitioner_impl =
       new crocksdb_sst_partitioner_impl_t;
   sst_partitioner_impl->underlying = underlying;
   sst_partitioner_impl->destructor = destructor;
   sst_partitioner_impl->should_partition_cb = should_partition_cb;
-  sst_partitioner_impl->reset_cb = reset_cb;
+  sst_partitioner_impl->can_do_trivial_move_cb = can_do_trivial_move_cb;
   crocksdb_sst_partitioner_t* sst_partitioner = new crocksdb_sst_partitioner_t;
   sst_partitioner->rep.reset(sst_partitioner_impl);
   return sst_partitioner;
@@ -5581,15 +5604,20 @@ void crocksdb_sst_partitioner_destroy(crocksdb_sst_partitioner_t* partitioner) {
   delete partitioner;
 }
 
-unsigned char crocksdb_sst_partitioner_should_partition(
+crocksdb_sst_partitioner_result_t crocksdb_sst_partitioner_should_partition(
     crocksdb_sst_partitioner_t* partitioner,
-    crocksdb_sst_partitioner_state_t* state) {
-  return partitioner->rep->ShouldPartition(*state->rep);
+    crocksdb_sst_partitioner_request_t* req) {
+  return static_cast<crocksdb_sst_partitioner_result_t>(
+      partitioner->rep->ShouldPartition(*req->rep));
 }
 
-void crocksdb_sst_partitioner_reset(crocksdb_sst_partitioner_t* partitioner,
-                                    const char* key, size_t key_len) {
-  partitioner->rep->Reset(Slice(key, key_len));
+unsigned char crocksdb_sst_partitioner_can_do_trivial_move(
+    crocksdb_sst_partitioner_t* partitioner, const char* smallest_user_key,
+    size_t smallest_user_key_len, const char* largest_user_key,
+    size_t largest_user_key_len) {
+  Slice smallest_key(smallest_user_key, smallest_user_key_len);
+  Slice largest_key(largest_user_key, largest_user_key_len);
+  return partitioner->rep->CanDoTrivialMove(smallest_key, largest_key);
 }
 
 crocksdb_sst_partitioner_context_t* crocksdb_sst_partitioner_context_create() {
@@ -5622,14 +5650,14 @@ int crocksdb_sst_partitioner_context_output_level(
 
 const char* crocksdb_sst_partitioner_context_smallest_key(
     crocksdb_sst_partitioner_context_t* context, size_t* key_len) {
-  auto& smallest_key = context->rep->smallest_key;
+  auto& smallest_key = context->rep->smallest_user_key;
   *key_len = smallest_key.size();
   return smallest_key.data();
 }
 
 const char* crocksdb_sst_partitioner_context_largest_key(
     crocksdb_sst_partitioner_context_t* context, size_t* key_len) {
-  auto& largest_key = context->rep->largest_key;
+  auto& largest_key = context->rep->largest_user_key;
   *key_len = largest_key.size();
   return largest_key.data();
 }
@@ -5654,13 +5682,13 @@ void crocksdb_sst_partitioner_context_set_output_level(
 void crocksdb_sst_partitioner_context_set_smallest_key(
     crocksdb_sst_partitioner_context_t* context, const char* smallest_key,
     size_t key_len) {
-  context->rep->smallest_key = std::string(smallest_key, key_len);
+  context->rep->smallest_user_key = Slice(smallest_key, key_len);
 }
 
 void crocksdb_sst_partitioner_context_set_largest_key(
     crocksdb_sst_partitioner_context_t* context, const char* largest_key,
     size_t key_len) {
-  context->rep->largest_key = std::string(largest_key, key_len);
+  context->rep->largest_user_key = Slice(largest_key, key_len);
 }
 
 struct crocksdb_sst_partitioner_factory_impl_t : public SstPartitionerFactory {

@@ -42,7 +42,8 @@ pub use event_listener::{
 pub use librocksdb_sys::{
     self as crocksdb_ffi, new_bloom_filter, CompactionPriority, CompactionReason,
     DBBackgroundErrorReason, DBBottommostLevelCompaction, DBCompactionStyle, DBCompressionType,
-    DBEntryType, DBInfoLogLevel, DBRateLimiterMode, DBRecoveryMode, DBStatisticsHistogramType,
+    DBEntryType, DBInfoLogLevel, DBRateLimiterMode, DBRecoveryMode,
+    DBSstPartitionerResult as SstPartitionerResult, DBStatisticsHistogramType,
     DBStatisticsTickerType, DBStatusPtr, DBTitanDBBlobRunMode, IndexType, WriteStallCondition,
 };
 pub use logger::Logger;
@@ -63,7 +64,7 @@ pub use rocksdb_options::{
 };
 pub use slice_transform::SliceTransform;
 pub use sst_partitioner::{
-    SstPartitioner, SstPartitionerContext, SstPartitionerFactory, SstPartitionerState,
+    SstPartitioner, SstPartitionerContext, SstPartitionerFactory, SstPartitionerRequest,
 };
 pub use table_filter::TableFilter;
 pub use table_properties::{

@@ -166,7 +166,7 @@ pub struct DBEncryptionKeyManagerInstance(c_void);
 #[repr(C)]
 pub struct DBSstPartitioner(c_void);
 #[repr(C)]
-pub struct DBSstPartitionerState(c_void);
+pub struct DBSstPartitionerRequest(c_void);
 #[repr(C)]
 pub struct DBSstPartitionerContext(c_void);
 #[repr(C)]
@@ -418,6 +418,13 @@ impl fmt::Display for DBEncryptionMethod {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{:?}", self)
     }
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[repr(C)]
+pub enum DBSstPartitionerResult {
+    NotRequired = 0,
+    Required = 1,
 }
 
 /// # Safety
@@ -2199,41 +2206,61 @@ extern "C" {
     pub fn crocksdb_iostats_context_prepare_write_nanos(ctx: *mut DBIOStatsContext) -> u64;
     pub fn crocksdb_iostats_context_logger_nanos(ctx: *mut DBIOStatsContext) -> u64;
 
-    pub fn crocksdb_sst_partitioner_state_create() -> *mut DBSstPartitionerState;
-    pub fn crocksdb_sst_partitioner_state_destroy(state: *mut DBSstPartitionerState);
-    pub fn crocksdb_sst_partitioner_state_next_key(
-        state: *mut DBSstPartitionerState,
+    pub fn crocksdb_sst_partitioner_request_create() -> *mut DBSstPartitionerRequest;
+    pub fn crocksdb_sst_partitioner_request_destroy(state: *mut DBSstPartitionerRequest);
+    pub fn crocksdb_sst_partitioner_request_prev_user_key(
+        state: *mut DBSstPartitionerRequest,
         len: *mut size_t,
     ) -> *const c_char;
-    pub fn crocksdb_sst_partitioner_state_current_output_file_size(
-        state: *mut DBSstPartitionerState,
+    pub fn crocksdb_sst_partitioner_request_current_user_key(
+        state: *mut DBSstPartitionerRequest,
+        len: *mut size_t,
+    ) -> *const c_char;
+    pub fn crocksdb_sst_partitioner_request_current_output_file_size(
+        state: *mut DBSstPartitionerRequest,
     ) -> u64;
-    pub fn crocksdb_sst_partitioner_state_set_next_key(
-        state: *mut DBSstPartitionerState,
-        next_key: *const c_char,
+    pub fn crocksdb_sst_partitioner_request_set_prev_user_key(
+        state: *mut DBSstPartitionerRequest,
+        key: *const c_char,
         len: size_t,
     );
-    pub fn crocksdb_sst_partitioner_state_set_current_output_file_size(
-        state: *mut DBSstPartitionerState,
+    pub fn crocksdb_sst_partitioner_request_set_current_user_key(
+        state: *mut DBSstPartitionerRequest,
+        key: *const c_char,
+        len: size_t,
+    );
+    pub fn crocksdb_sst_partitioner_request_set_current_output_file_size(
+        state: *mut DBSstPartitionerRequest,
         current_output_file_size: u64,
     );
 
     pub fn crocksdb_sst_partitioner_create(
         underlying: *mut c_void,
         destructor: extern "C" fn(*mut c_void),
-        should_partition_cb: extern "C" fn(*mut c_void, *mut DBSstPartitionerState) -> c_uchar,
-        reset_cb: extern "C" fn(*mut c_void, *const c_char, size_t),
+        should_partition_cb: extern "C" fn(
+            *mut c_void,
+            *mut DBSstPartitionerRequest,
+        ) -> DBSstPartitionerResult,
+        can_do_trivial_move_cb: extern "C" fn(
+            *mut c_void,
+            *const c_char,
+            size_t,
+            *const c_char,
+            size_t,
+        ) -> c_uchar,
     ) -> *mut DBSstPartitioner;
     pub fn crocksdb_sst_partitioner_destroy(partitioner: *mut DBSstPartitioner);
     pub fn crocksdb_sst_partitioner_should_partition(
         partitioner: *mut DBSstPartitioner,
-        state: *mut DBSstPartitionerState,
-    ) -> c_uchar;
-    pub fn crocksdb_sst_partitioner_reset(
+        req: *mut DBSstPartitionerRequest,
+    ) -> DBSstPartitionerResult;
+    pub fn crocksdb_sst_partitioner_can_do_trivial_move(
         partitioner: *mut DBSstPartitioner,
-        key: *const c_char,
-        key_len: size_t,
-    );
+        smallest_key: *const c_char,
+        smallest_key_len: size_t,
+        largest_key: *const c_char,
+        largest_key_len: size_t,
+    ) -> bool;
 
     pub fn crocksdb_sst_partitioner_context_create() -> *mut DBSstPartitionerContext;
     pub fn crocksdb_sst_partitioner_context_destroy(context: *mut DBSstPartitionerContext);

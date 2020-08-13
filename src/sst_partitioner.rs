@@ -1,14 +1,17 @@
 // Copyright 2020 TiKV Project Authors. Licensed under Apache-2.0.
 
+use super::SstPartitionerResult;
 use crocksdb_ffi::{
-    self, DBSstPartitioner, DBSstPartitionerContext, DBSstPartitionerFactory, DBSstPartitionerState,
+    self, DBSstPartitioner, DBSstPartitionerContext, DBSstPartitionerFactory,
+    DBSstPartitionerRequest,
 };
 use libc::{c_char, c_uchar, c_void, size_t};
 use std::{ffi::CString, ptr, slice};
 
 #[derive(Clone, PartialEq, Eq, Debug)]
-pub struct SstPartitionerState<'a> {
-    pub next_key: &'a [u8],
+pub struct SstPartitionerRequest<'a> {
+    pub prev_user_key: &'a [u8],
+    pub current_user_key: &'a [u8],
     pub current_output_file_size: u64,
 }
 
@@ -22,8 +25,8 @@ pub struct SstPartitionerContext<'a> {
 }
 
 pub trait SstPartitioner {
-    fn should_partition(&self, state: &SstPartitionerState) -> bool;
-    fn reset(&self, key: &[u8]);
+    fn should_partition(&self, req: &SstPartitionerRequest) -> SstPartitionerResult;
+    fn can_do_trivial_move(&self, smallest_user_key: &[u8], largest_user_key: &[u8]) -> bool;
 }
 
 extern "C" fn sst_partitioner_destructor<P: SstPartitioner>(ctx: *mut c_void) {
@@ -35,33 +38,43 @@ extern "C" fn sst_partitioner_destructor<P: SstPartitioner>(ctx: *mut c_void) {
 
 extern "C" fn sst_partitioner_should_partition<P: SstPartitioner>(
     ctx: *mut c_void,
-    state: *mut DBSstPartitionerState,
-) -> c_uchar {
+    request: *mut DBSstPartitionerRequest,
+) -> SstPartitionerResult {
     let partitioner = unsafe { &*(ctx as *mut P) };
-    let state = unsafe {
-        let mut key_len: usize = 0;
-        let next_key =
-            crocksdb_ffi::crocksdb_sst_partitioner_state_next_key(state, &mut key_len) as *const u8;
-        SstPartitionerState {
-            next_key: slice::from_raw_parts(next_key, key_len),
+    let req = unsafe {
+        let mut prev_key_len: usize = 0;
+        let prev_key = crocksdb_ffi::crocksdb_sst_partitioner_request_prev_user_key(
+            request,
+            &mut prev_key_len,
+        ) as *const u8;
+        let mut current_key_len: usize = 0;
+        let current_key = crocksdb_ffi::crocksdb_sst_partitioner_request_current_user_key(
+            request,
+            &mut current_key_len,
+        ) as *const u8;
+        SstPartitionerRequest {
+            prev_user_key: slice::from_raw_parts(prev_key, prev_key_len),
+            current_user_key: slice::from_raw_parts(current_key, current_key_len),
             current_output_file_size:
-                crocksdb_ffi::crocksdb_sst_partitioner_state_current_output_file_size(state),
+                crocksdb_ffi::crocksdb_sst_partitioner_request_current_output_file_size(request),
         }
     };
-    partitioner.should_partition(&state) as _
+    partitioner.should_partition(&req) as _
 }
 
-extern "C" fn sst_partitioner_reset<P: SstPartitioner>(
+extern "C" fn sst_partitioner_can_do_trivial_move<P: SstPartitioner>(
     ctx: *mut c_void,
-    key: *const c_char,
-    key_len: size_t,
-) {
+    smallest_user_key: *const c_char,
+    smallest_user_key_len: size_t,
+    largest_user_key: *const c_char,
+    largest_user_key_len: size_t,
+) -> c_uchar {
     let partitioner = unsafe { &*(ctx as *mut P) };
-    let key_buf = unsafe {
-        let key_ptr = key as *const u8;
-        slice::from_raw_parts(key_ptr, key_len)
-    };
-    partitioner.reset(key_buf);
+    let smallest_key =
+        unsafe { slice::from_raw_parts(smallest_user_key as *const u8, smallest_user_key_len) };
+    let largest_key =
+        unsafe { slice::from_raw_parts(largest_user_key as *const u8, largest_user_key_len) };
+    partitioner.can_do_trivial_move(smallest_key, largest_key) as _
 }
 
 pub trait SstPartitionerFactory: Sync + Send {
@@ -121,7 +134,7 @@ extern "C" fn sst_partitioner_factory_create_partitioner<F: SstPartitionerFactor
                     ctx,
                     sst_partitioner_destructor::<F::Partitioner>,
                     sst_partitioner_should_partition::<F::Partitioner>,
-                    sst_partitioner_reset::<F::Partitioner>,
+                    sst_partitioner_can_do_trivial_move::<F::Partitioner>,
                 )
             }
         }
@@ -153,17 +166,21 @@ mod test {
     struct TestState {
         pub call_create_partitioner: usize,
         pub call_should_partition: usize,
-        pub call_reset: usize,
+        pub call_can_do_trivial_move: usize,
         pub drop_partitioner: usize,
         pub drop_factory: usize,
-        pub should_partition_result: bool,
+        pub should_partition_result: SstPartitionerResult,
+        pub can_do_trivial_move_result: bool,
         pub no_partitioner: bool,
 
-        // SstPartitionerState fields
-        pub next_key: Option<Vec<u8>>,
+        // SstPartitionerRequest fields
+        pub prev_user_key: Option<Vec<u8>>,
+        pub current_user_key: Option<Vec<u8>>,
         pub current_output_file_size: Option<u64>,
 
-        pub reset_key: Option<Vec<u8>>,
+        // can_do_trivial_move params
+        pub trivial_move_smallest_key: Option<Vec<u8>>,
+        pub trivial_move_largest_key: Option<Vec<u8>>,
 
         // SstPartitionerContext fields
         pub is_full_compaction: Option<bool>,
@@ -178,14 +195,17 @@ mod test {
             TestState {
                 call_create_partitioner: 0,
                 call_should_partition: 0,
-                call_reset: 0,
+                call_can_do_trivial_move: 0,
                 drop_partitioner: 0,
                 drop_factory: 0,
-                should_partition_result: false,
+                should_partition_result: SstPartitionerResult::NotRequired,
+                can_do_trivial_move_result: false,
                 no_partitioner: false,
-                next_key: None,
+                prev_user_key: None,
+                current_user_key: None,
                 current_output_file_size: None,
-                reset_key: None,
+                trivial_move_smallest_key: None,
+                trivial_move_largest_key: None,
                 is_full_compaction: None,
                 is_manual_compaction: None,
                 output_level: None,
@@ -200,19 +220,23 @@ mod test {
     }
 
     impl SstPartitioner for TestSstPartitioner {
-        fn should_partition(&self, state: &SstPartitionerState) -> bool {
+        fn should_partition(&self, req: &SstPartitionerRequest) -> SstPartitionerResult {
             let mut s = self.state.lock().unwrap();
             s.call_should_partition += 1;
-            s.next_key = Some(state.next_key.to_vec());
-            s.current_output_file_size = Some(state.current_output_file_size);
+            s.prev_user_key = Some(req.prev_user_key.to_vec());
+            s.current_user_key = Some(req.current_user_key.to_vec());
+            s.current_output_file_size = Some(req.current_output_file_size);
 
             s.should_partition_result
         }
 
-        fn reset(&self, key: &[u8]) {
+        fn can_do_trivial_move(&self, smallest_key: &[u8], largest_key: &[u8]) -> bool {
             let mut s = self.state.lock().unwrap();
-            s.call_reset += 1;
-            s.reset_key = Some(key.to_vec());
+            s.call_can_do_trivial_move += 1;
+            s.trivial_move_smallest_key = Some(smallest_key.to_vec());
+            s.trivial_move_largest_key = Some(largest_key.to_vec());
+
+            s.can_do_trivial_move_result
         }
     }
 
@@ -342,8 +366,9 @@ mod test {
 
     #[test]
     fn partitioner_should_partition() {
-        const SHOULD_PARTITION: bool = true;
-        const NEXT_KEY: &[u8] = b"test_next_key";
+        const SHOULD_PARTITION: SstPartitionerResult = SstPartitionerResult::Required;
+        const PREV_KEY: &[u8] = b"test_key_abc";
+        const CURRENT_KEY: &[u8] = b"test_key_def";
         const CURRENT_OUTPUT_FILE_SIZE: u64 = 1234567;
 
         let s = Arc::new(Mutex::new(TestState::default()));
@@ -353,28 +378,36 @@ mod test {
         let partitioner = unsafe {
             crocksdb_ffi::crocksdb_sst_partitioner_factory_create_partitioner(factory, context)
         };
-        let state = unsafe { crocksdb_ffi::crocksdb_sst_partitioner_state_create() };
+        let req = unsafe { crocksdb_ffi::crocksdb_sst_partitioner_request_create() };
         unsafe {
-            crocksdb_ffi::crocksdb_sst_partitioner_state_set_next_key(
-                state,
-                NEXT_KEY.as_ptr() as *const c_char,
-                NEXT_KEY.len(),
+            crocksdb_ffi::crocksdb_sst_partitioner_request_set_prev_user_key(
+                req,
+                PREV_KEY.as_ptr() as *const c_char,
+                PREV_KEY.len(),
             );
-            crocksdb_ffi::crocksdb_sst_partitioner_state_set_current_output_file_size(
-                state,
+            crocksdb_ffi::crocksdb_sst_partitioner_request_set_current_user_key(
+                req,
+                CURRENT_KEY.as_ptr() as *const c_char,
+                CURRENT_KEY.len(),
+            );
+            crocksdb_ffi::crocksdb_sst_partitioner_request_set_current_output_file_size(
+                req,
                 CURRENT_OUTPUT_FILE_SIZE,
             );
         }
-        let should_partition = unsafe {
-            crocksdb_ffi::crocksdb_sst_partitioner_should_partition(partitioner, state) != 0
-        };
+        let should_partition =
+            unsafe { crocksdb_ffi::crocksdb_sst_partitioner_should_partition(partitioner, req) };
         assert_eq!(SHOULD_PARTITION, should_partition);
         {
             let sl = s.lock().unwrap();
             assert_eq!(1, sl.call_create_partitioner);
             assert_eq!(1, sl.call_should_partition);
-            assert_eq!(0, sl.call_reset);
-            assert_eq!(NEXT_KEY, sl.next_key.as_ref().unwrap().as_slice());
+            assert_eq!(0, sl.call_can_do_trivial_move);
+            assert_eq!(PREV_KEY, sl.prev_user_key.as_ref().unwrap().as_slice());
+            assert_eq!(
+                CURRENT_KEY,
+                sl.current_user_key.as_ref().unwrap().as_slice()
+            );
             assert_eq!(
                 CURRENT_OUTPUT_FILE_SIZE,
                 sl.current_output_file_size.unwrap()
@@ -387,28 +420,41 @@ mod test {
     }
 
     #[test]
-    fn partitioner_reset() {
-        const RESET_KEY: &[u8] = b"test_reset_key";
+    fn partitioner_can_do_trivial_move() {
+        const SMALLEST_KEY: &[u8] = b"test_key_abc";
+        const LARGEST_KEY: &[u8] = b"test_key_def";
+        const RESULT: bool = true;
 
         let s = Arc::new(Mutex::new(TestState::default()));
+        s.lock().unwrap().can_do_trivial_move_result = RESULT;
         let factory = new_sst_partitioner_factory(TestSstPartitionerFactory { state: s.clone() });
         let context = unsafe { crocksdb_ffi::crocksdb_sst_partitioner_context_create() };
         let partitioner = unsafe {
             crocksdb_ffi::crocksdb_sst_partitioner_factory_create_partitioner(factory, context)
         };
-        unsafe {
-            crocksdb_ffi::crocksdb_sst_partitioner_reset(
+        let result = unsafe {
+            crocksdb_ffi::crocksdb_sst_partitioner_can_do_trivial_move(
                 partitioner,
-                RESET_KEY.as_ptr() as *const c_char,
-                RESET_KEY.len(),
-            );
-        }
+                SMALLEST_KEY.as_ptr() as *const c_char,
+                SMALLEST_KEY.len(),
+                LARGEST_KEY.as_ptr() as *const c_char,
+                LARGEST_KEY.len(),
+            )
+        };
         {
             let sl = s.lock().unwrap();
             assert_eq!(1, sl.call_create_partitioner);
             assert_eq!(0, sl.call_should_partition);
-            assert_eq!(1, sl.call_reset);
-            assert_eq!(RESET_KEY, sl.reset_key.as_ref().unwrap().as_slice());
+            assert_eq!(1, sl.call_can_do_trivial_move);
+            assert_eq!(
+                SMALLEST_KEY,
+                sl.trivial_move_smallest_key.as_ref().unwrap().as_slice()
+            );
+            assert_eq!(
+                LARGEST_KEY,
+                sl.trivial_move_largest_key.as_ref().unwrap().as_slice()
+            );
+            assert_eq!(RESULT, result);
         }
         unsafe {
             crocksdb_ffi::crocksdb_sst_partitioner_destroy(partitioner);

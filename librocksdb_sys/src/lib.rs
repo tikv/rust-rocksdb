@@ -1188,10 +1188,7 @@ extern "C" {
         data: *const u8,
         dlen: size_t,
     );
-    pub fn crocksdb_writebatch_ref_count(
-        data: *const u8,
-        dlen: size_t,
-    ) -> c_int;
+    pub fn crocksdb_writebatch_ref_count(data: *const u8, dlen: size_t) -> c_int;
     pub fn crocksdb_writebatch_ref_iterator_create(
         data: *const u8,
         dlen: size_t,

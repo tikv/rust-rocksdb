@@ -127,7 +127,7 @@ impl WriteBatch {
         }
     }
 
-    pub fn iter<'a>(&'a self) -> WriteBatchIter<'a> {
+    pub fn iter(&self) -> WriteBatchIter {
         WriteBatchIter::new(self)
     }
 }
@@ -190,7 +190,7 @@ impl<'a> Iterator for WriteBatchIter<'a> {
                 DBValueType::TypeColumnFamilyValue => DBValueType::TypeValue,
                 DBValueType::TypeColumnFamilyMerge => DBValueType::TypeMerge,
                 DBValueType::TypeColumnFamilyRangeDeletion => DBValueType::TypeRangeDeletion,
-                other @ _ => other,
+                other => other,
             };
             let column_family =
                 crocksdb_ffi::crocksdb_writebatch_iterator_column_family_id(self.inner);

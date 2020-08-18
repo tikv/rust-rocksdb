@@ -70,7 +70,6 @@ extern "C" {
 
 /* Exported types */
 
-typedef struct crocksdb_cloud_envoptions_t crocksdb_cloud_envoptions_t;
 typedef struct crocksdb_t crocksdb_t;
 typedef struct crocksdb_status_ptr_t crocksdb_status_ptr_t;
 typedef struct crocksdb_backup_engine_t crocksdb_backup_engine_t;
@@ -152,6 +151,7 @@ typedef struct crocksdb_iostats_context_t crocksdb_iostats_context_t;
 typedef struct crocksdb_writestallinfo_t crocksdb_writestallinfo_t;
 typedef struct crocksdb_writestallcondition_t crocksdb_writestallcondition_t;
 typedef struct crocksdb_map_property_t crocksdb_map_property_t;
+typedef struct crocksdb_writebatch_iterator_t crocksdb_writebatch_iterator_t;
 
 typedef enum crocksdb_table_property_t {
   kDataSize = 1,
@@ -644,6 +644,15 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_writebatch_iterate(
     crocksdb_writebatch_t*, void* state,
     void (*put)(void*, const char* k, size_t klen, const char* v, size_t vlen),
     void (*deleted)(void*, const char* k, size_t klen));
+
+extern C_ROCKSDB_LIBRARY_API void crocksdb_writebatch_iterate_cf(
+    crocksdb_writebatch_t* b, void* state,
+    void (*put)(void*, const char* k, size_t klen, const char* v, size_t vlen),
+    void (*put_cf)(void*, uint32_t cf, const char* k, size_t klen,
+                   const char* v, size_t vlen),
+    void (*deleted)(void*, const char* k, size_t klen),
+    void (*deleted_cf)(void*, uint32_t cf, const char* k, size_t klen));
+
 extern C_ROCKSDB_LIBRARY_API const char* crocksdb_writebatch_data(
     crocksdb_writebatch_t*, size_t* size);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_writebatch_set_save_point(
@@ -652,6 +661,33 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_writebatch_pop_save_point(
     crocksdb_writebatch_t*, char** errptr);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_writebatch_rollback_to_save_point(
     crocksdb_writebatch_t*, char** errptr);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_writebatch_rollback_to_save_point(
+    crocksdb_writebatch_t*, char** errptr);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_writebatch_set_content(
+    crocksdb_writebatch_t* b, const char* data, size_t dlen);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_writebatch_append_content(
+    crocksdb_writebatch_t* dest, const char* data, size_t dlen);
+extern C_ROCKSDB_LIBRARY_API int crocksdb_writebatch_ref_count(const char* data,
+                                                               size_t dlen);
+extern C_ROCKSDB_LIBRARY_API crocksdb_writebatch_iterator_t*
+crocksdb_writebatch_ref_iterator_create(const char* data, size_t dlen);
+extern C_ROCKSDB_LIBRARY_API crocksdb_writebatch_iterator_t*
+crocksdb_writebatch_iterator_create(crocksdb_writebatch_t* dest);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_writebatch_iterator_destroy(
+    crocksdb_writebatch_iterator_t* it);
+extern C_ROCKSDB_LIBRARY_API unsigned char crocksdb_writebatch_iterator_valid(
+    crocksdb_writebatch_iterator_t* it);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_writebatch_iterator_next(
+    crocksdb_writebatch_iterator_t* it);
+extern C_ROCKSDB_LIBRARY_API const char* crocksdb_writebatch_iterator_key(
+    crocksdb_writebatch_iterator_t* it, size_t* klen);
+extern C_ROCKSDB_LIBRARY_API const char* crocksdb_writebatch_iterator_value(
+    crocksdb_writebatch_iterator_t* it, size_t* klen);
+extern C_ROCKSDB_LIBRARY_API int crocksdb_writebatch_iterator_value_type(
+    crocksdb_writebatch_iterator_t* it);
+extern C_ROCKSDB_LIBRARY_API uint32_t
+crocksdb_writebatch_iterator_column_family_id(
+    crocksdb_writebatch_iterator_t* it);
 
 /* Block based table options */
 
@@ -2348,21 +2384,6 @@ extern C_ROCKSDB_LIBRARY_API void ctitandb_delete_files_in_ranges_cf(
     const char* const* start_keys, const size_t* start_keys_lens,
     const char* const* limit_keys, const size_t* limit_keys_lens,
     size_t num_ranges, unsigned char include_end, char** errptr);
-
-/* RocksDB Cloud */
-
-#ifdef USE_CLOUD
-extern C_ROCKSDB_LIBRARY_API crocksdb_env_t* crocksdb_cloud_aws_env_create(
-    crocksdb_env_t* base_env, const char* src_cloud_bucket,
-    const char* src_cloud_object, const char* src_cloud_region,
-    const char* dest_cloud_bucket, const char* dest_cloud_object,
-    const char* dest_cloud_region, crocksdb_cloud_envoptions_t* cloud_options,
-    char** errptr);
-extern C_ROCKSDB_LIBRARY_API crocksdb_cloud_envoptions_t*
-crocksdb_cloud_envoptions_create();
-extern C_ROCKSDB_LIBRARY_API void crocksdb_cloud_envoptions_destroy(
-    crocksdb_cloud_envoptions_t* opt);
-#endif
 
 #ifdef __cplusplus
 } /* end extern "C" */

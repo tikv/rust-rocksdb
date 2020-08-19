@@ -5095,19 +5095,23 @@ uint64_t crocksdb_perf_context_block_read_time(crocksdb_perf_context_t* ctx) {
   return ctx->rep.block_read_time;
 }
 
-uint64_t crocksdb_perf_context_block_cache_index_hit_count(crocksdb_perf_context_t* ctx) {
+uint64_t crocksdb_perf_context_block_cache_index_hit_count(
+    crocksdb_perf_context_t* ctx) {
   return ctx->rep.block_cache_index_hit_count;
 }
 
-uint64_t crocksdb_perf_context_index_block_read_count(crocksdb_perf_context_t* ctx) {
+uint64_t crocksdb_perf_context_index_block_read_count(
+    crocksdb_perf_context_t* ctx) {
   return ctx->rep.index_block_read_count;
 }
 
-uint64_t crocksdb_perf_context_block_cache_filter_hit_count(crocksdb_perf_context_t* ctx) {
+uint64_t crocksdb_perf_context_block_cache_filter_hit_count(
+    crocksdb_perf_context_t* ctx) {
   return ctx->rep.block_cache_filter_hit_count;
 }
 
-uint64_t crocksdb_perf_context_filter_block_read_count(crocksdb_perf_context_t* ctx) {
+uint64_t crocksdb_perf_context_filter_block_read_count(
+    crocksdb_perf_context_t* ctx) {
   return ctx->rep.filter_block_read_count;
 }
 
@@ -5419,8 +5423,7 @@ uint64_t crocksdb_perf_context_env_new_logger_nanos(
   return ctx->rep.env_new_logger_nanos;
 }
 
-uint64_t crocksdb_perf_context_get_cpu_nanos(
-    crocksdb_perf_context_t* ctx) {
+uint64_t crocksdb_perf_context_get_cpu_nanos(crocksdb_perf_context_t* ctx) {
   return ctx->rep.get_cpu_nanos;
 }
 

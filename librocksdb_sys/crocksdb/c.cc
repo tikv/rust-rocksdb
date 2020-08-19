@@ -1735,7 +1735,7 @@ void crocksdb_writebatch_iterate_cf(
     }
 
     Status PutCF(uint32_t column_family_id, const Slice& key,
-                         const Slice& value) override {
+                 const Slice& value) override {
       (*put_cf_)(state_, column_family_id, key.data(), key.size(), value.data(),
                  value.size());
       return Status::OK();
@@ -1745,8 +1745,7 @@ void crocksdb_writebatch_iterate_cf(
       (*deleted_)(state_, key.data(), key.size());
     }
 
-    Status DeleteCF(uint32_t column_family_id,
-                            const Slice& key) override {
+    Status DeleteCF(uint32_t column_family_id, const Slice& key) override {
       (*deleted_cf_)(state_, column_family_id, key.data(), key.size());
       return Status::OK();
     }

@@ -9,7 +9,7 @@ fn main() {
     let mut cfg = cmake::Config::new(".");
     let dst = cfg
         .define("ROCKSDB_DIR", cur_dir.join("..").join("rocksdb"))
-        .env("USE_AWS", "1")
+        .define("USE_AWS", "1")
         .build_target("rocksdb_cloud")
         .very_verbose(true)
         .build();

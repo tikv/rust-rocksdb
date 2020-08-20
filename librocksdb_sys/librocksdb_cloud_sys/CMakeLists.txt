@@ -48,6 +48,8 @@ include_directories(SYSTEM ${ROCKSDB_DIR}/third-party/gtest-1.7.0/fused-src)
 
 add_library(cloud_env OBJECT "rocksdb-cloud/cloud/cloud_env.cc")
 
+add_definitions(-DUSE_AWS)
+
 include(GNUInstallDirs)
 install(DIRECTORY include/rocksdb/cloud
   COMPONENT devel

@@ -12,3 +12,7 @@
 	path = librocksdb_sys/librocksdb_cloud_sys/rocksdb-cloud
 	url = https://github.com/tikv/rocksdb
 	branch = 6.4.cloud
+
+[submodule "aws-sdk-cpp"]
+	path = librocksdb_sys/librocksdb_cloud_sys/aws_sdk/aws-sdk-cpp
+	url = https://github.com/aws/aws-sdk-cpp

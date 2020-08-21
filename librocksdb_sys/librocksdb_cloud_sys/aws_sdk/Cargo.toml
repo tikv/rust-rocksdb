@@ -1,14 +1,13 @@
 [package]
-name = "librocksdb_cloud_sys"
+name = "aws_sdk"
 version = "0.1.0"
 edition = "2018"
 build = "build.rs"
-links = "rocksdb-cloud"
+links = "aws-sdk-cpp"
 
 [features]
 cloud = []
 
 [build-dependencies]
-aws_sdk = { path = "./aws_sdk/" }
 cc = "1.0.3"
 cmake = "0.1"

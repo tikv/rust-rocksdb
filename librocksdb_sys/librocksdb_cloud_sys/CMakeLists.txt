@@ -38,7 +38,7 @@ include_directories("${ROCKSDB_DIR}/include")
 include_directories("rocksdb-cloud")
 include_directories("rocksdb-cloud/include")
 
-file(GLOB SOURCES rocksdb-cloud/cloud/*.cc)
+file(GLOB SOURCES rocksdb-cloud/cloud/*.cc rocksdb-cloud/cloud/aws/*.cc)
 
 add_library(rocksdb_cloud STATIC ${SOURCES} $<TARGET_OBJECTS:cloud_env>)
 

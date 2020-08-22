@@ -10,12 +10,8 @@ fn main() {
         .define("STATIC_LINKING", "1")
         .very_verbose(true)
         .build();
-    println!("cargo:rustc-link-search=native={}/build/aws-cpp-sdk-core", dst.display());
-    println!("cargo:rustc-link-lib=static=aws-cpp-sdk-core");
-    println!("cargo:rustc-link-search=native={}/build/aws-cpp-sdk-kinesis", dst.display());
-    println!("cargo:rustc-link-lib=static=aws-cpp-sdk-kinesis");
-    println!("cargo:rustc-link-search=native={}/build/aws-cpp-sdk-s3", dst.display());
-    println!("cargo:rustc-link-lib=static=aws-cpp-sdk-s3");
-    println!("cargo:rustc-link-search=native={}/build/aws-cpp-sdk-transfer", dst.display());
-    println!("cargo:rustc-link-lib=static=aws-cpp-sdk-transfer");
+    println!("cargo:rustc-link-search=native={}/lib", dst.display());
+    println!("cargo:rustc-link-lib=static=aws-c-common");
+    println!("cargo:rustc-link-lib=static=aws-c-event-stream");
+    println!("cargo:rustc-link-lib=static=aws-checksums");
 }

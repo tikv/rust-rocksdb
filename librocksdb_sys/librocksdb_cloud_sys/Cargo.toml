@@ -12,3 +12,4 @@ cloud = []
 aws_sdk = { path = "./aws_sdk/" }
 cc = "1.0.3"
 cmake = "0.1"
+curl = { version = "0.4", features = ["static-ssl"] }

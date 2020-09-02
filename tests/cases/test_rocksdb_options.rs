@@ -859,7 +859,7 @@ fn test_compact_on_deletion() {
     opts.create_if_missing(true);
     cf_opts.set_compact_on_deletion(window_size, dels_trigger);
 
-    let path = TempDir::new("_rust_rocksdb_compact_on_deletion_test").expect("");
+    let path = tempdir_with_prefix("_rust_rocksdb_compact_on_deletion_test");
     let db = DB::open_cf(
         opts,
         path.path().to_str().unwrap(),

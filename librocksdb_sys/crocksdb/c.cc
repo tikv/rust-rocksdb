@@ -6301,22 +6301,20 @@ void ctitandb_delete_files_in_ranges_cf(
                         cf->rep, &ranges[0], num_ranges, include_end));
 }
 
-void ctitandb_delete_blob_files_in_range(
-    crocksdb_t* db,
-    const char* start_key, size_t start_key_len,
-    const char* limit_key, size_t limit_key_len,
-    unsigned char include_end, char** errptr) {
+void ctitandb_delete_blob_files_in_range(crocksdb_t* db, const char* start_key,
+                                         size_t start_key_len,
+                                         const char* limit_key,
+                                         size_t limit_key_len,
+                                         unsigned char include_end,
+                                         char** errptr) {
   Slice a, b;
   RangePtr range(
-    start_key ? (a = Slice(start_key, start_key_len), &a) : nullptr,
-    limit_key ? (b = Slice(limit_key, limit_key_len), &b) : nullptr);
+      start_key ? (a = Slice(start_key, start_key_len), &a) : nullptr,
+      limit_key ? (b = Slice(limit_key, limit_key_len), &b) : nullptr);
 
-  SaveError(
-      errptr,
-      static_cast<TitanDB*>(db->rep)->DeleteBlobFilesInRanges(
-          db->rep->DefaultColumnFamily(),
-          &range, 1,
-          include_end));
+  SaveError(errptr,
+            static_cast<TitanDB*>(db->rep)->DeleteBlobFilesInRanges(
+                db->rep->DefaultColumnFamily(), &range, 1, include_end));
 }
 
 void ctitandb_delete_blob_files_in_range_cf(

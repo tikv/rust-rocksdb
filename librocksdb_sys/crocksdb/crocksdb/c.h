@@ -2529,16 +2529,14 @@ extern C_ROCKSDB_LIBRARY_API void ctitandb_delete_files_in_ranges_cf(
     size_t num_ranges, unsigned char include_end, char** errptr);
 
 extern C_ROCKSDB_LIBRARY_API void ctitandb_delete_blob_files_in_range(
-    crocksdb_t* db,
-    const char* start_key, size_t start_key_len,
-    const char* limit_key, size_t limit_key_len,
-    unsigned char include_end, char** errptr);
+    crocksdb_t* db, const char* start_key, size_t start_key_len,
+    const char* limit_key, size_t limit_key_len, unsigned char include_end,
+    char** errptr);
 
 extern C_ROCKSDB_LIBRARY_API void ctitandb_delete_blob_files_in_range_cf(
     crocksdb_t* db, crocksdb_column_family_handle_t* column_family,
-    const char* start_key, size_t start_key_len,
-    const char* limit_key, size_t limit_key_len,
-    unsigned char include_end, char** errptr);
+    const char* start_key, size_t start_key_len, const char* limit_key,
+    size_t limit_key_len, unsigned char include_end, char** errptr);
 
 extern C_ROCKSDB_LIBRARY_API void ctitandb_delete_blob_files_in_ranges_cf(
     crocksdb_t* db, crocksdb_column_family_handle_t* cf,

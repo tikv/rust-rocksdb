@@ -217,7 +217,7 @@ impl RateLimiter {
         auto_tuned: bool,
     ) -> RateLimiter {
         let limiter = unsafe {
-            crocksdb_ffi::crocksdb_ratelimiter_create_with_auto_tuned(
+            crocksdb_ffi::crocksdb_ratelimiterv2_create_with_auto_tuned(
                 rate_bytes_per_sec,
                 refill_period_us,
                 fairness,

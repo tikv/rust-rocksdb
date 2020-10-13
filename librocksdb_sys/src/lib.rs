@@ -807,7 +807,12 @@ extern "C" {
         mode: DBRateLimiterMode,
         auto_tuned: bool,
     ) -> *mut DBRateLimiter;
-    pub fn crocksdb_ratelimiterv2_create_with_auto_tuned(
+    pub fn crocksdb_writeampbasedratelimiter_create(
+        rate_bytes_per_sec: i64,
+        refill_period_us: i64,
+        fairness: i32
+    ) -> *mut DBRateLimiter;
+    pub fn crocksdb_writeampbasedratelimiter_create_with_auto_tuned(
         rate_bytes_per_sec: i64,
         refill_period_us: i64,
         fairness: i32,

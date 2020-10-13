@@ -217,7 +217,26 @@ impl RateLimiter {
         auto_tuned: bool,
     ) -> RateLimiter {
         let limiter = unsafe {
-            crocksdb_ffi::crocksdb_ratelimiterv2_create_with_auto_tuned(
+            crocksdb_ffi::crocksdb_ratelimiter_create_with_auto_tuned(
+                rate_bytes_per_sec,
+                refill_period_us,
+                fairness,
+                mode,
+                auto_tuned,
+            )
+        };
+        RateLimiter { inner: limiter }
+    }
+
+    pub fn new_with_write_amp_based_auto_tuned(
+        rate_bytes_per_sec: i64,
+        refill_period_us: i64,
+        fairness: i32,
+        mode: DBRateLimiterMode,
+        auto_tuned: bool,
+    ) -> RateLimiter {
+        let limiter = unsafe {
+            crocksdb_ffi::crocksdb_writeampbasedratelimiter_create_with_auto_tuned(
                 rate_bytes_per_sec,
                 refill_period_us,
                 fairness,
@@ -997,6 +1016,25 @@ impl DBOptions {
         auto_tuned: bool,
     ) {
         let rate_limiter = RateLimiter::new_with_auto_tuned(
+            rate_bytes_per_sec,
+            refill_period_us,
+            DEFAULT_FAIRNESS,
+            mode,
+            auto_tuned,
+        );
+        unsafe {
+            crocksdb_ffi::crocksdb_options_set_ratelimiter(self.inner, rate_limiter.inner);
+        }
+    }
+
+    pub fn set_ratelimiter_with_write_amp_based_auto_tuned(
+        &mut self,
+        rate_bytes_per_sec: i64,
+        refill_period_us: i64,
+        mode: DBRateLimiterMode,
+        auto_tuned: bool,
+    ) {
+        let rate_limiter = RateLimiter::new_with_write_amp_based_auto_tuned(
             rate_bytes_per_sec,
             refill_period_us,
             DEFAULT_FAIRNESS,

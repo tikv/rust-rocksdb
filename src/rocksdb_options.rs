@@ -228,7 +228,7 @@ impl RateLimiter {
         RateLimiter { inner: limiter }
     }
 
-    pub fn new_with_write_amp_based_auto_tuned(
+    pub fn new_writeampbased_with_auto_tuned(
         rate_bytes_per_sec: i64,
         refill_period_us: i64,
         fairness: i32,

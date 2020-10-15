@@ -1027,14 +1027,14 @@ impl DBOptions {
         }
     }
 
-    pub fn set_ratelimiter_with_write_amp_based_auto_tuned(
+    pub fn set_writeampbasedratelimiter_with_auto_tuned(
         &mut self,
         rate_bytes_per_sec: i64,
         refill_period_us: i64,
         mode: DBRateLimiterMode,
         auto_tuned: bool,
     ) {
-        let rate_limiter = RateLimiter::new_with_write_amp_based_auto_tuned(
+        let rate_limiter = RateLimiter::new_writeampbased_with_auto_tuned(
             rate_bytes_per_sec,
             refill_period_us,
             DEFAULT_FAIRNESS,

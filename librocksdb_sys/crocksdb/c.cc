@@ -2817,6 +2817,14 @@ int crocksdb_options_get_max_background_jobs(const crocksdb_options_t* opt) {
   return opt->rep.max_background_jobs;
 }
 
+void crocksdb_options_set_max_background_flushes(crocksdb_options_t* opt, int n) {
+  opt->rep.max_background_flushes = n;
+}
+
+int crocksdb_options_get_max_background_flushes(const crocksdb_options_t* opt) {
+  return opt->rep.max_background_flushes;
+}
+
 void crocksdb_options_set_max_log_file_size(crocksdb_options_t* opt, size_t v) {
   opt->rep.max_log_file_size = v;
 }

@@ -1062,6 +1062,10 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_max_background_jobs(
     crocksdb_options_t*, int);
 extern C_ROCKSDB_LIBRARY_API int crocksdb_options_get_max_background_jobs(
     const crocksdb_options_t*);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_max_background_compactions(
+    crocksdb_options_t*, int);
+extern C_ROCKSDB_LIBRARY_API int crocksdb_options_get_max_background_compactions(
+    const crocksdb_options_t*);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_max_background_flushes(
     crocksdb_options_t*, int);
 extern C_ROCKSDB_LIBRARY_API int crocksdb_options_get_max_background_flushes(

@@ -2064,6 +2064,16 @@ extern "C" {
         -> libc::c_int;
 }
 extern "C" {
+    pub fn crocksdb_options_set_max_background_compactions(
+        arg1: *mut crocksdb_options_t,
+        arg2: libc::c_int,
+    );
+}
+extern "C" {
+    pub fn crocksdb_options_get_max_background_compactions(arg1: *const crocksdb_options_t)
+        -> libc::c_int;
+}
+extern "C" {
     pub fn crocksdb_options_set_max_background_flushes(
         arg1: *mut crocksdb_options_t,
         arg2: libc::c_int,

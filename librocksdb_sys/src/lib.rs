@@ -711,6 +711,16 @@ extern "C" {
     pub fn crocksdb_set_bottommost_compression(options: *mut Options, c: DBCompressionType);
     pub fn crocksdb_options_set_max_background_jobs(options: *mut Options, max_bg_jobs: c_int);
     pub fn crocksdb_options_get_max_background_jobs(options: *const Options) -> c_int;
+    pub fn crocksdb_options_set_max_background_compactions(
+        options: *mut Options,
+        max_bg_compactions: c_int,
+    );
+    pub fn crocksdb_options_get_max_background_compactions(options: *const Options) -> c_int;
+    pub fn crocksdb_options_set_max_background_flushes(
+        options: *mut Options,
+        max_bg_flushes: c_int,
+    );
+    pub fn crocksdb_options_get_max_background_flushes(options: *const Options) -> c_int;
     pub fn crocksdb_options_set_disable_auto_compactions(options: *mut Options, v: c_int);
     pub fn crocksdb_options_get_disable_auto_compactions(options: *const Options) -> c_int;
     pub fn crocksdb_options_set_report_bg_io_stats(options: *mut Options, v: c_int);
@@ -802,6 +812,13 @@ extern "C" {
         fairness: i32,
     ) -> *mut DBRateLimiter;
     pub fn crocksdb_ratelimiter_create_with_auto_tuned(
+        rate_bytes_per_sec: i64,
+        refill_period_us: i64,
+        fairness: i32,
+        mode: DBRateLimiterMode,
+        auto_tuned: bool,
+    ) -> *mut DBRateLimiter;
+    pub fn crocksdb_writeampbasedratelimiter_create_with_auto_tuned(
         rate_bytes_per_sec: i64,
         refill_period_us: i64,
         fairness: i32,

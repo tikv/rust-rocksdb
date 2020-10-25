@@ -1062,6 +1062,14 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_max_background_jobs(
     crocksdb_options_t*, int);
 extern C_ROCKSDB_LIBRARY_API int crocksdb_options_get_max_background_jobs(
     const crocksdb_options_t*);
+extern C_ROCKSDB_LIBRARY_API void
+crocksdb_options_set_max_background_compactions(crocksdb_options_t*, int);
+extern C_ROCKSDB_LIBRARY_API int
+crocksdb_options_get_max_background_compactions(const crocksdb_options_t*);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_max_background_flushes(
+    crocksdb_options_t*, int);
+extern C_ROCKSDB_LIBRARY_API int crocksdb_options_get_max_background_flushes(
+    const crocksdb_options_t*);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_max_log_file_size(
     crocksdb_options_t*, size_t);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_log_file_time_to_roll(
@@ -1274,6 +1282,10 @@ crocksdb_ratelimiter_create_with_auto_tuned(int64_t rate_bytes_per_sec,
                                             int32_t fairness,
                                             crocksdb_ratelimiter_mode_t mode,
                                             unsigned char auto_tuned);
+extern C_ROCKSDB_LIBRARY_API crocksdb_ratelimiter_t*
+crocksdb_writeampbasedratelimiter_create_with_auto_tuned(
+    int64_t rate_bytes_per_sec, int64_t refill_period_us, int32_t fairness,
+    crocksdb_ratelimiter_mode_t mode, unsigned char auto_tuned);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_ratelimiter_destroy(
     crocksdb_ratelimiter_t*);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_ratelimiter_set_bytes_per_second(

@@ -2818,6 +2818,25 @@ int crocksdb_options_get_max_background_jobs(const crocksdb_options_t* opt) {
   return opt->rep.max_background_jobs;
 }
 
+void crocksdb_options_set_max_background_compactions(crocksdb_options_t* opt,
+                                                     int n) {
+  opt->rep.max_background_compactions = n;
+}
+
+int crocksdb_options_get_max_background_compactions(
+    const crocksdb_options_t* opt) {
+  return opt->rep.max_background_compactions;
+}
+
+void crocksdb_options_set_max_background_flushes(crocksdb_options_t* opt,
+                                                 int n) {
+  opt->rep.max_background_flushes = n;
+}
+
+int crocksdb_options_get_max_background_flushes(const crocksdb_options_t* opt) {
+  return opt->rep.max_background_flushes;
+}
+
 void crocksdb_options_set_max_log_file_size(crocksdb_options_t* opt, size_t v) {
   opt->rep.max_log_file_size = v;
 }
@@ -3148,6 +3167,28 @@ crocksdb_ratelimiter_t* crocksdb_ratelimiter_create_with_auto_tuned(
       break;
   }
   rate_limiter->rep = std::shared_ptr<RateLimiter>(NewGenericRateLimiter(
+      rate_bytes_per_sec, refill_period_us, fairness, m, auto_tuned));
+  return rate_limiter;
+}
+
+crocksdb_ratelimiter_t*
+crocksdb_writeampbasedratelimiter_create_with_auto_tuned(
+    int64_t rate_bytes_per_sec, int64_t refill_period_us, int32_t fairness,
+    crocksdb_ratelimiter_mode_t mode, unsigned char auto_tuned) {
+  crocksdb_ratelimiter_t* rate_limiter = new crocksdb_ratelimiter_t;
+  RateLimiter::Mode m = RateLimiter::Mode::kWritesOnly;
+  switch (mode) {
+    case kReadsOnly:
+      m = RateLimiter::Mode::kReadsOnly;
+      break;
+    case kWritesOnly:
+      m = RateLimiter::Mode::kWritesOnly;
+      break;
+    case kAllIo:
+      m = RateLimiter::Mode::kAllIo;
+      break;
+  }
+  rate_limiter->rep = std::shared_ptr<RateLimiter>(NewWriteAmpBasedRateLimiter(
       rate_bytes_per_sec, refill_period_us, fairness, m, auto_tuned));
   return rate_limiter;
 }

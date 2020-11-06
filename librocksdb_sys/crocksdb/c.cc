@@ -3307,7 +3307,7 @@ void crocksdb_compactionfiltercontext_file_numbers(
 crocksdb_table_properties_t* crocksdb_compactionfiltercontext_table_properties(
     crocksdb_compactionfiltercontext_t* context, size_t offset) {
   return (crocksdb_table_properties_t*)context->rep.table_properties[offset]
-    .get();
+      .get();
 }
 
 crocksdb_compactionfilterfactory_t* crocksdb_compactionfilterfactory_create(

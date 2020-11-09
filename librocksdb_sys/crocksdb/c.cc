@@ -3298,9 +3298,9 @@ unsigned char crocksdb_compactionfiltercontext_is_bottommost_level(
 }
 
 void crocksdb_compactionfiltercontext_file_numbers(
-    crocksdb_compactionfiltercontext_t* context, uint64_t** buffer,
+    crocksdb_compactionfiltercontext_t* context, const uint64_t** buffer,
     size_t* len) {
-  *buffer = &context->rep.file_numbers[0];
+  *buffer = context->rep.file_numbers.data();
   *len = context->rep.file_numbers.size();
 }
 

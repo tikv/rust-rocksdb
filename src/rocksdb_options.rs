@@ -1567,6 +1567,12 @@ impl ColumnFamilyOptions {
         }
     }
 
+    pub fn set_ingest_tolerant_ratio(&mut self, ratio: u64) {
+        unsafe {
+            crocksdb_ffi::crocksdb_options_set_ingest_tolerant_ratio(self.inner, ratio);
+        }
+    }
+
     pub fn get_level_compaction_dynamic_level_bytes(&self) -> bool {
         unsafe {
             crocksdb_ffi::crocksdb_options_get_level_compaction_dynamic_level_bytes(self.inner)
@@ -2006,6 +2012,16 @@ impl IngestExternalFileOptions {
             crocksdb_ffi::crocksdb_ingestexternalfileoptions_set_move_files(
                 self.inner,
                 whether_move,
+            );
+        }
+    }
+
+    /// Set to true to write global seqno in SST file.
+    pub fn write_global_seqno(&mut self, whether_write: bool) {
+        unsafe {
+            crocksdb_ffi::crocksdb_ingestexternalfileoptions_set_write_global_seqno(
+                self.inner,
+                whether_write,
             );
         }
     }

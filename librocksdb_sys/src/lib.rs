@@ -782,6 +782,7 @@ extern "C" {
         options: *mut Options,
         v: bool,
     );
+    pub fn crocksdb_options_set_ingest_tolerant_ratio(options: *mut Options, v: u64);
     pub fn crocksdb_options_get_level_compaction_dynamic_level_bytes(
         options: *const Options,
     ) -> bool;
@@ -1607,6 +1608,10 @@ extern "C" {
         opt: *mut IngestExternalFileOptions,
         allow_blocking_flush: bool,
     );
+    pub fn crocksdb_ingestexternalfileoptions_set_write_global_seqno(
+        opt: *mut IngestExternalFileOptions,
+        write_global_seqno: bool,
+    );
     pub fn crocksdb_ingestexternalfileoptions_destroy(opt: *mut IngestExternalFileOptions);
 
     // KeyManagedEncryptedEnv
@@ -2116,6 +2121,7 @@ extern "C" {
     pub fn crocksdb_externalfileingestioninfo_table_properties(
         info: *const DBIngestionInfo,
     ) -> *const DBTableProperties;
+    pub fn crocksdb_externalfileingestioninfo_picked_level(info: *const DBIngestionInfo) -> c_int;
 
     pub fn crocksdb_writestallinfo_cf_name(
         info: *const DBWriteStallInfo,

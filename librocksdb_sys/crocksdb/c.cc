@@ -2173,6 +2173,11 @@ crocksdb_externalfileingestioninfo_table_properties(
       &info->rep.table_properties);
 }
 
+int crocksdb_externalfileingestioninfo_picked_level(
+    const crocksdb_externalfileingestioninfo_t* info) {
+  return info->rep.picked_level;
+}
+
 /* External write stall info */
 extern C_ROCKSDB_LIBRARY_API const char* crocksdb_writestallinfo_cf_name(
     const crocksdb_writestallinfo_t* info, size_t* size) {
@@ -2484,6 +2489,11 @@ void crocksdb_options_set_max_bytes_for_level_base(crocksdb_options_t* opt,
 void crocksdb_options_set_level_compaction_dynamic_level_bytes(
     crocksdb_options_t* opt, unsigned char v) {
   opt->rep.level_compaction_dynamic_level_bytes = v;
+}
+
+void crocksdb_options_set_ingest_tolerant_ratio(
+    crocksdb_options_t* opt, size_t ratio) {
+  opt->rep.ingest_tolerant_ratio = ratio;
 }
 
 unsigned char crocksdb_options_get_level_compaction_dynamic_level_bytes(
@@ -4278,6 +4288,12 @@ void crocksdb_ingestexternalfileoptions_set_allow_blocking_flush(
     crocksdb_ingestexternalfileoptions_t* opt,
     unsigned char allow_blocking_flush) {
   opt->rep.allow_blocking_flush = allow_blocking_flush;
+}
+
+void crocksdb_ingestexternalfileoptions_set_write_global_seqno(
+    crocksdb_ingestexternalfileoptions_t* opt,
+    unsigned char write_global_seqno) {
+  opt->rep.write_global_seqno = write_global_seqno;
 }
 
 void crocksdb_ingestexternalfileoptions_destroy(

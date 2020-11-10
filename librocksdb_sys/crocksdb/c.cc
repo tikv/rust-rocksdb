@@ -3737,7 +3737,8 @@ void crocksdb_cache_set_capacity(crocksdb_cache_t* cache, size_t capacity) {
 
 crocksdb_persistent_cache_options_t*
 crocksdb_persistent_cache_options_create() {
-  return new crocksdb_persistent_cache_options_t;
+  return new crocksdb_persistent_cache_options_t{
+      PersistentCacheConfig(nullptr, "", 0, nullptr)};
 }
 
 void crocksdb_persistent_cache_options_destroy(
@@ -3761,12 +3762,14 @@ void crocksdb_persistent_cache_set_log(crocksdb_persistent_cache_options_t* opt,
 }
 
 void crocksdb_persistent_cache_set_enable_direct_reads(
-    crocksdb_persistent_cache_options_t* opt, bool enable_direct_reads) {
+    crocksdb_persistent_cache_options_t* opt,
+    unsigned char enable_direct_reads) {
   opt->rep.enable_direct_reads = enable_direct_reads;
 }
 
 void crocksdb_persistent_cache_set_enable_direct_writes(
-    crocksdb_persistent_cache_options_t* opt, bool enable_direct_writes) {
+    crocksdb_persistent_cache_options_t* opt,
+    unsigned char enable_direct_writes) {
   opt->rep.enable_direct_writes = enable_direct_writes;
 }
 
@@ -3786,7 +3789,7 @@ void crocksdb_persistent_cache_set_writer_qdepth(
 }
 
 void crocksdb_persistent_cache_set_pipeline_writes(
-    crocksdb_persistent_cache_options_t* opt, bool pipeline_writes) {
+    crocksdb_persistent_cache_options_t* opt, unsigned char pipeline_writes) {
   opt->rep.pipeline_writes = pipeline_writes;
 }
 
@@ -3807,7 +3810,7 @@ void crocksdb_persistent_cache_set_writer_dispatch_size(
 }
 
 void crocksdb_persistent_cache_set_is_compressed(
-    crocksdb_persistent_cache_options_t* opt, bool is_compressed) {
+    crocksdb_persistent_cache_options_t* opt, unsigned char is_compressed) {
   opt->rep.is_compressed = is_compressed;
 }
 

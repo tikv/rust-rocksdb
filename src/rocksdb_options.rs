@@ -1975,7 +1975,7 @@ impl IngestExternalFileOptions {
 
     /// If set to false, an ingested file keys could appear in existing snapshots
     /// that where created before the file was ingested.
-    pub fn snapshot_consistent(&mut self, whether_consistent: bool) {
+    pub fn snapshot_consistency(&mut self, whether_consistent: bool) {
         unsafe {
             crocksdb_ffi::crocksdb_ingestexternalfileoptions_set_snapshot_consistency(
                 self.inner,

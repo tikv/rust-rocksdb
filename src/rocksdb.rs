@@ -14,8 +14,8 @@
 
 use crocksdb_ffi::{
     self, DBBackupEngine, DBCFHandle, DBCache, DBCompressionType, DBEnv, DBInstance, DBMapProperty,
-    DBPinnableSlice, DBSequentialFile, DBStatisticsHistogramType, DBStatisticsTickerType,
-    DBTablePropertiesCollection, DBTitanDBOptions, DBWriteBatch,
+    DBPersistentCache, DBPinnableSlice, DBSequentialFile, DBStatisticsHistogramType,
+    DBStatisticsTickerType, DBTablePropertiesCollection, DBTitanDBOptions, DBWriteBatch,
 };
 use libc::{self, c_char, c_int, c_void, size_t};
 use librocksdb_sys::DBMemoryAllocator;
@@ -23,8 +23,8 @@ use metadata::ColumnFamilyMetaData;
 use rocksdb_options::{
     CColumnFamilyDescriptor, ColumnFamilyDescriptor, ColumnFamilyOptions, CompactOptions,
     CompactionOptions, DBOptions, EnvOptions, FlushOptions, HistogramData,
-    IngestExternalFileOptions, LRUCacheOptions, ReadOptions, RestoreOptions, UnsafeSnap,
-    WriteOptions,
+    IngestExternalFileOptions, LRUCacheOptions, PersistentCacheOptions, ReadOptions,
+    RestoreOptions, UnsafeSnap, WriteOptions,
 };
 use std::collections::BTreeMap;
 use std::ffi::{CStr, CString};
@@ -2767,6 +2767,28 @@ impl Drop for Cache {
     fn drop(&mut self) {
         unsafe {
             crocksdb_ffi::crocksdb_cache_destroy(self.inner);
+        }
+    }
+}
+
+pub struct PersistentCache {
+    pub inner: *mut DBPersistentCache,
+}
+
+impl PersistentCache {
+    pub fn new_persistent_cache(opt: PersistentCacheOptions) -> PersistentCache {
+        unsafe {
+            PersistentCache {
+                inner: crocksdb_ffi::new_persistent_cache(opt.inner),
+            }
+        }
+    }
+}
+
+impl Drop for PersistentCache {
+    fn drop(&mut self) {
+        unsafe {
+            crocksdb_ffi::crocksdb_persistent_cache_destroy(self.inner);
         }
     }
 }

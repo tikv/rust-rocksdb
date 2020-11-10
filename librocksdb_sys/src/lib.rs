@@ -66,6 +66,10 @@ pub struct DBLRUCacheOptions(c_void);
 #[repr(C)]
 pub struct DBCache(c_void);
 #[repr(C)]
+pub struct DBPersistentCacheOptions(c_void);
+#[repr(C)]
+pub struct DBPersistentCache(c_void);
+#[repr(C)]
 pub struct DBFilterPolicy(c_void);
 #[repr(C)]
 pub struct DBSnapshot(c_void);
@@ -207,6 +211,10 @@ pub fn new_bloom_filter(bits: c_int) -> *mut DBFilterPolicy {
 /// `DBLRUCacheOptions` should pointer to a valid cache options
 pub unsafe fn new_lru_cache(opt: *mut DBLRUCacheOptions) -> *mut DBCache {
     crocksdb_cache_create_lru(opt)
+}
+
+pub unsafe fn new_persistent_cache(opt: *mut DBPersistentCacheOptions) -> *mut DBPersistentCache {
+    crocksdb_persistent_cache_create(opt)
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -540,6 +548,65 @@ extern "C" {
     pub fn crocksdb_cache_create_lru(opt: *mut DBLRUCacheOptions) -> *mut DBCache;
     pub fn crocksdb_cache_destroy(cache: *mut DBCache);
 
+    pub fn crocksdb_persistent_cache_options_create() -> *mut DBPersistentCacheOptions;
+    pub fn crocksdb_persistent_cache_options_destroy(opt: *mut DBPersistentCacheOptions);
+    pub fn crocksdb_persistent_cache_options_set_env(
+        opt: *mut DBPersistentCacheOptions,
+        env: *mut DBEnv,
+    );
+    pub fn crocksdb_persistent_cache_options_set_path(
+        opt: *mut DBPersistentCacheOptions,
+        path: *const c_char,
+    );
+    pub fn crocksdb_persistent_cache_options_set_log(
+        opt: *mut DBPersistentCacheOptions,
+        log: *mut DBLogger,
+    );
+    pub fn crocksdb_persistent_cache_options_set_enable_direct_reads(
+        opt: *mut DBPersistentCacheOptions,
+        enable_direct_reads: bool,
+    );
+    pub fn crocksdb_persistent_cache_options_set_enable_direct_writes(
+        opt: *mut DBPersistentCacheOptions,
+        enable_direct_writes: bool,
+    );
+    pub fn crocksdb_persistent_cache_options_set_cache_size(
+        opt: *mut DBPersistentCacheOptions,
+        cache_size: u64,
+    );
+    pub fn crocksdb_persistent_cache_options_set_cache_file_size(
+        opt: *mut DBPersistentCacheOptions,
+        cache_file_size: u32,
+    );
+    pub fn crocksdb_persistent_cache_options_set_writer_qdepth(
+        opt: *mut DBPersistentCacheOptions,
+        writer_qdepth: u32,
+    );
+    pub fn crocksdb_persistent_cache_options_set_pipeline_writes(
+        opt: *mut DBPersistentCacheOptions,
+        pipeline_writes: bool,
+    );
+    pub fn crocksdb_persistent_cache_options_set_max_write_pipeline_backlog_size(
+        opt: *mut DBPersistentCacheOptions,
+        max_write_pipeline_backlog_size: u64,
+    );
+    pub fn crocksdb_persistent_cache_options_set_write_buffer_size(
+        opt: *mut DBPersistentCacheOptions,
+        write_buffer_size: u32,
+    );
+    pub fn crocksdb_persistent_cache_options_set_writer_dispatch_size(
+        opt: *mut DBPersistentCacheOptions,
+        writer_dispatch_size: u64,
+    );
+    pub fn crocksdb_persistent_cache_options_set_is_compressed(
+        opt: *mut DBPersistentCacheOptions,
+        is_compressed: bool,
+    );
+    pub fn crocksdb_persistent_cache_create(
+        opt: *mut DBPersistentCacheOptions,
+    ) -> *mut DBPersistentCache;
+    pub fn crocksdb_persistent_cache_destroy(cache: *mut DBPersistentCache);
+
     pub fn crocksdb_block_based_options_create() -> *mut DBBlockBasedTableOptions;
     pub fn crocksdb_block_based_options_destroy(opts: *mut DBBlockBasedTableOptions);
     pub fn crocksdb_block_based_options_set_metadata_block_size(
@@ -593,6 +660,10 @@ extern "C" {
     pub fn crocksdb_block_based_options_set_block_cache(
         block_options: *mut DBBlockBasedTableOptions,
         block_cache: *mut DBCache,
+    );
+    pub fn crocksdb_block_based_options_set_persistent_cache(
+        block_options: *mut DBBlockBasedTableOptions,
+        block_cache: *mut DBPersistentCache,
     );
     pub fn crocksdb_block_based_options_set_block_cache_compressed(
         block_options: *mut DBBlockBasedTableOptions,

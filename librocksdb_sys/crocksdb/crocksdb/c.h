@@ -78,6 +78,9 @@ typedef struct crocksdb_backup_engine_info_t crocksdb_backup_engine_info_t;
 typedef struct crocksdb_restore_options_t crocksdb_restore_options_t;
 typedef struct crocksdb_lru_cache_options_t crocksdb_lru_cache_options_t;
 typedef struct crocksdb_cache_t crocksdb_cache_t;
+typedef struct crocksdb_persistent_cache_options_t
+    crocksdb_persistent_cache_options_t;
+typedef struct crocksdb_persistent_cache_t crocksdb_persistent_cache_t;
 typedef struct crocksdb_memory_allocator_t crocksdb_memory_allocator_t;
 typedef struct crocksdb_compactionfilter_t crocksdb_compactionfilter_t;
 typedef struct crocksdb_compactionfiltercontext_t
@@ -731,6 +734,10 @@ crocksdb_block_based_options_set_no_block_cache(
 extern C_ROCKSDB_LIBRARY_API void crocksdb_block_based_options_set_block_cache(
     crocksdb_block_based_table_options_t* options,
     crocksdb_cache_t* block_cache);
+extern C_ROCKSDB_LIBRARY_API void
+crocksdb_block_based_options_set_persistent_cache(
+    crocksdb_block_based_table_options_t* options,
+    crocksdb_persistent_cache_t* persistent_cache);
 extern C_ROCKSDB_LIBRARY_API void
 crocksdb_block_based_options_set_block_cache_compressed(
     crocksdb_block_based_table_options_t* options,
@@ -1536,6 +1543,51 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_cache_destroy(
     crocksdb_cache_t* cache);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_cache_set_capacity(
     crocksdb_cache_t* cache, size_t capacity);
+
+extern C_ROCKSDB_LIBRARY_API crocksdb_persistent_cache_options_t*
+crocksdb_persistent_cache_options_create();
+extern C_ROCKSDB_LIBRARY_API crocksdb_persistent_cache_options_t*
+crocksdb_persistent_cache_options_destroy();
+extern C_ROCKSDB_LIBRARY_API void crocksdb_persistent_cache_options_set_env(
+    crocksdb_persistent_cache_options_t*, crocksdb_env_t*);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_persistent_cache_options_set_path(
+    crocksdb_persistent_cache_options_t*, const char*);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_persistent_cache_options_set_log(
+    crocksdb_persistent_cache_options_t*, crocksdb_logger_t*);
+extern C_ROCKSDB_LIBRARY_API void
+crocksdb_persistent_cache_options_set_enable_direct_reads(
+    crocksdb_persistent_cache_options_t*, bool);
+extern C_ROCKSDB_LIBRARY_API void
+crocksdb_persistent_cache_options_set_enable_direct_writes(
+    crocksdb_persistent_cache_options_t*, bool);
+extern C_ROCKSDB_LIBRARY_API void
+crocksdb_persistent_cache_options_set_cache_size(
+    crocksdb_persistent_cache_options_t*, uint64_t);
+extern C_ROCKSDB_LIBRARY_API void
+crocksdb_persistent_cache_options_set_cache_file_size(
+    crocksdb_persistent_cache_options_t*, uint32_t);
+extern C_ROCKSDB_LIBRARY_API void
+crocksdb_persistent_cache_options_set_writer_qdepth(
+    crocksdb_persistent_cache_options_t*, uint32_t);
+extern C_ROCKSDB_LIBRARY_API void
+crocksdb_persistent_cache_options_set_pipeline_writes(
+    crocksdb_persistent_cache_options_t*, bool);
+extern C_ROCKSDB_LIBRARY_API void
+crocksdb_persistent_cache_options_set_max_write_pipeline_backlog_size(
+    crocksdb_persistent_cache_options_t*, uint64_t);
+extern C_ROCKSDB_LIBRARY_API void
+crocksdb_persistent_cache_options_set_write_buffer_size(
+    crocksdb_persistent_cache_options_t*, uint32_t);
+extern C_ROCKSDB_LIBRARY_API void
+crocksdb_persistent_cache_options_set_writer_dispatch_size(
+    crocksdb_persistent_cache_options_t*, uint64_t);
+extern C_ROCKSDB_LIBRARY_API void
+crocksdb_persistent_cache_options_set_is_compressed(
+    crocksdb_persistent_cache_options_t*, bool);
+extern C_ROCKSDB_LIBRARY_API crocksdb_persistent_cache_t*
+crocksdb_persistent_cache_create(crocksdb_persistent_cache_options_t*);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_persistent_cache_destroy(
+    crocksdb_persistent_cache_t* cache);
 
 /* Env */
 

@@ -20,11 +20,11 @@ use compaction_filter::{
 use comparator::{self, compare_callback, ComparatorCallback};
 use crocksdb_ffi::{
     self, DBBlockBasedTableOptions, DBBottommostLevelCompaction, DBCompactOptions,
-    DBCompactionOptions, DBCompressionType, DBFifoCompactionOptions, DBFlushOptions,
-    DBInfoLogLevel, DBInstance, DBLRUCacheOptions, DBRateLimiter, DBRateLimiterMode, DBReadOptions,
-    DBRecoveryMode, DBRestoreOptions, DBSnapshot, DBStatisticsHistogramType,
-    DBStatisticsTickerType, DBTitanDBOptions, DBTitanReadOptions, DBWriteOptions, IndexType,
-    Options,
+    DBCompactionOptions, DBCompressionType, DBEnv, DBFifoCompactionOptions, DBFlushOptions,
+    DBInfoLogLevel, DBInstance, DBLRUCacheOptions, DBLogger, DBPersistentCacheOptions,
+    DBRateLimiter, DBRateLimiterMode, DBReadOptions, DBRecoveryMode, DBRestoreOptions, DBSnapshot,
+    DBStatisticsHistogramType, DBStatisticsTickerType, DBTitanDBOptions, DBTitanReadOptions,
+    DBWriteOptions, IndexType, Options,
 };
 use event_listener::{new_event_listener, EventListener};
 use libc::{self, c_double, c_int, c_uchar, c_void, size_t};
@@ -32,7 +32,7 @@ use logger::{new_logger, Logger};
 use merge_operator::MergeFn;
 use merge_operator::{self, full_merge_callback, partial_merge_callback, MergeOperatorCallback};
 use rocksdb::Env;
-use rocksdb::{Cache, MemoryAllocator};
+use rocksdb::{Cache, MemoryAllocator, PersistentCache};
 use slice_transform::{new_slice_transform, SliceTransform};
 use sst_partitioner::{new_sst_partitioner_factory, SstPartitionerFactory};
 use std::ffi::{CStr, CString};
@@ -112,6 +112,15 @@ impl BlockBasedOptions {
     pub fn set_no_block_cache(&mut self, v: bool) {
         unsafe {
             crocksdb_ffi::crocksdb_block_based_options_set_no_block_cache(self.inner, v);
+        }
+    }
+
+    pub fn set_persistent_cache(&mut self, cache: &PersistentCache) {
+        unsafe {
+            crocksdb_ffi::crocksdb_block_based_options_set_persistent_cache(
+                self.inner,
+                cache.inner,
+            );
         }
     }
 
@@ -2174,6 +2183,134 @@ impl Drop for LRUCacheOptions {
     fn drop(&mut self) {
         unsafe {
             crocksdb_ffi::crocksdb_lru_cache_options_destroy(self.inner);
+        }
+    }
+}
+
+pub struct PersistentCacheOptions {
+    pub inner: *mut DBPersistentCacheOptions,
+}
+
+impl PersistentCacheOptions {
+    pub fn new() -> PersistentCacheOptions {
+        unsafe {
+            PersistentCacheOptions {
+                inner: crocksdb_ffi::crocksdb_persistent_cache_options_create(),
+            }
+        }
+    }
+
+    pub fn set_env(&mut self, mut env: DBEnv) {
+        unsafe {
+            crocksdb_ffi::crocksdb_persistent_cache_options_set_env(self.inner, &mut env);
+        }
+    }
+
+    pub fn set_path(&mut self, path: &str) {
+        let path = CString::new(path.as_bytes()).unwrap();
+        unsafe {
+            crocksdb_ffi::crocksdb_persistent_cache_options_set_path(self.inner, path.as_ptr());
+        }
+    }
+
+    pub fn set_log(&mut self, mut log: DBLogger) {
+        unsafe {
+            crocksdb_ffi::crocksdb_persistent_cache_options_set_log(self.inner, &mut log);
+        }
+    }
+
+    pub fn set_enable_direct_reads(&mut self, enable_direct_reads: bool) {
+        unsafe {
+            crocksdb_ffi::crocksdb_persistent_cache_options_set_enable_direct_reads(
+                self.inner,
+                enable_direct_reads,
+            );
+        }
+    }
+
+    pub fn set_enable_direct_writes(&mut self, enable_direct_writes: bool) {
+        unsafe {
+            crocksdb_ffi::crocksdb_persistent_cache_options_set_enable_direct_writes(
+                self.inner,
+                enable_direct_writes,
+            );
+        }
+    }
+
+    pub fn set_cache_size(&mut self, cache_size: u64) {
+        unsafe {
+            crocksdb_ffi::crocksdb_persistent_cache_options_set_cache_size(self.inner, cache_size);
+        }
+    }
+
+    pub fn set_cache_file_size(&mut self, cache_file_size: u32) {
+        unsafe {
+            crocksdb_ffi::crocksdb_persistent_cache_options_set_cache_file_size(
+                self.inner,
+                cache_file_size,
+            );
+        }
+    }
+
+    pub fn set_writer_qdepth(&mut self, writer_qdepth: u32) {
+        unsafe {
+            crocksdb_ffi::crocksdb_persistent_cache_options_set_writer_qdepth(
+                self.inner,
+                writer_qdepth,
+            );
+        }
+    }
+
+    pub fn set_pipeline_writes(&mut self, pipeline_writes: bool) {
+        unsafe {
+            crocksdb_ffi::crocksdb_persistent_cache_options_set_pipeline_writes(
+                self.inner,
+                pipeline_writes,
+            );
+        }
+    }
+
+    pub fn set_max_write_pipeline_backlog_size(&mut self, max_write_pipeline_backlog_size: u64) {
+        unsafe {
+            crocksdb_ffi::crocksdb_persistent_cache_options_set_max_write_pipeline_backlog_size(
+                self.inner,
+                max_write_pipeline_backlog_size,
+            );
+        }
+    }
+
+    pub fn set_write_buffer_size(&mut self, write_buffer_size: u32) {
+        unsafe {
+            crocksdb_ffi::crocksdb_persistent_cache_options_set_write_buffer_size(
+                self.inner,
+                write_buffer_size,
+            );
+        }
+    }
+
+    pub fn set_writer_dispatch_size(&mut self, writer_dispatch_size: u64) {
+        unsafe {
+            crocksdb_ffi::crocksdb_persistent_cache_options_set_writer_dispatch_size(
+                self.inner,
+                writer_dispatch_size,
+            );
+        }
+    }
+
+    pub fn set_is_compressed(&mut self, is_compressed: bool) {
+        unsafe {
+            crocksdb_ffi::crocksdb_persistent_cache_options_set_is_compressed(
+                self.inner,
+                is_compressed,
+            );
+        }
+    }
+}
+
+impl Drop for PersistentCacheOptions {
+    fn drop(&mut self) {
+        unsafe {
+            crocksdb_ffi::crocksdb_persistent_cache_options_destroy(self.inner);
         }
     }
 }

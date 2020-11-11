@@ -20,9 +20,9 @@ use compaction_filter::{
 use comparator::{self, compare_callback, ComparatorCallback};
 use crocksdb_ffi::{
     self, DBBlockBasedTableOptions, DBBottommostLevelCompaction, DBCompactOptions,
-    DBCompactionOptions, DBCompressionType, DBEnv, DBFifoCompactionOptions, DBFlushOptions,
-    DBInfoLogLevel, DBInstance, DBLRUCacheOptions, DBLogger, DBPersistentCacheOptions,
-    DBRateLimiter, DBRateLimiterMode, DBReadOptions, DBRecoveryMode, DBRestoreOptions, DBSnapshot,
+    DBCompactionOptions, DBCompressionType, DBFifoCompactionOptions, DBFlushOptions,
+    DBInfoLogLevel, DBInstance, DBLRUCacheOptions, DBPersistentCacheOptions, DBRateLimiter,
+    DBRateLimiterMode, DBReadOptions, DBRecoveryMode, DBRestoreOptions, DBSnapshot,
     DBStatisticsHistogramType, DBStatisticsTickerType, DBTitanDBOptions, DBTitanReadOptions,
     DBWriteOptions, IndexType, Options,
 };
@@ -2200,9 +2200,9 @@ impl PersistentCacheOptions {
         }
     }
 
-    pub fn set_env(&mut self, mut env: DBEnv) {
+    pub fn set_env(&mut self, env: Arc<Env>) {
         unsafe {
-            crocksdb_ffi::crocksdb_persistent_cache_options_set_env(self.inner, &mut env);
+            crocksdb_ffi::crocksdb_persistent_cache_options_set_env(self.inner, env.inner);
         }
     }
 
@@ -2213,9 +2213,10 @@ impl PersistentCacheOptions {
         }
     }
 
-    pub fn set_log(&mut self, mut log: DBLogger) {
+    pub fn set_log<L: Logger>(&self, l: L) {
+        let logger = new_logger(l);
         unsafe {
-            crocksdb_ffi::crocksdb_persistent_cache_options_set_log(self.inner, &mut log);
+            crocksdb_ffi::crocksdb_persistent_cache_options_set_log(self.inner, logger);
         }
     }
 

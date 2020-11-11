@@ -3823,7 +3823,7 @@ crocksdb_persistent_cache_t* crocksdb_persistent_cache_create(
 
 void crocksdb_persistent_cache_open(crocksdb_persistent_cache_t* cache,
                                     char** errptr) {
-  SaveError(errptr, cache->rep->Open());
+  SaveError(errptr, static_cast<BlockCacheTier*>(cache->rep.get())->Open());
 }
 
 void crocksdb_persistent_cache_destroy(crocksdb_persistent_cache_t* cache) {

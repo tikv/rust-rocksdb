@@ -53,13 +53,14 @@ pub use perf_context::{get_perf_level, set_perf_level, IOStatsContext, PerfConte
 pub use rocksdb::{
     load_latest_options, run_ldb_tool, run_sst_dump_tool, set_external_sst_file_global_seq_no,
     BackupEngine, CFHandle, Cache, DBIterator, DBVector, Env, ExternalSstFileInfo, MapProperty,
-    MemoryAllocator, Range, SeekKey, SequentialFile, SstFileReader, SstFileWriter, Writable, DB,
+    MemoryAllocator, PersistentCache, Range, SeekKey, SequentialFile, SstFileReader, SstFileWriter,
+    Writable, DB,
 };
 pub use rocksdb_options::{
     BlockBasedOptions, CColumnFamilyDescriptor, ColumnFamilyOptions, CompactOptions,
     CompactionOptions, DBOptions, EnvOptions, FifoCompactionOptions, HistogramData,
-    IngestExternalFileOptions, LRUCacheOptions, RateLimiter, ReadOptions, RestoreOptions,
-    WriteOptions,
+    IngestExternalFileOptions, LRUCacheOptions, PersistentCacheOptions, RateLimiter, ReadOptions,
+    RestoreOptions, WriteOptions,
 };
 pub use slice_transform::SliceTransform;
 pub use sst_partitioner::{

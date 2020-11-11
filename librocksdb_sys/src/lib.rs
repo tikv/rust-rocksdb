@@ -605,6 +605,7 @@ extern "C" {
     pub fn crocksdb_persistent_cache_create(
         opt: *mut DBPersistentCacheOptions,
     ) -> *mut DBPersistentCache;
+    pub fn crocksdb_persistent_cache_open(cache: *mut DBPersistentCache, err: *mut *mut c_char);
     pub fn crocksdb_persistent_cache_destroy(cache: *mut DBPersistentCache);
 
     pub fn crocksdb_block_based_options_create() -> *mut DBBlockBasedTableOptions;

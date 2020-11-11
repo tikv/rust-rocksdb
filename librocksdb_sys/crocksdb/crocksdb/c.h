@@ -1586,6 +1586,8 @@ crocksdb_persistent_cache_options_set_is_compressed(
     crocksdb_persistent_cache_options_t*, unsigned char);
 extern C_ROCKSDB_LIBRARY_API crocksdb_persistent_cache_t*
 crocksdb_persistent_cache_create(crocksdb_persistent_cache_options_t*);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_persistent_cache_open(
+    crocksdb_persistent_cache_t* cache, char** errptr);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_persistent_cache_destroy(
     crocksdb_persistent_cache_t* cache);
 

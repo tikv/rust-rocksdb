@@ -2783,6 +2783,13 @@ impl PersistentCache {
             }
         }
     }
+
+    pub fn open(&mut self) -> Result<(), String> {
+        unsafe {
+            ffi_try!(crocksdb_persistent_cache_open(self.inner));
+        }
+        Ok(())
+    }
 }
 
 impl Drop for PersistentCache {

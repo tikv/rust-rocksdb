@@ -1940,6 +1940,14 @@ void crocksdb_block_based_options_set_block_cache_compressed(
   }
 }
 
+void crocksdb_block_based_options_set_persistent_cache(
+    crocksdb_block_based_table_options_t* options,
+    crocksdb_persistent_cache_t* persistent_cache) {
+  if (persistent_cache) {
+    options->rep.persistent_cache = persistent_cache->rep;
+  }
+}
+
 void crocksdb_block_based_options_set_whole_key_filtering(
     crocksdb_block_based_table_options_t* options, unsigned char v) {
   options->rep.whole_key_filtering = v;

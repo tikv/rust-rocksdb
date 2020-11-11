@@ -662,13 +662,13 @@ extern "C" {
         block_options: *mut DBBlockBasedTableOptions,
         block_cache: *mut DBCache,
     );
-    pub fn crocksdb_block_based_options_set_persistent_cache(
-        block_options: *mut DBBlockBasedTableOptions,
-        block_cache: *mut DBPersistentCache,
-    );
     pub fn crocksdb_block_based_options_set_block_cache_compressed(
         block_options: *mut DBBlockBasedTableOptions,
         block_cache_compressed: *mut DBCache,
+    );
+    pub fn crocksdb_block_based_options_set_persistent_cache(
+        block_options: *mut DBBlockBasedTableOptions,
+        persistent_cache: *mut DBPersistentCache,
     );
     pub fn crocksdb_block_based_options_set_whole_key_filtering(
         ck_options: *mut DBBlockBasedTableOptions,

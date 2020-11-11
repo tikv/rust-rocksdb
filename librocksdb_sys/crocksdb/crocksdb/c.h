@@ -735,13 +735,13 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_block_based_options_set_block_cache(
     crocksdb_block_based_table_options_t* options,
     crocksdb_cache_t* block_cache);
 extern C_ROCKSDB_LIBRARY_API void
-crocksdb_block_based_options_set_persistent_cache(
-    crocksdb_block_based_table_options_t* options,
-    crocksdb_persistent_cache_t* persistent_cache);
-extern C_ROCKSDB_LIBRARY_API void
 crocksdb_block_based_options_set_block_cache_compressed(
     crocksdb_block_based_table_options_t* options,
     crocksdb_cache_t* block_cache_compressed);
+extern C_ROCKSDB_LIBRARY_API void
+crocksdb_block_based_options_set_persistent_cache(
+    crocksdb_block_based_table_options_t* options,
+    crocksdb_persistent_cache_t* persistent_cache);
 extern C_ROCKSDB_LIBRARY_API void
 crocksdb_block_based_options_set_whole_key_filtering(
     crocksdb_block_based_table_options_t*, unsigned char);

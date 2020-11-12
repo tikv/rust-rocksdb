@@ -342,6 +342,8 @@ fn test_ingest_simulate_real_world() {
         let handle = db2.cf_handle(cf).unwrap();
         let mut ingest_opt = IngestExternalFileOptions::new();
         ingest_opt.move_files(true);
+        ingest_opt.snapshot_consistency(false);
+        ingest_opt.write_global_seqno(false);
         db2.ingest_external_file_cf(
             handle,
             &ingest_opt,

@@ -842,7 +842,7 @@ crocksdb_externalfileingestioninfo_internal_file_path(
 extern C_ROCKSDB_LIBRARY_API const crocksdb_table_properties_t*
 crocksdb_externalfileingestioninfo_table_properties(
     const crocksdb_externalfileingestioninfo_t*);
-extern C_ROCKSDB_LIBRARY_API int 
+extern C_ROCKSDB_LIBRARY_API int
 crocksdb_externalfileingestioninfo_picked_level(
     const crocksdb_externalfileingestioninfo_t*);
 
@@ -1013,9 +1013,8 @@ crocksdb_options_set_optimize_filters_for_hits(crocksdb_options_t*,
 extern C_ROCKSDB_LIBRARY_API void
 crocksdb_options_set_level_compaction_dynamic_level_bytes(crocksdb_options_t*,
                                                           unsigned char);
-extern C_ROCKSDB_LIBRARY_API void
-crocksdb_options_set_ingest_tolerant_ratio(crocksdb_options_t*,
-                                                         size_t);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_ingest_tolerant_ratio(
+    crocksdb_options_t*, size_t);
 extern C_ROCKSDB_LIBRARY_API unsigned char
 crocksdb_options_get_level_compaction_dynamic_level_bytes(
     const crocksdb_options_t* const options);

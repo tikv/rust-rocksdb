@@ -2491,8 +2491,8 @@ void crocksdb_options_set_level_compaction_dynamic_level_bytes(
   opt->rep.level_compaction_dynamic_level_bytes = v;
 }
 
-void crocksdb_options_set_ingest_tolerant_ratio(
-    crocksdb_options_t* opt, size_t ratio) {
+void crocksdb_options_set_ingest_tolerant_ratio(crocksdb_options_t* opt,
+                                                size_t ratio) {
   opt->rep.ingest_tolerant_ratio = ratio;
 }
 

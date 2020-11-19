@@ -405,7 +405,8 @@ struct crocksdb_compactionfilter_t : public CompactionFilter {
   virtual Decision FilterV2(int level, const Slice& key, ValueType value_type,
                             const Slice& existing_value, std::string* new_value,
                             std::string* skip_until) const override {
-    char* c_new_value, *c_skip_until = nullptr;
+    char* c_new_value = nullptr;
+    char* c_skip_until = nullptr;
     size_t new_value_length, skip_until_length = 0;
 
     Decision result = (*filter_v2_)(

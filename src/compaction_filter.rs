@@ -33,11 +33,11 @@ pub trait CompactionFilter {
     /// the existing value of the key and make decision based on it.
     fn filter(
         &mut self,
-        level: usize,
-        key: &[u8],
-        value: &[u8],
-        new_value: &mut Vec<u8>,
-        value_changed: &mut bool,
+        _level: usize,
+        _key: &[u8],
+        _value: &[u8],
+        _new_value: &mut Vec<u8>,
+        _value_changed: &mut bool,
     ) -> bool {
         false
     }
@@ -112,13 +112,13 @@ extern "C" fn filter_v2(
             CompactionFilterDecision::ChangeValue(new_v) => {
                 *new_value_len = new_v.len();
                 *new_value = malloc(*new_value_len) as *mut u8;
-                memcpy(new_value as _, new_v.as_ptr() as _, *new_value_len);
+                memcpy(*new_value as _, new_v.as_ptr() as _, *new_value_len);
                 RawCompactionFilterDecision::ChangeValue
             }
             CompactionFilterDecision::RemoveAndSkipUntil(until) => {
                 *skip_until_length = until.len();
                 *skip_until = malloc(*skip_until_length) as *mut u8;
-                memcpy(skip_until as _, until.as_ptr() as _, *skip_until_length);
+                memcpy(*skip_until as _, until.as_ptr() as _, *skip_until_length);
                 RawCompactionFilterDecision::RemoveAndSkipUntil
             }
         }

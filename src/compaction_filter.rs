@@ -29,7 +29,7 @@ pub trait CompactionFilter {
     /// of false indicates that the kv should be preserved in the
     /// output of this compaction run and a return value of true
     /// indicates that this key-value should be removed from the
-    /// output of the compaction.  The application can inspect
+    /// output of the compaction. The application can inspect
     /// the existing value of the key and make decision based on it.
     fn filter(
         &mut self,
@@ -38,8 +38,11 @@ pub trait CompactionFilter {
         value: &[u8],
         new_value: &mut Vec<u8>,
         value_changed: &mut bool,
-    ) -> bool;
+    ) -> bool {
+        false
+    }
 
+    /// This method will overwrite `filter` if a `CompactionFilter` implements both of them.
     fn filter_v2(
         &mut self,
         level: usize,

@@ -34,6 +34,7 @@ use merge_operator::{self, full_merge_callback, partial_merge_callback, MergeOpe
 use rocksdb::Env;
 use rocksdb::{Cache, MemoryAllocator};
 use slice_transform::{new_slice_transform, SliceTransform};
+use sst_partitioner::{new_sst_partitioner_factory, SstPartitionerFactory};
 use std::ffi::{CStr, CString};
 use std::path::Path;
 use std::ptr;
@@ -217,6 +218,25 @@ impl RateLimiter {
     ) -> RateLimiter {
         let limiter = unsafe {
             crocksdb_ffi::crocksdb_ratelimiter_create_with_auto_tuned(
+                rate_bytes_per_sec,
+                refill_period_us,
+                fairness,
+                mode,
+                auto_tuned,
+            )
+        };
+        RateLimiter { inner: limiter }
+    }
+
+    pub fn new_writeampbased_with_auto_tuned(
+        rate_bytes_per_sec: i64,
+        refill_period_us: i64,
+        fairness: i32,
+        mode: DBRateLimiterMode,
+        auto_tuned: bool,
+    ) -> RateLimiter {
+        let limiter = unsafe {
+            crocksdb_ffi::crocksdb_writeampbasedratelimiter_create_with_auto_tuned(
                 rate_bytes_per_sec,
                 refill_period_us,
                 fairness,
@@ -804,6 +824,26 @@ impl DBOptions {
         unsafe { crocksdb_ffi::crocksdb_options_get_max_background_jobs(self.inner) as i32 }
     }
 
+    pub fn set_max_background_compactions(&mut self, n: c_int) {
+        unsafe {
+            crocksdb_ffi::crocksdb_options_set_max_background_compactions(self.inner, n);
+        }
+    }
+
+    pub fn get_max_background_compactions(&self) -> i32 {
+        unsafe { crocksdb_ffi::crocksdb_options_get_max_background_compactions(self.inner) as i32 }
+    }
+
+    pub fn set_max_background_flushes(&mut self, n: c_int) {
+        unsafe {
+            crocksdb_ffi::crocksdb_options_set_max_background_flushes(self.inner, n);
+        }
+    }
+
+    pub fn get_max_background_flushes(&self) -> i32 {
+        unsafe { crocksdb_ffi::crocksdb_options_get_max_background_flushes(self.inner) as i32 }
+    }
+
     pub fn set_max_subcompactions(&mut self, n: u32) {
         unsafe {
             crocksdb_ffi::crocksdb_options_set_max_subcompactions(self.inner, n);
@@ -1005,6 +1045,25 @@ impl DBOptions {
         auto_tuned: bool,
     ) {
         let rate_limiter = RateLimiter::new_with_auto_tuned(
+            rate_bytes_per_sec,
+            refill_period_us,
+            DEFAULT_FAIRNESS,
+            mode,
+            auto_tuned,
+        );
+        unsafe {
+            crocksdb_ffi::crocksdb_options_set_ratelimiter(self.inner, rate_limiter.inner);
+        }
+    }
+
+    pub fn set_writeampbasedratelimiter_with_auto_tuned(
+        &mut self,
+        rate_bytes_per_sec: i64,
+        refill_period_us: i64,
+        mode: DBRateLimiterMode,
+        auto_tuned: bool,
+    ) {
+        let rate_limiter = RateLimiter::new_writeampbased_with_auto_tuned(
             rate_bytes_per_sec,
             refill_period_us,
             DEFAULT_FAIRNESS,
@@ -1362,6 +1421,7 @@ impl ColumnFamilyOptions {
         level: i32,
         strategy: i32,
         max_dict_bytes: i32,
+        zstd_max_train_bytes: i32,
     ) {
         unsafe {
             crocksdb_ffi::crocksdb_options_set_compression_options(
@@ -1370,6 +1430,27 @@ impl ColumnFamilyOptions {
                 level,
                 strategy,
                 max_dict_bytes,
+                zstd_max_train_bytes,
+            )
+        }
+    }
+
+    pub fn set_bottommost_level_compression_options(
+        &mut self,
+        window_bits: i32,
+        level: i32,
+        strategy: i32,
+        max_dict_bytes: i32,
+        zstd_max_train_bytes: i32,
+    ) {
+        unsafe {
+            crocksdb_ffi::crocksdb_options_set_bottommost_compression_options(
+                self.inner,
+                window_bits,
+                level,
+                strategy,
+                max_dict_bytes,
+                zstd_max_train_bytes,
             )
         }
     }
@@ -1747,6 +1828,23 @@ impl ColumnFamilyOptions {
                 return None;
             }
             Some(CStr::from_ptr(memtable_name).to_str().unwrap())
+        }
+    }
+
+    pub fn set_sst_partitioner_factory<F: SstPartitionerFactory>(&mut self, factory: F) {
+        let f = new_sst_partitioner_factory(factory);
+        unsafe {
+            crocksdb_ffi::crocksdb_options_set_sst_partitioner_factory(self.inner, f);
+        }
+    }
+
+    pub fn set_compact_on_deletion(&self, sliding_window_size: usize, deletion_trigger: usize) {
+        unsafe {
+            crocksdb_ffi::crocksdb_options_set_compact_on_deletion(
+                self.inner,
+                sliding_window_size,
+                deletion_trigger,
+            );
         }
     }
 }

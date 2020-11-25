@@ -2,7 +2,7 @@ all: format build test
 
 format:
 	@cargo fmt --all
-	@librocksdb_sys/crocksdb/format-diff.sh > /dev/null || true
+	@scripts/format-diff.sh
 
 build:
 	@cargo build
@@ -41,3 +41,14 @@ update_rocksdb:
 	fi
 	@git submodule sync
 	@git submodule update --init --remote librocksdb_sys/rocksdb
+
+update_rocksdb_cloud:
+	@if [ -n "${ROCKSDB_CLOUD_REPO}" ]; then \
+		git config --file=.gitmodules submodule.rocksdb-cloud.url https://github.com/${ROCKSDB_CLOUD_REPO}/rocksdb.git; \
+	fi
+	@if [ -n "${ROCKSDB_CLOUD_BRANCH}" ]; then \
+		git config --file=.gitmodules submodule.rocksdb-cloud.branch ${ROCKSDB_CLOUD_BRANCH}; \
+	fi
+	@git submodule sync
+	@git submodule update --init --remote librocksdb_sys/librocksdb_cloud_sys/rocksdb-cloud
+	

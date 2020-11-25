@@ -23,11 +23,17 @@ extern crate libc;
 pub extern crate librocksdb_sys;
 #[cfg(test)]
 extern crate tempfile;
+#[cfg(test)]
+#[macro_use]
+extern crate lazy_static;
 
+#[cfg(feature = "cloud")]
+pub use cloud::CloudEnvOptions;
 pub use compaction_filter::{
     new_compaction_filter, new_compaction_filter_factory, new_compaction_filter_raw,
-    CompactionFilter, CompactionFilterContext, CompactionFilterFactory,
-    CompactionFilterFactoryHandle, CompactionFilterHandle, DBCompactionFilter,
+    CompactionFilter, CompactionFilterContext, CompactionFilterDecision, CompactionFilterFactory,
+    CompactionFilterFactoryHandle, CompactionFilterHandle, CompactionFilterValueType,
+    DBCompactionFilter,
 };
 #[cfg(feature = "encryption")]
 pub use encryption::{DBEncryptionMethod, EncryptionKeyManager, FileEncryptionInfo};
@@ -37,7 +43,8 @@ pub use event_listener::{
 pub use librocksdb_sys::{
     self as crocksdb_ffi, new_bloom_filter, CompactionPriority, CompactionReason,
     DBBackgroundErrorReason, DBBottommostLevelCompaction, DBCompactionStyle, DBCompressionType,
-    DBEntryType, DBInfoLogLevel, DBRateLimiterMode, DBRecoveryMode, DBStatisticsHistogramType,
+    DBEntryType, DBInfoLogLevel, DBRateLimiterMode, DBRecoveryMode,
+    DBSstPartitionerResult as SstPartitionerResult, DBStatisticsHistogramType,
     DBStatisticsTickerType, DBStatusPtr, DBTitanDBBlobRunMode, IndexType, WriteStallCondition,
 };
 pub use logger::Logger;
@@ -47,8 +54,7 @@ pub use perf_context::{get_perf_level, set_perf_level, IOStatsContext, PerfConte
 pub use rocksdb::{
     load_latest_options, run_ldb_tool, run_sst_dump_tool, set_external_sst_file_global_seq_no,
     BackupEngine, CFHandle, Cache, DBIterator, DBVector, Env, ExternalSstFileInfo, MapProperty,
-    MemoryAllocator, Range, SeekKey, SequentialFile, SstFileReader, SstFileWriter, Writable,
-    WriteBatch, DB,
+    MemoryAllocator, Range, SeekKey, SequentialFile, SstFileReader, SstFileWriter, Writable, DB,
 };
 pub use rocksdb_options::{
     BlockBasedOptions, CColumnFamilyDescriptor, ColumnFamilyOptions, CompactOptions,
@@ -57,6 +63,9 @@ pub use rocksdb_options::{
     WriteOptions,
 };
 pub use slice_transform::SliceTransform;
+pub use sst_partitioner::{
+    SstPartitioner, SstPartitionerContext, SstPartitionerFactory, SstPartitionerRequest,
+};
 pub use table_filter::TableFilter;
 pub use table_properties::{
     TableProperties, TablePropertiesCollection, TablePropertiesCollectionView,
@@ -65,10 +74,13 @@ pub use table_properties::{
 pub use table_properties_collector::TablePropertiesCollector;
 pub use table_properties_collector_factory::TablePropertiesCollectorFactory;
 pub use titan::{TitanBlobIndex, TitanDBOptions};
+pub use write_batch::{WriteBatch, WriteBatchRef};
 
 #[allow(deprecated)]
 pub use rocksdb::Kv;
 
+#[cfg(feature = "cloud")]
+mod cloud;
 mod compaction_filter;
 pub mod comparator;
 #[cfg(feature = "encryption")]
@@ -81,6 +93,7 @@ mod perf_context;
 pub mod rocksdb;
 pub mod rocksdb_options;
 mod slice_transform;
+pub mod sst_partitioner;
 mod table_filter;
 mod table_properties;
 mod table_properties_collector;
@@ -88,6 +101,7 @@ mod table_properties_collector_factory;
 pub mod table_properties_rc;
 mod table_properties_rc_handles;
 mod titan;
+mod write_batch;
 
 #[cfg(test)]
 fn tempdir_with_prefix(prefix: &str) -> tempfile::TempDir {

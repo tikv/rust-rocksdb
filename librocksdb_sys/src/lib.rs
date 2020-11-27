@@ -19,7 +19,7 @@ extern crate libc;
 extern crate tempfile;
 
 use std::ffi::CStr;
-use std::fmt;
+use std::{fmt, ptr, slice};
 
 use libc::{c_char, c_double, c_int, c_uchar, c_void, size_t};
 
@@ -461,6 +461,39 @@ pub enum CompactionFilterDecision {
     Remove = 1,
     ChangeValue = 2,
     RemoveAndSkipUntil = 3,
+}
+
+pub struct FullKey<'a> {
+    pub user_key: &'a [u8],
+    pub sequence: u64,
+    pub entry_type: DBEntryType,
+}
+
+impl<'a> FullKey<'a> {
+    pub fn parse_from_internal(internal_key: &'a [u8]) -> Result<Self, String> {
+        let mut user_key: *const u8 = ptr::null_mut();
+        let mut user_key_length: size_t = 0;
+        let mut sequence = 0;
+        let mut entry_type = DBEntryType::Put;
+        unsafe {
+            let success = parse_full_key(
+                internal_key.as_ptr() as _,
+                internal_key.len() as _,
+                &mut user_key as *mut *const u8 as _,
+                &mut user_key_length as _,
+                &mut sequence as _,
+                &mut entry_type as _,
+            );
+            if !success {
+                return Err(String::from("invalid full key"));
+            }
+            Ok(FullKey {
+                user_key: slice::from_raw_parts(user_key, user_key_length),
+                sequence,
+                entry_type,
+            })
+        }
+    }
 }
 
 /// # Safety
@@ -972,6 +1005,7 @@ extern "C" {
         v: bool,
     );
     pub fn crocksdb_readoptions_set_ignore_range_deletions(readopts: *mut DBReadOptions, v: bool);
+    pub fn crocksdb_readoptions_set_iter_start_seqnum(readopts: *mut DBReadOptions, v: u64);
     pub fn crocksdb_readoptions_set_table_filter(
         readopts: *mut DBReadOptions,
         ctx: *mut c_void,
@@ -1117,6 +1151,7 @@ extern "C" {
     pub fn crocksdb_iter_prev(iter: *mut DBIterator);
     pub fn crocksdb_iter_key(iter: *const DBIterator, klen: *mut size_t) -> *mut u8;
     pub fn crocksdb_iter_value(iter: *const DBIterator, vlen: *mut size_t) -> *mut u8;
+    pub fn crocksdb_iter_seqno(iter: *const DBIterator, seqno: *mut u64) -> bool;
     pub fn crocksdb_iter_get_error(iter: *const DBIterator, err: *mut *mut c_char);
     // Write batch
     pub fn crocksdb_write(
@@ -2466,6 +2501,15 @@ extern "C" {
         argv: *const *const c_char,
         opts: *const Options,
     );
+
+    fn parse_full_key(
+        key: *const c_char,
+        length: size_t,
+        user_key: *mut *const c_char,
+        user_key_length: *mut size_t,
+        sequence: *mut u64,
+        entry_type: *mut DBEntryType,
+    ) -> bool;
 }
 
 // Titan

@@ -41,6 +41,7 @@
 #include "rocksdb/status.h"
 #include "rocksdb/table.h"
 #include "rocksdb/table_properties.h"
+#include "rocksdb/types.h"
 #include "rocksdb/universal_compaction.h"
 #include "rocksdb/utilities/backupable_db.h"
 #include "rocksdb/utilities/db_ttl.h"
@@ -103,6 +104,7 @@ using rocksdb::FilterBitsReader;
 using rocksdb::FilterPolicy;
 using rocksdb::FlushJobInfo;
 using rocksdb::FlushOptions;
+using rocksdb::FullKey;
 using rocksdb::HistogramData;
 using rocksdb::InfoLogLevel;
 using rocksdb::IngestExternalFileOptions;
@@ -1499,6 +1501,10 @@ const char* crocksdb_iter_value(const crocksdb_iterator_t* iter, size_t* vlen) {
   Slice s = iter->rep->value();
   *vlen = s.size();
   return s.data();
+}
+
+bool crocksdb_iter_seqno(const crocksdb_iterator_t* iter, SequenceNumber* no) {
+  return iter->rep->seqno(no);
 }
 
 void crocksdb_iter_get_error(const crocksdb_iterator_t* iter, char** errptr) {
@@ -3526,6 +3532,11 @@ void crocksdb_readoptions_set_background_purge_on_iterator_cleanup(
 void crocksdb_readoptions_set_ignore_range_deletions(
     crocksdb_readoptions_t* opt, unsigned char v) {
   opt->rep.ignore_range_deletions = v;
+}
+
+void crocksdb_readoptions_set_iter_start_seqnum(crocksdb_readoptions_t* opt,
+                                                uint64_t v) {
+  opt->rep.iter_start_seqnum = v;
 }
 
 struct TableFilterCtx {
@@ -6426,6 +6437,20 @@ void ctitandb_delete_blob_files_in_ranges_cf(
   }
   SaveError(errptr, static_cast<TitanDB*>(db->rep)->DeleteBlobFilesInRanges(
                         cf->rep, &ranges[0], num_ranges, include_end));
+}
+
+unsigned char parse_full_key(const char* key, size_t length,
+                             const char** user_key, size_t* user_key_length,
+                             SequenceNumber* seqno, EntryType* entry_type) {
+  FullKey result;
+  if (!ParseFullKey(Slice(key, length), &result)) {
+    return false;
+  }
+  *user_key = result.user_key.data();
+  *user_key_length = result.user_key.size();
+  *seqno = result.sequence;
+  *entry_type = result.type;
+  return true;
 }
 
 /* RocksDB Cloud */

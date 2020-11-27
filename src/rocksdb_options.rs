@@ -457,6 +457,12 @@ impl ReadOptions {
         }
     }
 
+    pub fn set_iter_start_seqnum(&mut self, seqnum: u64) {
+        unsafe {
+            crocksdb_ffi::crocksdb_readoptions_set_iter_start_seqnum(self.inner, seqnum);
+        }
+    }
+
     pub fn get_inner(&self) -> *const DBReadOptions {
         self.inner
     }

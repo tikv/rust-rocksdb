@@ -1516,14 +1516,15 @@ extern "C" {
         propname: *const c_char,
     ) -> *mut c_char;
     // Compaction filter
-    pub fn crocksdb_compactionfilter_create_v2(
+    pub fn crocksdb_compactionfilter_create(
         state: *mut c_void,
         destructor: extern "C" fn(*mut c_void),
-        filter_v2: extern "C" fn(
+        filter: extern "C" fn(
             *mut c_void,
             c_int,
             *const u8,
             size_t,
+            u64,
             CompactionFilterValueType,
             *const u8,
             size_t,

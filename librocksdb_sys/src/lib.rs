@@ -173,6 +173,8 @@ pub struct DBSstPartitionerContext(c_void);
 pub struct DBSstPartitionerFactory(c_void);
 #[repr(C)]
 pub struct DBWriteBatchIterator(c_void);
+#[repr(C)]
+pub struct DBFileSystemInspectorInstance(c_void);
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 #[repr(C)]
@@ -461,6 +463,14 @@ pub enum CompactionFilterDecision {
     Remove = 1,
     ChangeValue = 2,
     RemoveAndSkipUntil = 3,
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[repr(C)]
+pub enum DBIOType {
+    Uncategorized = 0,
+    Flush = 1,
+    Compaction = 2,
 }
 
 /// # Safety
@@ -1717,6 +1727,32 @@ extern "C" {
     pub fn crocksdb_key_managed_encrypted_env_create(
         base_env: *mut DBEnv,
         key_manager: *mut DBEncryptionKeyManagerInstance,
+    ) -> *mut DBEnv;
+
+    // FileSystemManagedEnv
+    pub fn crocksdb_file_system_inspector_create(
+        state: *mut c_void,
+        destructor: extern "C" fn(*mut c_void),
+        read: extern "C" fn(*mut c_void, c_int, size_t) -> size_t,
+        write: extern "C" fn(*mut c_void, c_int, size_t) -> size_t,
+    ) -> *mut DBFileSystemInspectorInstance;
+    pub fn crocksdb_file_system_inspector_destroy(inspector: *mut DBFileSystemInspectorInstance);
+    pub fn crocksdb_file_system_inspector_read(
+        inspector: *mut DBFileSystemInspectorInstance,
+        io_type: DBIOType,
+        offset: size_t,
+        len: size_t,
+    ) -> size_t;
+    pub fn crocksdb_file_system_inspector_write(
+        inspector: *mut DBFileSystemInspectorInstance,
+        io_type: DBIOType,
+        offset: size_t,
+        len: size_t,
+    ) -> size_t;
+
+    pub fn crocksdb_file_system_inspected_env_create(
+        base_env: *mut DBEnv,
+        inspector: *mut DBFileSystemInspectorInstance,
     ) -> *mut DBEnv;
 
     // SstFileReader

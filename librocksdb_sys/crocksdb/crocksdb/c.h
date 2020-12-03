@@ -214,6 +214,9 @@ typedef struct crocksdb_encryption_key_manager_t
     crocksdb_encryption_key_manager_t;
 #endif
 
+typedef struct crocksdb_file_system_inspector_t
+    crocksdb_file_system_inspector_t;
+
 /* DB operations */
 
 extern C_ROCKSDB_LIBRARY_API crocksdb_t* crocksdb_open(
@@ -1640,6 +1643,31 @@ extern C_ROCKSDB_LIBRARY_API crocksdb_env_t*
 crocksdb_key_managed_encrypted_env_create(crocksdb_env_t*,
                                           crocksdb_encryption_key_manager_t*);
 #endif
+
+/* FileSystemManagedEnv */
+
+typedef size_t (*crocksdb_file_system_inspector_read_cb)(void* state,
+                                                         int io_type,
+                                                         size_t len);
+typedef size_t (*crocksdb_file_system_inspector_write_cb)(void* state,
+                                                          int io_type,
+                                                          size_t len);
+
+extern C_ROCKSDB_LIBRARY_API crocksdb_file_system_inspector_t*
+crocksdb_file_system_inspector_create(
+    void* state, void (*destructor)(void*),
+    crocksdb_file_system_inspector_read_cb read,
+    crocksdb_file_system_inspector_write_cb write);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_file_system_inspector_destroy(
+    crocksdb_file_system_inspector_t*);
+extern C_ROCKSDB_LIBRARY_API size_t crocksdb_file_system_inspector_read(
+    crocksdb_file_system_inspector_t* inspector, int io_type, size_t len);
+extern C_ROCKSDB_LIBRARY_API size_t crocksdb_file_system_inspector_write(
+    crocksdb_file_system_inspector_t* inspector, int io_type, size_t len);
+
+extern C_ROCKSDB_LIBRARY_API crocksdb_env_t*
+crocksdb_file_system_inspected_create(crocksdb_env_t*,
+                                      crocksdb_file_system_inspector_t*);
 
 /* SstFile */
 

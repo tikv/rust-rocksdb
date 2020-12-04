@@ -1740,13 +1740,11 @@ extern "C" {
     pub fn crocksdb_file_system_inspector_read(
         inspector: *mut DBFileSystemInspectorInstance,
         io_type: DBIOType,
-        offset: size_t,
         len: size_t,
     ) -> size_t;
     pub fn crocksdb_file_system_inspector_write(
         inspector: *mut DBFileSystemInspectorInstance,
         io_type: DBIOType,
-        offset: size_t,
         len: size_t,
     ) -> size_t;
 

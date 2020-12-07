@@ -104,7 +104,6 @@ using rocksdb::FilterBitsReader;
 using rocksdb::FilterPolicy;
 using rocksdb::FlushJobInfo;
 using rocksdb::FlushOptions;
-using rocksdb::FullKey;
 using rocksdb::HistogramData;
 using rocksdb::InfoLogLevel;
 using rocksdb::IngestExternalFileOptions;
@@ -3534,11 +3533,6 @@ void crocksdb_readoptions_set_ignore_range_deletions(
   opt->rep.ignore_range_deletions = v;
 }
 
-void crocksdb_readoptions_set_iter_start_seqnum(crocksdb_readoptions_t* opt,
-                                                uint64_t v) {
-  opt->rep.iter_start_seqnum = v;
-}
-
 struct TableFilterCtx {
   TableFilterCtx(void* ctx, void (*destroy)(void*))
       : ctx_(ctx), destroy_(destroy) {}
@@ -6437,20 +6431,6 @@ void ctitandb_delete_blob_files_in_ranges_cf(
   }
   SaveError(errptr, static_cast<TitanDB*>(db->rep)->DeleteBlobFilesInRanges(
                         cf->rep, &ranges[0], num_ranges, include_end));
-}
-
-unsigned char parse_full_key(const char* key, size_t length,
-                             const char** user_key, size_t* user_key_length,
-                             SequenceNumber* seqno, EntryType* entry_type) {
-  FullKey result;
-  if (!ParseFullKey(Slice(key, length), &result)) {
-    return false;
-  }
-  *user_key = result.user_key.data();
-  *user_key_length = result.user_key.size();
-  *seqno = result.sequence;
-  *entry_type = result.type;
-  return true;
 }
 
 /* RocksDB Cloud */

@@ -3233,12 +3233,10 @@ extern "C" {
 extern "C" {
     pub fn crocksdb_sequential_file_destroy(arg1: *mut crocksdb_sequential_file_t);
 }
-pub type crocksdb_file_system_inspector_read_cb = ::std::option::Option<
-    unsafe extern "C" fn(state: *mut libc::c_void, io_type: libc::c_int, len: usize) -> usize,
->;
-pub type crocksdb_file_system_inspector_write_cb = ::std::option::Option<
-    unsafe extern "C" fn(state: *mut libc::c_void, io_type: libc::c_int, len: usize) -> usize,
->;
+pub type crocksdb_file_system_inspector_read_cb =
+    ::std::option::Option<unsafe extern "C" fn(state: *mut libc::c_void, len: usize) -> usize>;
+pub type crocksdb_file_system_inspector_write_cb =
+    ::std::option::Option<unsafe extern "C" fn(state: *mut libc::c_void, len: usize) -> usize>;
 extern "C" {
     pub fn crocksdb_file_system_inspector_create(
         state: *mut libc::c_void,
@@ -3253,14 +3251,12 @@ extern "C" {
 extern "C" {
     pub fn crocksdb_file_system_inspector_read(
         inspector: *mut crocksdb_file_system_inspector_t,
-        io_type: libc::c_int,
         len: usize,
     ) -> usize;
 }
 extern "C" {
     pub fn crocksdb_file_system_inspector_write(
         inspector: *mut crocksdb_file_system_inspector_t,
-        io_type: libc::c_int,
         len: usize,
     ) -> usize;
 }

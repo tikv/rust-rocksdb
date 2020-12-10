@@ -4126,9 +4126,9 @@ struct crocksdb_file_system_inspector_impl_t : public FileSystemInspector {
 
   virtual ~crocksdb_file_system_inspector_impl_t() { destructor(state); }
 
-  size_t Read(Esize_t len) { return read(state, len); }
+  size_t Read(size_t len) { return read(state, len); }
 
-  size_t Write(Esize_t len) { return write(state, len); }
+  size_t Write(size_t len) { return write(state, len); }
 };
 
 crocksdb_file_system_inspector_t* crocksdb_file_system_inspector_create(

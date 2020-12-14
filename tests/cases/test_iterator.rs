@@ -415,7 +415,7 @@ fn test_fixed_suffix_seek() {
 fn test_iter_sequence_number() {
     struct TestCompactionFilter(SyncSender<(Vec<u8>, Vec<u8>, u64)>);
     impl CompactionFilter for TestCompactionFilter {
-        fn filter_v2(
+        fn featured_filter(
             &mut self,
             _: usize,
             key: &[u8],

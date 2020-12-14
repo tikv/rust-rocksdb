@@ -43,7 +43,7 @@ pub trait CompactionFilter {
     }
 
     /// This method will overwrite `filter` if a `CompactionFilter` implements both of them.
-    fn filter_v2(
+    fn featured_filter(
         &mut self,
         level: usize,
         key: &[u8],
@@ -108,7 +108,7 @@ extern "C" fn filter(
         let filter = &mut (*(filter as *mut CompactionFilterProxy)).filter;
         let key = slice::from_raw_parts(key, key_len);
         let value = slice::from_raw_parts(value, value_len);
-        match filter.filter_v2(level as usize, key, seqno, value, value_type) {
+        match filter.featured_filter(level as usize, key, seqno, value, value_type) {
             CompactionFilterDecision::Keep => RawCompactionFilterDecision::Keep,
             CompactionFilterDecision::Remove => RawCompactionFilterDecision::Remove,
             CompactionFilterDecision::ChangeValue(new_v) => {

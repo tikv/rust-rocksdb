@@ -465,14 +465,6 @@ pub enum CompactionFilterDecision {
     RemoveAndSkipUntil = 3,
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
-#[repr(C)]
-pub enum DBIOType {
-    Uncategorized = 0,
-    Flush = 1,
-    Compaction = 2,
-}
-
 /// # Safety
 ///
 /// ptr must point to a valid CStr value

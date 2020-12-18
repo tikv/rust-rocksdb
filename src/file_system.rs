@@ -1,14 +1,14 @@
 // Copyright 2020 TiKV Project Authors. Licensed under Apache-2.0.
 
-pub use crocksdb_ffi::{self, DBFileSystemInspectorInstance, DBIOType};
+pub use crocksdb_ffi::{self, DBFileSystemInspectorInstance};
 
-use libc::{c_void, size_t};
+use libc::{c_char, c_void, size_t, strdup};
 use std::sync::Arc;
 
 // Inspect global IO flow. No per-file inspection for now.
 pub trait FileSystemInspector: Sync + Send {
-    fn read(&self, len: usize) -> usize;
-    fn write(&self, len: usize) -> usize;
+    fn read(&self, len: usize) -> Result<usize, String>;
+    fn write(&self, len: usize) -> Result<usize, String>;
 }
 
 extern "C" fn file_system_inspector_destructor(ctx: *mut c_void) {
@@ -18,14 +18,38 @@ extern "C" fn file_system_inspector_destructor(ctx: *mut c_void) {
     }
 }
 
-extern "C" fn file_system_inspector_read(ctx: *mut c_void, len: size_t) -> size_t {
+extern "C" fn file_system_inspector_read(
+    ctx: *mut c_void,
+    len: size_t,
+    errptr: *mut *mut c_char,
+) -> size_t {
     let file_system_inspector = unsafe { &*(ctx as *mut Arc<dyn FileSystemInspector>) };
-    return file_system_inspector.read(len);
+    match file_system_inspector.read(len) {
+        Ok(ret) => ret,
+        Err(e) => {
+            unsafe {
+                *errptr = strdup(e.as_ptr() as *const c_char);
+            }
+            0
+        }
+    }
 }
 
-extern "C" fn file_system_inspector_write(ctx: *mut c_void, len: size_t) -> size_t {
+extern "C" fn file_system_inspector_write(
+    ctx: *mut c_void,
+    len: size_t,
+    errptr: *mut *mut c_char,
+) -> size_t {
     let file_system_inspector = unsafe { &*(ctx as *mut Arc<dyn FileSystemInspector>) };
-    return file_system_inspector.write(len);
+    match file_system_inspector.write(len) {
+        Ok(ret) => ret,
+        Err(e) => {
+            unsafe {
+                *errptr = strdup(e.as_ptr() as *const c_char);
+            }
+            0
+        }
+    }
 }
 
 pub struct DBFileSystemInspector {
@@ -62,18 +86,20 @@ impl Drop for DBFileSystemInspector {
 
 #[cfg(test)]
 impl FileSystemInspector for DBFileSystemInspector {
-    fn read(&self, len: usize) -> usize {
-        let ret: usize;
-        unsafe {
-            ret = crocksdb_ffi::crocksdb_file_system_inspector_read(self.inner, len);
-        }
-        ret
+    fn read(&self, len: usize) -> Result<usize, String> {
+        let ret = unsafe {
+            ffi_try!(crocksdb_ffi::crocksdb_file_system_inspector_read(
+                self.inner, len
+            ))
+        };
+        Ok(ret)
     }
-    fn write(&self, len: usize) -> usize {
-        let ret: usize;
-        unsafe {
-            ret = crocksdb_ffi::crocksdb_file_system_inspector_write(self.inner, len);
-        }
-        ret
+    fn write(&self, len: usize) -> Result<usize, String> {
+        let ret = unsafe {
+            ffi_try!(crocksdb_ffi::crocksdb_file_system_inspector_write(
+                self.inner, len
+            ))
+        };
+        Ok(ret)
     }
 }

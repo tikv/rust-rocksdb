@@ -2,7 +2,6 @@
 
 pub use crocksdb_ffi::{
     self, DBEncryptionKeyManagerInstance, DBEncryptionMethod, DBFileEncryptionInfo,
-    DBFileSystemInspectorInstance,
 };
 
 use libc::{c_char, c_void, size_t};

@@ -1725,17 +1725,19 @@ extern "C" {
     pub fn crocksdb_file_system_inspector_create(
         state: *mut c_void,
         destructor: extern "C" fn(*mut c_void),
-        read: extern "C" fn(*mut c_void, size_t) -> size_t,
-        write: extern "C" fn(*mut c_void, size_t) -> size_t,
+        read: extern "C" fn(*mut c_void, size_t, *mut *mut c_char) -> size_t,
+        write: extern "C" fn(*mut c_void, size_t, *mut *mut c_char) -> size_t,
     ) -> *mut DBFileSystemInspectorInstance;
     pub fn crocksdb_file_system_inspector_destroy(inspector: *mut DBFileSystemInspectorInstance);
     pub fn crocksdb_file_system_inspector_read(
         inspector: *mut DBFileSystemInspectorInstance,
         len: size_t,
+        errptr: *mut *mut c_char,
     ) -> size_t;
     pub fn crocksdb_file_system_inspector_write(
         inspector: *mut DBFileSystemInspectorInstance,
         len: size_t,
+        errptr: *mut *mut c_char,
     ) -> size_t;
 
     pub fn crocksdb_file_system_inspected_env_create(

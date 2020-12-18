@@ -1615,7 +1615,6 @@ extern C_ROCKSDB_LIBRARY_API const char*
 crocksdb_encryption_key_manager_link_file(
     crocksdb_encryption_key_manager_t* key_manager, const char* src_fname,
     const char* dst_fname);
-extern C_ROCKSDB_LIBRARY_API const char*
 
 extern C_ROCKSDB_LIBRARY_API crocksdb_env_t*
 crocksdb_key_managed_encrypted_env_create(crocksdb_env_t*,

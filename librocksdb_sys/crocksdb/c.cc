@@ -4119,9 +4119,10 @@ struct crocksdb_file_system_inspector_impl_t : public FileSystemInspector {
 
   virtual ~crocksdb_file_system_inspector_impl_t() { destructor(state); }
 
-  Status Read(size_t len, size_t& allowed) {
+  Status Read(size_t len, size_t* allowed) {
+    assert(allowed);
     char* err = nullptr;
-    allowed = read(state, len, &err);
+    *allowed = read(state, len, &err);
     if (err) {
       return Status::IOError(err);
     } else {
@@ -4129,9 +4130,10 @@ struct crocksdb_file_system_inspector_impl_t : public FileSystemInspector {
     }
   }
 
-  Status Write(size_t len, size_t& allowed) {
+  Status Write(size_t len, size_t* allowed) {
+    assert(allowed);
     char* err = nullptr;
-    allowed = write(state, len, &err);
+    *allowed = write(state, len, &err);
     if (err) {
       return Status::IOError(err);
     } else {

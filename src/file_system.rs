@@ -88,7 +88,7 @@ impl Drop for DBFileSystemInspector {
 impl FileSystemInspector for DBFileSystemInspector {
     fn read(&self, len: usize) -> Result<usize, String> {
         let ret = unsafe {
-            ffi_try!(crocksdb_ffi::crocksdb_file_system_inspector_read(
+            ffi_try!(crocksdb_file_system_inspector_read(
                 self.inner, len
             ))
         };
@@ -96,7 +96,7 @@ impl FileSystemInspector for DBFileSystemInspector {
     }
     fn write(&self, len: usize) -> Result<usize, String> {
         let ret = unsafe {
-            ffi_try!(crocksdb_ffi::crocksdb_file_system_inspector_write(
+            ffi_try!(crocksdb_file_system_inspector_write(
                 self.inner, len
             ))
         };
@@ -106,7 +106,6 @@ impl FileSystemInspector for DBFileSystemInspector {
 
 #[cfg(test)]
 mod test {
-    use std::io::{Error, ErrorKind};
     use std::sync::atomic::{AtomicUsize, Ordering};
     use std::sync::{Arc, Mutex};
 
@@ -147,7 +146,7 @@ mod test {
             if len <= inner.refill_bytes {
                 Ok(len)
             } else {
-                Err("request exceeds refill bytes");
+                Err("request exceeds refill bytes".into())
             }
         }
         fn write(&self, len: usize) -> Result<usize, String> {
@@ -156,7 +155,7 @@ mod test {
             if len <= inner.refill_bytes {
                 Ok(len)
             } else {
-                Err("request exceeds refill bytes");
+                Err("request exceeds refill bytes".into())
             }
         }
     }

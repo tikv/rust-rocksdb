@@ -4162,7 +4162,7 @@ size_t crocksdb_file_system_inspector_read(
     crocksdb_file_system_inspector_t* inspector, size_t len, char** errptr) {
   assert(inspector != nullptr && inspector->rep != nullptr);
   size_t allowed = 0;
-  SaveError(errptr, inspector->rep->Read(len, allowed));
+  SaveError(errptr, inspector->rep->Read(len, &allowed));
   return allowed;
 }
 
@@ -4170,7 +4170,7 @@ size_t crocksdb_file_system_inspector_write(
     crocksdb_file_system_inspector_t* inspector, size_t len, char** errptr) {
   assert(inspector != nullptr && inspector->rep != nullptr);
   size_t allowed = 0;
-  SaveError(errptr, inspector->rep->Write(len, allowed));
+  SaveError(errptr, inspector->rep->Write(len, &allowed));
   return allowed;
 }
 

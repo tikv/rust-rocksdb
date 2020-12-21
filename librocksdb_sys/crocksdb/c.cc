@@ -4124,7 +4124,10 @@ struct crocksdb_file_system_inspector_impl_t : public FileSystemInspector {
     char* err = nullptr;
     *allowed = read(state, len, &err);
     if (err) {
-      return Status::IOError(err);
+      Status s = Status::IOError(err);
+      // malloc-ed by strdup
+      free(err);
+      return s;
     } else {
       return Status::OK();
     }
@@ -4135,7 +4138,10 @@ struct crocksdb_file_system_inspector_impl_t : public FileSystemInspector {
     char* err = nullptr;
     *allowed = write(state, len, &err);
     if (err) {
-      return Status::IOError(err);
+      Status s = Status::IOError(err);
+      // malloc-ed by strdup
+      free(err);
+      return s;
     } else {
       return Status::OK();
     }
@@ -4179,7 +4185,7 @@ size_t crocksdb_file_system_inspector_write(
   return allowed;
 }
 
-crocksdb_env_t* crocksdb_file_system_inspected_create(
+crocksdb_env_t* crocksdb_file_system_inspected_env_create(
     crocksdb_env_t* base_env, crocksdb_file_system_inspector_t* inspector) {
   assert(base_env != nullptr);
   assert(inspector != nullptr);

@@ -1721,7 +1721,7 @@ extern "C" {
         key_manager: *mut DBEncryptionKeyManagerInstance,
     ) -> *mut DBEnv;
 
-    // FileSystemManagedEnv
+    // FileSystemInspectedEnv
     pub fn crocksdb_file_system_inspector_create(
         state: *mut c_void,
         destructor: extern "C" fn(*mut c_void),

@@ -3273,7 +3273,7 @@ extern "C" {
     ) -> usize;
 }
 extern "C" {
-    pub fn crocksdb_file_system_inspected_create(
+    pub fn crocksdb_file_system_inspected_env_create(
         arg1: *mut crocksdb_env_t,
         arg2: *mut crocksdb_file_system_inspector_t,
     ) -> *mut crocksdb_env_t;

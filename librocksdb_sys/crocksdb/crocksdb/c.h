@@ -1644,7 +1644,7 @@ crocksdb_key_managed_encrypted_env_create(crocksdb_env_t*,
                                           crocksdb_encryption_key_manager_t*);
 #endif
 
-/* FileSystemManagedEnv */
+/* FileSystemInspectedEnv */
 
 typedef size_t (*crocksdb_file_system_inspector_read_cb)(void* state,
                                                          size_t len,
@@ -1666,8 +1666,8 @@ extern C_ROCKSDB_LIBRARY_API size_t crocksdb_file_system_inspector_write(
     crocksdb_file_system_inspector_t* inspector, size_t len, char** errptr);
 
 extern C_ROCKSDB_LIBRARY_API crocksdb_env_t*
-crocksdb_file_system_inspected_create(crocksdb_env_t*,
-                                      crocksdb_file_system_inspector_t*);
+crocksdb_file_system_inspected_env_create(crocksdb_env_t*,
+                                          crocksdb_file_system_inspector_t*);
 
 /* SstFile */
 

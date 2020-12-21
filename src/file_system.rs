@@ -87,19 +87,11 @@ impl Drop for DBFileSystemInspector {
 #[cfg(test)]
 impl FileSystemInspector for DBFileSystemInspector {
     fn read(&self, len: usize) -> Result<usize, String> {
-        let ret = unsafe {
-            ffi_try!(crocksdb_file_system_inspector_read(
-                self.inner, len
-            ))
-        };
+        let ret = unsafe { ffi_try!(crocksdb_file_system_inspector_read(self.inner, len)) };
         Ok(ret)
     }
     fn write(&self, len: usize) -> Result<usize, String> {
-        let ret = unsafe {
-            ffi_try!(crocksdb_file_system_inspector_write(
-                self.inner, len
-            ))
-        };
+        let ret = unsafe { ffi_try!(crocksdb_file_system_inspector_write(self.inner, len)) };
         Ok(ret)
     }
 }
@@ -141,7 +133,7 @@ mod test {
 
     impl FileSystemInspector for Mutex<TestFileSystemInspector> {
         fn read(&self, len: usize) -> Result<usize, String> {
-            let inner = self.lock().unwrap();
+            let mut inner = self.lock().unwrap();
             inner.read_called += 1;
             if len <= inner.refill_bytes {
                 Ok(len)
@@ -150,7 +142,7 @@ mod test {
             }
         }
         fn write(&self, len: usize) -> Result<usize, String> {
-            let inner = self.lock().unwrap();
+            let mut inner = self.lock().unwrap();
             inner.write_called += 1;
             if len <= inner.refill_bytes {
                 Ok(len)

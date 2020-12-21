@@ -42,6 +42,7 @@
 #include "rocksdb/status.h"
 #include "rocksdb/table.h"
 #include "rocksdb/table_properties.h"
+#include "rocksdb/types.h"
 #include "rocksdb/universal_compaction.h"
 #include "rocksdb/utilities/backupable_db.h"
 #include "rocksdb/utilities/db_ttl.h"
@@ -395,27 +396,28 @@ struct crocksdb_map_property_t {
 struct crocksdb_compactionfilter_t : public CompactionFilter {
   void* state_;
   void (*destructor_)(void*);
-  Decision (*filter_v2_)(void*, int level, const char* key, size_t key_length,
-                         ValueType value_type, const char* existing_value,
-                         size_t value_length, char** new_value,
-                         size_t* new_value_length, char** skip_until,
-                         size_t* skip_until_length);
+  Decision (*filter_)(void*, int level, const char* key, size_t key_length,
+                      uint64_t seqno, ValueType value_type,
+                      const char* existing_value, size_t value_length,
+                      char** new_value, size_t* new_value_length,
+                      char** skip_until, size_t* skip_until_length);
 
   const char* (*name_)(void*);
 
   virtual ~crocksdb_compactionfilter_t() { (*destructor_)(state_); }
 
-  virtual Decision FilterV2(int level, const Slice& key, ValueType value_type,
-                            const Slice& existing_value, std::string* new_value,
+  virtual Decision FilterV3(int level, const Slice& key, uint64_t seqno,
+                            ValueType value_type, const Slice& existing_value,
+                            std::string* new_value,
                             std::string* skip_until) const override {
     char* c_new_value = nullptr;
     char* c_skip_until = nullptr;
     size_t new_value_length, skip_until_length = 0;
 
-    Decision result = (*filter_v2_)(
-        state_, level, key.data(), key.size(), value_type,
-        existing_value.data(), existing_value.size(), &c_new_value,
-        &new_value_length, &c_skip_until, &skip_until_length);
+    Decision result =
+        (*filter_)(state_, level, key.data(), key.size(), seqno, value_type,
+                   existing_value.data(), existing_value.size(), &c_new_value,
+                   &new_value_length, &c_skip_until, &skip_until_length);
     if (result == Decision::kChangeValue) {
       new_value->assign(c_new_value, new_value_length);
       free(c_new_value);
@@ -1505,6 +1507,10 @@ const char* crocksdb_iter_value(const crocksdb_iterator_t* iter, size_t* vlen) {
   Slice s = iter->rep->value();
   *vlen = s.size();
   return s.data();
+}
+
+bool crocksdb_iter_seqno(const crocksdb_iterator_t* iter, SequenceNumber* no) {
+  return iter->rep->seqno(no);
 }
 
 void crocksdb_iter_get_error(const crocksdb_iterator_t* iter, char** errptr) {
@@ -3226,6 +3232,11 @@ void crocksdb_ratelimiter_set_bytes_per_second(crocksdb_ratelimiter_t* limiter,
   limiter->rep->SetBytesPerSecond(rate_bytes_per_sec);
 }
 
+void crocksdb_ratelimiter_set_auto_tuned(crocksdb_ratelimiter_t* limiter,
+                                         unsigned char auto_tuned) {
+  limiter->rep->SetAutoTuned(auto_tuned);
+}
+
 int64_t crocksdb_ratelimiter_get_singleburst_bytes(
     crocksdb_ratelimiter_t* limiter) {
   return limiter->rep->GetSingleBurstBytes();
@@ -3244,6 +3255,11 @@ int64_t crocksdb_ratelimiter_get_total_bytes_through(
 int64_t crocksdb_ratelimiter_get_bytes_per_second(
     crocksdb_ratelimiter_t* limiter) {
   return limiter->rep->GetBytesPerSecond();
+}
+
+unsigned char crocksdb_ratelimiter_get_auto_tuned(
+    crocksdb_ratelimiter_t* limiter) {
+  return limiter->rep->GetAutoTuned();
 }
 
 int64_t crocksdb_ratelimiter_get_total_requests(crocksdb_ratelimiter_t* limiter,
@@ -3265,10 +3281,10 @@ custom cache
 table_properties_collectors
 */
 
-crocksdb_compactionfilter_t* crocksdb_compactionfilter_create_v2(
+crocksdb_compactionfilter_t* crocksdb_compactionfilter_create(
     void* state, void (*destructor)(void*),
-    CompactionFilter::Decision (*filter_v2)(
-        void*, int level, const char* key, size_t key_length,
+    CompactionFilter::Decision (*filter)(
+        void*, int level, const char* key, size_t key_length, uint64_t seqno,
         CompactionFilter::ValueType value_type, const char* existing_value,
         size_t value_length, char** new_value, size_t* new_value_length,
         char** skip_until, size_t* skip_until_length),
@@ -3276,7 +3292,7 @@ crocksdb_compactionfilter_t* crocksdb_compactionfilter_create_v2(
   crocksdb_compactionfilter_t* result = new crocksdb_compactionfilter_t;
   result->state_ = state;
   result->destructor_ = destructor;
-  result->filter_v2_ = filter_v2;
+  result->filter_ = filter;
   result->name_ = name;
   return result;
 }
@@ -3945,7 +3961,6 @@ struct crocksdb_encryption_key_manager_impl_t : public KeyManager {
   crocksdb_encryption_key_manager_new_file_cb new_file;
   crocksdb_encryption_key_manager_delete_file_cb delete_file;
   crocksdb_encryption_key_manager_link_file_cb link_file;
-  crocksdb_encryption_key_manager_rename_file_cb rename_file;
 
   virtual ~crocksdb_encryption_key_manager_impl_t() { destructor(state); }
 
@@ -3995,17 +4010,6 @@ struct crocksdb_encryption_key_manager_impl_t : public KeyManager {
     }
     return s;
   }
-
-  Status RenameFile(const std::string& src_fname,
-                    const std::string& dst_fname) override {
-    const char* ret = rename_file(state, src_fname.c_str(), dst_fname.c_str());
-    Status s;
-    if (ret != nullptr) {
-      s = Status::Corruption(std::string(ret));
-      delete ret;
-    }
-    return s;
-  }
 };
 
 crocksdb_encryption_key_manager_t* crocksdb_encryption_key_manager_create(
@@ -4013,8 +4017,7 @@ crocksdb_encryption_key_manager_t* crocksdb_encryption_key_manager_create(
     crocksdb_encryption_key_manager_get_file_cb get_file,
     crocksdb_encryption_key_manager_new_file_cb new_file,
     crocksdb_encryption_key_manager_delete_file_cb delete_file,
-    crocksdb_encryption_key_manager_link_file_cb link_file,
-    crocksdb_encryption_key_manager_rename_file_cb rename_file) {
+    crocksdb_encryption_key_manager_link_file_cb link_file) {
   std::shared_ptr<crocksdb_encryption_key_manager_impl_t> key_manager_impl =
       std::make_shared<crocksdb_encryption_key_manager_impl_t>();
   key_manager_impl->state = state;
@@ -4023,7 +4026,6 @@ crocksdb_encryption_key_manager_t* crocksdb_encryption_key_manager_create(
   key_manager_impl->new_file = new_file;
   key_manager_impl->delete_file = delete_file;
   key_manager_impl->link_file = link_file;
-  key_manager_impl->rename_file = rename_file;
   crocksdb_encryption_key_manager_t* key_manager =
       new crocksdb_encryption_key_manager_t;
   key_manager->rep = key_manager_impl;
@@ -4079,19 +4081,6 @@ const char* crocksdb_encryption_key_manager_link_file(
   assert(src_fname != nullptr);
   assert(dst_fname != nullptr);
   Status s = key_manager->rep->LinkFile(src_fname, dst_fname);
-  if (!s.ok()) {
-    return strdup(s.ToString().c_str());
-  }
-  return nullptr;
-}
-
-const char* crocksdb_encryption_key_manager_rename_file(
-    crocksdb_encryption_key_manager_t* key_manager, const char* src_fname,
-    const char* dst_fname) {
-  assert(key_manager != nullptr && key_manager->rep != nullptr);
-  assert(src_fname != nullptr);
-  assert(dst_fname != nullptr);
-  Status s = key_manager->rep->RenameFile(src_fname, dst_fname);
   if (!s.ok()) {
     return strdup(s.ToString().c_str());
   }

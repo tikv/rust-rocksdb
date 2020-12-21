@@ -103,3 +103,93 @@ impl FileSystemInspector for DBFileSystemInspector {
         Ok(ret)
     }
 }
+
+#[cfg(test)]
+mod test {
+    use std::io::{Error, ErrorKind};
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::sync::{Arc, Mutex};
+
+    use super::*;
+
+    struct TestDrop {
+        called: Arc<AtomicUsize>,
+    }
+
+    impl Drop for TestDrop {
+        fn drop(&mut self) {
+            self.called.fetch_add(1, Ordering::SeqCst);
+        }
+    }
+
+    struct TestFileSystemInspector {
+        pub refill_bytes: usize,
+        pub read_called: usize,
+        pub write_called: usize,
+        pub drop: Option<TestDrop>,
+    }
+
+    impl Default for TestFileSystemInspector {
+        fn default() -> Self {
+            TestFileSystemInspector {
+                refill_bytes: 0,
+                read_called: 0,
+                write_called: 0,
+                drop: None,
+            }
+        }
+    }
+
+    impl FileSystemInspector for Mutex<TestFileSystemInspector> {
+        fn read(&self, len: usize) -> Result<usize, String> {
+            let inner = self.lock().unwrap();
+            inner.read_called += 1;
+            if len <= inner.refill_bytes {
+                Ok(len)
+            } else {
+                Err("request exceeds refill bytes");
+            }
+        }
+        fn write(&self, len: usize) -> Result<usize, String> {
+            let inner = self.lock().unwrap();
+            inner.write_called += 1;
+            if len <= inner.refill_bytes {
+                Ok(len)
+            } else {
+                Err("request exceeds refill bytes");
+            }
+        }
+    }
+
+    #[test]
+    fn test_create_and_destroy_inspector() {
+        let drop_called = Arc::new(AtomicUsize::new(0));
+        let fs_inspector = Arc::new(Mutex::new(TestFileSystemInspector {
+            drop: Some(TestDrop {
+                called: drop_called.clone(),
+            }),
+            ..Default::default()
+        }));
+        let db_fs_inspector = DBFileSystemInspector::new(fs_inspector.clone());
+        drop(fs_inspector);
+        assert_eq!(0, drop_called.load(Ordering::SeqCst));
+        drop(db_fs_inspector);
+        assert_eq!(1, drop_called.load(Ordering::SeqCst));
+    }
+
+    #[test]
+    fn test_inspected_operation() {
+        let fs_inspector = Arc::new(Mutex::new(TestFileSystemInspector {
+            refill_bytes: 4,
+            ..Default::default()
+        }));
+        let db_fs_inspector = DBFileSystemInspector::new(fs_inspector.clone());
+        assert_eq!(2, db_fs_inspector.read(2).unwrap());
+        assert!(db_fs_inspector.read(8).is_err());
+        assert_eq!(2, db_fs_inspector.write(2).unwrap());
+        assert!(db_fs_inspector.write(8).is_err());
+        let record = fs_inspector.lock().unwrap();
+        assert_eq!(2, record.read_called);
+        assert_eq!(2, record.write_called);
+    }
+}

@@ -856,6 +856,7 @@ extern "C" {
         limiter: *mut DBRateLimiter,
         bytes_per_sec: i64,
     );
+    pub fn crocksdb_ratelimiter_set_auto_tuned(limiter: *mut DBRateLimiter, auto_tuned: bool);
     pub fn crocksdb_ratelimiter_get_singleburst_bytes(limiter: *mut DBRateLimiter) -> i64;
     pub fn crocksdb_ratelimiter_request(limiter: *mut DBRateLimiter, bytes: i64, pri: c_uchar);
     pub fn crocksdb_ratelimiter_get_total_bytes_through(
@@ -863,6 +864,7 @@ extern "C" {
         pri: c_uchar,
     ) -> i64;
     pub fn crocksdb_ratelimiter_get_bytes_per_second(limiter: *mut DBRateLimiter) -> i64;
+    pub fn crocksdb_ratelimiter_get_auto_tuned(limiter: *mut DBRateLimiter) -> bool;
     pub fn crocksdb_ratelimiter_get_total_requests(
         limiter: *mut DBRateLimiter,
         pri: c_uchar,
@@ -1118,6 +1120,7 @@ extern "C" {
     pub fn crocksdb_iter_prev(iter: *mut DBIterator);
     pub fn crocksdb_iter_key(iter: *const DBIterator, klen: *mut size_t) -> *mut u8;
     pub fn crocksdb_iter_value(iter: *const DBIterator, vlen: *mut size_t) -> *mut u8;
+    pub fn crocksdb_iter_seqno(iter: *const DBIterator, seqno: *mut u64) -> bool;
     pub fn crocksdb_iter_get_error(iter: *const DBIterator, err: *mut *mut c_char);
     // Write batch
     pub fn crocksdb_write(
@@ -1517,14 +1520,15 @@ extern "C" {
         propname: *const c_char,
     ) -> *mut c_char;
     // Compaction filter
-    pub fn crocksdb_compactionfilter_create_v2(
+    pub fn crocksdb_compactionfilter_create(
         state: *mut c_void,
         destructor: extern "C" fn(*mut c_void),
-        filter_v2: extern "C" fn(
+        filter: extern "C" fn(
             *mut c_void,
             c_int,
             *const u8,
             size_t,
+            u64,
             CompactionFilterValueType,
             *const u8,
             size_t,
@@ -1678,7 +1682,6 @@ extern "C" {
         ) -> *const c_char,
         delete_file: extern "C" fn(*mut c_void, *const c_char) -> *const c_char,
         link_file: extern "C" fn(*mut c_void, *const c_char, *const c_char) -> *const c_char,
-        rename_file: extern "C" fn(*mut c_void, *const c_char, *const c_char) -> *const c_char,
     ) -> *mut DBEncryptionKeyManagerInstance;
     #[cfg(feature = "encryption")]
     pub fn crocksdb_encryption_key_manager_destroy(
@@ -1703,12 +1706,6 @@ extern "C" {
     ) -> *const c_char;
     #[cfg(feature = "encryption")]
     pub fn crocksdb_encryption_key_manager_link_file(
-        key_manager: *mut DBEncryptionKeyManagerInstance,
-        src_fname: *const c_char,
-        dst_fname: *const c_char,
-    ) -> *const c_char;
-    #[cfg(feature = "encryption")]
-    pub fn crocksdb_encryption_key_manager_rename_file(
         key_manager: *mut DBEncryptionKeyManagerInstance,
         src_fname: *const c_char,
         dst_fname: *const c_char,

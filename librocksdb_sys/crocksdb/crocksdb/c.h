@@ -1293,6 +1293,8 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_ratelimiter_destroy(
     crocksdb_ratelimiter_t*);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_ratelimiter_set_bytes_per_second(
     crocksdb_ratelimiter_t* limiter, int64_t rate_bytes_per_sec);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_ratelimiter_set_auto_tuned(
+    crocksdb_ratelimiter_t* limiter, unsigned char auto_tuned);
 extern C_ROCKSDB_LIBRARY_API int64_t
 crocksdb_ratelimiter_get_singleburst_bytes(crocksdb_ratelimiter_t* limiter);
 enum {
@@ -1307,25 +1309,10 @@ crocksdb_ratelimiter_get_total_bytes_through(crocksdb_ratelimiter_t* limiter,
                                              unsigned char pri);
 extern C_ROCKSDB_LIBRARY_API int64_t
 crocksdb_ratelimiter_get_bytes_per_second(crocksdb_ratelimiter_t* limiter);
+extern C_ROCKSDB_LIBRARY_API unsigned char crocksdb_ratelimiter_get_auto_tuned(
+    crocksdb_ratelimiter_t* limiter);
 extern C_ROCKSDB_LIBRARY_API int64_t crocksdb_ratelimiter_get_total_requests(
     crocksdb_ratelimiter_t* limiter, unsigned char pri);
-
-/* Compaction Filter */
-
-extern C_ROCKSDB_LIBRARY_API crocksdb_compactionfilter_t*
-crocksdb_compactionfilter_create(
-    void* state, void (*destructor)(void*),
-    unsigned char (*filter)(void*, int level, const char* key,
-                            size_t key_length, const char* existing_value,
-                            size_t value_length, char** new_value,
-                            size_t* new_value_length,
-                            unsigned char* value_changed),
-    const char* (*name)(void*));
-extern C_ROCKSDB_LIBRARY_API void
-crocksdb_compactionfilter_set_ignore_snapshots(crocksdb_compactionfilter_t*,
-                                               unsigned char);
-extern C_ROCKSDB_LIBRARY_API void crocksdb_compactionfilter_destroy(
-    crocksdb_compactionfilter_t*);
 
 /* Compaction Filter Context */
 
@@ -1603,8 +1590,6 @@ typedef const char* (*crocksdb_encryption_key_manager_delete_file_cb)(
     void* state, const char* fname);
 typedef const char* (*crocksdb_encryption_key_manager_link_file_cb)(
     void* state, const char* src_fname, const char* dst_fname);
-typedef const char* (*crocksdb_encryption_key_manager_rename_file_cb)(
-    void* state, const char* src_fname, const char* dst_fname);
 
 extern C_ROCKSDB_LIBRARY_API crocksdb_encryption_key_manager_t*
 crocksdb_encryption_key_manager_create(
@@ -1612,8 +1597,7 @@ crocksdb_encryption_key_manager_create(
     crocksdb_encryption_key_manager_get_file_cb get_file,
     crocksdb_encryption_key_manager_new_file_cb new_file,
     crocksdb_encryption_key_manager_delete_file_cb delete_file,
-    crocksdb_encryption_key_manager_link_file_cb link_file,
-    crocksdb_encryption_key_manager_rename_file_cb rename_file);
+    crocksdb_encryption_key_manager_link_file_cb link_file);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_encryption_key_manager_destroy(
     crocksdb_encryption_key_manager_t*);
 extern C_ROCKSDB_LIBRARY_API const char*
@@ -1629,10 +1613,6 @@ crocksdb_encryption_key_manager_delete_file(
     crocksdb_encryption_key_manager_t* key_manager, const char* fname);
 extern C_ROCKSDB_LIBRARY_API const char*
 crocksdb_encryption_key_manager_link_file(
-    crocksdb_encryption_key_manager_t* key_manager, const char* src_fname,
-    const char* dst_fname);
-extern C_ROCKSDB_LIBRARY_API const char*
-crocksdb_encryption_key_manager_rename_file(
     crocksdb_encryption_key_manager_t* key_manager, const char* src_fname,
     const char* dst_fname);
 

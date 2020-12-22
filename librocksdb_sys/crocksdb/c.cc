@@ -81,6 +81,7 @@ using rocksdb::CompactionFilter;
 using rocksdb::CompactionFilterContext;
 using rocksdb::CompactionFilterFactory;
 using rocksdb::CompactionJobInfo;
+using rocksdb::SubcompactionJobInfo;
 using rocksdb::CompactionOptionsFIFO;
 using rocksdb::CompactRangeOptions;
 using rocksdb::Comparator;
@@ -360,6 +361,9 @@ struct crocksdb_writestallinfo_t {
 };
 struct crocksdb_compactionjobinfo_t {
   CompactionJobInfo rep;
+};
+struct crocksdb_subcompactionjobinfo_t {
+  SubcompactionJobInfo rep;
 };
 struct crocksdb_externalfileingestioninfo_t {
   ExternalFileIngestionInfo rep;
@@ -949,9 +953,10 @@ crocksdb_column_family_handle_t* crocksdb_create_column_family(
     crocksdb_t* db, const crocksdb_options_t* column_family_options,
     const char* column_family_name, char** errptr) {
   crocksdb_column_family_handle_t* handle = new crocksdb_column_family_handle_t;
-  SaveError(errptr, db->rep->CreateColumnFamily(
-                        ColumnFamilyOptions(column_family_options->rep),
-                        std::string(column_family_name), &(handle->rep)));
+  SaveError(errptr,
+            db->rep->CreateColumnFamily(
+                ColumnFamilyOptions(column_family_options->rep),
+                std::string(column_family_name), &(handle->rep)));
   return handle;
 }
 
@@ -983,8 +988,9 @@ void crocksdb_put_cf(crocksdb_t* db, const crocksdb_writeoptions_t* options,
                      crocksdb_column_family_handle_t* column_family,
                      const char* key, size_t keylen, const char* val,
                      size_t vallen, char** errptr) {
-  SaveError(errptr, db->rep->Put(options->rep, column_family->rep,
-                                 Slice(key, keylen), Slice(val, vallen)));
+  SaveError(errptr,
+            db->rep->Put(options->rep, column_family->rep, Slice(key, keylen),
+                         Slice(val, vallen)));
 }
 
 void crocksdb_delete(crocksdb_t* db, const crocksdb_writeoptions_t* options,
@@ -995,8 +1001,9 @@ void crocksdb_delete(crocksdb_t* db, const crocksdb_writeoptions_t* options,
 void crocksdb_delete_cf(crocksdb_t* db, const crocksdb_writeoptions_t* options,
                         crocksdb_column_family_handle_t* column_family,
                         const char* key, size_t keylen, char** errptr) {
-  SaveError(errptr, db->rep->Delete(options->rep, column_family->rep,
-                                    Slice(key, keylen)));
+  SaveError(
+      errptr,
+      db->rep->Delete(options->rep, column_family->rep, Slice(key, keylen)));
 }
 
 void crocksdb_single_delete(crocksdb_t* db,
@@ -1009,8 +1016,9 @@ void crocksdb_single_delete_cf(crocksdb_t* db,
                                const crocksdb_writeoptions_t* options,
                                crocksdb_column_family_handle_t* column_family,
                                const char* key, size_t keylen, char** errptr) {
-  SaveError(errptr, db->rep->SingleDelete(options->rep, column_family->rep,
-                                          Slice(key, keylen)));
+  SaveError(errptr,
+            db->rep->SingleDelete(options->rep, column_family->rep,
+                                  Slice(key, keylen)));
 }
 
 void crocksdb_delete_range_cf(crocksdb_t* db,
@@ -1019,24 +1027,27 @@ void crocksdb_delete_range_cf(crocksdb_t* db,
                               const char* begin_key, size_t begin_keylen,
                               const char* end_key, size_t end_keylen,
                               char** errptr) {
-  SaveError(errptr, db->rep->DeleteRange(options->rep, column_family->rep,
-                                         Slice(begin_key, begin_keylen),
-                                         Slice(end_key, end_keylen)));
+  SaveError(errptr,
+            db->rep->DeleteRange(options->rep, column_family->rep,
+                                 Slice(begin_key, begin_keylen),
+                                 Slice(end_key, end_keylen)));
 }
 
 void crocksdb_merge(crocksdb_t* db, const crocksdb_writeoptions_t* options,
                     const char* key, size_t keylen, const char* val,
                     size_t vallen, char** errptr) {
-  SaveError(errptr, db->rep->Merge(options->rep, Slice(key, keylen),
-                                   Slice(val, vallen)));
+  SaveError(
+      errptr,
+      db->rep->Merge(options->rep, Slice(key, keylen), Slice(val, vallen)));
 }
 
 void crocksdb_merge_cf(crocksdb_t* db, const crocksdb_writeoptions_t* options,
                        crocksdb_column_family_handle_t* column_family,
                        const char* key, size_t keylen, const char* val,
                        size_t vallen, char** errptr) {
-  SaveError(errptr, db->rep->Merge(options->rep, column_family->rep,
-                                   Slice(key, keylen), Slice(val, vallen)));
+  SaveError(errptr,
+            db->rep->Merge(options->rep, column_family->rep, Slice(key, keylen),
+                           Slice(val, vallen)));
 }
 
 void crocksdb_write(crocksdb_t* db, const crocksdb_writeoptions_t* options,
@@ -2160,6 +2171,34 @@ CompactionReason crocksdb_compactionjobinfo_compaction_reason(
   return info->rep.compaction_reason;
 }
 
+/* SubcompactionJobInfo */
+
+void crocksdb_subcompactionjobinfo_status(
+    const crocksdb_subcompactionjobinfo_t* info, char** errptr) {
+  SaveError(errptr, info->rep.status);
+}
+
+const char* crocksdb_subcompactionjobinfo_cf_name(
+    const crocksdb_subcompactionjobinfo_t* info, size_t* size) {
+  *size = info->rep.cf_name.size();
+  return info->rep.cf_name.data();
+}
+
+uint64_t crocksdb_subcompactionjobinfo_thread_id(
+    const crocksdb_subcompactionjobinfo_t* info) {
+  return info->rep.thread_id;
+}
+
+int crocksdb_subcompactionjobinfo_base_input_level(
+    const crocksdb_subcompactionjobinfo_t* info) {
+  return info->rep.base_input_level;
+}
+
+int crocksdb_subcompactionjobinfo_output_level(
+    const crocksdb_subcompactionjobinfo_t* info) {
+  return info->rep.output_level;
+}
+
 /* ExternalFileIngestionInfo */
 
 const char* crocksdb_externalfileingestioninfo_cf_name(
@@ -2205,15 +2244,27 @@ const crocksdb_writestallcondition_t* crocksdb_writestallinfo_prev(
 struct crocksdb_eventlistener_t : public EventListener {
   void* state_;
   void (*destructor_)(void*);
+  void (*on_flush_begin)(void*, crocksdb_t*, const crocksdb_flushjobinfo_t*);
   void (*on_flush_completed)(void*, crocksdb_t*,
                              const crocksdb_flushjobinfo_t*);
+  void (*on_compaction_begin)(void*, crocksdb_t*,
+                              const crocksdb_compactionjobinfo_t*);
   void (*on_compaction_completed)(void*, crocksdb_t*,
                                   const crocksdb_compactionjobinfo_t*);
+  void (*on_subcompaction_begin)(void*, const crocksdb_subcompactionjobinfo_t*);
+  void (*on_subcompaction_completed)(void*,
+                                     const crocksdb_subcompactionjobinfo_t*);
   void (*on_external_file_ingested)(
       void*, crocksdb_t*, const crocksdb_externalfileingestioninfo_t*);
   void (*on_background_error)(void*, crocksdb_backgrounderrorreason_t,
                               crocksdb_status_ptr_t*);
   void (*on_stall_conditions_changed)(void*, const crocksdb_writestallinfo_t*);
+
+  virtual void OnFlushBegin(DB* db, const FlushJobInfo& info) {
+    crocksdb_t c_db = {db};
+    on_flush_begin(state_, &c_db,
+                   reinterpret_cast<const crocksdb_flushjobinfo_t*>(&info));
+  }
 
   virtual void OnFlushCompleted(DB* db, const FlushJobInfo& info) {
     crocksdb_t c_db = {db};
@@ -2221,11 +2272,30 @@ struct crocksdb_eventlistener_t : public EventListener {
                        reinterpret_cast<const crocksdb_flushjobinfo_t*>(&info));
   }
 
+  virtual void OnCompactionBegin(DB* db, const CompactionJobInfo& info) {
+    crocksdb_t c_db = {db};
+    on_compaction_begin(
+        state_, &c_db,
+        reinterpret_cast<const crocksdb_compactionjobinfo_t*>(&info));
+  }
+
   virtual void OnCompactionCompleted(DB* db, const CompactionJobInfo& info) {
     crocksdb_t c_db = {db};
     on_compaction_completed(
         state_, &c_db,
         reinterpret_cast<const crocksdb_compactionjobinfo_t*>(&info));
+  }
+
+  virtual void OnSubcompactionBegin(const SubcompactionJobInfo& info) {
+    on_subcompaction_begin(
+        state_,
+        reinterpret_cast<const crocksdb_subcompactionjobinfo_t*>(&info));
+  }
+
+  virtual void OnSubcompactionCompleted(const SubcompactionJobInfo& info) {
+    on_subcompaction_completed(
+        state_,
+        reinterpret_cast<const crocksdb_subcompactionjobinfo_t*>(&info));
   }
 
   virtual void OnExternalFileIngested(DB* db,
@@ -2269,9 +2339,12 @@ struct crocksdb_eventlistener_t : public EventListener {
 };
 
 crocksdb_eventlistener_t* crocksdb_eventlistener_create(
-    void* state_, void (*destructor_)(void*),
+    void* state_, void (*destructor_)(void*), on_flush_begin_cb on_flush_begin,
     on_flush_completed_cb on_flush_completed,
+    on_compaction_begin_cb on_compaction_begin,
     on_compaction_completed_cb on_compaction_completed,
+    on_subcompaction_begin_cb on_subcompaction_begin,
+    on_subcompaction_completed_cb on_subcompaction_completed,
     on_external_file_ingested_cb on_external_file_ingested,
     on_background_error_cb on_background_error,
     on_stall_conditions_changed_cb on_stall_conditions_changed) {
@@ -4174,8 +4247,9 @@ void crocksdb_sstfilewriter_delete_range(crocksdb_sstfilewriter_t* writer,
                                          size_t begin_keylen,
                                          const char* end_key, size_t end_keylen,
                                          char** errptr) {
-  SaveError(errptr, writer->rep->DeleteRange(Slice(begin_key, begin_keylen),
-                                             Slice(end_key, end_keylen)));
+  SaveError(errptr,
+            writer->rep->DeleteRange(Slice(begin_key, begin_keylen),
+                                     Slice(end_key, end_keylen)));
 }
 
 void crocksdb_sstfilewriter_finish(crocksdb_sstfilewriter_t* writer,
@@ -6031,10 +6105,11 @@ crocksdb_column_family_handle_t* ctitandb_create_column_family(
   // Blindly cast db into TitanDB.
   TitanDB* titan_db = reinterpret_cast<TitanDB*>(db->rep);
   crocksdb_column_family_handle_t* handle = new crocksdb_column_family_handle_t;
-  SaveError(errptr, titan_db->CreateColumnFamily(
-                        TitanCFDescriptor(std::string(column_family_name),
-                                          titan_column_family_options->rep),
-                        &(handle->rep)));
+  SaveError(errptr,
+            titan_db->CreateColumnFamily(
+                TitanCFDescriptor(std::string(column_family_name),
+                                  titan_column_family_options->rep),
+                &(handle->rep)));
   return handle;
 }
 
@@ -6333,8 +6408,9 @@ void ctitandb_delete_files_in_range_cf(
       start_key ? (a = Slice(start_key, start_key_len), &a) : nullptr,
       limit_key ? (b = Slice(limit_key, limit_key_len), &b) : nullptr);
 
-  SaveError(errptr, static_cast<TitanDB*>(db->rep)->DeleteFilesInRanges(
-                        column_family->rep, &range, 1, include_end));
+  SaveError(errptr,
+            static_cast<TitanDB*>(db->rep)->DeleteFilesInRanges(
+                column_family->rep, &range, 1, include_end));
 }
 
 void ctitandb_delete_files_in_ranges_cf(
@@ -6358,8 +6434,9 @@ void ctitandb_delete_files_in_ranges_cf(
     }
     ranges[i] = RangePtr(start, limit);
   }
-  SaveError(errptr, static_cast<TitanDB*>(db->rep)->DeleteFilesInRanges(
-                        cf->rep, &ranges[0], num_ranges, include_end));
+  SaveError(errptr,
+            static_cast<TitanDB*>(db->rep)->DeleteFilesInRanges(
+                cf->rep, &ranges[0], num_ranges, include_end));
 }
 
 void ctitandb_delete_blob_files_in_range(crocksdb_t* db, const char* start_key,
@@ -6387,8 +6464,9 @@ void ctitandb_delete_blob_files_in_range_cf(
       start_key ? (a = Slice(start_key, start_key_len), &a) : nullptr,
       limit_key ? (b = Slice(limit_key, limit_key_len), &b) : nullptr);
 
-  SaveError(errptr, static_cast<TitanDB*>(db->rep)->DeleteBlobFilesInRanges(
-                        column_family->rep, &range, 1, include_end));
+  SaveError(errptr,
+            static_cast<TitanDB*>(db->rep)->DeleteBlobFilesInRanges(
+                column_family->rep, &range, 1, include_end));
 }
 
 void ctitandb_delete_blob_files_in_ranges_cf(
@@ -6412,8 +6490,9 @@ void ctitandb_delete_blob_files_in_ranges_cf(
     }
     ranges[i] = RangePtr(start, limit);
   }
-  SaveError(errptr, static_cast<TitanDB*>(db->rep)->DeleteBlobFilesInRanges(
-                        cf->rep, &ranges[0], num_ranges, include_end));
+  SaveError(errptr,
+            static_cast<TitanDB*>(db->rep)->DeleteBlobFilesInRanges(
+                cf->rep, &ranges[0], num_ranges, include_end));
 }
 
 /* RocksDB Cloud */

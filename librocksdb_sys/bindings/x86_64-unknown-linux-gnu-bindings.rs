@@ -534,6 +534,11 @@ pub const crocksdb_backgrounderrorreason_t_kCompaction: crocksdb_backgrounderror
 pub const crocksdb_backgrounderrorreason_t_kWriteCallback: crocksdb_backgrounderrorreason_t = 3;
 pub const crocksdb_backgrounderrorreason_t_kMemTable: crocksdb_backgrounderrorreason_t = 4;
 pub type crocksdb_backgrounderrorreason_t = u32;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct crocksdb_file_system_inspector_t {
+    _unused: [u8; 0],
+}
 extern "C" {
     pub fn crocksdb_open(
         options: *const crocksdb_options_t,
@@ -3263,6 +3268,51 @@ extern "C" {
 }
 extern "C" {
     pub fn crocksdb_sequential_file_destroy(arg1: *mut crocksdb_sequential_file_t);
+}
+pub type crocksdb_file_system_inspector_read_cb = ::std::option::Option<
+    unsafe extern "C" fn(
+        state: *mut libc::c_void,
+        len: usize,
+        errptr: *mut *mut libc::c_char,
+    ) -> usize,
+>;
+pub type crocksdb_file_system_inspector_write_cb = ::std::option::Option<
+    unsafe extern "C" fn(
+        state: *mut libc::c_void,
+        len: usize,
+        errptr: *mut *mut libc::c_char,
+    ) -> usize,
+>;
+extern "C" {
+    pub fn crocksdb_file_system_inspector_create(
+        state: *mut libc::c_void,
+        destructor: ::std::option::Option<unsafe extern "C" fn(arg1: *mut libc::c_void)>,
+        read: crocksdb_file_system_inspector_read_cb,
+        write: crocksdb_file_system_inspector_write_cb,
+    ) -> *mut crocksdb_file_system_inspector_t;
+}
+extern "C" {
+    pub fn crocksdb_file_system_inspector_destroy(arg1: *mut crocksdb_file_system_inspector_t);
+}
+extern "C" {
+    pub fn crocksdb_file_system_inspector_read(
+        inspector: *mut crocksdb_file_system_inspector_t,
+        len: usize,
+        errptr: *mut *mut libc::c_char,
+    ) -> usize;
+}
+extern "C" {
+    pub fn crocksdb_file_system_inspector_write(
+        inspector: *mut crocksdb_file_system_inspector_t,
+        len: usize,
+        errptr: *mut *mut libc::c_char,
+    ) -> usize;
+}
+extern "C" {
+    pub fn crocksdb_file_system_inspected_env_create(
+        arg1: *mut crocksdb_env_t,
+        arg2: *mut crocksdb_file_system_inspector_t,
+    ) -> *mut crocksdb_env_t;
 }
 extern "C" {
     pub fn crocksdb_sstfilereader_create(

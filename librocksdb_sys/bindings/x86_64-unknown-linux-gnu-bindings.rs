@@ -2697,6 +2697,12 @@ extern "C" {
     );
 }
 extern "C" {
+    pub fn crocksdb_ratelimiter_set_auto_tuned(
+        limiter: *mut crocksdb_ratelimiter_t,
+        auto_tuned: libc::c_uchar,
+    );
+}
+extern "C" {
     pub fn crocksdb_ratelimiter_get_singleburst_bytes(limiter: *mut crocksdb_ratelimiter_t) -> i64;
 }
 pub const env_io_priority_low: _bindgen_ty_6 = 0;
@@ -2720,41 +2726,15 @@ extern "C" {
     pub fn crocksdb_ratelimiter_get_bytes_per_second(limiter: *mut crocksdb_ratelimiter_t) -> i64;
 }
 extern "C" {
+    pub fn crocksdb_ratelimiter_get_auto_tuned(
+        limiter: *mut crocksdb_ratelimiter_t,
+    ) -> libc::c_uchar;
+}
+extern "C" {
     pub fn crocksdb_ratelimiter_get_total_requests(
         limiter: *mut crocksdb_ratelimiter_t,
         pri: libc::c_uchar,
     ) -> i64;
-}
-extern "C" {
-    pub fn crocksdb_compactionfilter_create(
-        state: *mut libc::c_void,
-        destructor: ::std::option::Option<unsafe extern "C" fn(arg1: *mut libc::c_void)>,
-        filter: ::std::option::Option<
-            unsafe extern "C" fn(
-                arg1: *mut libc::c_void,
-                level: libc::c_int,
-                key: *const libc::c_char,
-                key_length: usize,
-                existing_value: *const libc::c_char,
-                value_length: usize,
-                new_value: *mut *mut libc::c_char,
-                new_value_length: *mut usize,
-                value_changed: *mut libc::c_uchar,
-            ) -> libc::c_uchar,
-        >,
-        name: ::std::option::Option<
-            unsafe extern "C" fn(arg1: *mut libc::c_void) -> *const libc::c_char,
-        >,
-    ) -> *mut crocksdb_compactionfilter_t;
-}
-extern "C" {
-    pub fn crocksdb_compactionfilter_set_ignore_snapshots(
-        arg1: *mut crocksdb_compactionfilter_t,
-        arg2: libc::c_uchar,
-    );
-}
-extern "C" {
-    pub fn crocksdb_compactionfilter_destroy(arg1: *mut crocksdb_compactionfilter_t);
 }
 extern "C" {
     pub fn crocksdb_compactionfiltercontext_is_full_compaction(

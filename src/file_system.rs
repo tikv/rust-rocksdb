@@ -3,7 +3,6 @@
 pub use crocksdb_ffi::{self, DBFileSystemInspectorInstance};
 
 use libc::{c_char, c_void, size_t, strdup};
-use std::sync::Arc;
 
 // Inspect global IO flow. No per-file inspection for now.
 pub trait FileSystemInspector: Sync + Send {
@@ -23,7 +22,7 @@ extern "C" fn file_system_inspector_read(
     len: size_t,
     errptr: *mut *mut c_char,
 ) -> size_t {
-    let file_system_inspector = unsafe { Box::from_raw(ctx as *mut Box<dyn FileSystemInspector>) };
+    let file_system_inspector = unsafe { &*(ctx as *mut Box<dyn FileSystemInspector>) };
     match file_system_inspector.read(len) {
         Ok(ret) => ret,
         Err(e) => {
@@ -40,7 +39,7 @@ extern "C" fn file_system_inspector_write(
     len: size_t,
     errptr: *mut *mut c_char,
 ) -> size_t {
-    let file_system_inspector = unsafe { Box::from_raw(ctx as *mut Box<dyn FileSystemInspector>) };
+    let file_system_inspector = unsafe { &*(ctx as *mut Box<dyn FileSystemInspector>) };
     match file_system_inspector.write(len) {
         Ok(ret) => ret,
         Err(e) => {

@@ -129,7 +129,7 @@ mod test {
         }
     }
 
-    impl FileSystemInspector for Mutex<TestFileSystemInspector> {
+    impl FileSystemInspector for Arc<Mutex<TestFileSystemInspector>> {
         fn read(&self, len: usize) -> Result<usize, String> {
             let mut inner = self.lock().unwrap();
             inner.read_called += 1;
@@ -159,7 +159,7 @@ mod test {
             }),
             ..Default::default()
         }));
-        let db_fs_inspector = DBFileSystemInspector::new(fs_inspector.clone());
+        let db_fs_inspector = DBFileSystemInspector::new(Box::new(fs_inspector.clone());
         drop(fs_inspector);
         assert_eq!(0, drop_called.load(Ordering::SeqCst));
         drop(db_fs_inspector);
@@ -172,7 +172,7 @@ mod test {
             refill_bytes: 4,
             ..Default::default()
         }));
-        let db_fs_inspector = DBFileSystemInspector::new(fs_inspector.clone());
+        let db_fs_inspector = DBFileSystemInspector::new(Box::new(fs_inspector.clone());
         assert_eq!(2, db_fs_inspector.read(2).unwrap());
         assert!(db_fs_inspector.read(8).is_err());
         assert_eq!(2, db_fs_inspector.write(2).unwrap());

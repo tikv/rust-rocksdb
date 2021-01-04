@@ -385,7 +385,7 @@ mod test {
         }
     }
 
-    impl EncryptionKeyManager for Mutex<TestEncryptionKeyManager> {
+    impl EncryptionKeyManager for Arc<Mutex<TestEncryptionKeyManager>> {
         fn get_file(&self, fname: &str) -> Result<FileEncryptionInfo> {
             let key_manager = self.lock().unwrap();
             key_manager.get_file_called.fetch_add(1, Ordering::SeqCst);
@@ -443,7 +443,7 @@ mod test {
             }),
             ..Default::default()
         }));
-        let db_key_manager = DBEncryptionKeyManager::new(key_manager.clone());
+        let db_key_manager = DBEncryptionKeyManager::new(Box::new(key_manager.clone()));
         drop(key_manager);
         assert_eq!(0, drop_called.load(Ordering::SeqCst));
         drop(db_key_manager);
@@ -460,7 +460,7 @@ mod test {
             }),
             ..Default::default()
         }));
-        let db_key_manager = DBEncryptionKeyManager::new(key_manager.clone());
+        let db_key_manager = DBEncryptionKeyManager::new(Box::new(key_manager.clone()));
         let file_info = db_key_manager.get_file("get_file_path").unwrap();
         assert_eq!(DBEncryptionMethod::Aes128Ctr, file_info.method);
         assert_eq!(b"test_key_get_file", file_info.key.as_slice());
@@ -476,7 +476,7 @@ mod test {
     #[test]
     fn get_file_error() {
         let key_manager = Arc::new(Mutex::new(TestEncryptionKeyManager::default()));
-        let db_key_manager = DBEncryptionKeyManager::new(key_manager.clone());
+        let db_key_manager = DBEncryptionKeyManager::new(Box::new(key_manager.clone()));
         assert!(db_key_manager.get_file("get_file_path").is_err());
         let record = key_manager.lock().unwrap();
         assert_eq!(1, record.get_file_called.load(Ordering::SeqCst));
@@ -496,7 +496,7 @@ mod test {
             }),
             ..Default::default()
         }));
-        let db_key_manager = DBEncryptionKeyManager::new(key_manager.clone());
+        let db_key_manager = DBEncryptionKeyManager::new(Box::new(key_manager.clone()));
         let file_info = db_key_manager.new_file("new_file_path").unwrap();
         assert_eq!(DBEncryptionMethod::Aes256Ctr, file_info.method);
         assert_eq!(b"test_key_new_file", file_info.key.as_slice());
@@ -512,7 +512,7 @@ mod test {
     #[test]
     fn new_file_error() {
         let key_manager = Arc::new(Mutex::new(TestEncryptionKeyManager::default()));
-        let db_key_manager = DBEncryptionKeyManager::new(key_manager.clone());
+        let db_key_manager = DBEncryptionKeyManager::new(Box::new(key_manager.clone()));
         assert!(db_key_manager.new_file("new_file_path").is_err());
         let record = key_manager.lock().unwrap();
         assert_eq!(0, record.get_file_called.load(Ordering::SeqCst));
@@ -528,7 +528,7 @@ mod test {
             return_value: Some(FileEncryptionInfo::default()),
             ..Default::default()
         }));
-        let db_key_manager = DBEncryptionKeyManager::new(key_manager.clone());
+        let db_key_manager = DBEncryptionKeyManager::new(Box::new(key_manager.clone()));
         assert!(db_key_manager.delete_file("delete_file_path").is_ok());
         let record = key_manager.lock().unwrap();
         assert_eq!(0, record.get_file_called.load(Ordering::SeqCst));
@@ -541,7 +541,7 @@ mod test {
     #[test]
     fn delete_file_error() {
         let key_manager = Arc::new(Mutex::new(TestEncryptionKeyManager::default()));
-        let db_key_manager = DBEncryptionKeyManager::new(key_manager.clone());
+        let db_key_manager = DBEncryptionKeyManager::new(Box::new(key_manager.clone()));
         assert!(db_key_manager.delete_file("delete_file_path").is_err());
         let record = key_manager.lock().unwrap();
         assert_eq!(0, record.get_file_called.load(Ordering::SeqCst));
@@ -557,7 +557,7 @@ mod test {
             return_value: Some(FileEncryptionInfo::default()),
             ..Default::default()
         }));
-        let db_key_manager = DBEncryptionKeyManager::new(key_manager.clone());
+        let db_key_manager = DBEncryptionKeyManager::new(Box::new(key_manager.clone()));
         assert!(db_key_manager
             .link_file("src_link_file_path", "dst_link_file_path")
             .is_ok());
@@ -576,7 +576,7 @@ mod test {
     #[test]
     fn link_file_error() {
         let key_manager = Arc::new(Mutex::new(TestEncryptionKeyManager::default()));
-        let db_key_manager = DBEncryptionKeyManager::new(key_manager.clone());
+        let db_key_manager = DBEncryptionKeyManager::new(Box::new(key_manager.clone()));
         assert!(db_key_manager
             .link_file("src_link_file_path", "dst_link_file_path")
             .is_err());

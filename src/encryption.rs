@@ -72,7 +72,7 @@ fn copy_error<T: Into<Vec<u8>>>(err: T) -> *const c_char {
 extern "C" fn encryption_key_manager_destructor(ctx: *mut c_void) {
     unsafe {
         // Recover from raw pointer and implicitly drop.
-        Box::from_raw(ctx as *mut Arc<dyn EncryptionKeyManager>);
+        Box::from_raw(ctx as *mut Box<dyn EncryptionKeyManager>);
     }
 }
 
@@ -81,7 +81,7 @@ extern "C" fn encryption_key_manager_get_file(
     fname: *const c_char,
     file_info: *mut DBFileEncryptionInfo,
 ) -> *const c_char {
-    let key_manager = unsafe { &*(ctx as *mut Arc<dyn EncryptionKeyManager>) };
+    let key_manager = unsafe { Box::from_raw(ctx as *mut Box<dyn EncryptionKeyManager>) };
     let fname = match unsafe { CStr::from_ptr(fname).to_str() } {
         Ok(ret) => ret,
         Err(err) => {
@@ -107,7 +107,7 @@ extern "C" fn encryption_key_manager_new_file(
     fname: *const c_char,
     file_info: *mut DBFileEncryptionInfo,
 ) -> *const c_char {
-    let key_manager = unsafe { &*(ctx as *mut Arc<dyn EncryptionKeyManager>) };
+    let key_manager = unsafe { Box::from_raw(ctx as *mut Box<dyn EncryptionKeyManager>) };
     let fname = match unsafe { CStr::from_ptr(fname).to_str() } {
         Ok(ret) => ret,
         Err(err) => {
@@ -132,7 +132,7 @@ extern "C" fn encryption_key_manager_delete_file(
     ctx: *mut c_void,
     fname: *const c_char,
 ) -> *const c_char {
-    let key_manager = unsafe { &*(ctx as *mut Arc<dyn EncryptionKeyManager>) };
+    let key_manager = unsafe { Box::from_raw(ctx as *mut Box<dyn EncryptionKeyManager>) };
     let fname = match unsafe { CStr::from_ptr(fname).to_str() } {
         Ok(ret) => ret,
         Err(err) => {
@@ -156,7 +156,7 @@ extern "C" fn encryption_key_manager_link_file(
     src_fname: *const c_char,
     dst_fname: *const c_char,
 ) -> *const c_char {
-    let key_manager = unsafe { &*(ctx as *mut Arc<dyn EncryptionKeyManager>) };
+    let key_manager = unsafe { Box::from_raw(ctx as *mut Box<dyn EncryptionKeyManager>) };
     let src_fname = match unsafe { CStr::from_ptr(src_fname).to_str() } {
         Ok(ret) => ret,
         Err(err) => {
@@ -193,7 +193,8 @@ unsafe impl Sync for DBEncryptionKeyManager {}
 
 impl DBEncryptionKeyManager {
     pub fn new(key_manager: Box<dyn EncryptionKeyManager>) -> DBEncryptionKeyManager {
-        let ctx = Box::into_raw(key_manager) as *mut c_void;
+        // Need two indirections to convert fat trait pointer to thin pointer.
+        let ctx = Box::into_raw(Box::new(key_manager)) as *mut c_void;
         let instance = unsafe {
             crocksdb_ffi::crocksdb_encryption_key_manager_create(
                 ctx,

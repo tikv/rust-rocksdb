@@ -14,7 +14,7 @@ pub trait FileSystemInspector: Sync + Send {
 extern "C" fn file_system_inspector_destructor(ctx: *mut c_void) {
     unsafe {
         // Recover from raw pointer and implicitly drop.
-        Box::from_raw(ctx as *mut Arc<dyn FileSystemInspector>);
+        Box::from_raw(ctx as *mut Box<dyn FileSystemInspector>);
     }
 }
 
@@ -23,7 +23,7 @@ extern "C" fn file_system_inspector_read(
     len: size_t,
     errptr: *mut *mut c_char,
 ) -> size_t {
-    let file_system_inspector = unsafe { &*(ctx as *mut Arc<dyn FileSystemInspector>) };
+    let file_system_inspector = unsafe { Box::from_raw(ctx as *mut Box<dyn FileSystemInspector>) };
     match file_system_inspector.read(len) {
         Ok(ret) => ret,
         Err(e) => {
@@ -40,7 +40,7 @@ extern "C" fn file_system_inspector_write(
     len: size_t,
     errptr: *mut *mut c_char,
 ) -> size_t {
-    let file_system_inspector = unsafe { &*(ctx as *mut Arc<dyn FileSystemInspector>) };
+    let file_system_inspector = unsafe { Box::from_raw(ctx as *mut Box<dyn FileSystemInspector>) };
     match file_system_inspector.write(len) {
         Ok(ret) => ret,
         Err(e) => {
@@ -61,7 +61,8 @@ unsafe impl Sync for DBFileSystemInspector {}
 
 impl DBFileSystemInspector {
     pub fn new(file_system_inspector: Box<dyn FileSystemInspector>) -> DBFileSystemInspector {
-        let ctx = Box::into_raw(file_system_inspector) as *mut c_void;
+        // Need two indirections to convert fat trait pointer to thin pointer.
+        let ctx = Box::into_raw(Box::new(file_system_inspector)) as *mut c_void;
         let instance = unsafe {
             crocksdb_ffi::crocksdb_file_system_inspector_create(
                 ctx,

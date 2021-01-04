@@ -37,6 +37,7 @@ pub use compaction_filter::{
 };
 #[cfg(feature = "encryption")]
 pub use encryption::{DBEncryptionMethod, EncryptionKeyManager, FileEncryptionInfo};
+pub use file_system::FileSystemInspector;
 pub use event_listener::{
     CompactionJobInfo, EventListener, FlushJobInfo, IngestionInfo, SubcompactionJobInfo,
     WriteStallInfo,

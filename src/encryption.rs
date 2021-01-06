@@ -69,7 +69,7 @@ fn copy_error<T: Into<Vec<u8>>>(err: T) -> *const c_char {
     unsafe { libc::strdup(cstr.as_ptr()) }
 }
 
-extern "C" fn encryption_key_manager_destructor(ctx: *mut c_void)<T: EncryptionKeyManager> {
+extern "C" fn encryption_key_manager_destructor<T: EncryptionKeyManager>(ctx: *mut c_void) {
     unsafe {
         // Recover from raw pointer and implicitly drop.
         Box::from_raw(ctx as *mut T);
@@ -156,7 +156,7 @@ extern "C" fn encryption_key_manager_link_file<T: EncryptionKeyManager>(
     src_fname: *const c_char,
     dst_fname: *const c_char,
 ) -> *const c_char {
-    let key_manager = unsafe { &*(ctx as *mut T>) };
+    let key_manager = unsafe { &*(ctx as *mut T) };
     let src_fname = match unsafe { CStr::from_ptr(src_fname).to_str() } {
         Ok(ret) => ret,
         Err(err) => {

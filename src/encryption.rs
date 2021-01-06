@@ -192,7 +192,7 @@ unsafe impl Send for DBEncryptionKeyManager {}
 unsafe impl Sync for DBEncryptionKeyManager {}
 
 impl DBEncryptionKeyManager {
-    pub fn new<T: EncryptionKeyManager>(key_manager: T>) -> DBEncryptionKeyManager {
+    pub fn new<T: EncryptionKeyManager>(key_manager: T) -> DBEncryptionKeyManager {
         let ctx = Box::into_raw(Box::new(key_manager)) as *mut c_void;
         let instance = unsafe {
             crocksdb_ffi::crocksdb_encryption_key_manager_create(

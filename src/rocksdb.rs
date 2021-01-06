@@ -2671,7 +2671,7 @@ impl Env {
         })
     }
 
-    pub fn new_file_system_inspected_env<T: EncryptionKeyManager>(
+    pub fn new_file_system_inspected_env<T: FileSystemInspector>(
         base_env: Arc<Env>,
         file_system_inspector: T,
     ) -> Result<Env, String> {

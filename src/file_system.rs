@@ -64,9 +64,9 @@ impl DBFileSystemInspector {
         let instance = unsafe {
             crocksdb_ffi::crocksdb_file_system_inspector_create(
                 ctx,
-                file_system_inspector_destructor<T>,
-                file_system_inspector_read<T>,
-                file_system_inspector_write<T>,
+                file_system_inspector_destructor::<T>,
+                file_system_inspector_read::<T>,
+                file_system_inspector_write::<T>,
             )
         };
         DBFileSystemInspector { inner: instance }

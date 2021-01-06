@@ -197,11 +197,11 @@ impl DBEncryptionKeyManager {
         let instance = unsafe {
             crocksdb_ffi::crocksdb_encryption_key_manager_create(
                 ctx,
-                encryption_key_manager_destructor<T>,
-                encryption_key_manager_get_file<T>,
-                encryption_key_manager_new_file<T>,
-                encryption_key_manager_delete_file<T>,
-                encryption_key_manager_link_file<T>,
+                encryption_key_manager_destructor::<T>,
+                encryption_key_manager_get_file::<T>,
+                encryption_key_manager_new_file::<T>,
+                encryption_key_manager_delete_file::<T>,
+                encryption_key_manager_link_file::<T>,
             )
         };
         DBEncryptionKeyManager { inner: instance }

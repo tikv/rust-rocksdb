@@ -69,19 +69,19 @@ fn copy_error<T: Into<Vec<u8>>>(err: T) -> *const c_char {
     unsafe { libc::strdup(cstr.as_ptr()) }
 }
 
-extern "C" fn encryption_key_manager_destructor(ctx: *mut c_void) {
+extern "C" fn encryption_key_manager_destructor(ctx: *mut c_void)<T: EncryptionKeyManager> {
     unsafe {
         // Recover from raw pointer and implicitly drop.
-        Box::from_raw(ctx as *mut Box<dyn EncryptionKeyManager>);
+        Box::from_raw(ctx as *mut T);
     }
 }
 
-extern "C" fn encryption_key_manager_get_file(
+extern "C" fn encryption_key_manager_get_file<T: EncryptionKeyManager>(
     ctx: *mut c_void,
     fname: *const c_char,
     file_info: *mut DBFileEncryptionInfo,
 ) -> *const c_char {
-    let key_manager = unsafe { &*(ctx as *mut Box<dyn EncryptionKeyManager>) };
+    let key_manager = unsafe { &*(ctx as *mut T) };
     let fname = match unsafe { CStr::from_ptr(fname).to_str() } {
         Ok(ret) => ret,
         Err(err) => {
@@ -102,12 +102,12 @@ extern "C" fn encryption_key_manager_get_file(
     }
 }
 
-extern "C" fn encryption_key_manager_new_file(
+extern "C" fn encryption_key_manager_new_file<T: EncryptionKeyManager>(
     ctx: *mut c_void,
     fname: *const c_char,
     file_info: *mut DBFileEncryptionInfo,
 ) -> *const c_char {
-    let key_manager = unsafe { &*(ctx as *mut Box<dyn EncryptionKeyManager>) };
+    let key_manager = unsafe { &*(ctx as *mut T) };
     let fname = match unsafe { CStr::from_ptr(fname).to_str() } {
         Ok(ret) => ret,
         Err(err) => {
@@ -128,11 +128,11 @@ extern "C" fn encryption_key_manager_new_file(
     }
 }
 
-extern "C" fn encryption_key_manager_delete_file(
+extern "C" fn encryption_key_manager_delete_file<T: EncryptionKeyManager>(
     ctx: *mut c_void,
     fname: *const c_char,
 ) -> *const c_char {
-    let key_manager = unsafe { &*(ctx as *mut Box<dyn EncryptionKeyManager>) };
+    let key_manager = unsafe { &*(ctx as *mut T) };
     let fname = match unsafe { CStr::from_ptr(fname).to_str() } {
         Ok(ret) => ret,
         Err(err) => {
@@ -151,12 +151,12 @@ extern "C" fn encryption_key_manager_delete_file(
     }
 }
 
-extern "C" fn encryption_key_manager_link_file(
+extern "C" fn encryption_key_manager_link_file<T: EncryptionKeyManager>(
     ctx: *mut c_void,
     src_fname: *const c_char,
     dst_fname: *const c_char,
 ) -> *const c_char {
-    let key_manager = unsafe { &*(ctx as *mut Box<dyn EncryptionKeyManager>) };
+    let key_manager = unsafe { &*(ctx as *mut T>) };
     let src_fname = match unsafe { CStr::from_ptr(src_fname).to_str() } {
         Ok(ret) => ret,
         Err(err) => {
@@ -192,17 +192,16 @@ unsafe impl Send for DBEncryptionKeyManager {}
 unsafe impl Sync for DBEncryptionKeyManager {}
 
 impl DBEncryptionKeyManager {
-    pub fn new(key_manager: Box<dyn EncryptionKeyManager>) -> DBEncryptionKeyManager {
-        // Need two indirections to convert fat trait pointer to thin pointer.
+    pub fn new<T: EncryptionKeyManager>(key_manager: T>) -> DBEncryptionKeyManager {
         let ctx = Box::into_raw(Box::new(key_manager)) as *mut c_void;
         let instance = unsafe {
             crocksdb_ffi::crocksdb_encryption_key_manager_create(
                 ctx,
-                encryption_key_manager_destructor,
-                encryption_key_manager_get_file,
-                encryption_key_manager_new_file,
-                encryption_key_manager_delete_file,
-                encryption_key_manager_link_file,
+                encryption_key_manager_destructor<T>,
+                encryption_key_manager_get_file<T>,
+                encryption_key_manager_new_file<T>,
+                encryption_key_manager_delete_file<T>,
+                encryption_key_manager_link_file<T>,
             )
         };
         DBEncryptionKeyManager { inner: instance }
@@ -444,7 +443,7 @@ mod test {
             }),
             ..Default::default()
         }));
-        let db_key_manager = DBEncryptionKeyManager::new(Box::new(key_manager.clone()));
+        let db_key_manager = DBEncryptionKeyManager::new(key_manager.clone());
         drop(key_manager);
         assert_eq!(0, drop_called.load(Ordering::SeqCst));
         drop(db_key_manager);
@@ -461,7 +460,7 @@ mod test {
             }),
             ..Default::default()
         }));
-        let db_key_manager = DBEncryptionKeyManager::new(Box::new(key_manager.clone()));
+        let db_key_manager = DBEncryptionKeyManager::new(key_manager.clone());
         let file_info = db_key_manager.get_file("get_file_path").unwrap();
         assert_eq!(DBEncryptionMethod::Aes128Ctr, file_info.method);
         assert_eq!(b"test_key_get_file", file_info.key.as_slice());
@@ -477,7 +476,7 @@ mod test {
     #[test]
     fn get_file_error() {
         let key_manager = Arc::new(Mutex::new(TestEncryptionKeyManager::default()));
-        let db_key_manager = DBEncryptionKeyManager::new(Box::new(key_manager.clone()));
+        let db_key_manager = DBEncryptionKeyManager::new(key_manager.clone());
         assert!(db_key_manager.get_file("get_file_path").is_err());
         let record = key_manager.lock().unwrap();
         assert_eq!(1, record.get_file_called.load(Ordering::SeqCst));
@@ -497,7 +496,7 @@ mod test {
             }),
             ..Default::default()
         }));
-        let db_key_manager = DBEncryptionKeyManager::new(Box::new(key_manager.clone()));
+        let db_key_manager = DBEncryptionKeyManager::new(key_manager.clone());
         let file_info = db_key_manager.new_file("new_file_path").unwrap();
         assert_eq!(DBEncryptionMethod::Aes256Ctr, file_info.method);
         assert_eq!(b"test_key_new_file", file_info.key.as_slice());
@@ -513,7 +512,7 @@ mod test {
     #[test]
     fn new_file_error() {
         let key_manager = Arc::new(Mutex::new(TestEncryptionKeyManager::default()));
-        let db_key_manager = DBEncryptionKeyManager::new(Box::new(key_manager.clone()));
+        let db_key_manager = DBEncryptionKeyManager::new(key_manager.clone());
         assert!(db_key_manager.new_file("new_file_path").is_err());
         let record = key_manager.lock().unwrap();
         assert_eq!(0, record.get_file_called.load(Ordering::SeqCst));
@@ -529,7 +528,7 @@ mod test {
             return_value: Some(FileEncryptionInfo::default()),
             ..Default::default()
         }));
-        let db_key_manager = DBEncryptionKeyManager::new(Box::new(key_manager.clone()));
+        let db_key_manager = DBEncryptionKeyManager::new(key_manager.clone());
         assert!(db_key_manager.delete_file("delete_file_path").is_ok());
         let record = key_manager.lock().unwrap();
         assert_eq!(0, record.get_file_called.load(Ordering::SeqCst));
@@ -542,7 +541,7 @@ mod test {
     #[test]
     fn delete_file_error() {
         let key_manager = Arc::new(Mutex::new(TestEncryptionKeyManager::default()));
-        let db_key_manager = DBEncryptionKeyManager::new(Box::new(key_manager.clone()));
+        let db_key_manager = DBEncryptionKeyManager::new(key_manager.clone());
         assert!(db_key_manager.delete_file("delete_file_path").is_err());
         let record = key_manager.lock().unwrap();
         assert_eq!(0, record.get_file_called.load(Ordering::SeqCst));
@@ -558,7 +557,7 @@ mod test {
             return_value: Some(FileEncryptionInfo::default()),
             ..Default::default()
         }));
-        let db_key_manager = DBEncryptionKeyManager::new(Box::new(key_manager.clone()));
+        let db_key_manager = DBEncryptionKeyManager::new(key_manager.clone());
         assert!(db_key_manager
             .link_file("src_link_file_path", "dst_link_file_path")
             .is_ok());
@@ -577,7 +576,7 @@ mod test {
     #[test]
     fn link_file_error() {
         let key_manager = Arc::new(Mutex::new(TestEncryptionKeyManager::default()));
-        let db_key_manager = DBEncryptionKeyManager::new(Box::new(key_manager.clone()));
+        let db_key_manager = DBEncryptionKeyManager::new(key_manager.clone());
         assert!(db_key_manager
             .link_file("src_link_file_path", "dst_link_file_path")
             .is_err());

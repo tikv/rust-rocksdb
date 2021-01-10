@@ -6262,11 +6262,11 @@ void ctitandb_options_set_compression_options(ctitandb_options_t* opt,
                                               int w_bits, int level,
                                               int strategy, int max_dict_bytes,
                                               int zstd_max_train_bytes) {
-  opt->rep.compression_opts.window_bits = w_bits;
-  opt->rep.compression_opts.level = level;
-  opt->rep.compression_opts.strategy = strategy;
-  opt->rep.compression_opts.max_dict_bytes = max_dict_bytes;
-  opt->rep.compression_opts.zstd_max_train_bytes = zstd_max_train_bytes;
+  opt->rep.blob_file_compression_options.window_bits = w_bits;
+  opt->rep.blob_file_compression_options.level = level;
+  opt->rep.blob_file_compression_options.strategy = strategy;
+  opt->rep.blob_file_compression_options.max_dict_bytes = max_dict_bytes;
+  opt->rep.blob_file_compression_options.zstd_max_train_bytes = zstd_max_train_bytes;
 }
 
 void ctitandb_options_set_gc_merge_rewrite(ctitandb_options_t* opts,

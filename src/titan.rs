@@ -115,6 +115,9 @@ impl TitanDBOptions {
         capacity_limit: bool,
         pri_ratio: c_double,
     ) {
+        if size == 0 {
+            return;
+        }
         let mut cache_opt = LRUCacheOptions::new();
         cache_opt.set_capacity(size);
         cache_opt.set_num_shard_bits(shard_bits);

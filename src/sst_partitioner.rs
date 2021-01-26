@@ -220,7 +220,7 @@ mod test {
     }
 
     impl SstPartitioner for TestSstPartitioner {
-        fn should_partition(&self, req: &SstPartitionerRequest) -> SstPartitionerResult {
+        fn should_partition(&mut self, req: &SstPartitionerRequest) -> SstPartitionerResult {
             let mut s = self.state.lock().unwrap();
             s.call_should_partition += 1;
             s.prev_user_key = Some(req.prev_user_key.to_vec());
@@ -230,7 +230,7 @@ mod test {
             s.should_partition_result
         }
 
-        fn can_do_trivial_move(&self, smallest_key: &[u8], largest_key: &[u8]) -> bool {
+        fn can_do_trivial_move(&mut self, smallest_key: &[u8], largest_key: &[u8]) -> bool {
             let mut s = self.state.lock().unwrap();
             s.call_can_do_trivial_move += 1;
             s.trivial_move_smallest_key = Some(smallest_key.to_vec());

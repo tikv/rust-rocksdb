@@ -37,6 +37,14 @@ impl ColumnFamilyMetaData {
         }
         levels
     }
+
+    /// The caller must ensure that the level is less than the bottommost one.
+    pub fn get_level(&self, level: usize) -> LevelMetaData {
+        unsafe {
+            let data = crocksdb_ffi::crocksdb_column_family_meta_data_level_data(self.inner, level);
+            LevelMetaData::from_ptr(data, self)
+        }
+    }
 }
 
 impl Drop for ColumnFamilyMetaData {

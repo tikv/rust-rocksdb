@@ -926,6 +926,7 @@ extern "C" {
     );
     pub fn crocksdb_writeoptions_set_no_slowdown(writeopts: *mut DBWriteOptions, v: bool);
     pub fn crocksdb_writeoptions_set_low_pri(writeopts: *mut DBWriteOptions, v: bool);
+    pub fn crocksdb_stall_occurs(db: *mut DBInstance) -> bool;
     pub fn crocksdb_put(
         db: *mut DBInstance,
         writeopts: *mut DBWriteOptions,

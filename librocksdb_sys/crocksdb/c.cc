@@ -983,6 +983,8 @@ void crocksdb_column_family_handle_destroy(
   delete handle;
 }
 
+bool crocksdb_stall_occurs(crocksdb_t* db) { return db->rep->StallOccurs(); }
+
 void crocksdb_put(crocksdb_t* db, const crocksdb_writeoptions_t* options,
                   const char* key, size_t keylen, const char* val,
                   size_t vallen, char** errptr) {

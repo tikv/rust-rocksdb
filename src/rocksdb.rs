@@ -996,6 +996,10 @@ impl DB {
         crocksdb_ffi::crocksdb_release_snapshot(self.inner, snap.get_inner())
     }
 
+    pub fn stall_occurs(&self) -> bool {
+        unsafe { crocksdb_ffi::crocksdb_stall_occurs(self.inner) }
+    }
+
     pub fn put_opt(
         &self,
         key: &[u8],

@@ -24,11 +24,9 @@ jobs:
   - os: linux
     rust: nightly
     env: FEATURES="cloud"  
-  # PTAL https://travis-ci.org/github/tikv/rust-rocksdb/jobs/759464214.
-  # Seems cmake 3.12 doesn't work fine on arm64, so disable it temporarily.
-  # - os: linux
-  #  arch: arm64
-  #  rust: nightly
+  - os: linux
+    arch: arm64-graviton2
+    rust: nightly
   - os: osx
     osx_image: xcode11.5
     rust: nightly

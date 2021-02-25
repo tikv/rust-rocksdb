@@ -84,10 +84,10 @@ fn ensure_default_cf_exists<'a>(
     }
 }
 
-fn split_descriptors<'a>(
-    list: Vec<ColumnFamilyDescriptor<'a>>,
+fn split_descriptors(
+    list: Vec<ColumnFamilyDescriptor>,
     is_titan: bool,
-) -> (Vec<&'a str>, Vec<ColumnFamilyOptions>) {
+) -> (Vec<&str>, Vec<ColumnFamilyOptions>) {
     let mut v1 = Vec::with_capacity(list.len());
     let mut v2 = Vec::with_capacity(list.len());
     for mut d in list {
@@ -345,7 +345,6 @@ impl<D> DBIterator<D> {
 #[deprecated]
 pub type Kv = (Vec<u8>, Vec<u8>);
 
-#[deprecated]
 impl<'b, D> Iterator for &'b mut DBIterator<D> {
     #[allow(deprecated)]
     type Item = Kv;
@@ -2654,9 +2653,9 @@ impl Env {
 
     // Create an encrypted env that accepts an external key manager.
     #[cfg(feature = "encryption")]
-    pub fn new_key_managed_encrypted_env(
+    pub fn new_key_managed_encrypted_env<T: EncryptionKeyManager>(
         base_env: Arc<Env>,
-        key_manager: Arc<dyn EncryptionKeyManager>,
+        key_manager: T,
     ) -> Result<Env, String> {
         let db_key_manager = DBEncryptionKeyManager::new(key_manager);
         let env = unsafe {
@@ -2671,9 +2670,9 @@ impl Env {
         })
     }
 
-    pub fn new_file_system_inspected_env(
+    pub fn new_file_system_inspected_env<T: FileSystemInspector>(
         base_env: Arc<Env>,
-        file_system_inspector: Arc<dyn FileSystemInspector>,
+        file_system_inspector: T,
     ) -> Result<Env, String> {
         let db_file_system_inspector = DBFileSystemInspector::new(file_system_inspector);
         let env = unsafe {

@@ -67,6 +67,11 @@ pub trait CompactionFilter {
             _ => CompactionFilterDecision::Keep,
         }
     }
+
+    /// This function will be called after every input key/value pair gets processed or
+    /// before the compaction result gets installed. Return false will cancel the
+    /// compaction.
+    fn valid(&self) -> bool;
 }
 
 #[repr(C)]
@@ -83,6 +88,10 @@ extern "C" fn destructor(filter: *mut c_void) {
     unsafe {
         Box::from_raw(filter as *mut CompactionFilterProxy);
     }
+}
+
+extern "C" fn valid(filter: *mut c_void) -> bool {
+    unsafe { (*(filter as *mut CompactionFilterProxy)).filter.valid() }
 }
 
 extern "C" fn filter(
@@ -157,7 +166,13 @@ pub unsafe fn new_compaction_filter_raw(
         name: c_name,
         filter: f,
     }));
-    crocksdb_ffi::crocksdb_compactionfilter_create(proxy as *mut c_void, destructor, filter, name)
+    crocksdb_ffi::crocksdb_compactionfilter_create(
+        proxy as *mut c_void,
+        destructor,
+        filter,
+        name,
+        valid,
+    )
 }
 
 pub struct CompactionFilterContext(DBCompactionFilterContext);

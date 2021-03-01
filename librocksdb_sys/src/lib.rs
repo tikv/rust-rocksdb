@@ -1542,6 +1542,7 @@ extern "C" {
             *mut size_t,
         ) -> CompactionFilterDecision,
         name: extern "C" fn(*mut c_void) -> *const c_char,
+        valid: extern "C" fn(*mut c_void) -> bool,
     ) -> *mut DBCompactionFilter;
     pub fn crocksdb_compactionfilter_destroy(filter: *mut DBCompactionFilter);
 

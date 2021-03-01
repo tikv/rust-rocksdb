@@ -3358,7 +3358,7 @@ crocksdb_compactionfilter_t* crocksdb_compactionfilter_create(
         CompactionFilter::ValueType value_type, const char* existing_value,
         size_t value_length, char** new_value, size_t* new_value_length,
         char** skip_until, size_t* skip_until_length),
-    const char* (*name)(void*)) {
+    const char* (*name)(void*), bool valid(void*)) {
   crocksdb_compactionfilter_t* result = new crocksdb_compactionfilter_t;
   result->state_ = state;
   result->destructor_ = destructor;

@@ -27,8 +27,6 @@ extern crate tempfile;
 #[macro_use]
 extern crate lazy_static;
 
-#[cfg(feature = "cloud")]
-pub use cloud::CloudEnvOptions;
 pub use compaction_filter::{
     new_compaction_filter, new_compaction_filter_factory, new_compaction_filter_raw,
     CompactionFilter, CompactionFilterContext, CompactionFilterDecision, CompactionFilterFactory,
@@ -41,6 +39,7 @@ pub use event_listener::{
     CompactionJobInfo, EventListener, FlushJobInfo, IngestionInfo, SubcompactionJobInfo,
     WriteStallInfo,
 };
+pub use file_system::FileSystemInspector;
 pub use librocksdb_sys::{
     self as crocksdb_ffi, new_bloom_filter, CompactionPriority, CompactionReason,
     DBBackgroundErrorReason, DBBottommostLevelCompaction, DBCompactionStyle, DBCompressionType,
@@ -81,8 +80,6 @@ pub use write_batch::{WriteBatch, WriteBatchIter, WriteBatchRef};
 #[allow(deprecated)]
 pub use rocksdb::Kv;
 
-#[cfg(feature = "cloud")]
-mod cloud;
 mod compaction_filter;
 pub mod comparator;
 #[cfg(feature = "encryption")]

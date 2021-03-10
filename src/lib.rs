@@ -43,8 +43,9 @@ pub use librocksdb_sys::{
     self as crocksdb_ffi, new_bloom_filter, CompactionPriority, CompactionReason,
     DBBackgroundErrorReason, DBBottommostLevelCompaction, DBCompactionStyle, DBCompressionType,
     DBEntryType, DBInfoLogLevel, DBRateLimiterMode, DBRecoveryMode,
-    DBSstPartitionerResult as SstPartitionerResult, DBStatisticsHistogramType,
-    DBStatisticsTickerType, DBStatusPtr, DBTitanDBBlobRunMode, IndexType, WriteStallCondition,
+    DBSstPartitionerResult as SstPartitionerResult, DBLevelRegionAccessorResult as LevelRegionAccessorResult,
+    DBStatisticsHistogramType, DBStatisticsTickerType, DBStatusPtr,
+    DBTitanDBBlobRunMode, IndexType, WriteStallCondition,
 };
 pub use logger::Logger;
 pub use merge_operator::MergeOperands;
@@ -64,6 +65,9 @@ pub use rocksdb_options::{
 pub use slice_transform::SliceTransform;
 pub use sst_partitioner::{
     SstPartitioner, SstPartitionerContext, SstPartitionerFactory, SstPartitionerRequest,
+};
+pub use level_region_accessor::{
+    LevelRegionAccessor, LevelRegionAccessorRequest,
 };
 pub use table_filter::TableFilter;
 pub use table_properties::{
@@ -93,6 +97,7 @@ pub mod rocksdb;
 pub mod rocksdb_options;
 mod slice_transform;
 pub mod sst_partitioner;
+pub mod level_region_accessor;
 mod table_filter;
 mod table_properties;
 mod table_properties_collector;

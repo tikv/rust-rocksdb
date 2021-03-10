@@ -172,7 +172,18 @@ pub struct DBSstPartitionerContext(c_void);
 #[repr(C)]
 pub struct DBSstPartitionerFactory(c_void);
 #[repr(C)]
+pub struct DBLevelRegionAccessor(c_void);
+#[repr(C)]
+pub struct DBLevelRegionAccessorRequest(c_void);
+#[repr(C)]
 pub struct DBWriteBatchIterator(c_void);
+
+#[derive(Clone, Debug, Default)]
+#[repr(C)]
+pub struct DBLevelRegionAccessorResult {
+    pub regions: RegionBoundaries,
+    pub region_count: u64,
+}
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 #[repr(C)]
@@ -846,6 +857,13 @@ extern "C" {
     pub fn crocksdb_options_set_sst_partitioner_factory(
         option: *mut Options,
         factory: *mut DBSstPartitionerFactory,
+    );
+    pub fn crocksdb_options_get_level_region_accessor(
+        option: *mut Options,
+    ) -> *mut DBLevelRegionAccessor;
+    pub fn crocksdb_options_set_level_region_accessor(
+        option: *mut Options,
+        accessor: *mut DBLevelRegionAccessor,
     );
     pub fn crocksdb_filterpolicy_create_bloom_full(bits_per_key: c_int) -> *mut DBFilterPolicy;
     pub fn crocksdb_filterpolicy_create_bloom(bits_per_key: c_int) -> *mut DBFilterPolicy;
@@ -2402,6 +2420,45 @@ extern "C" {
         factory: *mut DBSstPartitionerFactory,
         context: *mut DBSstPartitionerContext,
     ) -> *mut DBSstPartitioner;
+
+    pub fn crocksdb_level_region_accessor_request_create() -> *mut DBLevelRegionAccessorRequest;
+    pub fn crocksdb_level_region_accessor_request_destroy(state: *mut DBLevelRegionAccessorRequest);
+    pub fn crocksdb_level_region_accessor_request_smallest_user_key(
+        state: *mut DBLevelRegionAccessorRequest,
+        len: *mut size_t,
+    ) -> *const c_char;
+    pub fn crocksdb_level_region_accessor_request_largest_user_key(
+        state: *mut DBLevelRegionAccessorRequest,
+        len: *mut size_t,
+    ) -> *const c_char;
+    pub fn crocksdb_level_region_accessor_request_set_smallest_user_key(
+        state: *mut DBLevelRegionAccessorRequest,
+        key: *const c_char,
+        len: size_t,
+    );
+    pub fn crocksdb_level_region_accessor_request_set_largest_user_key(
+        state: *mut DBLevelRegionAccessorRequest,
+        key: *const c_char,
+        len: size_t,
+    );
+
+    pub fn crocksdb_level_region_accessor_create(
+        underlying: *mut c_void,
+        destructor: extern "C" fn(*mut c_void),
+        name_cb: extern "C" fn(*mut c_void) -> *const c_char,
+        level_regions_cb: extern "C" fn(
+            *mut c_void,
+            *mut DBLevelRegionAccessorRequest,
+        ) -> DBLevelRegionAccessorResult,
+    ) -> *mut DBLevelRegionAccessor;
+    pub fn crocksdb_level_region_accessor_destroy(accessor: *mut DBLevelRegionAccessor);
+    pub fn crocksdb_level_region_accessor_name(
+        accessor: *mut DBLevelRegionAccessor,
+    ) -> *const c_char;
+    pub fn crocksdb_level_region_accessor_level_regions(
+        accessor: *mut DBLevelRegionAccessor,
+        request: *mut DBLevelRegionAccessorRequest,
+    ) -> DBLevelRegionAccessorResult;
 
     pub fn crocksdb_run_ldb_tool(argc: c_int, argv: *const *const c_char, opts: *const Options);
     pub fn crocksdb_run_sst_dump_tool(

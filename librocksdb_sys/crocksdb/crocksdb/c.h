@@ -167,6 +167,12 @@ typedef struct crocksdb_sst_partitioner_context_t
 typedef struct crocksdb_sst_partitioner_factory_t
     crocksdb_sst_partitioner_factory_t;
 
+typedef struct crocksdb_level_region_accessor_t crocksdb_level_region_accessor_t;
+typedef struct crocksdb_level_region_accessor_request_t
+    crocksdb_level_region_accessor_request_t;
+typedef struct crocksdb_level_region_accessor_result_t
+    crocksdb_level_region_accessor_result_t;
+
 typedef enum crocksdb_table_property_t {
   kDataSize = 1,
   kIndexSize = 2,
@@ -1022,6 +1028,10 @@ extern C_ROCKSDB_LIBRARY_API crocksdb_sst_partitioner_factory_t*
 crocksdb_options_get_sst_partitioner_factory(crocksdb_options_t*);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_sst_partitioner_factory(
     crocksdb_options_t*, crocksdb_sst_partitioner_factory_t*);
+extern C_ROCKSDB_LIBRARY_API crocksdb_level_region_accessor_t*
+crocksdb_options_get_level_region_accessor(crocksdb_options_t*);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_level_region_accessor(
+    crocksdb_options_t*, crocksdb_level_region_accessor_t*);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_enable_statistics(
     crocksdb_options_t*, unsigned char);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_reset_statistics(
@@ -2350,6 +2360,47 @@ extern C_ROCKSDB_LIBRARY_API crocksdb_sst_partitioner_t*
 crocksdb_sst_partitioner_factory_create_partitioner(
     crocksdb_sst_partitioner_factory_t* factory,
     crocksdb_sst_partitioner_context_t* context);
+
+/* Level Region Accessor */
+
+extern C_ROCKSDB_LIBRARY_API crocksdb_level_region_accessor_request_t*
+crocksdb_level_region_accessor_request_create();
+extern C_ROCKSDB_LIBRARY_API void crocksdb_level_region_accessor_request_destroy(
+    crocksdb_level_region_accessor_request_t* req);
+extern C_ROCKSDB_LIBRARY_API const char*
+crocksdb_level_region_accessor_request_smallest_user_key(
+    crocksdb_level_region_accessor_request_t* req, size_t* len);
+extern C_ROCKSDB_LIBRARY_API const char*
+crocksdb_level_region_accessor_request_largest_user_key(
+    crocksdb_level_region_accessor_request_t* req, size_t* len);
+extern C_ROCKSDB_LIBRARY_API void
+crocksdb_level_region_accessor_req_set_smallest_user_key(
+    crocksdb_level_region_accessor_request_t* req, const char* key, size_t len);
+extern C_ROCKSDB_LIBRARY_API void
+crocksdb_level_region_accessor_req_set_largest_user_key(
+    crocksdb_level_region_accessor_request_t* req, const char* key, size_t len);
+
+typedef const char* (*crocksdb_level_region_accessor_name_cb)(
+    void* underlying);
+typedef crocksdb_level_region_accessor_results_t (
+    *crocksdb_level_region_accessor_level_regions_cb)(
+    void* underlying, crocksdb_level_region_accessor_requests_t* requests);
+
+extern C_ROCKSDB_LIBRARY_API crocksdb_level_region_accessor_t*
+crocksdb_level_region_accessor_create(
+    void* underlying, void (*destructor)(void*),
+    crocksdb_level_region_accessor_name_cb name_cb,
+    crocksdb_level_region_accessor_level_regions_cb
+    level_regions_cb);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_level_region_accessor_destroy(
+    crocksdb_sst_partitioner_factory_t* factory);
+extern C_ROCKSDB_LIBRARY_API const char* crocksdb_level_region_accessor_name(
+    crocksdb_sst_partitioner_factory_t* factory);
+extern C_ROCKSDB_LIBRARY_API crocksdb_level_region_accessor_result_t
+crocksdb_level_region_accessor_level_regions(
+    crocksdb_level_region_accessor_t* factory,
+    crocksdb_level_region_accessor_request_t* request);
+
 
 extern C_ROCKSDB_LIBRARY_API void crocksdb_run_ldb_tool(
     int argc, char** argv, const crocksdb_options_t* opts);

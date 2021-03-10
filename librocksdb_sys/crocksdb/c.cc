@@ -37,6 +37,7 @@
 #include "rocksdb/sst_dump_tool.h"
 #include "rocksdb/sst_file_reader.h"
 #include "rocksdb/sst_partitioner.h"
+#include "rocksdb/level_region_accessor.h"
 #include "rocksdb/statistics.h"
 #include "rocksdb/status.h"
 #include "rocksdb/table.h"
@@ -118,6 +119,9 @@ using rocksdb::NewLRUCache;
 using rocksdb::Options;
 using rocksdb::PartitionerRequest;
 using rocksdb::PartitionerResult;
+using rocksdb::AccessorRequest;
+using rocksdb::AccessorResult;
+using rocksdb::RegionBoundaries;
 using rocksdb::PinnableSlice;
 using rocksdb::RandomAccessFile;
 using rocksdb::Range;
@@ -135,6 +139,7 @@ using rocksdb::SstFileReader;
 using rocksdb::SstFileWriter;
 using rocksdb::SstPartitioner;
 using rocksdb::SstPartitionerFactory;
+using rocksdb::LevelRegionAccessor;
 using rocksdb::Status;
 using rocksdb::TableProperties;
 using rocksdb::TablePropertiesCollection;
@@ -658,6 +663,20 @@ struct crocksdb_sst_partitioner_context_t {
 
 struct crocksdb_sst_partitioner_factory_t {
   std::shared_ptr<SstPartitionerFactory> rep;
+};
+
+struct crocksdb_level_region_accessor_t {
+  std::unique_ptr<LevelRegionAccessor> rep;
+};
+
+struct crocksdb_level_region_accessor_request_t {
+  AccessorRequest* rep;
+  Slice smallest_user_key;
+  Slice largest_user_key;
+};
+
+struct crocksdb_level_region_accessor_result_t {
+  AccessorResult rep;
 };
 
 static bool SaveError(char** errptr, const Status& s) {
@@ -2524,6 +2543,19 @@ crocksdb_options_get_sst_partitioner_factory(crocksdb_options_t* opt) {
 void crocksdb_options_set_sst_partitioner_factory(
     crocksdb_options_t* opt, crocksdb_sst_partitioner_factory_t* factory) {
   opt->rep.sst_partitioner_factory = factory->rep;
+}
+
+crocksdb_level_region_accessor_t*
+crocksdb_options_get_level_region_accessor(crocksdb_options_t* opt) {
+  crocksdb_level_region_accessor_t* accessor =
+      new crocksdb_level_region_accessor_t;
+  accessor->rep = opt->rep.level_region_accessor;
+  return accessor;
+}
+
+void crocksdb_options_set_level_region_accessor(
+    crocksdb_options_t* opt, crocksdb_level_region_accessor_t* accessor) {
+  opt->rep.level_region_accessor = accessor->rep;
 }
 
 void crocksdb_options_enable_statistics(crocksdb_options_t* opt,
@@ -5912,6 +5944,101 @@ crocksdb_sst_partitioner_t* crocksdb_sst_partitioner_factory_create_partitioner(
   crocksdb_sst_partitioner_t* partitioner = new crocksdb_sst_partitioner_t;
   partitioner->rep = std::move(rep);
   return partitioner;
+}
+
+/* level region accessor */
+
+crocksdb_level_region_accessor_request_t* crocksdb_level_region_accessor_request_create() {
+  auto* req = new crocksdb_level_region_accessor_request_t;
+  req->rep =
+      new AccessorRequest(req->smallest_user_key, req->largest_user_key);
+  return req;
+}
+
+void crocksdb_level_region_accessor_request_destroy(
+    crocksdb_level_region_accessor_request_t* req) {
+  delete req->rep;
+  delete req;
+}
+
+const char* crocksdb_level_region_accessor_request_smallest_user_key(
+    crocksdb_level_region_accessor_request_t* req, size_t* len) {
+  const Slice* smallest_key = req->rep->smallest_user_key;
+  *len = smallest_key->size();
+  return smallest_key->data();
+}
+
+const char* crocksdb_level_region_accessor_request_largest_user_key(
+    crocksdb_level_region_accessor_request_t* req, size_t* len) {
+  const Slice* largest_key = req->rep->largest_user_key;
+  *len = largest_key->size();
+  return largest_key->data();
+}
+
+void crocksdb_level_region_accessor_request_set_smallest_user_key(
+    crocksdb_level_region_accessor_request_t* req, const char* key, size_t len) {
+  req->smallest_user_key = Slice(key, len);
+  req->rep->smallest_user_key = &req->smallest_user_key;
+}
+
+void crocksdb_level_region_accessor_request_set_largest_user_key(
+    crocksdb_level_region_accessor_request_t* req, const char* key, size_t len) {
+  req->largest_user_key = Slice(key, len);
+  req->rep->largest_user_key = &req->largest_user_key;
+}
+
+
+struct crocksdb_level_region_accessor_impl_t : public LevelRegionAccessor {
+  void* underlying;
+  void (*destructor)(void*);
+  crocksdb_level_region_accessor_name_cb name_cb;
+  crocksdb_level_region_accessor_level_regions_cb level_regions_cb;
+
+  virtual ~crocksdb_level_region_accessor_impl_t() { destructor(underlying); }
+
+  const char* Name() const override { return name_cb(underlying); }
+
+  AccessorResult LevelRegions(
+      const AccessorRequest& request) const override {
+    crocksdb_level_region_accessor_request_t req;
+    req.rep = const_cast<AccessorRequest*>(&request);
+    return static_cast<AccessorResult>(
+        level_regions_cb(underlying, &req));
+  }
+};
+
+crocksdb_level_region_accessor_t* crocksdb_level_region_accessor_create(
+    void* underlying, void (*destructor)(void*),
+    crocksdb_level_region_accessor_name_cb name_cb,
+    crocksdb_level_region_accessor_level_regions_cb
+    level_regions_cb) {
+  crocksdb_level_region_accessor_impl_t* accessor_impl =
+      new crocksdb_level_region_accessor_impl_t;
+  accessor_impl->underlying = underlying;
+  accessor_impl->destructor = destructor;
+  accessor_impl->name_cb = name_cb;
+  accessor_impl->level_regions_cb = level_regions_cb;
+  crocksdb_level_region_accessor_t* accessor =
+      new crocksdb_level_region_accessor__t;
+  accessor->rep.reset(accessor_impl);
+  return accessor;
+}
+
+void crocksdb_level_region_accessor_destroy(
+    crocksdb_level_region_accessor_t* accessor) {
+  delete accessor;
+}
+
+const char* crocksdb_level_region_accessor_name(
+    crocksdb_level_region_accessor_t* accessor) {
+  return accessor->rep->Name();
+}
+
+crocksdb_level_region_accessor_result_t crocksdb_level_region_accessor_level_regions(
+    crocksdb_level_region_accessor_t* accessor,
+    crocksdb_level_region_accessor_request_t* req) {
+  return static_cast<crocksdb_level_region_accessor_result_t>(
+      accessor->rep->LevelRegions(*req->rep));
 }
 
 /* Tools */

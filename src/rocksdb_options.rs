@@ -35,6 +35,7 @@ use rocksdb::Env;
 use rocksdb::{Cache, MemoryAllocator};
 use slice_transform::{new_slice_transform, SliceTransform};
 use sst_partitioner::{new_sst_partitioner_factory, SstPartitionerFactory};
+use level_region_accessor::{new_level_region_accessor, LevelRegionAccessor};
 use std::ffi::{CStr, CString};
 use std::path::Path;
 use std::ptr;
@@ -1746,6 +1747,13 @@ impl ColumnFamilyOptions {
         let f = new_sst_partitioner_factory(factory);
         unsafe {
             crocksdb_ffi::crocksdb_options_set_sst_partitioner_factory(self.inner, f);
+        }
+    }
+
+    pub fn set_level_region_accessor<A: LevelRegionAccessor>(&mut self, accessor: A) {
+        let a = new_level_region_accessor(accessor);
+        unsafe {
+            crocksdb_ffi::crocksdb_options_set_level_region_accessor(self.inner, a);
         }
     }
 }

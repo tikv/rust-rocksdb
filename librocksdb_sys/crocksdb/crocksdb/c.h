@@ -2393,12 +2393,12 @@ crocksdb_level_region_accessor_create(
     crocksdb_level_region_accessor_level_regions_cb
     level_regions_cb);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_level_region_accessor_destroy(
-    crocksdb_sst_partitioner_factory_t* factory);
+    crocksdb_level_region_accessor_t* accessor);
 extern C_ROCKSDB_LIBRARY_API const char* crocksdb_level_region_accessor_name(
-    crocksdb_sst_partitioner_factory_t* factory);
+    crocksdb_level_region_accessor_t* accessor);
 extern C_ROCKSDB_LIBRARY_API crocksdb_level_region_accessor_result_t
 crocksdb_level_region_accessor_level_regions(
-    crocksdb_level_region_accessor_t* factory,
+    crocksdb_level_region_accessor_t* accessor,
     crocksdb_level_region_accessor_request_t* request);
 
 

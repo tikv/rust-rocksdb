@@ -1750,7 +1750,7 @@ impl ColumnFamilyOptions {
         }
     }
 
-    pub fn set_level_region_accessor<A: LevelRegionAccessor>(&mut self, accessor: A) {
+    pub fn set_level_region_accessor<A: 'static + LevelRegionAccessor>(&mut self, accessor: A) {
         let a = new_level_region_accessor(accessor);
         unsafe {
             crocksdb_ffi::crocksdb_options_set_level_region_accessor(self.inner, a);

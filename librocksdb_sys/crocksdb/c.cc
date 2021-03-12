@@ -666,7 +666,7 @@ struct crocksdb_sst_partitioner_factory_t {
 };
 
 struct crocksdb_level_region_accessor_t {
-  std::unique_ptr<LevelRegionAccessor> rep;
+  std::shared_ptr<LevelRegionAccessor> rep;
 };
 
 struct crocksdb_level_region_accessor_request_t {
@@ -6002,8 +6002,9 @@ struct crocksdb_level_region_accessor_impl_t : public LevelRegionAccessor {
       const AccessorRequest& request) const override {
     crocksdb_level_region_accessor_request_t req;
     req.rep = const_cast<AccessorRequest*>(&request);
-    return static_cast<AccessorResult*>(
-        level_regions_cb(underlying, &req));
+    crocksdb_level_region_accessor_result_t res;
+    res = level_regions_cb(underlying, &req);
+    return res.rep; 
   }
 };
 
@@ -6019,7 +6020,7 @@ crocksdb_level_region_accessor_t* crocksdb_level_region_accessor_create(
   accessor_impl->name_cb = name_cb;
   accessor_impl->level_regions_cb = level_regions_cb;
   crocksdb_level_region_accessor_t* accessor =
-      new crocksdb_level_region_accessor__t;
+      new crocksdb_level_region_accessor_t;
   accessor->rep.reset(accessor_impl);
   return accessor;
 }

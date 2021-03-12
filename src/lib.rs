@@ -44,8 +44,8 @@ pub use librocksdb_sys::{
     DBBackgroundErrorReason, DBBottommostLevelCompaction, DBCompactionStyle, DBCompressionType,
     DBEntryType, DBInfoLogLevel, DBRateLimiterMode, DBRecoveryMode,
     DBSstPartitionerResult as SstPartitionerResult, DBLevelRegionAccessorResult as LevelRegionAccessorResult,
-    DBStatisticsHistogramType, DBStatisticsTickerType, DBStatusPtr,
-    DBTitanDBBlobRunMode, IndexType, WriteStallCondition,
+    DBLevelRegionBoundaries as LevelRegionBoundaries, DBStatisticsHistogramType,
+    DBStatisticsTickerType, DBStatusPtr, DBTitanDBBlobRunMode, IndexType, WriteStallCondition,
 };
 pub use logger::Logger;
 pub use merge_operator::MergeOperands;

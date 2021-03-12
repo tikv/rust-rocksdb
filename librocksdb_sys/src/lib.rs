@@ -178,11 +178,18 @@ pub struct DBLevelRegionAccessorRequest(c_void);
 #[repr(C)]
 pub struct DBWriteBatchIterator(c_void);
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 #[repr(C)]
-pub struct DBLevelRegionAccessorResult {
-    pub regions: RegionBoundaries,
-    pub region_count: u64,
+pub struct DBLevelRegionBoundaries<'a> {
+    pub start_key: &'a [u8],
+    pub end_key: &'a [u8],
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[repr(C)]
+pub struct DBLevelRegionAccessorResult<'a> {
+    pub regions:  *const DBLevelRegionBoundaries<'a>,
+    pub region_count: i32,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -2449,7 +2456,7 @@ extern "C" {
         level_regions_cb: extern "C" fn(
             *mut c_void,
             *mut DBLevelRegionAccessorRequest,
-        ) -> DBLevelRegionAccessorResult,
+        ) -> *const DBLevelRegionAccessorResult,
     ) -> *mut DBLevelRegionAccessor;
     pub fn crocksdb_level_region_accessor_destroy(accessor: *mut DBLevelRegionAccessor);
     pub fn crocksdb_level_region_accessor_name(
@@ -2458,7 +2465,7 @@ extern "C" {
     pub fn crocksdb_level_region_accessor_level_regions(
         accessor: *mut DBLevelRegionAccessor,
         request: *mut DBLevelRegionAccessorRequest,
-    ) -> DBLevelRegionAccessorResult;
+    ) -> *const DBLevelRegionAccessorResult;
 
     pub fn crocksdb_run_ldb_tool(argc: c_int, argv: *const *const c_char, opts: *const Options);
     pub fn crocksdb_run_sst_dump_tool(

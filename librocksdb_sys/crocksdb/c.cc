@@ -676,7 +676,7 @@ struct crocksdb_level_region_accessor_request_t {
 };
 
 struct crocksdb_level_region_accessor_result_t {
-  AccessorResult rep;
+  AccessorResult* rep;
 };
 
 static bool SaveError(char** errptr, const Status& s) {
@@ -5998,11 +5998,11 @@ struct crocksdb_level_region_accessor_impl_t : public LevelRegionAccessor {
 
   const char* Name() const override { return name_cb(underlying); }
 
-  AccessorResult LevelRegions(
+  AccessorResult* LevelRegions(
       const AccessorRequest& request) const override {
     crocksdb_level_region_accessor_request_t req;
     req.rep = const_cast<AccessorRequest*>(&request);
-    return static_cast<AccessorResult>(
+    return static_cast<AccessorResult*>(
         level_regions_cb(underlying, &req));
   }
 };
@@ -6037,8 +6037,9 @@ const char* crocksdb_level_region_accessor_name(
 crocksdb_level_region_accessor_result_t crocksdb_level_region_accessor_level_regions(
     crocksdb_level_region_accessor_t* accessor,
     crocksdb_level_region_accessor_request_t* req) {
-  return static_cast<crocksdb_level_region_accessor_result_t>(
-      accessor->rep->LevelRegions(*req->rep));
+  crocksdb_level_region_accessor_result_t res;
+  res.rep = accessor->rep->LevelRegions(*req->rep);
+  return res;
 }
 
 /* Tools */

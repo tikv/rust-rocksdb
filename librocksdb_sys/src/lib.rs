@@ -130,6 +130,8 @@ pub struct DBFlushJobInfo(c_void);
 #[repr(C)]
 pub struct DBCompactionJobInfo(c_void);
 #[repr(C)]
+pub struct DBSubcompactionJobInfo(c_void);
+#[repr(C)]
 pub struct DBIngestionInfo(c_void);
 #[repr(C)]
 pub struct DBEventListener(c_void);
@@ -177,6 +179,8 @@ pub struct DBLevelRegionAccessor(c_void);
 pub struct DBLevelRegionAccessorRequest(c_void);
 #[repr(C)]
 pub struct DBWriteBatchIterator(c_void);
+#[repr(C)]
+pub struct DBFileSystemInspectorInstance(c_void);
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[repr(C)]
@@ -464,6 +468,23 @@ pub enum DBSstPartitionerResult {
     Required = 1,
 }
 
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[repr(C)]
+pub enum CompactionFilterValueType {
+    Value = 0,
+    MergeOperand = 1,
+    BlobIndex = 2,
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[repr(C)]
+pub enum CompactionFilterDecision {
+    Keep = 0,
+    Remove = 1,
+    ChangeValue = 2,
+    RemoveAndSkipUntil = 3,
+}
+
 /// # Safety
 ///
 /// ptr must point to a valid CStr value
@@ -647,6 +668,7 @@ extern "C" {
         filter: *mut DBCompactionFilterFactory,
     );
     pub fn crocksdb_options_set_create_if_missing(options: *mut Options, v: bool);
+    pub fn crocksdb_options_set_create_missing_column_families(options: *mut Options, v: bool);
     pub fn crocksdb_options_set_max_open_files(options: *mut Options, files: c_int);
     pub fn crocksdb_options_set_max_total_wal_size(options: *mut Options, size: u64);
     pub fn crocksdb_options_set_use_fsync(options: *mut Options, v: c_int);
@@ -714,6 +736,15 @@ extern "C" {
         level: c_int,
         strategy: c_int,
         max_dict_bytes: c_int,
+        zstd_max_train_bytes: c_int,
+    );
+    pub fn crocksdb_options_set_bottommost_compression_options(
+        options: *mut Options,
+        window_bits: c_int,
+        level: c_int,
+        strategy: c_int,
+        max_dict_bytes: c_int,
+        zstd_max_train_bytes: c_int,
     );
     pub fn crocksdb_options_set_compression_per_level(
         options: *mut Options,
@@ -728,6 +759,16 @@ extern "C" {
     pub fn crocksdb_set_bottommost_compression(options: *mut Options, c: DBCompressionType);
     pub fn crocksdb_options_set_max_background_jobs(options: *mut Options, max_bg_jobs: c_int);
     pub fn crocksdb_options_get_max_background_jobs(options: *const Options) -> c_int;
+    pub fn crocksdb_options_set_max_background_compactions(
+        options: *mut Options,
+        max_bg_compactions: c_int,
+    );
+    pub fn crocksdb_options_get_max_background_compactions(options: *const Options) -> c_int;
+    pub fn crocksdb_options_set_max_background_flushes(
+        options: *mut Options,
+        max_bg_flushes: c_int,
+    );
+    pub fn crocksdb_options_get_max_background_flushes(options: *const Options) -> c_int;
     pub fn crocksdb_options_set_disable_auto_compactions(options: *mut Options, v: c_int);
     pub fn crocksdb_options_get_disable_auto_compactions(options: *const Options) -> c_int;
     pub fn crocksdb_options_set_report_bg_io_stats(options: *mut Options, v: c_int);
@@ -825,11 +866,19 @@ extern "C" {
         mode: DBRateLimiterMode,
         auto_tuned: bool,
     ) -> *mut DBRateLimiter;
+    pub fn crocksdb_writeampbasedratelimiter_create_with_auto_tuned(
+        rate_bytes_per_sec: i64,
+        refill_period_us: i64,
+        fairness: i32,
+        mode: DBRateLimiterMode,
+        auto_tuned: bool,
+    ) -> *mut DBRateLimiter;
     pub fn crocksdb_ratelimiter_destroy(limiter: *mut DBRateLimiter);
     pub fn crocksdb_ratelimiter_set_bytes_per_second(
         limiter: *mut DBRateLimiter,
         bytes_per_sec: i64,
     );
+    pub fn crocksdb_ratelimiter_set_auto_tuned(limiter: *mut DBRateLimiter, auto_tuned: bool);
     pub fn crocksdb_ratelimiter_get_singleburst_bytes(limiter: *mut DBRateLimiter) -> i64;
     pub fn crocksdb_ratelimiter_request(limiter: *mut DBRateLimiter, bytes: i64, pri: c_uchar);
     pub fn crocksdb_ratelimiter_get_total_bytes_through(
@@ -837,6 +886,7 @@ extern "C" {
         pri: c_uchar,
     ) -> i64;
     pub fn crocksdb_ratelimiter_get_bytes_per_second(limiter: *mut DBRateLimiter) -> i64;
+    pub fn crocksdb_ratelimiter_get_auto_tuned(limiter: *mut DBRateLimiter) -> bool;
     pub fn crocksdb_ratelimiter_get_total_requests(
         limiter: *mut DBRateLimiter,
         pri: c_uchar,
@@ -1099,6 +1149,7 @@ extern "C" {
     pub fn crocksdb_iter_prev(iter: *mut DBIterator);
     pub fn crocksdb_iter_key(iter: *const DBIterator, klen: *mut size_t) -> *mut u8;
     pub fn crocksdb_iter_value(iter: *const DBIterator, vlen: *mut size_t) -> *mut u8;
+    pub fn crocksdb_iter_seqno(iter: *const DBIterator, seqno: *mut u64) -> bool;
     pub fn crocksdb_iter_get_error(iter: *const DBIterator, err: *mut *mut c_char);
     // Write batch
     pub fn crocksdb_write(
@@ -1506,18 +1557,17 @@ extern "C" {
             c_int,
             *const u8,
             size_t,
+            u64,
+            CompactionFilterValueType,
             *const u8,
             size_t,
             *mut *mut u8,
             *mut size_t,
-            *mut bool,
-        ) -> bool,
+            *mut *mut u8,
+            *mut size_t,
+        ) -> CompactionFilterDecision,
         name: extern "C" fn(*mut c_void) -> *const c_char,
     ) -> *mut DBCompactionFilter;
-    pub fn crocksdb_compactionfilter_set_ignore_snapshots(
-        filter: *mut DBCompactionFilter,
-        ignore_snapshot: bool,
-    );
     pub fn crocksdb_compactionfilter_destroy(filter: *mut DBCompactionFilter);
 
     // Compaction filter context
@@ -1530,6 +1580,15 @@ extern "C" {
     pub fn crocksdb_compactionfiltercontext_is_bottommost_level(
         context: *const DBCompactionFilterContext,
     ) -> bool;
+    pub fn crocksdb_compactionfiltercontext_file_numbers(
+        context: *const DBCompactionFilterContext,
+        buffer: *mut *const u64,
+        len: *mut usize,
+    );
+    pub fn crocksdb_compactionfiltercontext_table_properties(
+        context: *const DBCompactionFilterContext,
+        offset: usize,
+    ) -> *const DBTableProperties;
 
     // Compaction filter factory
     pub fn crocksdb_compactionfilterfactory_create(
@@ -1652,7 +1711,6 @@ extern "C" {
         ) -> *const c_char,
         delete_file: extern "C" fn(*mut c_void, *const c_char) -> *const c_char,
         link_file: extern "C" fn(*mut c_void, *const c_char, *const c_char) -> *const c_char,
-        rename_file: extern "C" fn(*mut c_void, *const c_char, *const c_char) -> *const c_char,
     ) -> *mut DBEncryptionKeyManagerInstance;
     #[cfg(feature = "encryption")]
     pub fn crocksdb_encryption_key_manager_destroy(
@@ -1681,17 +1739,35 @@ extern "C" {
         src_fname: *const c_char,
         dst_fname: *const c_char,
     ) -> *const c_char;
-    #[cfg(feature = "encryption")]
-    pub fn crocksdb_encryption_key_manager_rename_file(
-        key_manager: *mut DBEncryptionKeyManagerInstance,
-        src_fname: *const c_char,
-        dst_fname: *const c_char,
-    ) -> *const c_char;
 
     #[cfg(feature = "encryption")]
     pub fn crocksdb_key_managed_encrypted_env_create(
         base_env: *mut DBEnv,
         key_manager: *mut DBEncryptionKeyManagerInstance,
+    ) -> *mut DBEnv;
+
+    // FileSystemInspectedEnv
+    pub fn crocksdb_file_system_inspector_create(
+        state: *mut c_void,
+        destructor: extern "C" fn(*mut c_void),
+        read: extern "C" fn(*mut c_void, size_t, *mut *mut c_char) -> size_t,
+        write: extern "C" fn(*mut c_void, size_t, *mut *mut c_char) -> size_t,
+    ) -> *mut DBFileSystemInspectorInstance;
+    pub fn crocksdb_file_system_inspector_destroy(inspector: *mut DBFileSystemInspectorInstance);
+    pub fn crocksdb_file_system_inspector_read(
+        inspector: *mut DBFileSystemInspectorInstance,
+        len: size_t,
+        errptr: *mut *mut c_char,
+    ) -> size_t;
+    pub fn crocksdb_file_system_inspector_write(
+        inspector: *mut DBFileSystemInspectorInstance,
+        len: size_t,
+        errptr: *mut *mut c_char,
+    ) -> size_t;
+
+    pub fn crocksdb_file_system_inspected_env_create(
+        base_env: *mut DBEnv,
+        inspector: *mut DBFileSystemInspectorInstance,
     ) -> *mut DBEnv;
 
     // SstFileReader
@@ -2016,6 +2092,12 @@ extern "C" {
         f: *mut DBTablePropertiesCollectorFactory,
     );
 
+    pub fn crocksdb_options_set_compact_on_deletion(
+        options: *mut Options,
+        sliding_window_size: size_t,
+        deletion_trigger: size_t,
+    );
+
     pub fn crocksdb_get_properties_of_all_tables(
         db: *mut DBInstance,
         errptr: *mut *mut c_char,
@@ -2089,6 +2171,21 @@ extern "C" {
         info: *const DBCompactionJobInfo,
     ) -> CompactionReason;
 
+    pub fn crocksdb_subcompactionjobinfo_status(
+        info: *const DBSubcompactionJobInfo,
+        errptr: *mut *mut c_char,
+    );
+    pub fn crocksdb_subcompactionjobinfo_cf_name(
+        info: *const DBSubcompactionJobInfo,
+        size: *mut size_t,
+    ) -> *const c_char;
+    pub fn crocksdb_subcompactionjobinfo_thread_id(info: *const DBSubcompactionJobInfo) -> u64;
+    pub fn crocksdb_subcompactionjobinfo_base_input_level(
+        info: *const DBSubcompactionJobInfo,
+    ) -> c_int;
+    pub fn crocksdb_subcompactionjobinfo_output_level(info: *const DBSubcompactionJobInfo)
+        -> c_int;
+
     pub fn crocksdb_externalfileingestioninfo_cf_name(
         info: *const DBIngestionInfo,
         size: *mut size_t,
@@ -2114,8 +2211,12 @@ extern "C" {
     pub fn crocksdb_eventlistener_create(
         state: *mut c_void,
         destructor: extern "C" fn(*mut c_void),
-        flush: extern "C" fn(*mut c_void, *mut DBInstance, *const DBFlushJobInfo),
-        compact: extern "C" fn(*mut c_void, *mut DBInstance, *const DBCompactionJobInfo),
+        flush_begin: extern "C" fn(*mut c_void, *mut DBInstance, *const DBFlushJobInfo),
+        flush_completed: extern "C" fn(*mut c_void, *mut DBInstance, *const DBFlushJobInfo),
+        compact_begin: extern "C" fn(*mut c_void, *mut DBInstance, *const DBCompactionJobInfo),
+        compact_completed: extern "C" fn(*mut c_void, *mut DBInstance, *const DBCompactionJobInfo),
+        subcompact_begin: extern "C" fn(*mut c_void, *const DBSubcompactionJobInfo),
+        subcompact_completed: extern "C" fn(*mut c_void, *const DBSubcompactionJobInfo),
         ingest: extern "C" fn(*mut c_void, *mut DBInstance, *const DBIngestionInfo),
         bg_error: extern "C" fn(*mut c_void, DBBackgroundErrorReason, *mut DBStatusPtr),
         stall_conditions: extern "C" fn(*mut c_void, *const DBWriteStallInfo),
@@ -2591,6 +2692,36 @@ extern "C" {
         err: *mut *mut c_char,
     );
     pub fn ctitandb_delete_files_in_ranges_cf(
+        db: *mut DBInstance,
+        cf: *mut DBCFHandle,
+        start_keys: *const *const u8,
+        start_keys_lens: *const size_t,
+        limit_keys: *const *const u8,
+        limit_keys_lens: *const size_t,
+        num_ranges: size_t,
+        include_end: bool,
+        errptr: *mut *mut c_char,
+    );
+    pub fn ctitandb_delete_blob_files_in_range(
+        db: *mut DBInstance,
+        range_start_key: *const u8,
+        range_start_key_len: size_t,
+        range_limit_key: *const u8,
+        range_limit_key_len: size_t,
+        include_end: bool,
+        err: *mut *mut c_char,
+    );
+    pub fn ctitandb_delete_blob_files_in_range_cf(
+        db: *mut DBInstance,
+        cf: *mut DBCFHandle,
+        range_start_key: *const u8,
+        range_start_key_len: size_t,
+        range_limit_key: *const u8,
+        range_limit_key_len: size_t,
+        include_end: bool,
+        err: *mut *mut c_char,
+    );
+    pub fn ctitandb_delete_blob_files_in_ranges_cf(
         db: *mut DBInstance,
         cf: *mut DBCFHandle,
         start_keys: *const *const u8,

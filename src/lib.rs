@@ -31,21 +31,26 @@ extern crate lazy_static;
 pub use cloud::CloudEnvOptions;
 pub use compaction_filter::{
     new_compaction_filter, new_compaction_filter_factory, new_compaction_filter_raw,
-    CompactionFilter, CompactionFilterContext, CompactionFilterFactory,
-    CompactionFilterFactoryHandle, CompactionFilterHandle, DBCompactionFilter,
+    CompactionFilter, CompactionFilterContext, CompactionFilterDecision, CompactionFilterFactory,
+    CompactionFilterFactoryHandle, CompactionFilterHandle, CompactionFilterValueType,
+    DBCompactionFilter,
 };
 #[cfg(feature = "encryption")]
 pub use encryption::{DBEncryptionMethod, EncryptionKeyManager, FileEncryptionInfo};
 pub use event_listener::{
-    CompactionJobInfo, EventListener, FlushJobInfo, IngestionInfo, WriteStallInfo,
+    CompactionJobInfo, EventListener, FlushJobInfo, IngestionInfo, SubcompactionJobInfo,
+    WriteStallInfo,
 };
+pub use file_system::FileSystemInspector;
 pub use librocksdb_sys::{
     self as crocksdb_ffi, new_bloom_filter, CompactionPriority, CompactionReason,
     DBBackgroundErrorReason, DBBottommostLevelCompaction, DBCompactionStyle, DBCompressionType,
     DBEntryType, DBInfoLogLevel, DBRateLimiterMode, DBRecoveryMode,
-    DBSstPartitionerResult as SstPartitionerResult, DBLevelRegionAccessorResult as LevelRegionAccessorResult,
-    DBLevelRegionBoundaries as LevelRegionBoundaries, DBStatisticsHistogramType,
-    DBStatisticsTickerType, DBStatusPtr, DBTitanDBBlobRunMode, IndexType, WriteStallCondition,
+    DBLevelRegionAccessorResult as LevelRegionAccessorResult,
+    DBLevelRegionBoundaries as LevelRegionBoundaries, 
+    DBSstPartitionerResult as SstPartitionerResult, DBStatisticsHistogramType,
+    DBStatisticsTickerType, DBStatusPtr, DBTitanDBBlobRunMode, DBValueType, IndexType,
+    WriteStallCondition,
 };
 pub use logger::Logger;
 pub use merge_operator::MergeOperands;
@@ -77,7 +82,7 @@ pub use table_properties::{
 pub use table_properties_collector::TablePropertiesCollector;
 pub use table_properties_collector_factory::TablePropertiesCollectorFactory;
 pub use titan::{TitanBlobIndex, TitanDBOptions};
-pub use write_batch::{WriteBatch, WriteBatchRef};
+pub use write_batch::{WriteBatch, WriteBatchIter, WriteBatchRef};
 
 #[allow(deprecated)]
 pub use rocksdb::Kv;
@@ -89,6 +94,7 @@ pub mod comparator;
 #[cfg(feature = "encryption")]
 mod encryption;
 mod event_listener;
+mod file_system;
 pub mod logger;
 pub mod merge_operator;
 mod metadata;

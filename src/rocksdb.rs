@@ -42,6 +42,7 @@ use std::{fs, ptr, slice};
 use cloud::CloudEnvOptions;
 #[cfg(feature = "encryption")]
 use encryption::{DBEncryptionKeyManager, EncryptionKeyManager};
+use file_system::{DBFileSystemInspector, FileSystemInspector};
 use table_properties::{TableProperties, TablePropertiesCollection};
 use table_properties_rc::TablePropertiesCollection as RcTablePropertiesCollection;
 use titan::TitanDBOptions;
@@ -302,6 +303,17 @@ impl<D> DBIterator<D> {
         unsafe {
             let val_ptr = crocksdb_ffi::crocksdb_iter_value(self.inner, val_len_ptr);
             slice::from_raw_parts(val_ptr, val_len as usize)
+        }
+    }
+
+    pub fn sequence(&self) -> Option<u64> {
+        debug_assert_eq!(self.valid(), Ok(true));
+        unsafe {
+            let mut seqno = 0;
+            if crocksdb_ffi::crocksdb_iter_seqno(self.inner, &mut seqno) {
+                return Some(seqno);
+            }
+            None
         }
     }
 
@@ -1446,6 +1458,79 @@ impl DB {
         Ok(())
     }
 
+    pub fn delete_blob_files_in_range(
+        &self,
+        start_key: &[u8],
+        end_key: &[u8],
+        include_end: bool,
+    ) -> Result<(), String> {
+        unsafe {
+            if self.is_titan() {
+                ffi_try!(ctitandb_delete_blob_files_in_range(
+                    self.inner,
+                    start_key.as_ptr(),
+                    start_key.len() as size_t,
+                    end_key.as_ptr(),
+                    end_key.len() as size_t,
+                    include_end
+                ));
+            }
+            Ok(())
+        }
+    }
+
+    pub fn delete_blob_files_in_range_cf(
+        &self,
+        cf: &CFHandle,
+        start_key: &[u8],
+        end_key: &[u8],
+        include_end: bool,
+    ) -> Result<(), String> {
+        unsafe {
+            if self.is_titan() {
+                ffi_try!(ctitandb_delete_blob_files_in_range_cf(
+                    self.inner,
+                    cf.inner,
+                    start_key.as_ptr(),
+                    start_key.len() as size_t,
+                    end_key.as_ptr(),
+                    end_key.len() as size_t,
+                    include_end
+                ));
+            }
+            Ok(())
+        }
+    }
+
+    pub fn delete_blob_files_in_ranges_cf(
+        &self,
+        cf: &CFHandle,
+        ranges: &[Range],
+        include_end: bool,
+    ) -> Result<(), String> {
+        unsafe {
+            if self.is_titan() {
+                let start_keys: Vec<*const u8> =
+                    ranges.iter().map(|x| x.start_key.as_ptr()).collect();
+                let start_keys_lens: Vec<_> = ranges.iter().map(|x| x.start_key.len()).collect();
+                let limit_keys: Vec<*const u8> =
+                    ranges.iter().map(|x| x.end_key.as_ptr()).collect();
+                let limit_keys_lens: Vec<_> = ranges.iter().map(|x| x.end_key.len()).collect();
+                ffi_try!(ctitandb_delete_blob_files_in_ranges_cf(
+                    self.inner,
+                    cf.inner,
+                    start_keys.as_ptr(),
+                    start_keys_lens.as_ptr(),
+                    limit_keys.as_ptr(),
+                    limit_keys_lens.as_ptr(),
+                    ranges.len(),
+                    include_end
+                ));
+            }
+        }
+        Ok(())
+    }
+
     pub fn get_property_value(&self, name: &str) -> Option<String> {
         self.get_property_value_cf_opt(None, name)
     }
@@ -2569,15 +2654,32 @@ impl Env {
 
     // Create an encrypted env that accepts an external key manager.
     #[cfg(feature = "encryption")]
-    pub fn new_key_managed_encrypted_env(
+    pub fn new_key_managed_encrypted_env<T: EncryptionKeyManager>(
         base_env: Arc<Env>,
-        key_manager: Arc<dyn EncryptionKeyManager>,
+        key_manager: T,
     ) -> Result<Env, String> {
         let db_key_manager = DBEncryptionKeyManager::new(key_manager);
         let env = unsafe {
             crocksdb_ffi::crocksdb_key_managed_encrypted_env_create(
                 base_env.inner,
                 db_key_manager.inner,
+            )
+        };
+        Ok(Env {
+            inner: env,
+            base: Some(base_env),
+        })
+    }
+
+    pub fn new_file_system_inspected_env<T: FileSystemInspector>(
+        base_env: Arc<Env>,
+        file_system_inspector: T,
+    ) -> Result<Env, String> {
+        let db_file_system_inspector = DBFileSystemInspector::new(file_system_inspector);
+        let env = unsafe {
+            crocksdb_ffi::crocksdb_file_system_inspected_env_create(
+                base_env.inner,
+                db_file_system_inspector.inner,
             )
         };
         Ok(Env {
@@ -3288,6 +3390,15 @@ mod test {
         db.set_db_options(&[("max_background_jobs", "8")]).unwrap();
         let db_opts = db.get_db_options();
         assert_eq!(db_opts.get_max_background_jobs(), 8);
+
+        db.set_db_options(&[("max_background_compactions", "6")])
+            .unwrap();
+        db.set_db_options(&[("max_background_flushes", "3")])
+            .unwrap();
+        let db_opts = db.get_db_options();
+        assert_eq!(db_opts.get_max_background_jobs(), 8);
+        assert_eq!(db_opts.get_max_background_compactions(), 6);
+        assert_eq!(db_opts.get_max_background_flushes(), 3);
 
         let cf_opts = db.get_options_cf(cf);
         assert_eq!(cf_opts.get_disable_auto_compactions(), false);

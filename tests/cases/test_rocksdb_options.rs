@@ -182,6 +182,25 @@ fn test_set_ratelimiter_with_auto_tuned() {
 }
 
 #[test]
+fn test_set_writeampbasedratelimiter_with_auto_tuned() {
+    let path =
+        tempdir_with_prefix("_rust_rocksdb_test_set_write_amp_based_rate_limiter_with_auto_tuned");
+    let mut opts = DBOptions::new();
+    opts.create_if_missing(true);
+    opts.set_writeampbasedratelimiter_with_auto_tuned(
+        100 * 1024 * 1024,
+        10 * 100000,
+        DBRateLimiterMode::AllIo,
+        true,
+    );
+    let db = DB::open(opts, path.path().to_str().unwrap()).unwrap();
+    let mut opts = db.get_db_options();
+    assert!(opts.set_auto_tuned(false).is_ok(), true);
+    assert_eq!(opts.get_auto_tuned().unwrap(), false);
+    drop(db);
+}
+
+#[test]
 fn test_set_ratelimiter_bytes_per_second() {
     let path = tempdir_with_prefix("_rust_rocksdb_test_set_rate_limiter_bytes_per_second");
     let mut opts = DBOptions::new();
@@ -571,6 +590,16 @@ fn test_set_max_background_jobs() {
 }
 
 #[test]
+fn test_set_max_background_compactions_and_flushes() {
+    let path = tempdir_with_prefix("_rust_rocksdb_max_background_compactions_and_flushes");
+    let mut opts = DBOptions::new();
+    opts.create_if_missing(true);
+    opts.set_max_background_compactions(4);
+    opts.set_max_background_flushes(1);
+    DB::open(opts, path.path().to_str().unwrap()).unwrap();
+}
+
+#[test]
 fn test_set_compaction_pri() {
     let path = tempdir_with_prefix("_rust_rocksdb_compaction_pri");
     let mut opts = DBOptions::new();
@@ -846,4 +875,50 @@ fn test_dboptions_set_env() {
     opts.create_if_missing(true);
     opts.set_env(Arc::new(Env::default()));
     let _db = DB::open(opts, path_str).unwrap();
+}
+
+#[test]
+fn test_compact_on_deletion() {
+    let num_keys = 1000;
+    let window_size = 100;
+    let dels_trigger = 90;
+
+    let mut opts = DBOptions::new();
+    let cf_opts = ColumnFamilyOptions::new();
+    opts.create_if_missing(true);
+    cf_opts.set_compact_on_deletion(window_size, dels_trigger);
+
+    let path = tempdir_with_prefix("_rust_rocksdb_compact_on_deletion_test");
+    let db = DB::open_cf(
+        opts,
+        path.path().to_str().unwrap(),
+        vec![("default", cf_opts)],
+    )
+    .unwrap();
+
+    let cf = db.cf_handle("default").unwrap();
+    db.put(b"key0", b"value").unwrap();
+    db.flush(true).unwrap();
+    let mut opt = CompactOptions::new();
+    opt.set_change_level(true);
+    opt.set_target_level(1);
+    db.compact_range_cf_opt(cf, &opt, None, None);
+
+    let name = format!("rocksdb.num-files-at-level{}", 1);
+    assert_eq!(db.get_property_int(&name).unwrap(), 1);
+
+    for i in 0..num_keys {
+        if i >= num_keys - window_size && i < num_keys - window_size + dels_trigger {
+            db.delete(format!("key{}", i).as_ref()).unwrap();
+        } else {
+            db.put(format!("key{}", i).as_ref(), b"value").unwrap();
+        }
+    }
+    db.flush(true).unwrap();
+    std::thread::sleep(std::time::Duration::from_millis(100));
+
+    let name = format!("rocksdb.num-files-at-level{}", 0);
+    assert_eq!(db.get_property_int(&name).unwrap(), 0);
+    let name = format!("rocksdb.num-files-at-level{}", 1);
+    assert_eq!(db.get_property_int(&name).unwrap(), 1);
 }

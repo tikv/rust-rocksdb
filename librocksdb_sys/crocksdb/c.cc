@@ -23,6 +23,7 @@
 #include "rocksdb/encryption.h"
 #include "rocksdb/env.h"
 #include "rocksdb/env_encryption.h"
+#include "rocksdb/env_inspected.h"
 #include "rocksdb/filter_policy.h"
 #include "rocksdb/iostats_context.h"
 #include "rocksdb/iterator.h"
@@ -42,11 +43,13 @@
 #include "rocksdb/status.h"
 #include "rocksdb/table.h"
 #include "rocksdb/table_properties.h"
+#include "rocksdb/types.h"
 #include "rocksdb/universal_compaction.h"
 #include "rocksdb/utilities/backupable_db.h"
 #include "rocksdb/utilities/db_ttl.h"
 #include "rocksdb/utilities/debug.h"
 #include "rocksdb/utilities/options_util.h"
+#include "rocksdb/utilities/table_properties_collectors.h"
 #include "rocksdb/write_batch.h"
 #include "src/blob_format.h"
 #include "table/block_based/block_based_table_factory.h"
@@ -141,6 +144,7 @@ using rocksdb::SstPartitioner;
 using rocksdb::SstPartitionerFactory;
 using rocksdb::LevelRegionAccessor;
 using rocksdb::Status;
+using rocksdb::SubcompactionJobInfo;
 using rocksdb::TableProperties;
 using rocksdb::TablePropertiesCollection;
 using rocksdb::TablePropertiesCollector;
@@ -201,6 +205,8 @@ using rocksdb::encryption::KeyManager;
 using rocksdb::encryption::NewKeyManagedEncryptedEnv;
 #endif
 
+using rocksdb::FileSystemInspector;
+using rocksdb::NewFileSystemInspectedEnv;
 using std::shared_ptr;
 
 extern "C" {
@@ -364,6 +370,9 @@ struct crocksdb_writestallinfo_t {
 struct crocksdb_compactionjobinfo_t {
   CompactionJobInfo rep;
 };
+struct crocksdb_subcompactionjobinfo_t {
+  SubcompactionJobInfo rep;
+};
 struct crocksdb_externalfileingestioninfo_t {
   ExternalFileIngestionInfo rep;
 };
@@ -396,36 +405,39 @@ struct crocksdb_map_property_t {
 struct crocksdb_compactionfilter_t : public CompactionFilter {
   void* state_;
   void (*destructor_)(void*);
-  unsigned char (*filter_)(void*, int level, const char* key, size_t key_length,
-                           const char* existing_value, size_t value_length,
-                           char** new_value, size_t* new_value_length,
-                           unsigned char* value_changed);
+  Decision (*filter_)(void*, int level, const char* key, size_t key_length,
+                      uint64_t seqno, ValueType value_type,
+                      const char* existing_value, size_t value_length,
+                      char** new_value, size_t* new_value_length,
+                      char** skip_until, size_t* skip_until_length);
+
   const char* (*name_)(void*);
-  unsigned char ignore_snapshots_;
 
   virtual ~crocksdb_compactionfilter_t() { (*destructor_)(state_); }
 
-  virtual bool Filter(int level, const Slice& key, const Slice& existing_value,
-                      std::string* new_value,
-                      bool* value_changed) const override {
+  virtual Decision FilterV3(int level, const Slice& key, uint64_t seqno,
+                            ValueType value_type, const Slice& existing_value,
+                            std::string* new_value,
+                            std::string* skip_until) const override {
     char* c_new_value = nullptr;
-    size_t new_value_length = 0;
-    unsigned char c_value_changed = 0;
-    unsigned char result =
-        (*filter_)(state_, level, key.data(), key.size(), existing_value.data(),
-                   existing_value.size(), &c_new_value, &new_value_length,
-                   &c_value_changed);
-    if (c_value_changed) {
+    char* c_skip_until = nullptr;
+    size_t new_value_length, skip_until_length = 0;
+
+    Decision result =
+        (*filter_)(state_, level, key.data(), key.size(), seqno, value_type,
+                   existing_value.data(), existing_value.size(), &c_new_value,
+                   &new_value_length, &c_skip_until, &skip_until_length);
+    if (result == Decision::kChangeValue) {
       new_value->assign(c_new_value, new_value_length);
       free(c_new_value);
-      *value_changed = true;
+    } else if (result == Decision::kRemoveAndSkipUntil) {
+      skip_until->assign(c_skip_until, skip_until_length);
+      free(c_skip_until);
     }
     return result;
   }
 
   virtual const char* Name() const override { return (*name_)(state_); }
-
-  virtual bool IgnoreSnapshots() const override { return ignore_snapshots_; }
 };
 
 struct crocksdb_compactionfilterfactory_t : public CompactionFilterFactory {
@@ -677,6 +689,10 @@ struct crocksdb_level_region_accessor_request_t {
 
 struct crocksdb_level_region_accessor_result_t {
   AccessorResult* rep;
+}
+
+struct crocksdb_file_system_inspector_t {
+  std::shared_ptr<FileSystemInspector> rep;
 };
 
 static bool SaveError(char** errptr, const Status& s) {
@@ -1516,6 +1532,10 @@ const char* crocksdb_iter_value(const crocksdb_iterator_t* iter, size_t* vlen) {
   return s.data();
 }
 
+bool crocksdb_iter_seqno(const crocksdb_iterator_t* iter, SequenceNumber* no) {
+  return iter->rep->seqno(no);
+}
+
 void crocksdb_iter_get_error(const crocksdb_iterator_t* iter, char** errptr) {
   SaveError(errptr, iter->rep->status());
 }
@@ -2170,6 +2190,34 @@ CompactionReason crocksdb_compactionjobinfo_compaction_reason(
   return info->rep.compaction_reason;
 }
 
+/* SubcompactionJobInfo */
+
+void crocksdb_subcompactionjobinfo_status(
+    const crocksdb_subcompactionjobinfo_t* info, char** errptr) {
+  SaveError(errptr, info->rep.status);
+}
+
+const char* crocksdb_subcompactionjobinfo_cf_name(
+    const crocksdb_subcompactionjobinfo_t* info, size_t* size) {
+  *size = info->rep.cf_name.size();
+  return info->rep.cf_name.data();
+}
+
+uint64_t crocksdb_subcompactionjobinfo_thread_id(
+    const crocksdb_subcompactionjobinfo_t* info) {
+  return info->rep.thread_id;
+}
+
+int crocksdb_subcompactionjobinfo_base_input_level(
+    const crocksdb_subcompactionjobinfo_t* info) {
+  return info->rep.base_input_level;
+}
+
+int crocksdb_subcompactionjobinfo_output_level(
+    const crocksdb_subcompactionjobinfo_t* info) {
+  return info->rep.output_level;
+}
+
 /* ExternalFileIngestionInfo */
 
 const char* crocksdb_externalfileingestioninfo_cf_name(
@@ -2215,15 +2263,27 @@ const crocksdb_writestallcondition_t* crocksdb_writestallinfo_prev(
 struct crocksdb_eventlistener_t : public EventListener {
   void* state_;
   void (*destructor_)(void*);
+  void (*on_flush_begin)(void*, crocksdb_t*, const crocksdb_flushjobinfo_t*);
   void (*on_flush_completed)(void*, crocksdb_t*,
                              const crocksdb_flushjobinfo_t*);
+  void (*on_compaction_begin)(void*, crocksdb_t*,
+                              const crocksdb_compactionjobinfo_t*);
   void (*on_compaction_completed)(void*, crocksdb_t*,
                                   const crocksdb_compactionjobinfo_t*);
+  void (*on_subcompaction_begin)(void*, const crocksdb_subcompactionjobinfo_t*);
+  void (*on_subcompaction_completed)(void*,
+                                     const crocksdb_subcompactionjobinfo_t*);
   void (*on_external_file_ingested)(
       void*, crocksdb_t*, const crocksdb_externalfileingestioninfo_t*);
   void (*on_background_error)(void*, crocksdb_backgrounderrorreason_t,
                               crocksdb_status_ptr_t*);
   void (*on_stall_conditions_changed)(void*, const crocksdb_writestallinfo_t*);
+
+  virtual void OnFlushBegin(DB* db, const FlushJobInfo& info) {
+    crocksdb_t c_db = {db};
+    on_flush_begin(state_, &c_db,
+                   reinterpret_cast<const crocksdb_flushjobinfo_t*>(&info));
+  }
 
   virtual void OnFlushCompleted(DB* db, const FlushJobInfo& info) {
     crocksdb_t c_db = {db};
@@ -2231,11 +2291,30 @@ struct crocksdb_eventlistener_t : public EventListener {
                        reinterpret_cast<const crocksdb_flushjobinfo_t*>(&info));
   }
 
+  virtual void OnCompactionBegin(DB* db, const CompactionJobInfo& info) {
+    crocksdb_t c_db = {db};
+    on_compaction_begin(
+        state_, &c_db,
+        reinterpret_cast<const crocksdb_compactionjobinfo_t*>(&info));
+  }
+
   virtual void OnCompactionCompleted(DB* db, const CompactionJobInfo& info) {
     crocksdb_t c_db = {db};
     on_compaction_completed(
         state_, &c_db,
         reinterpret_cast<const crocksdb_compactionjobinfo_t*>(&info));
+  }
+
+  virtual void OnSubcompactionBegin(const SubcompactionJobInfo& info) {
+    on_subcompaction_begin(
+        state_,
+        reinterpret_cast<const crocksdb_subcompactionjobinfo_t*>(&info));
+  }
+
+  virtual void OnSubcompactionCompleted(const SubcompactionJobInfo& info) {
+    on_subcompaction_completed(
+        state_,
+        reinterpret_cast<const crocksdb_subcompactionjobinfo_t*>(&info));
   }
 
   virtual void OnExternalFileIngested(DB* db,
@@ -2279,17 +2358,24 @@ struct crocksdb_eventlistener_t : public EventListener {
 };
 
 crocksdb_eventlistener_t* crocksdb_eventlistener_create(
-    void* state_, void (*destructor_)(void*),
+    void* state_, void (*destructor_)(void*), on_flush_begin_cb on_flush_begin,
     on_flush_completed_cb on_flush_completed,
+    on_compaction_begin_cb on_compaction_begin,
     on_compaction_completed_cb on_compaction_completed,
+    on_subcompaction_begin_cb on_subcompaction_begin,
+    on_subcompaction_completed_cb on_subcompaction_completed,
     on_external_file_ingested_cb on_external_file_ingested,
     on_background_error_cb on_background_error,
     on_stall_conditions_changed_cb on_stall_conditions_changed) {
   crocksdb_eventlistener_t* et = new crocksdb_eventlistener_t;
   et->state_ = state_;
   et->destructor_ = destructor_;
+  et->on_flush_begin = on_flush_begin;
   et->on_flush_completed = on_flush_completed;
+  et->on_compaction_begin = on_compaction_begin;
   et->on_compaction_completed = on_compaction_completed;
+  et->on_subcompaction_begin = on_subcompaction_begin;
+  et->on_subcompaction_completed = on_subcompaction_completed;
   et->on_external_file_ingested = on_external_file_ingested;
   et->on_background_error = on_background_error;
   et->on_stall_conditions_changed = on_stall_conditions_changed;
@@ -2641,12 +2727,25 @@ void crocksdb_options_get_compression_per_level(crocksdb_options_t* opt,
 
 void crocksdb_options_set_compression_options(crocksdb_options_t* opt,
                                               int w_bits, int level,
-                                              int strategy,
-                                              int max_dict_bytes) {
+                                              int strategy, int max_dict_bytes,
+                                              int zstd_max_train_bytes) {
   opt->rep.compression_opts.window_bits = w_bits;
   opt->rep.compression_opts.level = level;
   opt->rep.compression_opts.strategy = strategy;
   opt->rep.compression_opts.max_dict_bytes = max_dict_bytes;
+  opt->rep.compression_opts.zstd_max_train_bytes = zstd_max_train_bytes;
+}
+
+void crocksdb_options_set_bottommost_compression_options(
+    crocksdb_options_t* opt, int w_bits, int level, int strategy,
+    int max_dict_bytes, int zstd_max_train_bytes) {
+  opt->rep.bottommost_compression_opts.window_bits = w_bits;
+  opt->rep.bottommost_compression_opts.level = level;
+  opt->rep.bottommost_compression_opts.strategy = strategy;
+  opt->rep.bottommost_compression_opts.max_dict_bytes = max_dict_bytes;
+  opt->rep.bottommost_compression_opts.zstd_max_train_bytes =
+      zstd_max_train_bytes;
+  opt->rep.bottommost_compression_opts.enabled = true;
 }
 
 void crocksdb_options_set_use_direct_reads(crocksdb_options_t* opt,
@@ -2846,6 +2945,25 @@ void crocksdb_options_set_max_background_jobs(crocksdb_options_t* opt, int n) {
 
 int crocksdb_options_get_max_background_jobs(const crocksdb_options_t* opt) {
   return opt->rep.max_background_jobs;
+}
+
+void crocksdb_options_set_max_background_compactions(crocksdb_options_t* opt,
+                                                     int n) {
+  opt->rep.max_background_compactions = n;
+}
+
+int crocksdb_options_get_max_background_compactions(
+    const crocksdb_options_t* opt) {
+  return opt->rep.max_background_compactions;
+}
+
+void crocksdb_options_set_max_background_flushes(crocksdb_options_t* opt,
+                                                 int n) {
+  opt->rep.max_background_flushes = n;
+}
+
+int crocksdb_options_get_max_background_flushes(const crocksdb_options_t* opt) {
+  return opt->rep.max_background_flushes;
 }
 
 void crocksdb_options_set_max_log_file_size(crocksdb_options_t* opt, size_t v) {
@@ -3182,6 +3300,28 @@ crocksdb_ratelimiter_t* crocksdb_ratelimiter_create_with_auto_tuned(
   return rate_limiter;
 }
 
+crocksdb_ratelimiter_t*
+crocksdb_writeampbasedratelimiter_create_with_auto_tuned(
+    int64_t rate_bytes_per_sec, int64_t refill_period_us, int32_t fairness,
+    crocksdb_ratelimiter_mode_t mode, unsigned char auto_tuned) {
+  crocksdb_ratelimiter_t* rate_limiter = new crocksdb_ratelimiter_t;
+  RateLimiter::Mode m = RateLimiter::Mode::kWritesOnly;
+  switch (mode) {
+    case kReadsOnly:
+      m = RateLimiter::Mode::kReadsOnly;
+      break;
+    case kWritesOnly:
+      m = RateLimiter::Mode::kWritesOnly;
+      break;
+    case kAllIo:
+      m = RateLimiter::Mode::kAllIo;
+      break;
+  }
+  rate_limiter->rep = std::shared_ptr<RateLimiter>(NewWriteAmpBasedRateLimiter(
+      rate_bytes_per_sec, refill_period_us, fairness, m, auto_tuned));
+  return rate_limiter;
+}
+
 void crocksdb_ratelimiter_destroy(crocksdb_ratelimiter_t* limiter) {
   if (limiter->rep) {
     limiter->rep.reset();
@@ -3192,6 +3332,11 @@ void crocksdb_ratelimiter_destroy(crocksdb_ratelimiter_t* limiter) {
 void crocksdb_ratelimiter_set_bytes_per_second(crocksdb_ratelimiter_t* limiter,
                                                int64_t rate_bytes_per_sec) {
   limiter->rep->SetBytesPerSecond(rate_bytes_per_sec);
+}
+
+void crocksdb_ratelimiter_set_auto_tuned(crocksdb_ratelimiter_t* limiter,
+                                         unsigned char auto_tuned) {
+  limiter->rep->SetAutoTuned(auto_tuned);
 }
 
 int64_t crocksdb_ratelimiter_get_singleburst_bytes(
@@ -3212,6 +3357,11 @@ int64_t crocksdb_ratelimiter_get_total_bytes_through(
 int64_t crocksdb_ratelimiter_get_bytes_per_second(
     crocksdb_ratelimiter_t* limiter) {
   return limiter->rep->GetBytesPerSecond();
+}
+
+unsigned char crocksdb_ratelimiter_get_auto_tuned(
+    crocksdb_ratelimiter_t* limiter) {
+  return limiter->rep->GetAutoTuned();
 }
 
 int64_t crocksdb_ratelimiter_get_total_requests(crocksdb_ratelimiter_t* limiter,
@@ -3235,24 +3385,18 @@ table_properties_collectors
 
 crocksdb_compactionfilter_t* crocksdb_compactionfilter_create(
     void* state, void (*destructor)(void*),
-    unsigned char (*filter)(void*, int level, const char* key,
-                            size_t key_length, const char* existing_value,
-                            size_t value_length, char** new_value,
-                            size_t* new_value_length,
-                            unsigned char* value_changed),
+    CompactionFilter::Decision (*filter)(
+        void*, int level, const char* key, size_t key_length, uint64_t seqno,
+        CompactionFilter::ValueType value_type, const char* existing_value,
+        size_t value_length, char** new_value, size_t* new_value_length,
+        char** skip_until, size_t* skip_until_length),
     const char* (*name)(void*)) {
   crocksdb_compactionfilter_t* result = new crocksdb_compactionfilter_t;
   result->state_ = state;
   result->destructor_ = destructor;
   result->filter_ = filter;
-  result->ignore_snapshots_ = true;
   result->name_ = name;
   return result;
-}
-
-void crocksdb_compactionfilter_set_ignore_snapshots(
-    crocksdb_compactionfilter_t* filter, unsigned char whether_ignore) {
-  filter->ignore_snapshots_ = whether_ignore;
 }
 
 void crocksdb_compactionfilter_destroy(crocksdb_compactionfilter_t* filter) {
@@ -3272,6 +3416,19 @@ unsigned char crocksdb_compactionfiltercontext_is_manual_compaction(
 unsigned char crocksdb_compactionfiltercontext_is_bottommost_level(
     crocksdb_compactionfiltercontext_t* context) {
   return context->rep.is_bottommost_level;
+}
+
+void crocksdb_compactionfiltercontext_file_numbers(
+    crocksdb_compactionfiltercontext_t* context, const uint64_t** buffer,
+    size_t* len) {
+  *buffer = context->rep.file_numbers.data();
+  *len = context->rep.file_numbers.size();
+}
+
+crocksdb_table_properties_t* crocksdb_compactionfiltercontext_table_properties(
+    crocksdb_compactionfiltercontext_t* context, size_t offset) {
+  return (crocksdb_table_properties_t*)context->rep.table_properties[offset]
+      .get();
 }
 
 crocksdb_compactionfilterfactory_t* crocksdb_compactionfilterfactory_create(
@@ -3906,7 +4063,6 @@ struct crocksdb_encryption_key_manager_impl_t : public KeyManager {
   crocksdb_encryption_key_manager_new_file_cb new_file;
   crocksdb_encryption_key_manager_delete_file_cb delete_file;
   crocksdb_encryption_key_manager_link_file_cb link_file;
-  crocksdb_encryption_key_manager_rename_file_cb rename_file;
 
   virtual ~crocksdb_encryption_key_manager_impl_t() { destructor(state); }
 
@@ -3956,17 +4112,6 @@ struct crocksdb_encryption_key_manager_impl_t : public KeyManager {
     }
     return s;
   }
-
-  Status RenameFile(const std::string& src_fname,
-                    const std::string& dst_fname) override {
-    const char* ret = rename_file(state, src_fname.c_str(), dst_fname.c_str());
-    Status s;
-    if (ret != nullptr) {
-      s = Status::Corruption(std::string(ret));
-      delete ret;
-    }
-    return s;
-  }
 };
 
 crocksdb_encryption_key_manager_t* crocksdb_encryption_key_manager_create(
@@ -3974,8 +4119,7 @@ crocksdb_encryption_key_manager_t* crocksdb_encryption_key_manager_create(
     crocksdb_encryption_key_manager_get_file_cb get_file,
     crocksdb_encryption_key_manager_new_file_cb new_file,
     crocksdb_encryption_key_manager_delete_file_cb delete_file,
-    crocksdb_encryption_key_manager_link_file_cb link_file,
-    crocksdb_encryption_key_manager_rename_file_cb rename_file) {
+    crocksdb_encryption_key_manager_link_file_cb link_file) {
   std::shared_ptr<crocksdb_encryption_key_manager_impl_t> key_manager_impl =
       std::make_shared<crocksdb_encryption_key_manager_impl_t>();
   key_manager_impl->state = state;
@@ -3984,7 +4128,6 @@ crocksdb_encryption_key_manager_t* crocksdb_encryption_key_manager_create(
   key_manager_impl->new_file = new_file;
   key_manager_impl->delete_file = delete_file;
   key_manager_impl->link_file = link_file;
-  key_manager_impl->rename_file = rename_file;
   crocksdb_encryption_key_manager_t* key_manager =
       new crocksdb_encryption_key_manager_t;
   key_manager->rep = key_manager_impl;
@@ -4046,19 +4189,6 @@ const char* crocksdb_encryption_key_manager_link_file(
   return nullptr;
 }
 
-const char* crocksdb_encryption_key_manager_rename_file(
-    crocksdb_encryption_key_manager_t* key_manager, const char* src_fname,
-    const char* dst_fname) {
-  assert(key_manager != nullptr && key_manager->rep != nullptr);
-  assert(src_fname != nullptr);
-  assert(dst_fname != nullptr);
-  Status s = key_manager->rep->RenameFile(src_fname, dst_fname);
-  if (!s.ok()) {
-    return strdup(s.ToString().c_str());
-  }
-  return nullptr;
-}
-
 crocksdb_env_t* crocksdb_key_managed_encrypted_env_create(
     crocksdb_env_t* base_env, crocksdb_encryption_key_manager_t* key_manager) {
   assert(base_env != nullptr);
@@ -4071,6 +4201,92 @@ crocksdb_env_t* crocksdb_key_managed_encrypted_env_create(
   return result;
 }
 #endif
+
+struct crocksdb_file_system_inspector_impl_t : public FileSystemInspector {
+  void* state;
+  void (*destructor)(void*);
+  crocksdb_file_system_inspector_read_cb read;
+  crocksdb_file_system_inspector_write_cb write;
+
+  virtual ~crocksdb_file_system_inspector_impl_t() { destructor(state); }
+
+  Status Read(size_t len, size_t* allowed) {
+    assert(allowed);
+    char* err = nullptr;
+    *allowed = read(state, len, &err);
+    if (err) {
+      Status s = Status::IOError(err);
+      // malloc-ed by strdup
+      free(err);
+      return s;
+    } else {
+      return Status::OK();
+    }
+  }
+
+  Status Write(size_t len, size_t* allowed) {
+    assert(allowed);
+    char* err = nullptr;
+    *allowed = write(state, len, &err);
+    if (err) {
+      Status s = Status::IOError(err);
+      // malloc-ed by strdup
+      free(err);
+      return s;
+    } else {
+      return Status::OK();
+    }
+  }
+};
+
+crocksdb_file_system_inspector_t* crocksdb_file_system_inspector_create(
+    void* state, void (*destructor)(void*),
+    crocksdb_file_system_inspector_read_cb read,
+    crocksdb_file_system_inspector_write_cb write) {
+  std::shared_ptr<crocksdb_file_system_inspector_impl_t> inspector_impl =
+      std::make_shared<crocksdb_file_system_inspector_impl_t>();
+  inspector_impl->state = state;
+  inspector_impl->destructor = destructor;
+  inspector_impl->read = read;
+  inspector_impl->write = write;
+  crocksdb_file_system_inspector_t* inspector =
+      new crocksdb_file_system_inspector_t;
+  inspector->rep = inspector_impl;
+  return inspector;
+}
+
+void crocksdb_file_system_inspector_destroy(
+    crocksdb_file_system_inspector_t* inspector) {
+  delete inspector;
+}
+
+size_t crocksdb_file_system_inspector_read(
+    crocksdb_file_system_inspector_t* inspector, size_t len, char** errptr) {
+  assert(inspector != nullptr && inspector->rep != nullptr);
+  size_t allowed = 0;
+  SaveError(errptr, inspector->rep->Read(len, &allowed));
+  return allowed;
+}
+
+size_t crocksdb_file_system_inspector_write(
+    crocksdb_file_system_inspector_t* inspector, size_t len, char** errptr) {
+  assert(inspector != nullptr && inspector->rep != nullptr);
+  size_t allowed = 0;
+  SaveError(errptr, inspector->rep->Write(len, &allowed));
+  return allowed;
+}
+
+crocksdb_env_t* crocksdb_file_system_inspected_env_create(
+    crocksdb_env_t* base_env, crocksdb_file_system_inspector_t* inspector) {
+  assert(base_env != nullptr);
+  assert(inspector != nullptr);
+  crocksdb_env_t* result = new crocksdb_env_t;
+  result->rep = NewFileSystemInspectedEnv(base_env->rep, inspector->rep);
+  result->block_cipher = nullptr;
+  result->encryption_provider = nullptr;
+  result->is_default = false;
+  return result;
+}
 
 crocksdb_sstfilereader_t* crocksdb_sstfilereader_create(
     const crocksdb_options_t* io_options) {
@@ -4933,6 +5149,14 @@ void crocksdb_options_add_table_properties_collector_factory(
     crocksdb_options_t* opt, crocksdb_table_properties_collector_factory_t* f) {
   opt->rep.table_properties_collector_factories.push_back(
       std::shared_ptr<TablePropertiesCollectorFactory>(f));
+}
+
+void crocksdb_options_set_compact_on_deletion(crocksdb_options_t* opt,
+                                              size_t sliding_window_size,
+                                              size_t deletion_trigger) {
+  opt->rep.table_properties_collector_factories.push_back(
+      rocksdb::NewCompactOnDeletionCollectorFactory(sliding_window_size,
+                                                    deletion_trigger));
 }
 
 /* Get Table Properties */
@@ -6427,6 +6651,60 @@ void ctitandb_delete_files_in_ranges_cf(
     ranges[i] = RangePtr(start, limit);
   }
   SaveError(errptr, static_cast<TitanDB*>(db->rep)->DeleteFilesInRanges(
+                        cf->rep, &ranges[0], num_ranges, include_end));
+}
+
+void ctitandb_delete_blob_files_in_range(crocksdb_t* db, const char* start_key,
+                                         size_t start_key_len,
+                                         const char* limit_key,
+                                         size_t limit_key_len,
+                                         unsigned char include_end,
+                                         char** errptr) {
+  Slice a, b;
+  RangePtr range(
+      start_key ? (a = Slice(start_key, start_key_len), &a) : nullptr,
+      limit_key ? (b = Slice(limit_key, limit_key_len), &b) : nullptr);
+
+  SaveError(errptr,
+            static_cast<TitanDB*>(db->rep)->DeleteBlobFilesInRanges(
+                db->rep->DefaultColumnFamily(), &range, 1, include_end));
+}
+
+void ctitandb_delete_blob_files_in_range_cf(
+    crocksdb_t* db, crocksdb_column_family_handle_t* column_family,
+    const char* start_key, size_t start_key_len, const char* limit_key,
+    size_t limit_key_len, unsigned char include_end, char** errptr) {
+  Slice a, b;
+  RangePtr range(
+      start_key ? (a = Slice(start_key, start_key_len), &a) : nullptr,
+      limit_key ? (b = Slice(limit_key, limit_key_len), &b) : nullptr);
+
+  SaveError(errptr, static_cast<TitanDB*>(db->rep)->DeleteBlobFilesInRanges(
+                        column_family->rep, &range, 1, include_end));
+}
+
+void ctitandb_delete_blob_files_in_ranges_cf(
+    crocksdb_t* db, crocksdb_column_family_handle_t* cf,
+    const char* const* start_keys, const size_t* start_keys_lens,
+    const char* const* limit_keys, const size_t* limit_keys_lens,
+    size_t num_ranges, unsigned char include_end, char** errptr) {
+  std::vector<Slice> starts(num_ranges);
+  std::vector<Slice> limits(num_ranges);
+  std::vector<RangePtr> ranges(num_ranges);
+  for (auto i = 0; i < num_ranges; i++) {
+    const Slice* start = nullptr;
+    if (start_keys[i]) {
+      starts[i] = Slice(start_keys[i], start_keys_lens[i]);
+      start = &starts[i];
+    }
+    const Slice* limit = nullptr;
+    if (limit_keys[i]) {
+      limits[i] = Slice(limit_keys[i], limit_keys_lens[i]);
+      limit = &limits[i];
+    }
+    ranges[i] = RangePtr(start, limit);
+  }
+  SaveError(errptr, static_cast<TitanDB*>(db->rep)->DeleteBlobFilesInRanges(
                         cf->rep, &ranges[0], num_ranges, include_end));
 }
 

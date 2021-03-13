@@ -1,9 +1,24 @@
 use std::ffi::CString;
-use std::{mem, ptr, slice};
+use std::{ptr, slice};
 
+use crate::table_properties::TableProperties;
+use crocksdb_ffi::CompactionFilterDecision as RawCompactionFilterDecision;
+pub use crocksdb_ffi::CompactionFilterValueType;
 pub use crocksdb_ffi::DBCompactionFilter;
 use crocksdb_ffi::{self, DBCompactionFilterContext, DBCompactionFilterFactory};
 use libc::{c_char, c_int, c_void, malloc, memcpy, size_t};
+
+/// Decision used in `CompactionFilter::filter`.
+pub enum CompactionFilterDecision {
+    /// The record will be kept instead of filtered.
+    Keep,
+    /// The record will be filtered, and a tombstone will be left.
+    Remove,
+    /// The record will be kept but the value will be replaced.
+    ChangeValue(Vec<u8>),
+    /// All records between [current, `until`) will be filtered without any tombstones left.
+    RemoveAndSkipUntil(Vec<u8>),
+}
 
 /// `CompactionFilter` allows an application to modify/delete a key-value at
 /// the time of compaction.
@@ -14,16 +29,44 @@ pub trait CompactionFilter {
     /// of false indicates that the kv should be preserved in the
     /// output of this compaction run and a return value of true
     /// indicates that this key-value should be removed from the
-    /// output of the compaction.  The application can inspect
+    /// output of the compaction. The application can inspect
     /// the existing value of the key and make decision based on it.
     fn filter(
         &mut self,
+        _level: usize,
+        _key: &[u8],
+        _value: &[u8],
+        _new_value: &mut Vec<u8>,
+        _value_changed: &mut bool,
+    ) -> bool {
+        false
+    }
+
+    /// This method will overwrite `filter` if a `CompactionFilter` implements both of them.
+    fn featured_filter(
+        &mut self,
         level: usize,
         key: &[u8],
+        _seqno: u64,
         value: &[u8],
-        new_value: &mut Vec<u8>,
-        value_changed: &mut bool,
-    ) -> bool;
+        value_type: CompactionFilterValueType,
+    ) -> CompactionFilterDecision {
+        match value_type {
+            CompactionFilterValueType::Value => {
+                let (mut new_value, mut value_changed) = (Vec::new(), false);
+                if self.filter(level, key, value, &mut new_value, &mut value_changed) {
+                    return CompactionFilterDecision::Remove;
+                }
+                if value_changed {
+                    CompactionFilterDecision::ChangeValue(new_value)
+                } else {
+                    CompactionFilterDecision::Keep
+                }
+            }
+            // Currently `MergeOperand` and `BlobIndex` will always be kept.
+            _ => CompactionFilterDecision::Keep,
+        }
+    }
 }
 
 #[repr(C)]
@@ -47,39 +90,40 @@ extern "C" fn filter(
     level: c_int,
     key: *const u8,
     key_len: size_t,
+    seqno: u64,
+    value_type: CompactionFilterValueType,
     value: *const u8,
     value_len: size_t,
     new_value: *mut *mut u8,
     new_value_len: *mut size_t,
-    value_changed: *mut bool,
-) -> bool {
+    skip_until: *mut *mut u8,
+    skip_until_length: *mut size_t,
+) -> RawCompactionFilterDecision {
     unsafe {
         *new_value = ptr::null_mut();
         *new_value_len = 0;
-        *value_changed = false;
+        *skip_until = ptr::null_mut();
+        *skip_until_length = 0;
 
-        let filter = &mut *(filter as *mut CompactionFilterProxy);
+        let filter = &mut (*(filter as *mut CompactionFilterProxy)).filter;
         let key = slice::from_raw_parts(key, key_len);
         let value = slice::from_raw_parts(value, value_len);
-        let mut new_value_v = Vec::default();
-        let filtered = filter.filter.filter(
-            level as usize,
-            key,
-            value,
-            &mut new_value_v,
-            mem::transmute(&mut *value_changed),
-        );
-        if *value_changed {
-            *new_value_len = new_value_v.len();
-            // The vector is allocated in Rust, so dup it before pass into C.
-            *new_value = malloc(*new_value_len) as *mut u8;
-            memcpy(
-                new_value as *mut c_void,
-                &new_value_v[0] as *const u8 as *const c_void,
-                *new_value_len,
-            );
+        match filter.featured_filter(level as usize, key, seqno, value, value_type) {
+            CompactionFilterDecision::Keep => RawCompactionFilterDecision::Keep,
+            CompactionFilterDecision::Remove => RawCompactionFilterDecision::Remove,
+            CompactionFilterDecision::ChangeValue(new_v) => {
+                *new_value_len = new_v.len();
+                *new_value = malloc(*new_value_len) as *mut u8;
+                memcpy(*new_value as _, new_v.as_ptr() as _, *new_value_len);
+                RawCompactionFilterDecision::ChangeValue
+            }
+            CompactionFilterDecision::RemoveAndSkipUntil(until) => {
+                *skip_until_length = until.len();
+                *skip_until = malloc(*skip_until_length) as *mut u8;
+                memcpy(*skip_until as _, until.as_ptr() as _, *skip_until_length);
+                RawCompactionFilterDecision::RemoveAndSkipUntil
+            }
         }
-        filtered
     }
 }
 
@@ -131,6 +175,27 @@ impl CompactionFilterContext {
     pub fn is_bottommost_level(&self) -> bool {
         let ctx = &self.0 as *const DBCompactionFilterContext;
         unsafe { crocksdb_ffi::crocksdb_compactionfiltercontext_is_bottommost_level(ctx) }
+    }
+
+    pub fn file_numbers(&self) -> &[u64] {
+        let ctx = &self.0 as *const DBCompactionFilterContext;
+        let (mut buffer, mut len): (*const u64, usize) = (ptr::null_mut(), 0);
+        unsafe {
+            crocksdb_ffi::crocksdb_compactionfiltercontext_file_numbers(
+                ctx,
+                &mut buffer as *mut *const u64,
+                &mut len as *mut usize,
+            );
+            slice::from_raw_parts(buffer, len)
+        }
+    }
+
+    pub fn table_properties(&self, offset: usize) -> &TableProperties {
+        let ctx = &self.0 as *const DBCompactionFilterContext;
+        unsafe {
+            let raw = crocksdb_ffi::crocksdb_compactionfiltercontext_table_properties(ctx, offset);
+            TableProperties::from_ptr(raw)
+        }
     }
 }
 

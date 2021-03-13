@@ -2064,6 +2064,28 @@ extern "C" {
         -> libc::c_int;
 }
 extern "C" {
+    pub fn crocksdb_options_set_max_background_compactions(
+        arg1: *mut crocksdb_options_t,
+        arg2: libc::c_int,
+    );
+}
+extern "C" {
+    pub fn crocksdb_options_get_max_background_compactions(
+        arg1: *const crocksdb_options_t,
+    ) -> libc::c_int;
+}
+extern "C" {
+    pub fn crocksdb_options_set_max_background_flushes(
+        arg1: *mut crocksdb_options_t,
+        arg2: libc::c_int,
+    );
+}
+extern "C" {
+    pub fn crocksdb_options_get_max_background_flushes(
+        arg1: *const crocksdb_options_t,
+    ) -> libc::c_int;
+}
+extern "C" {
     pub fn crocksdb_options_set_max_log_file_size(arg1: *mut crocksdb_options_t, arg2: usize);
 }
 extern "C" {
@@ -2451,6 +2473,15 @@ extern "C" {
 }
 extern "C" {
     pub fn crocksdb_ratelimiter_create_with_auto_tuned(
+        rate_bytes_per_sec: i64,
+        refill_period_us: i64,
+        fairness: i32,
+        mode: crocksdb_ratelimiter_mode_t,
+        auto_tuned: libc::c_uchar,
+    ) -> *mut crocksdb_ratelimiter_t;
+}
+extern "C" {
+    pub fn crocksdb_writeampbasedratelimiter_create_with_auto_tuned(
         rate_bytes_per_sec: i64,
         refill_period_us: i64,
         fairness: i32,

@@ -689,7 +689,7 @@ struct crocksdb_level_region_accessor_request_t {
 
 struct crocksdb_level_region_accessor_result_t {
   AccessorResult* rep;
-}
+};
 
 struct crocksdb_file_system_inspector_t {
   std::shared_ptr<FileSystemInspector> rep;

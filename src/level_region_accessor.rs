@@ -15,7 +15,7 @@ pub struct LevelRegionAccessorRequest<'a> {
 
 pub trait LevelRegionAccessor {
     fn name(&self) -> &CString;
-    fn level_regions(&self, req: &LevelRegionAccessorRequest) -> *const LevelRegionAccessorResult;
+    fn level_regions(&self, req: &LevelRegionAccessorRequest) -> LevelRegionAccessorResult;
 }
 
 extern "C" fn level_region_destructor<P: LevelRegionAccessor>(ctx: *mut c_void) {
@@ -35,7 +35,7 @@ extern "C" fn level_region_accessor_name<A: LevelRegionAccessor>(
 extern "C" fn level_region_accessor_level_regions<'a, A: 'a + LevelRegionAccessor>(
     ctx: *mut c_void,
     request: *mut DBLevelRegionAccessorRequest,
-) -> *const LevelRegionAccessorResult<'a> {
+) -> LevelRegionAccessorResult<'a> {
     let accessor = unsafe { &*(ctx as *mut A) };
     let req = unsafe {
         let mut smallest_key_len: usize = 0;

@@ -2557,7 +2557,7 @@ extern "C" {
         level_regions_cb: extern "C" fn (
             *mut c_void,
             *mut DBLevelRegionAccessorRequest,
-        ) -> *const DBLevelRegionAccessorResult<'static>,
+        ) -> DBLevelRegionAccessorResult<'static>,
     ) -> *mut DBLevelRegionAccessor;
     pub fn crocksdb_level_region_accessor_destroy(accessor: *mut DBLevelRegionAccessor);
     pub fn crocksdb_level_region_accessor_name(
@@ -2566,7 +2566,7 @@ extern "C" {
     pub fn crocksdb_level_region_accessor_level_regions<'a>(
         accessor: *mut DBLevelRegionAccessor,
         request: *mut DBLevelRegionAccessorRequest,
-    ) -> *const DBLevelRegionAccessorResult<'a>;
+    ) -> DBLevelRegionAccessorResult<'a>;
 
     pub fn crocksdb_run_ldb_tool(argc: c_int, argv: *const *const c_char, opts: *const Options);
     pub fn crocksdb_run_sst_dump_tool(

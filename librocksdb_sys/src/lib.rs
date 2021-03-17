@@ -2552,10 +2552,14 @@ extern "C" {
     pub fn crocksdb_level_region_accessor_name(
         accessor: *mut DBLevelRegionAccessor,
     ) -> *const c_char;
-    pub fn crocksdb_level_region_accessor_level_regions(
-        accessor: *mut DBLevelRegionAccessor,
-        request: *mut DBLevelRegionAccessorRequest,
-    ) -> *const DBLevelRegionAccessorResult;
+    pub fn crocksdb_level_region_accessor_result_create() -> *mut DBLevelRegionAccessorResult;
+    pub fn crocksdb_level_region_accessor_result_append(
+        dest: *mut DBLevelRegionAccessorResult,
+        s: *const u8,
+        slen: size_t,
+        e: *const u8,
+        elen: size_t,
+    );
 
     pub fn crocksdb_run_ldb_tool(argc: c_int, argv: *const *const c_char, opts: *const Options);
     pub fn crocksdb_run_sst_dump_tool(

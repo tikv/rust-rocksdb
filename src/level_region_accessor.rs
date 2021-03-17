@@ -3,10 +3,8 @@
 use crocksdb_ffi::{
     self, DBLevelRegionAccessor, DBLevelRegionAccessorRequest, DBLevelRegionAccessorResult,
 };
-use libc::{c_char, c_void, malloc, memcpy};
+use libc::{c_char, c_void, size_t};
 use std::{ffi::CString, slice};
-use std::intrinsics::size_of;
-use std::mem::{size_of_val};
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct LevelRegionAccessorRequest<'a> {
@@ -39,7 +37,7 @@ impl Default for AccessorResult {
 }
 
 impl AccessorResult {
-    pub fn new() -> AccessorResult { inner: AccessorResult::default() }
+    pub fn new() -> AccessorResult { AccessorResult::default() }
 
     pub fn append(&mut self, start_key: &[u8], end_key: &[u8]) {
         unsafe {
@@ -95,14 +93,12 @@ extern "C" fn level_region_accessor_level_regions<A: LevelRegionAccessor>(
             largest_user_key: slice::from_raw_parts(largest_key, largest_key_len),
         }
     };
-    unsafe {
-        let result = accessor.level_regions(&req);
-        let mut r = AccessorResult::new();
-        for region in result.regions {
-            r.append(region.start_key.as_slice(), region.end_key.as_slice());
-        }
-        r.inner
+    let result = accessor.level_regions(&req);
+    let mut r = AccessorResult::new();
+    for region in result.regions {
+        r.append(region.start_key.as_slice(), region.end_key.as_slice());
     }
+    r.inner
 }
 
 pub fn new_level_region_accessor<A: 'static + LevelRegionAccessor>(

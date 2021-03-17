@@ -46,8 +46,6 @@ pub use librocksdb_sys::{
     self as crocksdb_ffi, new_bloom_filter, CompactionPriority, CompactionReason,
     DBBackgroundErrorReason, DBBottommostLevelCompaction, DBCompactionStyle, DBCompressionType,
     DBEntryType, DBInfoLogLevel, DBRateLimiterMode, DBRecoveryMode,
-    DBLevelRegionAccessorResult as LevelRegionAccessorResult,
-    DBLevelRegionBoundaries as LevelRegionBoundaries, 
     DBSstPartitionerResult as SstPartitionerResult, DBStatisticsHistogramType,
     DBStatisticsTickerType, DBStatusPtr, DBTitanDBBlobRunMode, DBValueType, IndexType,
     WriteStallCondition,

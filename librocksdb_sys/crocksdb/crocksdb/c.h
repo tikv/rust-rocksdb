@@ -171,7 +171,8 @@ typedef struct crocksdb_sst_partitioner_factory_t
 typedef struct crocksdb_level_region_accessor_t crocksdb_level_region_accessor_t;
 typedef struct crocksdb_level_region_accessor_request_t
     crocksdb_level_region_accessor_request_t;
-typedef AccessorResult* crocksdb_level_region_accessor_result_t;
+typedef struct crocksdb_level_region_accessor_result_t
+    crocksdb_level_region_accessor_result_t;
 
 typedef enum crocksdb_table_property_t {
   kDataSize = 1,
@@ -2454,10 +2455,11 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_level_region_accessor_destroy(
     crocksdb_level_region_accessor_t* accessor);
 extern C_ROCKSDB_LIBRARY_API const char* crocksdb_level_region_accessor_name(
     crocksdb_level_region_accessor_t* accessor);
-extern C_ROCKSDB_LIBRARY_API crocksdb_level_region_accessor_result_t
-crocksdb_level_region_accessor_level_regions(
-    crocksdb_level_region_accessor_t* accessor,
-    crocksdb_level_region_accessor_request_t* request);
+extern C_ROCKSDB_LIBRARY_API crocksdb_level_region_accessor_result_t*
+crocksdb_level_region_accessor_result_create();
+extern C_ROCKSDB_LIBRARY_API void crocksdb_level_region_accessor_result_append(
+    crocksdb_level_region_accessor_result_t* dest,
+    const char* s, size_t slen, const char* e, size_t elen);
 
 
 extern C_ROCKSDB_LIBRARY_API void crocksdb_run_ldb_tool(

@@ -687,6 +687,10 @@ struct crocksdb_level_region_accessor_request_t {
   Slice largest_user_key;
 };
 
+struct crocksdb_level_region_accessor_result_t {
+  AccessorResult rep;
+};
+
 struct crocksdb_file_system_inspector_t {
   std::shared_ptr<FileSystemInspector> rep;
 };
@@ -6253,11 +6257,13 @@ const char* crocksdb_level_region_accessor_name(
   return accessor->rep->Name();
 }
 
-crocksdb_level_region_accessor_result_t crocksdb_level_region_accessor_level_regions(
-    crocksdb_level_region_accessor_t* accessor,
-    crocksdb_level_region_accessor_request_t* req) {
-  crocksdb_level_region_accessor_result_t res;
-  return accessor->rep->LevelRegions(*req->rep);
+crocksdb_level_region_accessor_result_t* crocksdb_level_region_accessor_result_create() {
+  return new crocksdb_level_region_accessor_result_t;
+}
+
+void crocksdb_level_region_accessor_result_append(crocksdb_level_region_accessor_result_t* dest,
+                                        const char* s, size_t slen, const char* e, size_t elen) {
+  dest->rep.append(Slice(s, slen), Slice(e, elen));
 }
 
 /* Tools */

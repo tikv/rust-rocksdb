@@ -1,9 +1,7 @@
 // Copyright 2020 TiKV Project Authors. Licensed under Apache-2.0.
 
-use super::LevelRegionAccessorResult;
 use crocksdb_ffi::{
-    self, DBLevelRegionAccessor, DBLevelRegionAccessorRequest,
-    C_LevelRegionBoundaries, C_LevelRegionAccessorResult,
+    self, DBLevelRegionAccessor, DBLevelRegionAccessorRequest, DBLevelRegionAccessorResult,
 };
 use libc::{c_char, c_void, malloc, memcpy};
 use std::{ffi::CString, slice};
@@ -15,6 +13,47 @@ pub struct LevelRegionAccessorRequest<'a> {
     pub smallest_user_key: &'a [u8],
     pub largest_user_key: &'a [u8],
 }
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct LevelRegionBoundaries {
+    pub start_key: Vec<u8>,
+    pub end_key: Vec<u8>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct LevelRegionAccessorResult {
+    pub regions:  Vec<LevelRegionBoundaries>,
+}
+
+pub struct AccessorResult {
+    pub(crate) inner: *mut DBLevelRegionAccessorResult,
+}
+
+unsafe impl Send for AccessorResult {}
+impl Default for AccessorResult {
+    fn default() -> AccessorResult {
+        AccessorResult {
+            inner: unsafe { crocksdb_ffi::crocksdb_level_region_accessor_result_create() },
+        }
+    }
+}
+
+impl AccessorResult {
+    pub fn new() -> AccessorResult { inner: AccessorResult::default() }
+
+    pub fn append(&mut self, start_key: &[u8], end_key: &[u8]) {
+        unsafe {
+            crocksdb_ffi::crocksdb_level_region_accessor_result_append(
+                self.inner,
+                start_key.as_ptr(),
+                start_key.len() as size_t,
+                end_key.as_ptr(),
+                end_key.len() as size_t,
+            );
+        }
+    }
+}
+
 
 pub trait LevelRegionAccessor {
     fn name(&self) -> &CString;
@@ -38,7 +77,7 @@ extern "C" fn level_region_accessor_name<A: LevelRegionAccessor>(
 extern "C" fn level_region_accessor_level_regions<A: LevelRegionAccessor>(
     ctx: *mut c_void,
     request: *mut DBLevelRegionAccessorRequest,
-) -> *const C_LevelRegionAccessorResult {
+) -> *const DBLevelRegionAccessorResult {
     let accessor = unsafe { &*(ctx as *mut A) };
     let req = unsafe {
         let mut smallest_key_len: usize = 0;
@@ -57,20 +96,12 @@ extern "C" fn level_region_accessor_level_regions<A: LevelRegionAccessor>(
         }
     };
     unsafe {
-        let res = malloc(size_of::<C_LevelRegionAccessorResult>()) as *const C_LevelRegionAccessorResult;
         let result = accessor.level_regions(&req);
-        let region_count = result.regions.len();
-        let regions = malloc(size_of::<C_LevelRegionBoundaries>() * region_count) as *const C_LevelRegionBoundaries;
-        let mut i = 0;
+        let mut r = AccessorResult::new();
         for region in result.regions {
-            regions[i].start_key_len = region.start_key.len();
-            regions[i].start_key = malloc(regions[i].start_key_len);
-            memcpy(regions[i].start_key, region.start_key.as_ptr(), regions[i].start_key_len);
-            regions[i].end_key_len = region.end_key.len();
-            regions[i].end_key = malloc(regions[i].end_key_len);
-            memcpy(regions[i].end_key, region.end_key.as_ptr(), regions[i].end_key_len);
+            r.append(region.start_key.as_slice(), region.end_key.as_slice());
         }
-        res
+        r.inner
     }
 }
 

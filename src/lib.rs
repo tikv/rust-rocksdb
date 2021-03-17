@@ -70,7 +70,8 @@ pub use sst_partitioner::{
     SstPartitioner, SstPartitionerContext, SstPartitionerFactory, SstPartitionerRequest,
 };
 pub use level_region_accessor::{
-    LevelRegionAccessor, LevelRegionAccessorRequest, LevelRegionAccessorResult,
+    LevelRegionAccessor, LevelRegionAccessorRequest, 
+    LevelRegionAccessorResult, LevelRegionAccessorBoundaries,
 };
 pub use table_filter::TableFilter;
 pub use table_properties::{

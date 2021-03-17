@@ -687,10 +687,6 @@ struct crocksdb_level_region_accessor_request_t {
   Slice largest_user_key;
 };
 
-struct crocksdb_level_region_accessor_result_t {
-  AccessorResult* rep;
-};
-
 struct crocksdb_file_system_inspector_t {
   std::shared_ptr<FileSystemInspector> rep;
 };
@@ -6226,9 +6222,7 @@ struct crocksdb_level_region_accessor_impl_t : public LevelRegionAccessor {
       const AccessorRequest& request) const override {
     crocksdb_level_region_accessor_request_t req;
     req.rep = const_cast<AccessorRequest*>(&request);
-    crocksdb_level_region_accessor_result_t res;
-    res = level_regions_cb(underlying, &req);
-    return res.rep; 
+    return level_regions_cb(underlying, &req);
   }
 };
 
@@ -6263,8 +6257,7 @@ crocksdb_level_region_accessor_result_t crocksdb_level_region_accessor_level_reg
     crocksdb_level_region_accessor_t* accessor,
     crocksdb_level_region_accessor_request_t* req) {
   crocksdb_level_region_accessor_result_t res;
-  res.rep = accessor->rep->LevelRegions(*req->rep);
-  return res;
+  return accessor->rep->LevelRegions(*req->rep);
 }
 
 /* Tools */

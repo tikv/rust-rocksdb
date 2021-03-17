@@ -171,8 +171,7 @@ typedef struct crocksdb_sst_partitioner_factory_t
 typedef struct crocksdb_level_region_accessor_t crocksdb_level_region_accessor_t;
 typedef struct crocksdb_level_region_accessor_request_t
     crocksdb_level_region_accessor_request_t;
-typedef struct crocksdb_level_region_accessor_result_t
-    crocksdb_level_region_accessor_result_t;
+typedef AccessorResult* crocksdb_level_region_accessor_result_t;
 
 typedef enum crocksdb_table_property_t {
   kDataSize = 1,

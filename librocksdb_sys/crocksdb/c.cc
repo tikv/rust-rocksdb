@@ -6226,7 +6226,9 @@ struct crocksdb_level_region_accessor_impl_t : public LevelRegionAccessor {
       const AccessorRequest& request) const override {
     crocksdb_level_region_accessor_request_t req;
     req.rep = const_cast<AccessorRequest*>(&request);
-    return level_regions_cb(underlying, &req);
+    crocksdb_level_region_accessor_result_t res;
+    res = level_regions_cb(underlying, &req);
+    return &res.rep
   }
 };
 

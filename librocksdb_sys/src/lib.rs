@@ -290,6 +290,9 @@ pub enum CompactionPriority {
     // and its size is the smallest. It in many cases can optimize write
     // amplification.
     MinOverlappingRatio = 3,
+    // First compact files whose size ratio violation is the largest. It can
+    // reduce compaction in delete scenarios.
+    MaxViolatingSizeRatio = 4,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]

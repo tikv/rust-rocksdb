@@ -3,9 +3,9 @@
 pub const __GNUC_VA_LIST: u32 = 1;
 pub const _STDINT_H: u32 = 1;
 pub const _FEATURES_H: u32 = 1;
+pub const __USE_ANSI: u32 = 1;
 pub const _BSD_SOURCE: u32 = 1;
 pub const _SVID_SOURCE: u32 = 1;
-pub const __USE_ISOC11: u32 = 1;
 pub const __USE_ISOC99: u32 = 1;
 pub const __USE_ISOC95: u32 = 1;
 pub const _POSIX_SOURCE: u32 = 1;
@@ -30,12 +30,15 @@ pub const __STDC_ISO_10646__: u32 = 201103;
 pub const __STDC_NO_THREADS__: u32 = 1;
 pub const __GNU_LIBRARY__: u32 = 6;
 pub const __GLIBC__: u32 = 2;
-pub const __GLIBC_MINOR__: u32 = 18;
+pub const __GLIBC_MINOR__: u32 = 17;
+pub const __GLIBC_HAVE_LONG_LONG: u32 = 1;
 pub const _SYS_CDEFS_H: u32 = 1;
 pub const __WORDSIZE: u32 = 64;
 pub const __WORDSIZE_TIME64_COMPAT32: u32 = 1;
 pub const __SYSCALL_WORDSIZE: u32 = 64;
 pub const _BITS_WCHAR_H: u32 = 1;
+pub const __WCHAR_MIN: i32 = -2147483648;
+pub const __WCHAR_MAX: u32 = 2147483647;
 pub const INT8_MIN: i32 = -128;
 pub const INT16_MIN: i32 = -32768;
 pub const INT32_MIN: i32 = -2147483648;
@@ -71,56 +74,13 @@ pub const PTRDIFF_MAX: u64 = 9223372036854775807;
 pub const SIG_ATOMIC_MIN: i32 = -2147483648;
 pub const SIG_ATOMIC_MAX: u32 = 2147483647;
 pub const SIZE_MAX: i32 = -1;
+pub const WCHAR_MIN: i32 = -2147483648;
+pub const WCHAR_MAX: u32 = 2147483647;
 pub const WINT_MIN: u32 = 0;
 pub const WINT_MAX: u32 = 4294967295;
 pub type va_list = __builtin_va_list;
 pub type __gnuc_va_list = __builtin_va_list;
 pub type wchar_t = libc::c_int;
-#[repr(C)]
-#[repr(align(16))]
-#[derive(Debug, Copy, Clone)]
-pub struct max_align_t {
-    pub __clang_max_align_nonce1: libc::c_longlong,
-    pub __bindgen_padding_0: u64,
-    pub __clang_max_align_nonce2: u128,
-}
-#[test]
-fn bindgen_test_layout_max_align_t() {
-    assert_eq!(
-        ::std::mem::size_of::<max_align_t>(),
-        32usize,
-        concat!("Size of: ", stringify!(max_align_t))
-    );
-    assert_eq!(
-        ::std::mem::align_of::<max_align_t>(),
-        16usize,
-        concat!("Alignment of ", stringify!(max_align_t))
-    );
-    assert_eq!(
-        unsafe {
-            &(*(::std::ptr::null::<max_align_t>())).__clang_max_align_nonce1 as *const _ as usize
-        },
-        0usize,
-        concat!(
-            "Offset of field: ",
-            stringify!(max_align_t),
-            "::",
-            stringify!(__clang_max_align_nonce1)
-        )
-    );
-    assert_eq!(
-        unsafe {
-            &(*(::std::ptr::null::<max_align_t>())).__clang_max_align_nonce2 as *const _ as usize
-        },
-        16usize,
-        concat!(
-            "Offset of field: ",
-            stringify!(max_align_t),
-            "::",
-            stringify!(__clang_max_align_nonce2)
-        )
-    );
-}
 pub type int_least8_t = libc::c_schar;
 pub type int_least16_t = libc::c_short;
 pub type int_least32_t = libc::c_int;
@@ -505,6 +465,21 @@ pub struct crocksdb_sst_partitioner_context_t {
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct crocksdb_sst_partitioner_factory_t {
+    _unused: [u8; 0],
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct crocksdb_level_region_accessor_t {
+    _unused: [u8; 0],
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct crocksdb_level_region_accessor_request_t {
+    _unused: [u8; 0],
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct crocksdb_level_region_accessor_result_t {
     _unused: [u8; 0],
 }
 pub const crocksdb_table_property_t_kDataSize: crocksdb_table_property_t = 1;
@@ -2222,6 +2197,17 @@ extern "C" {
     pub fn crocksdb_options_set_sst_partitioner_factory(
         arg1: *mut crocksdb_options_t,
         arg2: *mut crocksdb_sst_partitioner_factory_t,
+    );
+}
+extern "C" {
+    pub fn crocksdb_options_get_level_region_accessor(
+        arg1: *mut crocksdb_options_t,
+    ) -> *mut crocksdb_level_region_accessor_t;
+}
+extern "C" {
+    pub fn crocksdb_options_set_level_region_accessor(
+        arg1: *mut crocksdb_options_t,
+        arg2: *mut crocksdb_level_region_accessor_t,
     );
 }
 extern "C" {
@@ -4622,6 +4608,79 @@ extern "C" {
     ) -> *mut crocksdb_sst_partitioner_t;
 }
 extern "C" {
+    pub fn crocksdb_level_region_accessor_request_create(
+    ) -> *mut crocksdb_level_region_accessor_request_t;
+}
+extern "C" {
+    pub fn crocksdb_level_region_accessor_request_destroy(
+        req: *mut crocksdb_level_region_accessor_request_t,
+    );
+}
+extern "C" {
+    pub fn crocksdb_level_region_accessor_request_smallest_user_key(
+        req: *mut crocksdb_level_region_accessor_request_t,
+        len: *mut usize,
+    ) -> *const libc::c_char;
+}
+extern "C" {
+    pub fn crocksdb_level_region_accessor_request_largest_user_key(
+        req: *mut crocksdb_level_region_accessor_request_t,
+        len: *mut usize,
+    ) -> *const libc::c_char;
+}
+extern "C" {
+    pub fn crocksdb_level_region_accessor_req_set_smallest_user_key(
+        req: *mut crocksdb_level_region_accessor_request_t,
+        key: *const libc::c_char,
+        len: usize,
+    );
+}
+extern "C" {
+    pub fn crocksdb_level_region_accessor_req_set_largest_user_key(
+        req: *mut crocksdb_level_region_accessor_request_t,
+        key: *const libc::c_char,
+        len: usize,
+    );
+}
+pub type crocksdb_level_region_accessor_name_cb = ::std::option::Option<
+    unsafe extern "C" fn(underlying: *mut libc::c_void) -> *const libc::c_char,
+>;
+pub type crocksdb_level_region_accessor_level_regions_cb = ::std::option::Option<
+    unsafe extern "C" fn(
+        underlying: *mut libc::c_void,
+        requests: *mut crocksdb_level_region_accessor_request_t,
+    ) -> *mut crocksdb_level_region_accessor_result_t,
+>;
+extern "C" {
+    pub fn crocksdb_level_region_accessor_create(
+        underlying: *mut libc::c_void,
+        destructor: ::std::option::Option<unsafe extern "C" fn(arg1: *mut libc::c_void)>,
+        name_cb: crocksdb_level_region_accessor_name_cb,
+        level_regions_cb: crocksdb_level_region_accessor_level_regions_cb,
+    ) -> *mut crocksdb_level_region_accessor_t;
+}
+extern "C" {
+    pub fn crocksdb_level_region_accessor_destroy(accessor: *mut crocksdb_level_region_accessor_t);
+}
+extern "C" {
+    pub fn crocksdb_level_region_accessor_name(
+        accessor: *mut crocksdb_level_region_accessor_t,
+    ) -> *const libc::c_char;
+}
+extern "C" {
+    pub fn crocksdb_level_region_accessor_result_create(
+    ) -> *mut crocksdb_level_region_accessor_result_t;
+}
+extern "C" {
+    pub fn crocksdb_level_region_accessor_result_append(
+        dest: *mut crocksdb_level_region_accessor_result_t,
+        s: *const libc::c_char,
+        slen: usize,
+        e: *const libc::c_char,
+        elen: usize,
+    );
+}
+extern "C" {
     pub fn crocksdb_run_ldb_tool(
         argc: libc::c_int,
         argv: *mut *mut libc::c_char,
@@ -4653,40 +4712,6 @@ fn bindgen_test_layout_ctitandb_blob_index_t() {
         ::std::mem::align_of::<ctitandb_blob_index_t>(),
         8usize,
         concat!("Alignment of ", stringify!(ctitandb_blob_index_t))
-    );
-    assert_eq!(
-        unsafe {
-            &(*(::std::ptr::null::<ctitandb_blob_index_t>())).file_number as *const _ as usize
-        },
-        0usize,
-        concat!(
-            "Offset of field: ",
-            stringify!(ctitandb_blob_index_t),
-            "::",
-            stringify!(file_number)
-        )
-    );
-    assert_eq!(
-        unsafe {
-            &(*(::std::ptr::null::<ctitandb_blob_index_t>())).blob_offset as *const _ as usize
-        },
-        8usize,
-        concat!(
-            "Offset of field: ",
-            stringify!(ctitandb_blob_index_t),
-            "::",
-            stringify!(blob_offset)
-        )
-    );
-    assert_eq!(
-        unsafe { &(*(::std::ptr::null::<ctitandb_blob_index_t>())).blob_size as *const _ as usize },
-        16usize,
-        concat!(
-            "Offset of field: ",
-            stringify!(ctitandb_blob_index_t),
-            "::",
-            stringify!(blob_size)
-        )
     );
 }
 #[repr(C)]
@@ -4999,45 +5024,5 @@ fn bindgen_test_layout___va_list_tag() {
         ::std::mem::align_of::<__va_list_tag>(),
         8usize,
         concat!("Alignment of ", stringify!(__va_list_tag))
-    );
-    assert_eq!(
-        unsafe { &(*(::std::ptr::null::<__va_list_tag>())).gp_offset as *const _ as usize },
-        0usize,
-        concat!(
-            "Offset of field: ",
-            stringify!(__va_list_tag),
-            "::",
-            stringify!(gp_offset)
-        )
-    );
-    assert_eq!(
-        unsafe { &(*(::std::ptr::null::<__va_list_tag>())).fp_offset as *const _ as usize },
-        4usize,
-        concat!(
-            "Offset of field: ",
-            stringify!(__va_list_tag),
-            "::",
-            stringify!(fp_offset)
-        )
-    );
-    assert_eq!(
-        unsafe { &(*(::std::ptr::null::<__va_list_tag>())).overflow_arg_area as *const _ as usize },
-        8usize,
-        concat!(
-            "Offset of field: ",
-            stringify!(__va_list_tag),
-            "::",
-            stringify!(overflow_arg_area)
-        )
-    );
-    assert_eq!(
-        unsafe { &(*(::std::ptr::null::<__va_list_tag>())).reg_save_area as *const _ as usize },
-        16usize,
-        concat!(
-            "Offset of field: ",
-            stringify!(__va_list_tag),
-            "::",
-            stringify!(reg_save_area)
-        )
     );
 }

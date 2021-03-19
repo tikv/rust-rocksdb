@@ -2441,7 +2441,7 @@ crocksdb_level_region_accessor_req_set_largest_user_key(
 
 typedef const char* (*crocksdb_level_region_accessor_name_cb)(
     void* underlying);
-typedef crocksdb_level_region_accessor_result_t (
+typedef crocksdb_level_region_accessor_result_t* (
     *crocksdb_level_region_accessor_level_regions_cb)(
     void* underlying, crocksdb_level_region_accessor_request_t* requests);
 

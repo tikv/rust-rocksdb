@@ -4672,6 +4672,17 @@ extern "C" {
     ) -> *mut crocksdb_level_region_accessor_result_t;
 }
 extern "C" {
+    pub fn crocksdb_level_region_accessor_result_destory(
+        result: *mut crocksdb_level_region_accessor_result_t,
+    );
+}
+extern "C" {
+    pub fn crocksdb_level_region_accessor_result_equal(
+        result1: *mut crocksdb_level_region_accessor_result_t,
+        result2: *mut crocksdb_level_region_accessor_result_t,
+    ) -> libc::c_uchar;
+}
+extern "C" {
     pub fn crocksdb_level_region_accessor_result_append(
         dest: *mut crocksdb_level_region_accessor_result_t,
         s: *const libc::c_char,

@@ -2458,8 +2458,8 @@ extern C_ROCKSDB_LIBRARY_API const char* crocksdb_level_region_accessor_name(
 extern C_ROCKSDB_LIBRARY_API crocksdb_level_region_accessor_result_t*
 crocksdb_level_region_accessor_result_create();
 extern C_ROCKSDB_LIBRARY_API void crocksdb_level_region_accessor_result_destory(
-    croksdb_level_region_accessor_result_t* result);
-extern C_ROCKSDB_LIBRARY_API bool crocksdb_level_region_accessor_result_equal(
+    crocksdb_level_region_accessor_result_t* result);
+extern C_ROCKSDB_LIBRARY_API unsigned char crocksdb_level_region_accessor_result_equal(
     crocksdb_level_region_accessor_result_t* result1,
     crocksdb_level_region_accessor_result_t* result2);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_level_region_accessor_result_append(

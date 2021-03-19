@@ -6261,18 +6261,20 @@ const char* crocksdb_level_region_accessor_name(
 crocksdb_level_region_accessor_result_t* crocksdb_level_region_accessor_level_regions(
     crocksdb_level_region_accessor_t* accessor,
     crocksdb_level_region_accessor_request_t* req) {
-  return static_cast<crocksdb_level_region_accessor_result_t*>accessor->rep->LevelRegions(*req->rep);
+	crocksdb_level_region_accessor_result_t* res = new crocksdb_level_region_accessor_result_t;
+	res->rep = *(accessor->rep->LevelRegions(*req->rep));
+	return res;
 }
 
 crocksdb_level_region_accessor_result_t* crocksdb_level_region_accessor_result_create() {
   return new crocksdb_level_region_accessor_result_t;
 }
 
-void crocksdb_level_region_accessor_result_destory(croksdb_level_region_accessor_result_t* result) {
+void crocksdb_level_region_accessor_result_destory(crocksdb_level_region_accessor_result_t* result) {
   delete result;
 }
 
-bool crocksdb_level_region_accessor_result_equal(crocksdb_level_region_accessor_result_t* result1,
+unsigned char crocksdb_level_region_accessor_result_equal(crocksdb_level_region_accessor_result_t* result1,
                                                  crocksdb_level_region_accessor_result_t* result2) {
   return result1->rep.regions == result2->rep.regions;
 }

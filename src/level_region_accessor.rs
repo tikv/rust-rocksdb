@@ -188,21 +188,25 @@ mod test {
     #[test]
     fn accessor_level_regions() {
         const ACCESSOR_RESULT: LevelRegionAccessorResult = LevelRegionAccessorResult { regions: Vec::new() };
-        const REGION_1: LevelRegionBoundaries = LevelRegionBoundaries {
-            start_key: b"test_key_region_abc".to_vec(),
-            end_key: b"test_key_region_def".to_vec(),
+        const BOUNDARIES_1: &[u8] = b"test_key_region_abc";
+        const BOUNDARIES_2: &[u8] = b"test_key_region_def";
+        const BOUNDARIES_3: &[u8] = b"test_key_region_ghi";
+        const BOUNDARIES_4: &[u8] = b"test_key_region_jkl";
+        let region_1: LevelRegionBoundaries = LevelRegionBoundaries {
+            start_key: BOUNDARIES_1.to_vec(),
+            end_key: BOUNDARIES_2.to_vec(),
         };
-        const REGION_2: LevelRegionBoundaries = LevelRegionBoundaries {
-            start_key: b"test_key_region_def".to_vec(),
-            end_key: b"test_key_region_ghi".to_vec(),
+        let region_2: LevelRegionBoundaries = LevelRegionBoundaries {
+            start_key: BOUNDARIES_2.to_vec(),
+            end_key: BOUNDARIES_3.to_vec(),
         };
-        const REGION_3: LevelRegionBoundaries = LevelRegionBoundaries {
-            start_key: b"test_key_region_ghi".to_vec(),
-            end_key: b"test_key_region_jkl".to_vec(),
+        let region_3: LevelRegionBoundaries = LevelRegionBoundaries {
+            start_key: BOUNDARIES_3.to_vec(),
+            end_key: BOUNDARIES_4.to_vec(),
         };
-        ACCESSOR_RESULT.regions.push(REGION_1);
-        ACCESSOR_RESULT.regions.push(REGION_2);
-        ACCESSOR_RESULT.regions.push(REGION_3);
+        ACCESSOR_RESULT.regions.push(region_1);
+        ACCESSOR_RESULT.regions.push(region_2);
+        ACCESSOR_RESULT.regions.push(region_3);
 
         const SMALLEST_USER_KEY: &[u8] = b"test_key_region_bcd";
         const LARGEST_USER_KEY: &[u8] = b"test_key_region_hij";
@@ -211,7 +215,7 @@ mod test {
 
         let s = Arc::new(Mutex::new(TestState::default()));
         s.lock().unwrap().level_regions_result = ACCESSOR_RESULT;
-        let accessor = new_level_region_accessor(TestLevelRegionAccessor {state: s});
+        let accessor = new_level_region_accessor(TestLevelRegionAccessor {state: s.clone()});
         let req = unsafe { crocksdb_ffi::crocksdb_level_region_accessor_request_create() };
         unsafe {
             crocksdb_ffi::crocksdb_level_region_accessor_request_set_smallest_user_key(
@@ -245,17 +249,13 @@ mod test {
     #[test]
     fn drop() {
         let s = Arc::new(Mutex::new(TestState::default()));
-        let accessor = new_level_region_accessor(TestLevelRegionAccessor {state: s});
-        unsafe {
-            let sl = s.lock().unwrap();
-            assert_eq!(0, sl.drop_accessor);
-        }
+        let accessor = new_level_region_accessor(TestLevelRegionAccessor {state: s.clone()});
+        let sl = s.lock().unwrap();
+        assert_eq!(0, sl.drop_accessor);
         unsafe {
             crocksdb_ffi::crocksdb_level_region_accessor_destroy(accessor);
         }
-        unsafe {
-            let sl = s.lock().unwrap();
-            assert_eq!(1, sl.drop_accessor);
-        }
+        let sl = s.lock().unwrap();
+        assert_eq!(1, sl.drop_accessor);
     }
 }

@@ -2555,6 +2555,10 @@ extern "C" {
     pub fn crocksdb_level_region_accessor_name(
         accessor: *mut DBLevelRegionAccessor,
     ) -> *const c_char;
+    pub fn crocksdb_level_region_accessor_level_regions(
+        accessor: *mut DBLevelRegionAccessor,
+        req: *mut DBLevelRegionAccessorRequest,
+    ) -> *const DBLevelRegionAccessorResult;
     pub fn crocksdb_level_region_accessor_result_create() -> *mut DBLevelRegionAccessorResult;
     pub fn crocksdb_level_region_accessor_result_append(
         dest: *mut DBLevelRegionAccessorResult,

@@ -6258,8 +6258,23 @@ const char* crocksdb_level_region_accessor_name(
   return accessor->rep->Name();
 }
 
+crocksdb_level_region_accessor_result_t* crocksdb_level_region_accessor_level_regions(
+    crocksdb_level_region_accessor_t* accessor,
+    crocksdb_level_region_accessor_request_t* req) {
+  return static_cast<crocksdb_level_region_accessor_result_t*>accessor->rep->LevelRegions(*req->rep);
+}
+
 crocksdb_level_region_accessor_result_t* crocksdb_level_region_accessor_result_create() {
   return new crocksdb_level_region_accessor_result_t;
+}
+
+void crocksdb_level_region_accessor_result_destory(croksdb_level_region_accessor_result_t* result) {
+  delete result;
+}
+
+bool crocksdb_level_region_accessor_result_equal(crocksdb_level_region_accessor_result_t* result1,
+                                                 crocksdb_level_region_accessor_result_t* result2) {
+  return result1->rep.regions == result2->rep.regions;
 }
 
 void crocksdb_level_region_accessor_result_append(crocksdb_level_region_accessor_result_t* dest,

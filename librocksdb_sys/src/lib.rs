@@ -2560,6 +2560,10 @@ extern "C" {
         req: *mut DBLevelRegionAccessorRequest,
     ) -> *const DBLevelRegionAccessorResult;
     pub fn crocksdb_level_region_accessor_result_create() -> *mut DBLevelRegionAccessorResult;
+    pub fn crocksdb_level_region_accessor_result_equal(
+        res1: *mut DBLevelRegionAccessorResult,
+        res2: *mut DBLevelRegionAccessorResult,
+    ) -> bool;
     pub fn crocksdb_level_region_accessor_result_append(
         dest: *mut DBLevelRegionAccessorResult,
         s: *const u8,

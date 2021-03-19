@@ -231,7 +231,7 @@ mod test {
         for region in ACCESSOR_RESULT.regions {
             r.append(region.start_key.as_slice(), region.end_key.as_slice());
         }
-        let res = crocksdb_ffi::crocksdb_level_region_accessor_result_equal(r.inner, accessor_result);
+        let res = unsafe { crocksdb_ffi::crocksdb_level_region_accessor_result_equal(r.inner, accessor_result as *mut DBLevelRegionAccessorResult) };
         assert_eq!(EQUAL, res);
         let sl = s.lock().unwrap();
         assert_eq!(1, sl.call_level_regions);

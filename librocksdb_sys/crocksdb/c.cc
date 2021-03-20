@@ -6279,8 +6279,8 @@ unsigned char crocksdb_level_region_accessor_result_equal(crocksdb_level_region_
   if (result1->rep.regions.size() != result2->rep.regions.size()) return 0;
   else {
     for (int i = 0; i < result1->rep.regions.size(); ++i) {
-      if (result1->rep.regions[i].smallest_user_key.Compare(result2->rep.regions[i].smallest_user_key) != 0 ||
-          result1->rep.regions[i].largest_user_key.Compare(result2->rep.regions[i].largest_user_key) != 0) {
+      if (result1->rep.regions[i].smallest_user_key.compare(result2->rep.regions[i].smallest_user_key) != 0 ||
+          result1->rep.regions[i].largest_user_key.compare(result2->rep.regions[i].largest_user_key) != 0) {
         return 0;
       }
     }

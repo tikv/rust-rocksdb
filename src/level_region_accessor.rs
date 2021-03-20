@@ -250,12 +250,16 @@ mod test {
     fn drop() {
         let s = Arc::new(Mutex::new(TestState::default()));
         let accessor = new_level_region_accessor(TestLevelRegionAccessor {state: s.clone()});
-        let sl = s.lock().unwrap();
-        assert_eq!(0, sl.drop_accessor);
+        {
+            let sl = s.lock().unwrap();
+            assert_eq!(0, sl.drop_accessor);
+        }
         unsafe {
             crocksdb_ffi::crocksdb_level_region_accessor_destroy(accessor);
         }
-        let sl = s.lock().unwrap();
-        assert_eq!(1, sl.drop_accessor);
+        {
+            let sl = s.lock().unwrap();
+            assert_eq!(1, sl.drop_accessor);
+        }
     }
 }

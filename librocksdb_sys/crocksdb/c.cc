@@ -6276,7 +6276,18 @@ void crocksdb_level_region_accessor_result_destory(crocksdb_level_region_accesso
 
 unsigned char crocksdb_level_region_accessor_result_equal(crocksdb_level_region_accessor_result_t* result1,
                                                  crocksdb_level_region_accessor_result_t* result2) {
-  return result1->rep.regions == result2->rep.regions;
+  regions_1 = result1->rep.regions;
+  regions_2 = result2->rep.regions;
+  if (regions_1.size() != region_2.size()) return 0;
+  else {
+    for (int i = 0; i < regions_1.size(); ++i) {
+      if (regions_1[i].smallest_user_key.Compare(regions_2[i].smallest_user_key) != 0 ||
+          regions_1[i].largest_user_key.Compare(regions_2[i].largest_user_key) != 0) {
+        return 0;
+      }
+    }
+  }
+  return 1;
 }
 
 void crocksdb_level_region_accessor_result_append(crocksdb_level_region_accessor_result_t* dest,

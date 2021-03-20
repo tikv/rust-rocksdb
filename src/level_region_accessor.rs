@@ -237,10 +237,12 @@ mod test {
         }
         let res = unsafe { crocksdb_ffi::crocksdb_level_region_accessor_result_equal(r.inner, accessor_result as *mut DBLevelRegionAccessorResult) };
         assert_eq!(EQUAL, res);
-        let sl = s.lock().unwrap();
-        assert_eq!(1, sl.call_level_regions);
-        assert_eq!(SMALLEST_USER_KEY, sl.smallest_user_key.as_ref().unwrap().as_slice());
-        assert_eq!(LARGEST_USER_KEY, sl.largest_user_key.as_ref().unwrap().as_slice());
+        {
+            let sl = s.lock().unwrap();
+            assert_eq!(1, sl.call_level_regions);
+            assert_eq!(SMALLEST_USER_KEY, sl.smallest_user_key.as_ref().unwrap().as_slice());
+            assert_eq!(LARGEST_USER_KEY, sl.largest_user_key.as_ref().unwrap().as_slice());
+        }
         unsafe {
             crocksdb_ffi::crocksdb_level_region_accessor_destroy(accessor);
         }

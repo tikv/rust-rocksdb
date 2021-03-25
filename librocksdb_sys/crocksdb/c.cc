@@ -6175,7 +6175,7 @@ crocksdb_sst_partitioner_t* crocksdb_sst_partitioner_factory_create_partitioner(
 crocksdb_level_region_accessor_request_t* crocksdb_level_region_accessor_request_create() {
   auto* req = new crocksdb_level_region_accessor_request_t;
   req->rep =
-      new AccessorRequest(req->smallest_user_key, req->largest_user_key);
+      new AccessorRequest(&req->smallest_user_key, &req->largest_user_key);
   return req;
 }
 

@@ -129,6 +129,10 @@ impl CompactionJobInfo {
         unsafe { crocksdb_ffi::crocksdb_compactionjobinfo_total_output_bytes(&self.0) }
     }
 
+    pub fn num_input_files_at_output_level(&self) -> usize {
+        unsafe { crocksdb_ffi::crocksdb_compactionjobinfo_num_input_files_at_output_level(&self.0) }
+    }
+
     pub fn compaction_reason(&self) -> CompactionReason {
         unsafe { crocksdb_ffi::crocksdb_compactionjobinfo_compaction_reason(&self.0) }
     }

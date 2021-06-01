@@ -837,6 +837,10 @@ crocksdb_compactionjobinfo_total_input_bytes(
 extern C_ROCKSDB_LIBRARY_API uint64_t
 crocksdb_compactionjobinfo_total_output_bytes(
     const crocksdb_compactionjobinfo_t*);
+extern C_ROCKSDB_LIBRARY_API size_t crocksdb_compactionjobinfo_num_input_files(
+    const crocksdb_compactionjobinfo_t* info);
+extern C_ROCKSDB_LIBRARY_API size_t crocksdb_compactionjobinfo_num_input_files_at_output_level(
+    const crocksdb_compactionjobinfo_t* info);
 
 /* Subcompaction job info */
 extern C_ROCKSDB_LIBRARY_API void crocksdb_subcompactionjobinfo_status(

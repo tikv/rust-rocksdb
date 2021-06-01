@@ -2147,6 +2147,16 @@ int crocksdb_compactionjobinfo_output_level(
   return info->rep.output_level;
 }
 
+size_t crocksdb_compactionjobinfo_num_input_files(
+    const crocksdb_compactionjobinfo_t* info) {
+  return info->rep.stats.num_input_files;
+}
+
+size_t crocksdb_compactionjobinfo_num_input_files_at_output_level(
+    const crocksdb_compactionjobinfo_t* info) {
+  return info->rep.stats.num_input_files_at_output_level;
+}
+
 uint64_t crocksdb_compactionjobinfo_input_records(
     const crocksdb_compactionjobinfo_t* info) {
   return info->rep.stats.num_input_records;

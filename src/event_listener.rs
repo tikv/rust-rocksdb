@@ -187,6 +187,10 @@ impl IngestionInfo {
             TableProperties::from_ptr(prop)
         }
     }
+
+    pub fn picked_level(&self) -> i32 {
+        unsafe { crocksdb_ffi::crocksdb_externalfileingestioninfo_picked_level(&self.0) }
+    }
 }
 
 #[repr(transparent)]

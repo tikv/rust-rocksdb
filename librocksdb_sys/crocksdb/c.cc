@@ -2231,6 +2231,11 @@ crocksdb_externalfileingestioninfo_table_properties(
       &info->rep.table_properties);
 }
 
+const int crocksdb_externalfileingestioninfo_picked_level(
+    const crocksdb_externalfileingestioninfo_t* info) {
+  return info->rep.picked_level;
+}
+
 /* External write stall info */
 extern C_ROCKSDB_LIBRARY_API const char* crocksdb_writestallinfo_cf_name(
     const crocksdb_writestallinfo_t* info, size_t* size) {

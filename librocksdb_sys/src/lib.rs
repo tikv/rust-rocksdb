@@ -2182,8 +2182,7 @@ extern "C" {
     pub fn crocksdb_externalfileingestioninfo_table_properties(
         info: *const DBIngestionInfo,
     ) -> *const DBTableProperties;
-    pub fn crocksdb_externalfileingestioninfo_picked_level(info: *const DBIngestionInfo)
-    -> c_int;
+    pub fn crocksdb_externalfileingestioninfo_picked_level(info: *const DBIngestionInfo) -> c_int;
 
     pub fn crocksdb_writestallinfo_cf_name(
         info: *const DBWriteStallInfo,

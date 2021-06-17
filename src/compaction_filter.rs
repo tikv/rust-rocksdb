@@ -298,7 +298,7 @@ mod tests {
     use super::{
         CompactionFilter, CompactionFilterContext, CompactionFilterFactory, DBCompactionFilter,
     };
-    use crate::{ColumnFamilyOptions, DBOptions, DB};
+    use crate::{new_compaction_filter_raw, ColumnFamilyOptions, DBOptions, Writable, DB};
 
     struct Factory(SyncSender<()>);
     impl Drop for Factory {
@@ -321,6 +321,31 @@ mod tests {
     impl CompactionFilter for Filter {
         fn filter(&mut self, _: usize, _: &[u8], _: &[u8], _: &mut Vec<u8>, _: &mut bool) -> bool {
             false
+        }
+    }
+
+    struct KeyRangeFilter;
+    impl CompactionFilter for KeyRangeFilter {
+        fn filter(&mut self, _: usize, _: &[u8], _: &[u8], _: &mut Vec<u8>, _: &mut bool) -> bool {
+            false
+        }
+    }
+
+    struct KeyRangeFactory(SyncSender<String>);
+    impl CompactionFilterFactory for KeyRangeFactory {
+        fn create_compaction_filter(
+            &self,
+            context: &CompactionFilterContext,
+        ) -> *mut DBCompactionFilter {
+            &self.0.send(context.start_key().to_owned()).unwrap();
+            &self.0.send(context.end_key().to_owned()).unwrap();
+
+            unsafe {
+                new_compaction_filter_raw(
+                    CString::new("key_range_filter").unwrap(),
+                    Box::new(KeyRangeFilter),
+                )
+            }
         }
     }
 
@@ -390,5 +415,38 @@ mod tests {
         let db = DB::open_cf(db_opts, path, cfds);
         drop(db);
         assert!(rx.recv_timeout(Duration::from_secs(1)).is_ok());
+    }
+
+    #[test]
+    fn test_compaction_filter_factory_context_keys() {
+        let mut cf_opts = ColumnFamilyOptions::default();
+        let name = CString::new("compaction filter factory").unwrap();
+        let (tx, rx) = mpsc::sync_channel(2);
+        let factory = Box::new(KeyRangeFactory(tx)) as Box<dyn CompactionFilterFactory>;
+        cf_opts
+            .set_compaction_filter_factory(name, factory)
+            .unwrap();
+        let mut opts = DBOptions::new();
+        opts.create_if_missing(true);
+        let path = tempfile::Builder::new()
+            .prefix("test_factory_context_keys")
+            .tempdir()
+            .unwrap();
+        let mut db = DB::open(opts, path.path().to_str().unwrap()).unwrap();
+        db.create_cf(("test", cf_opts)).unwrap();
+        let cfh = db.cf_handle("test").unwrap();
+        for i in 0..10 {
+            db.put_cf(
+                cfh,
+                format!("key{}", i).as_bytes(),
+                format!("value{}", i).as_bytes(),
+            )
+            .unwrap();
+        }
+        db.compact_range_cf(cfh, Some(b"a"), Some(b"z"));
+        let sk = rx.recv().unwrap();
+        let ek = rx.recv().unwrap();
+        assert_eq!("key0", sk);
+        assert_eq!("key9", ek);
     }
 }

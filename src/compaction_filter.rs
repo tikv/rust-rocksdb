@@ -1,4 +1,4 @@
-use std::ffi::CString;
+use std::ffi::{CStr, CString};
 use std::{ptr, slice};
 
 use crate::table_properties::TableProperties;
@@ -195,6 +195,22 @@ impl CompactionFilterContext {
         unsafe {
             let raw = crocksdb_ffi::crocksdb_compactionfiltercontext_table_properties(ctx, offset);
             TableProperties::from_ptr(raw)
+        }
+    }
+
+    pub fn start_key(&self) -> &str {
+        let ctx = &self.0 as *const DBCompactionFilterContext;
+        unsafe {
+            let raw = crocksdb_ffi::crocksdb_compactionfiltercontext_start_key(ctx);
+            CStr::from_ptr(raw).to_str().unwrap()
+        }
+    }
+
+    pub fn end_key(&self) -> &str {
+        let ctx = &self.0 as *const DBCompactionFilterContext;
+        unsafe {
+            let raw = crocksdb_ffi::crocksdb_compactionfiltercontext_end_key(ctx);
+            CStr::from_ptr(raw).to_str().unwrap()
         }
     }
 }

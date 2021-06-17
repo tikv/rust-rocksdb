@@ -3432,6 +3432,20 @@ crocksdb_table_properties_t* crocksdb_compactionfiltercontext_table_properties(
       .get();
 }
 
+const char* crocksdb_compactionfiltercontext_start_key(
+    crocksdb_compactionfiltercontext_t* context) {
+  char* result = nullptr;
+  result = CopyString(context->rep.start_key.ToString());
+  return result;
+}
+
+const char* crocksdb_compactionfiltercontext_end_key(
+    crocksdb_compactionfiltercontext_t* context) {
+  char* result = nullptr;
+  result = CopyString(context->rep.end_key.ToString());
+  return result;
+}
+
 crocksdb_compactionfilterfactory_t* crocksdb_compactionfilterfactory_create(
     void* state, void (*destructor)(void*),
     crocksdb_compactionfilter_t* (*create_compaction_filter)(

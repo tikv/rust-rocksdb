@@ -448,7 +448,7 @@ mod tests {
             )
             .unwrap();
         }
-        db.compact_range_cf(cfh, Some(b"key0"), Some(b"key9"));
+        db.compact_range_cf(cfh, None, None);
         let sk = rx.recv().unwrap();
         let ek = rx.recv().unwrap();
         println!("sk:{:?} ek:{:?}", sk, ek);

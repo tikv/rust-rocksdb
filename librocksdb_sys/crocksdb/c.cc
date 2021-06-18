@@ -3433,17 +3433,17 @@ crocksdb_table_properties_t* crocksdb_compactionfiltercontext_table_properties(
 }
 
 const char* crocksdb_compactionfiltercontext_start_key(
-    crocksdb_compactionfiltercontext_t* context) {
-  char* result = nullptr;
-  result = CopyString(context->rep.start_key.ToString());
-  return result;
+    crocksdb_compactionfiltercontext_t* context, size_t* key_len) {
+  const Slice& result = context->rep.start_key;
+  *key_len = result.size();
+  return result.data();
 }
 
 const char* crocksdb_compactionfiltercontext_end_key(
-    crocksdb_compactionfiltercontext_t* context) {
-  char* result = nullptr;
-  result = CopyString(context->rep.end_key.ToString());
-  return result;
+    crocksdb_compactionfiltercontext_t* context, size_t* key_len) {
+  const Slice& result = context->rep.end_key;
+  *key_len = result.size();
+  return result.data();
 }
 
 crocksdb_compactionfilterfactory_t* crocksdb_compactionfilterfactory_create(

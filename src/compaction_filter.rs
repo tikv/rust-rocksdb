@@ -1,5 +1,5 @@
-use std::ffi::{CStr, CString};
-use std::{ptr, slice};
+use std::ffi::CString;
+use std::{ptr, slice, usize};
 
 use crate::table_properties::TableProperties;
 use crocksdb_ffi::CompactionFilterDecision as RawCompactionFilterDecision;
@@ -198,19 +198,21 @@ impl CompactionFilterContext {
         }
     }
 
-    pub fn start_key(&self) -> &str {
+    pub fn key_range(&self) -> (&[u8], &[u8]) {
         let ctx = &self.0 as *const DBCompactionFilterContext;
         unsafe {
-            let raw = crocksdb_ffi::crocksdb_compactionfiltercontext_start_key(ctx);
-            CStr::from_ptr(raw).to_str().unwrap()
-        }
-    }
-
-    pub fn end_key(&self) -> &str {
-        let ctx = &self.0 as *const DBCompactionFilterContext;
-        unsafe {
-            let raw = crocksdb_ffi::crocksdb_compactionfiltercontext_end_key(ctx);
-            CStr::from_ptr(raw).to_str().unwrap()
+            let mut start_key_len: usize = 0;
+            let mut end_key_len: usize = 0;
+            let start_key_ptr =
+                crocksdb_ffi::crocksdb_compactionfiltercontext_start_key(ctx, &mut start_key_len)
+                    as *const u8;
+            let end_key_ptr =
+                crocksdb_ffi::crocksdb_compactionfiltercontext_end_key(ctx, &mut end_key_len)
+                    as *const u8;
+            (
+                slice::from_raw_parts(start_key_ptr, start_key_len),
+                slice::from_raw_parts(end_key_ptr, end_key_len),
+            )
         }
     }
 }
@@ -292,6 +294,7 @@ pub unsafe fn new_compaction_filter_factory(
 #[cfg(test)]
 mod tests {
     use std::ffi::CString;
+    use std::str;
     use std::sync::mpsc::{self, SyncSender};
     use std::time::Duration;
 
@@ -331,14 +334,16 @@ mod tests {
         }
     }
 
-    struct KeyRangeFactory(SyncSender<String>);
+    struct KeyRangeFactory(SyncSender<Vec<u8>>);
     impl CompactionFilterFactory for KeyRangeFactory {
         fn create_compaction_filter(
             &self,
             context: &CompactionFilterContext,
         ) -> *mut DBCompactionFilter {
-            &self.0.send(context.start_key().to_owned()).unwrap();
-            &self.0.send(context.end_key().to_owned()).unwrap();
+            let (start_key, end_key) = context.key_range();
+            assert!(context.file_numbers().len() > 0);
+            &self.0.send(start_key.to_owned()).unwrap();
+            &self.0.send(end_key.to_owned()).unwrap();
 
             unsafe {
                 new_compaction_filter_raw(
@@ -443,9 +448,12 @@ mod tests {
             )
             .unwrap();
         }
-        db.compact_range_cf(cfh, Some(b"a"), Some(b"z"));
+        db.compact_range_cf(cfh, Some(b"key0"), Some(b"key9"));
         let sk = rx.recv().unwrap();
         let ek = rx.recv().unwrap();
+        println!("sk:{:?} ek:{:?}", sk, ek);
+        let sk = str::from_utf8(&sk).unwrap();
+        let ek = str::from_utf8(&ek).unwrap();
         assert_eq!("key0", sk);
         assert_eq!("key9", ek);
     }

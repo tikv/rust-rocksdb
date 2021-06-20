@@ -198,21 +198,25 @@ impl CompactionFilterContext {
         }
     }
 
-    pub fn key_range(&self) -> (&[u8], &[u8]) {
+    pub fn start_key(&self) -> &[u8] {
         let ctx = &self.0 as *const DBCompactionFilterContext;
         unsafe {
             let mut start_key_len: usize = 0;
-            let mut end_key_len: usize = 0;
             let start_key_ptr =
                 crocksdb_ffi::crocksdb_compactionfiltercontext_start_key(ctx, &mut start_key_len)
                     as *const u8;
+            slice::from_raw_parts(start_key_ptr, start_key_len)
+        }
+    }
+
+    pub fn end_key(&self) -> &[u8] {
+        let ctx = &self.0 as *const DBCompactionFilterContext;
+        unsafe {
+            let mut end_key_len: usize = 0;
             let end_key_ptr =
                 crocksdb_ffi::crocksdb_compactionfiltercontext_end_key(ctx, &mut end_key_len)
                     as *const u8;
-            (
-                slice::from_raw_parts(start_key_ptr, start_key_len),
-                slice::from_raw_parts(end_key_ptr, end_key_len),
-            )
+            slice::from_raw_parts(end_key_ptr, end_key_len)
         }
     }
 }
@@ -340,8 +344,8 @@ mod tests {
             &self,
             context: &CompactionFilterContext,
         ) -> *mut DBCompactionFilter {
-            let (start_key, end_key) = context.key_range();
-            assert!(context.file_numbers().len() > 0);
+            let start_key = context.start_key();
+            let end_key = context.end_key();
             &self.0.send(start_key.to_owned()).unwrap();
             &self.0.send(end_key.to_owned()).unwrap();
 

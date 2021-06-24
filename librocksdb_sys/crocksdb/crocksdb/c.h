@@ -1778,6 +1778,10 @@ extern C_ROCKSDB_LIBRARY_API void
 crocksdb_ingestexternalfileoptions_set_allow_blocking_flush(
     crocksdb_ingestexternalfileoptions_t* opt,
     unsigned char allow_blocking_flush);
+extern C_ROCKSDB_LIBRARY_API void
+crocksdb_ingestexternalfileoptions_set_write_global_seqno(
+    crocksdb_ingestexternalfileoptions_t* opt,
+    unsigned char write_global_seqno);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_ingestexternalfileoptions_destroy(
     crocksdb_ingestexternalfileoptions_t* opt);
 

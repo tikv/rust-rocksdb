@@ -4461,6 +4461,11 @@ void crocksdb_ingestexternalfileoptions_set_allow_blocking_flush(
   opt->rep.allow_blocking_flush = allow_blocking_flush;
 }
 
+unsigned char crocksdb_ingestexternalfileoptions_get_write_global_seqno(
+    const crocksdb_ingestexternalfileoptions_t* opt) {
+  return opt->rep.write_global_seqno;
+}
+
 void crocksdb_ingestexternalfileoptions_set_write_global_seqno(
     crocksdb_ingestexternalfileoptions_t* opt,
     unsigned char write_global_seqno) {

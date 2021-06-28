@@ -89,6 +89,7 @@ impl EventListener for EventCounter {
         assert!(!info.cf_name().is_empty());
         assert!(info.internal_file_path().exists());
         assert_ne!(info.table_properties().data_size(), 0);
+        assert_ne!(info.picked_level(), 0);
         self.ingestion.fetch_add(1, Ordering::SeqCst);
     }
 }

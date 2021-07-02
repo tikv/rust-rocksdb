@@ -458,6 +458,8 @@ mod tests {
         db.flush_cf(cfh_wf, true).unwrap();
         db.flush_cf(cfh_of, true).unwrap();
 
+
+        // assert
         assert!(db.get_cf(cfh_wf, b"k").unwrap().is_none());
         assert!(db.get_cf(cfh_of, b"k").unwrap().is_some());
     }

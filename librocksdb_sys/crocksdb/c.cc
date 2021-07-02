@@ -78,7 +78,6 @@ using rocksdb::ColumnFamilyDescriptor;
 using rocksdb::ColumnFamilyHandle;
 using rocksdb::ColumnFamilyOptions;
 using rocksdb::CompactionFilter;
-using rocksdb::CompactionFilterContext;
 using rocksdb::CompactionFilterFactory;
 using rocksdb::CompactionJobInfo;
 using rocksdb::CompactionOptionsFIFO;

@@ -436,8 +436,7 @@ struct crocksdb_compactionfilterfactory_t : public CompactionFilterFactory {
   void (*destructor_)(void*);
   crocksdb_compactionfilter_t* (*create_compaction_filter_)(
       void*, crocksdb_compactionfiltercontext_t* context);
-  bool (*should_filter_table_file_creation_)(
-      void*, crocksdb_tablefilecreationreason_t reason);
+  bool (*should_filter_table_file_creation_)(void*, int reason);
   const char* (*name_)(void*);
 
   virtual ~crocksdb_compactionfilterfactory_t() { (*destructor_)(state_); }
@@ -452,8 +451,7 @@ struct crocksdb_compactionfilterfactory_t : public CompactionFilterFactory {
 
   virtual bool ShouldFilterTableFileCreation(
       TableFileCreationReason reason) const override {
-    crocksdb_tablefilecreationreason_t creason =
-        static_cast<crocksdb_tablefilecreationreason_t>(reason);
+    int creason = static_cast<int>(reason);
     return (*should_filter_table_file_creation_)(state_, creason);
   }
 
@@ -3445,8 +3443,7 @@ crocksdb_compactionfilterfactory_t* crocksdb_compactionfilterfactory_create(
     void* state, void (*destructor)(void*),
     crocksdb_compactionfilter_t* (*create_compaction_filter)(
         void*, crocksdb_compactionfiltercontext_t* context),
-    bool (*should_filter_table_file_creation)(
-        void*, crocksdb_tablefilecreationreason_t reason),
+    bool (*should_filter_table_file_creation)(void*, int reason),
     const char* (*name)(void*)) {
   crocksdb_compactionfilterfactory_t* result =
       new crocksdb_compactionfilterfactory_t;

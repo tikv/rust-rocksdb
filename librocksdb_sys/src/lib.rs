@@ -1590,7 +1590,7 @@ extern "C" {
         ) -> *mut DBCompactionFilter,
         should_filter_table_file_creation: extern "C" fn(
             *const c_void,
-            *const DBTableFileCreationReason,
+            DBTableFileCreationReason,
         ) -> bool,
         name: extern "C" fn(*mut c_void) -> *const c_char,
     ) -> *mut DBCompactionFilterFactory;

@@ -372,10 +372,6 @@ struct crocksdb_keyversions_t {
   std::vector<KeyVersion> rep;
 };
 
-struct crocksdb_tablefilecreationreason_t {
-  TableFileCreationReason rep;
-};
-
 struct crocksdb_compactionfiltercontext_t {
   CompactionFilter::Context rep;
 };
@@ -441,7 +437,7 @@ struct crocksdb_compactionfilterfactory_t : public CompactionFilterFactory {
   crocksdb_compactionfilter_t* (*create_compaction_filter_)(
       void*, crocksdb_compactionfiltercontext_t* context);
   bool (*should_filter_table_file_creation_)(
-      void*, crocksdb_tablefilecreationreason_t* reason);
+      void*, crocksdb_tablefilecreationreason_t reason);
   const char* (*name_)(void*);
 
   virtual ~crocksdb_compactionfilterfactory_t() { (*destructor_)(state_); }
@@ -456,9 +452,9 @@ struct crocksdb_compactionfilterfactory_t : public CompactionFilterFactory {
 
   virtual bool ShouldFilterTableFileCreation(
       TableFileCreationReason reason) const override {
-    crocksdb_tablefilecreationreason_t creason;
-    creason.rep = reason;
-    return (*should_filter_table_file_creation_)(state_, &creason);
+    crocksdb_tablefilecreationreason_t creason =
+        static_cast<crocksdb_tablefilecreationreason_t>(reason);
+    return (*should_filter_table_file_creation_)(state_, creason);
   }
 
   virtual const char* Name() const override { return (*name_)(state_); }
@@ -3450,7 +3446,7 @@ crocksdb_compactionfilterfactory_t* crocksdb_compactionfilterfactory_create(
     crocksdb_compactionfilter_t* (*create_compaction_filter)(
         void*, crocksdb_compactionfiltercontext_t* context),
     bool (*should_filter_table_file_creation)(
-        void*, crocksdb_tablefilecreationreason_t* reason),
+        void*, crocksdb_tablefilecreationreason_t reason),
     const char* (*name)(void*)) {
   crocksdb_compactionfilterfactory_t* result =
       new crocksdb_compactionfilterfactory_t;

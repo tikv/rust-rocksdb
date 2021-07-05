@@ -210,7 +210,7 @@ pub trait CompactionFilterFactory {
     /// Returns whether a thread creating table files for the specified `reason`
     /// should have invoke `create_compaction_filter` and pass KVs through the returned
     /// filter.
-    fn should_filter_table_file_creation(&self, reason: &DBTableFileCreationReason) -> bool {
+    fn should_filter_table_file_creation(&self, reason: DBTableFileCreationReason) -> bool {
         matches!(reason, DBTableFileCreationReason::Flush)
     }
 }
@@ -253,11 +253,11 @@ mod factory {
 
     pub(super) extern "C" fn should_filter_table_file_creation(
         factory: *const c_void,
-        reason: *const DBTableFileCreationReason,
+        reason: DBTableFileCreationReason,
     ) -> bool {
         unsafe {
             let factory = &*(factory as *const CompactionFilterFactoryProxy);
-            let reason: &DBTableFileCreationReason = &*(reason as *const DBTableFileCreationReason);
+            let reason: DBTableFileCreationReason = reason as DBTableFileCreationReason;
             factory.factory.should_filter_table_file_creation(reason)
         }
     }
@@ -342,7 +342,7 @@ mod tests {
     }
 
     impl CompactionFilterFactory for FlushFactory {
-        fn should_filter_table_file_creation(&self, reason: &DBTableFileCreationReason) -> bool {
+        fn should_filter_table_file_creation(&self, reason: DBTableFileCreationReason) -> bool {
             matches!(reason, DBTableFileCreationReason::Flush)
         }
 

@@ -84,15 +84,6 @@ pub struct DBCompactionFilterFactory(c_void);
 #[repr(C)]
 pub struct DBCompactionFilterContext(c_void);
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
-#[repr(C)]
-pub enum DBTableFileCreationReason {
-    Flush = 0,
-    Compaction = 1,
-    Recovery = 2,
-    Misc = 3,
-}
-
 #[repr(C)]
 pub struct EnvOptions(c_void);
 #[repr(C)]
@@ -473,6 +464,15 @@ pub enum CompactionFilterDecision {
     Remove = 1,
     ChangeValue = 2,
     RemoveAndSkipUntil = 3,
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[repr(C)]
+pub enum DBTableFileCreationReason {
+    Flush = 0,
+    Compaction = 1,
+    Recovery = 2,
+    Misc = 3,
 }
 
 /// # Safety

@@ -299,6 +299,7 @@ pub unsafe fn new_compaction_filter_factory(
 #[cfg(test)]
 mod tests {
     use std::ffi::CString;
+    use libc::c_int;
     use std::sync::mpsc::{self, SyncSender};
     use std::time::Duration;
 
@@ -344,7 +345,7 @@ mod tests {
 
     impl CompactionFilterFactory for FlushFactory {
         fn should_filter_table_file_creation(&self, reason: DBTableFileCreationReason) -> c_int {
-            matches!(reason, DBTableFileCreationReason::Flush)
+            matches!(reason, DBTableFileCreationReason::Flush) as c_int
         }
 
         fn create_compaction_filter(

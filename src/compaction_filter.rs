@@ -212,7 +212,7 @@ pub trait CompactionFilterFactory {
     /// filter.
     fn should_filter_table_file_creation(&self, reason: DBTableFileCreationReason) -> c_int {
         // For compatibility, `CompactionFilter`s by default apply during compaction.
-        matches!(reason, DBTableFileCreationReason::Compaction)
+        matches!(reason, DBTableFileCreationReason::Compaction) as c_int
     }
 }
 
@@ -225,7 +225,7 @@ struct CompactionFilterFactoryProxy {
 mod factory {
     use super::{CompactionFilterContext, CompactionFilterFactoryProxy};
     use crocksdb_ffi::{DBCompactionFilter, DBCompactionFilterContext};
-    use libc::{c_char, c_void};
+    use libc::{c_char, c_int, c_void};
     use librocksdb_sys::DBTableFileCreationReason;
 
     pub(super) extern "C" fn name(factory: *mut c_void) -> *const c_char {
@@ -255,7 +255,7 @@ mod factory {
     pub(super) extern "C" fn should_filter_table_file_creation(
         factory: *const c_void,
         reason: DBTableFileCreationReason,
-    ) -> bool {
+    ) -> c_int {
         unsafe {
             let factory = &*(factory as *const CompactionFilterFactoryProxy);
             let reason: DBTableFileCreationReason = reason as DBTableFileCreationReason;

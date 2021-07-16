@@ -1591,7 +1591,7 @@ extern "C" {
         should_filter_table_file_creation: extern "C" fn(
             *const c_void,
             DBTableFileCreationReason,
-        ) -> c_int,
+        ) -> c_char,
         name: extern "C" fn(*mut c_void) -> *const c_char,
     ) -> *mut DBCompactionFilterFactory;
     pub fn crocksdb_compactionfilterfactory_destroy(factory: *mut DBCompactionFilterFactory);

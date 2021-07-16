@@ -210,9 +210,9 @@ pub trait CompactionFilterFactory {
     /// Returns whether a thread creating table files for the specified `reason`
     /// should have invoke `create_compaction_filter` and pass KVs through the returned
     /// filter.
-    fn should_filter_table_file_creation(&self, reason: DBTableFileCreationReason) -> c_int {
+    fn should_filter_table_file_creation(&self, reason: DBTableFileCreationReason) -> c_char {
         // For compatibility, `CompactionFilter`s by default apply during compaction.
-        matches!(reason, DBTableFileCreationReason::Compaction) as c_int
+        matches!(reason, DBTableFileCreationReason::Compaction) as c_char
     }
 }
 
@@ -225,7 +225,7 @@ struct CompactionFilterFactoryProxy {
 mod factory {
     use super::{CompactionFilterContext, CompactionFilterFactoryProxy};
     use crocksdb_ffi::{DBCompactionFilter, DBCompactionFilterContext};
-    use libc::{c_char, c_int, c_void};
+    use libc::{c_char, c_void};
     use librocksdb_sys::DBTableFileCreationReason;
 
     pub(super) extern "C" fn name(factory: *mut c_void) -> *const c_char {
@@ -255,7 +255,7 @@ mod factory {
     pub(super) extern "C" fn should_filter_table_file_creation(
         factory: *const c_void,
         reason: DBTableFileCreationReason,
-    ) -> c_int {
+    ) -> c_char {
         unsafe {
             let factory = &*(factory as *const CompactionFilterFactoryProxy);
             let reason: DBTableFileCreationReason = reason as DBTableFileCreationReason;
@@ -298,7 +298,7 @@ pub unsafe fn new_compaction_filter_factory(
 
 #[cfg(test)]
 mod tests {
-    use libc::c_int;
+    use libc::c_char;
     use std::ffi::CString;
     use std::sync::mpsc::{self, SyncSender};
     use std::time::Duration;
@@ -344,8 +344,8 @@ mod tests {
     }
 
     impl CompactionFilterFactory for FlushFactory {
-        fn should_filter_table_file_creation(&self, reason: DBTableFileCreationReason) -> c_int {
-            matches!(reason, DBTableFileCreationReason::Flush) as c_int
+        fn should_filter_table_file_creation(&self, reason: DBTableFileCreationReason) -> c_char {
+            matches!(reason, DBTableFileCreationReason::Flush) as c_char
         }
 
         fn create_compaction_filter(

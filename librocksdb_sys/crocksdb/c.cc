@@ -436,7 +436,7 @@ struct crocksdb_compactionfilterfactory_t : public CompactionFilterFactory {
   void (*destructor_)(void*);
   crocksdb_compactionfilter_t* (*create_compaction_filter_)(
       void*, crocksdb_compactionfiltercontext_t* context);
-  int (*should_filter_table_file_creation_)(void*, int reason);
+  char (*should_filter_table_file_creation_)(void*, int reason);
   const char* (*name_)(void*);
 
   virtual ~crocksdb_compactionfilterfactory_t() { (*destructor_)(state_); }
@@ -3453,7 +3453,7 @@ crocksdb_compactionfilterfactory_t* crocksdb_compactionfilterfactory_create(
     void* state, void (*destructor)(void*),
     crocksdb_compactionfilter_t* (*create_compaction_filter)(
         void*, crocksdb_compactionfiltercontext_t* context),
-    int (*should_filter_table_file_creation)(void*, int reason),
+    char (*should_filter_table_file_creation)(void*, int reason),
     const char* (*name)(void*)) {
   crocksdb_compactionfilterfactory_t* result =
       new crocksdb_compactionfilterfactory_t;

@@ -298,8 +298,8 @@ pub unsafe fn new_compaction_filter_factory(
 
 #[cfg(test)]
 mod tests {
-    use std::ffi::CString;
     use libc::c_int;
+    use std::ffi::CString;
     use std::sync::mpsc::{self, SyncSender};
     use std::time::Duration;
 

@@ -436,7 +436,7 @@ struct crocksdb_compactionfilterfactory_t : public CompactionFilterFactory {
   void (*destructor_)(void*);
   crocksdb_compactionfilter_t* (*create_compaction_filter_)(
       void*, crocksdb_compactionfiltercontext_t* context);
-  char (*should_filter_table_file_creation_)(void*, int reason);
+  unsigned char (*should_filter_table_file_creation_)(void*, int reason);
   const char* (*name_)(void*);
 
   virtual ~crocksdb_compactionfilterfactory_t() { (*destructor_)(state_); }
@@ -524,15 +524,18 @@ struct crocksdb_mergeoperator_t : public MergeOperator {
   void* state_;
   void (*destructor_)(void*);
   const char* (*name_)(void*);
-  char* (*full_merge_)(void*, const char* key, size_t key_length,
-                       const char* existing_value, size_t existing_value_length,
-                       const char* const* operands_list,
-                       const size_t* operands_list_length, int num_operands,
-                       unsigned char* success, size_t* new_value_length);
-  char* (*partial_merge_)(void*, const char* key, size_t key_length,
-                          const char* const* operands_list,
-                          const size_t* operands_list_length, int num_operands,
-                          unsigned char* success, size_t* new_value_length);
+  unsigned char* (*full_merge_)(void*, const char* key, size_t key_length,
+                                const char* existing_value,
+                                size_t existing_value_length,
+                                const char* const* operands_list,
+                                const size_t* operands_list_length,
+                                int num_operands, unsigned char* success,
+                                size_t* new_value_length);
+  unsigned char* (*partial_merge_)(void*, const char* key, size_t key_length,
+                                   const char* const* operands_list,
+                                   const size_t* operands_list_length,
+                                   int num_operands, unsigned char* success,
+                                   size_t* new_value_length);
   void (*delete_value_)(void*, const char* value, size_t value_length);
 
   virtual ~crocksdb_mergeoperator_t() { (*destructor_)(state_); }
@@ -559,7 +562,7 @@ struct crocksdb_mergeoperator_t : public MergeOperator {
 
     unsigned char success;
     size_t new_value_len;
-    char* tmp_new_value = (*full_merge_)(
+    unsigned char* tmp_new_value = (*full_merge_)(
         state_, merge_in.key.data(), merge_in.key.size(), existing_value_data,
         existing_value_len, &operand_pointers[0], &operand_sizes[0],
         static_cast<int>(n), &success, &new_value_len);
@@ -589,7 +592,7 @@ struct crocksdb_mergeoperator_t : public MergeOperator {
 
     unsigned char success;
     size_t new_value_len;
-    char* tmp_new_value = (*partial_merge_)(
+    unsigned char* tmp_new_value = (*partial_merge_)(
         state_, key.data(), key.size(), &operand_pointers[0], &operand_sizes[0],
         static_cast<int>(operand_count), &success, &new_value_len);
     new_value->assign(tmp_new_value, new_value_len);
@@ -3453,7 +3456,7 @@ crocksdb_compactionfilterfactory_t* crocksdb_compactionfilterfactory_create(
     void* state, void (*destructor)(void*),
     crocksdb_compactionfilter_t* (*create_compaction_filter)(
         void*, crocksdb_compactionfiltercontext_t* context),
-    char (*should_filter_table_file_creation)(void*, int reason),
+    unsigned char (*should_filter_table_file_creation)(void*, int reason),
     const char* (*name)(void*)) {
   crocksdb_compactionfilterfactory_t* result =
       new crocksdb_compactionfilterfactory_t;
@@ -3553,16 +3556,16 @@ crocksdb_filterpolicy_t* crocksdb_filterpolicy_create_bloom(int bits_per_key) {
 
 crocksdb_mergeoperator_t* crocksdb_mergeoperator_create(
     void* state, void (*destructor)(void*),
-    char* (*full_merge)(void*, const char* key, size_t key_length,
-                        const char* existing_value,
-                        size_t existing_value_length,
-                        const char* const* operands_list,
-                        const size_t* operands_list_length, int num_operands,
-                        unsigned char* success, size_t* new_value_length),
-    char* (*partial_merge)(void*, const char* key, size_t key_length,
-                           const char* const* operands_list,
-                           const size_t* operands_list_length, int num_operands,
-                           unsigned char* success, size_t* new_value_length),
+    unsigned char* (*full_merge)(
+        void*, const char* key, size_t key_length, const char* existing_value,
+        size_t existing_value_length, const char* const* operands_list,
+        const size_t* operands_list_length, int num_operands,
+        unsigned char* success, size_t* new_value_length),
+    unsigned char* (*partial_merge)(void*, const char* key, size_t key_length,
+                                    const char* const* operands_list,
+                                    const size_t* operands_list_length,
+                                    int num_operands, unsigned char* success,
+                                    size_t* new_value_length),
     void (*delete_value)(void*, const char* value, size_t value_length),
     const char* (*name)(void*)) {
   crocksdb_mergeoperator_t* result = new crocksdb_mergeoperator_t;
@@ -3687,7 +3690,8 @@ struct TableFilter {
   // several times, so we need use shared_ptr to control the ctx_ resource
   // destroy ctx_ only when the last ReadOptions out of its life time.
   TableFilter(void* ctx,
-              int (*table_filter)(void*, const crocksdb_table_properties_t*),
+              unsigned char (*table_filter)(void*,
+                                            const crocksdb_table_properties_t*),
               void (*destroy)(void*))
       : ctx_(std::make_shared<TableFilterCtx>(ctx, destroy)),
         table_filter_(table_filter) {}
@@ -3702,7 +3706,7 @@ struct TableFilter {
   }
 
   shared_ptr<TableFilterCtx> ctx_;
-  int (*table_filter_)(void*, const crocksdb_table_properties_t*);
+  unsigned char (*table_filter_)(void*, const crocksdb_table_properties_t*);
 
  private:
   TableFilter() {}
@@ -3710,7 +3714,7 @@ struct TableFilter {
 
 void crocksdb_readoptions_set_table_filter(
     crocksdb_readoptions_t* opt, void* ctx,
-    int (*table_filter)(void*, const crocksdb_table_properties_t*),
+    unsigned char (*table_filter)(void*, const crocksdb_table_properties_t*),
     void (*destroy)(void*)) {
   opt->rep.table_filter = TableFilter(ctx, table_filter, destroy);
 }

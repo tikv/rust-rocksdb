@@ -1398,7 +1398,7 @@ crocksdb_compactionfilterfactory_create(
     void* state, void (*destructor)(void*),
     crocksdb_compactionfilter_t* (*create_compaction_filter)(
         void*, crocksdb_compactionfiltercontext_t* context),
-    char (*should_filter_table_file_creation)(void*, int reason),
+    unsigned char (*should_filter_table_file_creation)(void*, int reason),
     const char* (*name)(void*));
 extern C_ROCKSDB_LIBRARY_API void crocksdb_compactionfilterfactory_destroy(
     crocksdb_compactionfilterfactory_t*);
@@ -1438,16 +1438,16 @@ crocksdb_filterpolicy_create_bloom_full(int bits_per_key);
 extern C_ROCKSDB_LIBRARY_API crocksdb_mergeoperator_t*
 crocksdb_mergeoperator_create(
     void* state, void (*destructor)(void*),
-    char* (*full_merge)(void*, const char* key, size_t key_length,
-                        const char* existing_value,
-                        size_t existing_value_length,
-                        const char* const* operands_list,
-                        const size_t* operands_list_length, int num_operands,
-                        unsigned char* success, size_t* new_value_length),
-    char* (*partial_merge)(void*, const char* key, size_t key_length,
-                           const char* const* operands_list,
-                           const size_t* operands_list_length, int num_operands,
-                           unsigned char* success, size_t* new_value_length),
+    unsigned char* (*full_merge)(
+        void*, const char* key, size_t key_length, const char* existing_value,
+        size_t existing_value_length, const char* const* operands_list,
+        const size_t* operands_list_length, int num_operands,
+        unsigned char* success, size_t* new_value_length),
+    unsigned char* (*partial_merge)(void*, const char* key, size_t key_length,
+                                    const char* const* operands_list,
+                                    const size_t* operands_list_length,
+                                    int num_operands, unsigned char* success,
+                                    size_t* new_value_length),
     void (*delete_value)(void*, const char* value, size_t value_length),
     const char* (*name)(void*));
 extern C_ROCKSDB_LIBRARY_API void crocksdb_mergeoperator_destroy(

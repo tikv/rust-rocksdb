@@ -13,7 +13,7 @@
 // limitations under the License.
 //
 
-use libc::{self, c_char, c_int, c_void, size_t};
+use libc::{self, c_char, c_int, c_uchar, c_void, size_t};
 use std::ffi::CString;
 use std::mem;
 use std::ptr;
@@ -48,7 +48,7 @@ pub unsafe extern "C" fn full_merge_callback(
     num_operands: c_int,
     success: *mut u8,
     new_value_length: *mut size_t,
-) -> *const c_char {
+) -> *const c_uchar {
     let cb: &mut MergeOperatorCallback = &mut *(raw_cb as *mut MergeOperatorCallback);
     let operands = &mut MergeOperands::new(operands_list, operands_list_len, num_operands);
     let key: &[u8] = slice::from_raw_parts(raw_key as *const u8, key_len as usize);
@@ -63,7 +63,7 @@ pub unsafe extern "C" fn full_merge_callback(
     *new_value_length = result.len() as size_t;
     *success = 1_u8;
     ptr::copy(result.as_ptr(), &mut *buf, result.len());
-    buf as *const c_char
+    buf as *const c_uchar
 }
 
 pub unsafe extern "C" fn partial_merge_callback(
@@ -75,7 +75,7 @@ pub unsafe extern "C" fn partial_merge_callback(
     num_operands: c_int,
     success: *mut u8,
     new_value_length: *mut size_t,
-) -> *const c_char {
+) -> *const c_uchar {
     let cb: &mut MergeOperatorCallback = &mut *(raw_cb as *mut MergeOperatorCallback);
     let operands = &mut MergeOperands::new(operands_list, operands_list_len, num_operands);
     let key: &[u8] = slice::from_raw_parts(raw_key as *const u8, key_len as usize);
@@ -88,7 +88,7 @@ pub unsafe extern "C" fn partial_merge_callback(
     *new_value_length = result.len() as size_t;
     *success = 1_u8;
     ptr::copy(result.as_ptr(), &mut *buf, result.len());
-    buf as *const c_char
+    buf as *const c_uchar
 }
 
 pub struct MergeOperands {

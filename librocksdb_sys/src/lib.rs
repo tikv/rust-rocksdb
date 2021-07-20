@@ -1110,7 +1110,7 @@ extern "C" {
             num_operands: c_int,
             success: *mut u8,
             new_value_length: *mut size_t,
-        ) -> *const c_uchar,
+        ) -> *const c_char,
         partial_merge: unsafe extern "C" fn(
             arg: *mut c_void,
             key: *const c_char,
@@ -1120,7 +1120,7 @@ extern "C" {
             num_operands: c_int,
             success: *mut u8,
             new_value_length: *mut size_t,
-        ) -> *const c_uchar,
+        ) -> *const c_char,
         delete_value: Option<
             unsafe extern "C" fn(*mut c_void, value: *const c_char, value_len: *mut size_t) -> (),
         >,

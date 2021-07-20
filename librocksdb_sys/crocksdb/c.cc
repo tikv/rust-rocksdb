@@ -3559,7 +3559,7 @@ crocksdb_mergeoperator_t* crocksdb_mergeoperator_create(
                         const char* const* operands_list,
                         const size_t* operands_list_length, int num_operands,
                         unsigned char* success, size_t* new_value_length),
-    char* (*artial_merge)(void*, const char* key, size_t key_length,
+    char* (*partial_merge)(void*, const char* key, size_t key_length,
                           const char* const* operands_list,
                           const size_t* operands_list_length, int num_operands,
                           unsigned char* success, size_t* new_value_length),

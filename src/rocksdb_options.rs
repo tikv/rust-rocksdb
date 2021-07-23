@@ -1556,10 +1556,20 @@ impl ColumnFamilyOptions {
         }
     }
 
+    pub fn get_min_write_buffer_number(&self) -> u32 {
+        unsafe {
+            crocksdb_ffi::crocksdb_options_get_min_write_buffer_number_to_merge(self.inner) as u32
+        }
+    }
+
     pub fn set_max_write_buffer_number(&mut self, nbuf: c_int) {
         unsafe {
             crocksdb_ffi::crocksdb_options_set_max_write_buffer_number(self.inner, nbuf);
         }
+    }
+
+    pub fn get_max_write_buffer_number(&self) -> u32 {
+        unsafe { crocksdb_ffi::crocksdb_options_get_max_write_buffer_number(self.inner) as u32 }
     }
 
     pub fn set_write_buffer_size(&mut self, size: u64) {
@@ -1568,10 +1578,18 @@ impl ColumnFamilyOptions {
         }
     }
 
+    pub fn get_write_buffer_size(&self) -> u64 {
+        unsafe { crocksdb_ffi::crocksdb_options_get_write_buffer_size(self.inner) as u64 }
+    }
+
     pub fn set_max_bytes_for_level_base(&mut self, size: u64) {
         unsafe {
             crocksdb_ffi::crocksdb_options_set_max_bytes_for_level_base(self.inner, size);
         }
+    }
+
+    pub fn get_max_bytes_for_level_base(&self) -> u64 {
+        unsafe { crocksdb_ffi::crocksdb_options_get_max_bytes_for_level_base(self.inner) as u64 }
     }
 
     pub fn set_max_bytes_for_level_multiplier(&mut self, mul: i32) {
@@ -1583,7 +1601,7 @@ impl ColumnFamilyOptions {
         }
     }
 
-    pub fn get_max_bytes_for_level_multiplier(&mut self) -> i32 {
+    pub fn get_max_bytes_for_level_multiplier(&self) -> i32 {
         unsafe {
             crocksdb_ffi::crocksdb_options_get_max_bytes_for_level_multiplier(self.inner) as i32
         }
@@ -1593,6 +1611,10 @@ impl ColumnFamilyOptions {
         unsafe {
             crocksdb_ffi::crocksdb_options_set_max_compaction_bytes(self.inner, bytes);
         }
+    }
+
+    pub fn get_max_compaction_bytes(&self) -> u64 {
+        unsafe { crocksdb_ffi::crocksdb_options_get_max_compaction_bytes(self.inner) }
     }
 
     pub fn set_level_compaction_dynamic_level_bytes(&mut self, v: bool) {
@@ -1653,9 +1675,21 @@ impl ColumnFamilyOptions {
         }
     }
 
+    pub fn get_min_write_buffer_number_to_merge(&self) -> u32 {
+        unsafe {
+            crocksdb_ffi::crocksdb_options_get_min_write_buffer_number_to_merge(self.inner) as u32
+        }
+    }
+
     pub fn set_level_zero_file_num_compaction_trigger(&mut self, n: c_int) {
         unsafe {
             crocksdb_ffi::crocksdb_options_set_level0_file_num_compaction_trigger(self.inner, n);
+        }
+    }
+
+    pub fn get_level_zero_file_num_compaction_trigger(&self) -> u32 {
+        unsafe {
+            crocksdb_ffi::crocksdb_options_get_level0_file_num_compaction_trigger(self.inner) as u32
         }
     }
 
@@ -1789,6 +1823,10 @@ impl ColumnFamilyOptions {
         unsafe {
             crocksdb_ffi::crocksdb_options_set_force_consistency_checks(self.inner, v);
         }
+    }
+
+    pub fn get_force_consistency_checks(&self) -> bool {
+        unsafe { crocksdb_ffi::crocksdb_options_get_force_consistency_checks(self.inner) }
     }
 
     pub fn get_block_cache_usage(&self) -> u64 {
@@ -2040,6 +2078,23 @@ impl IngestExternalFileOptions {
             crocksdb_ffi::crocksdb_ingestexternalfileoptions_set_move_files(
                 self.inner,
                 whether_move,
+            );
+        }
+    }
+
+    pub fn get_write_global_seqno(&self) -> bool {
+        unsafe {
+            crocksdb_ffi::crocksdb_ingestexternalfileoptions_get_write_global_seqno(self.inner)
+        }
+    }
+
+    /// If set to true, a global_seqno will be written to a given offset in the external SST file
+    /// for backward compatibility.
+    pub fn set_write_global_seqno(&mut self, whether_write: bool) {
+        unsafe {
+            crocksdb_ffi::crocksdb_ingestexternalfileoptions_set_write_global_seqno(
+                self.inner,
+                whether_write,
             );
         }
     }

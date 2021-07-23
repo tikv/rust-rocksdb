@@ -15,7 +15,6 @@
 
 #include "db/column_family.h"
 #include "rocksdb/cache.h"
-#include "rocksdb/cloud/cloud_env_options.h"
 #include "rocksdb/compaction_filter.h"
 #include "rocksdb/comparator.h"
 #include "rocksdb/convenience.h"
@@ -79,7 +78,6 @@ using rocksdb::ColumnFamilyDescriptor;
 using rocksdb::ColumnFamilyHandle;
 using rocksdb::ColumnFamilyOptions;
 using rocksdb::CompactionFilter;
-using rocksdb::CompactionFilterContext;
 using rocksdb::CompactionFilterFactory;
 using rocksdb::CompactionJobInfo;
 using rocksdb::CompactionOptionsFIFO;
@@ -140,6 +138,7 @@ using rocksdb::SstPartitioner;
 using rocksdb::SstPartitionerFactory;
 using rocksdb::Status;
 using rocksdb::SubcompactionJobInfo;
+using rocksdb::TableFileCreationReason;
 using rocksdb::TableProperties;
 using rocksdb::TablePropertiesCollection;
 using rocksdb::TablePropertiesCollector;
@@ -187,9 +186,6 @@ using rocksdb::titandb::TitanDB;
 using rocksdb::titandb::TitanDBOptions;
 using rocksdb::titandb::TitanOptions;
 using rocksdb::titandb::TitanReadOptions;
-
-using rocksdb::CloudEnv;
-using rocksdb::CloudEnvOptions;
 
 using rocksdb::MemoryAllocator;
 
@@ -440,6 +436,7 @@ struct crocksdb_compactionfilterfactory_t : public CompactionFilterFactory {
   void (*destructor_)(void*);
   crocksdb_compactionfilter_t* (*create_compaction_filter_)(
       void*, crocksdb_compactionfiltercontext_t* context);
+  unsigned char (*should_filter_table_file_creation_)(void*, int reason);
   const char* (*name_)(void*);
 
   virtual ~crocksdb_compactionfilterfactory_t() { (*destructor_)(state_); }
@@ -450,6 +447,12 @@ struct crocksdb_compactionfilterfactory_t : public CompactionFilterFactory {
     ccontext.rep = context;
     CompactionFilter* cf = (*create_compaction_filter_)(state_, &ccontext);
     return std::unique_ptr<CompactionFilter>(cf);
+  }
+
+  virtual bool ShouldFilterTableFileCreation(
+      TableFileCreationReason reason) const override {
+    int creason = static_cast<int>(reason);
+    return (*should_filter_table_file_creation_)(state_, creason);
   }
 
   virtual const char* Name() const override { return (*name_)(state_); }
@@ -2141,9 +2144,19 @@ uint64_t crocksdb_compactionjobinfo_num_corrupt_keys(
   return info->rep.stats.num_corrupt_keys;
 }
 
+int crocksdb_compactionjobinfo_base_input_level(
+    const crocksdb_compactionjobinfo_t* info) {
+  return info->rep.base_input_level;
+}
+
 int crocksdb_compactionjobinfo_output_level(
     const crocksdb_compactionjobinfo_t* info) {
   return info->rep.output_level;
+}
+
+size_t crocksdb_compactionjobinfo_num_input_files_at_output_level(
+    const crocksdb_compactionjobinfo_t* info) {
+  return info->rep.stats.num_input_files_at_output_level;
 }
 
 uint64_t crocksdb_compactionjobinfo_input_records(
@@ -2218,6 +2231,11 @@ crocksdb_externalfileingestioninfo_table_properties(
     const crocksdb_externalfileingestioninfo_t* info) {
   return reinterpret_cast<const crocksdb_table_properties_t*>(
       &info->rep.table_properties);
+}
+
+const int crocksdb_externalfileingestioninfo_picked_level(
+    const crocksdb_externalfileingestioninfo_t* info) {
+  return info->rep.picked_level;
 }
 
 /* External write stall info */
@@ -2537,6 +2555,10 @@ void crocksdb_options_set_write_buffer_size(crocksdb_options_t* opt, size_t s) {
   opt->rep.write_buffer_size = s;
 }
 
+size_t crocksdb_options_get_write_buffer_size(crocksdb_options_t* opt) {
+  return opt->rep.write_buffer_size;
+}
+
 void crocksdb_options_set_max_open_files(crocksdb_options_t* opt, int n) {
   opt->rep.max_open_files = n;
 }
@@ -2566,6 +2588,11 @@ void crocksdb_options_set_max_bytes_for_level_base(crocksdb_options_t* opt,
   opt->rep.max_bytes_for_level_base = n;
 }
 
+uint64_t crocksdb_options_get_max_bytes_for_level_base(
+    crocksdb_options_t* opt) {
+  return opt->rep.max_bytes_for_level_base;
+}
+
 void crocksdb_options_set_level_compaction_dynamic_level_bytes(
     crocksdb_options_t* opt, unsigned char v) {
   opt->rep.level_compaction_dynamic_level_bytes = v;
@@ -2589,6 +2616,10 @@ double crocksdb_options_get_max_bytes_for_level_multiplier(
 void crocksdb_options_set_max_compaction_bytes(crocksdb_options_t* opt,
                                                uint64_t n) {
   opt->rep.max_compaction_bytes = n;
+}
+
+uint64_t crocksdb_options_get_max_compaction_bytes(crocksdb_options_t* opt) {
+  return opt->rep.max_compaction_bytes;
 }
 
 void crocksdb_options_set_max_bytes_for_level_multiplier_additional(
@@ -2639,6 +2670,11 @@ int crocksdb_options_get_num_levels(crocksdb_options_t* opt) {
 void crocksdb_options_set_level0_file_num_compaction_trigger(
     crocksdb_options_t* opt, int n) {
   opt->rep.level0_file_num_compaction_trigger = n;
+}
+
+int crocksdb_options_get_level0_file_num_compaction_trigger(
+    crocksdb_options_t* opt) {
+  return opt->rep.level0_file_num_compaction_trigger;
 }
 
 void crocksdb_options_set_level0_slowdown_writes_trigger(
@@ -2897,9 +2933,18 @@ void crocksdb_options_set_max_write_buffer_number(crocksdb_options_t* opt,
   opt->rep.max_write_buffer_number = n;
 }
 
+int crocksdb_options_get_max_write_buffer_number(crocksdb_options_t* opt) {
+  return opt->rep.max_write_buffer_number;
+}
+
 void crocksdb_options_set_min_write_buffer_number_to_merge(
     crocksdb_options_t* opt, int n) {
   opt->rep.min_write_buffer_number_to_merge = n;
+}
+
+int crocksdb_options_get_min_write_buffer_number_to_merge(
+    crocksdb_options_t* opt) {
+  return opt->rep.min_write_buffer_number_to_merge;
 }
 
 void crocksdb_options_set_max_write_buffer_number_to_maintain(
@@ -3133,6 +3178,11 @@ void crocksdb_options_set_delayed_write_rate(crocksdb_options_t* opt,
 void crocksdb_options_set_force_consistency_checks(crocksdb_options_t* opt,
                                                    unsigned char v) {
   opt->rep.force_consistency_checks = v;
+}
+
+unsigned char crocksdb_options_get_force_consistency_checks(
+    crocksdb_options_t* opt) {
+  return opt->rep.force_consistency_checks;
 }
 
 char* crocksdb_options_statistics_get_string(crocksdb_options_t* opt) {
@@ -3403,12 +3453,15 @@ crocksdb_compactionfilterfactory_t* crocksdb_compactionfilterfactory_create(
     void* state, void (*destructor)(void*),
     crocksdb_compactionfilter_t* (*create_compaction_filter)(
         void*, crocksdb_compactionfiltercontext_t* context),
+    unsigned char (*should_filter_table_file_creation)(void*, int reason),
     const char* (*name)(void*)) {
   crocksdb_compactionfilterfactory_t* result =
       new crocksdb_compactionfilterfactory_t;
   result->state_ = state;
   result->destructor_ = destructor;
   result->create_compaction_filter_ = create_compaction_filter;
+  result->should_filter_table_file_creation_ =
+      should_filter_table_file_creation;
   result->name_ = name;
   return result;
 }
@@ -3634,7 +3687,8 @@ struct TableFilter {
   // several times, so we need use shared_ptr to control the ctx_ resource
   // destroy ctx_ only when the last ReadOptions out of its life time.
   TableFilter(void* ctx,
-              int (*table_filter)(void*, const crocksdb_table_properties_t*),
+              unsigned char (*table_filter)(void*,
+                                            const crocksdb_table_properties_t*),
               void (*destroy)(void*))
       : ctx_(std::make_shared<TableFilterCtx>(ctx, destroy)),
         table_filter_(table_filter) {}
@@ -3649,7 +3703,7 @@ struct TableFilter {
   }
 
   shared_ptr<TableFilterCtx> ctx_;
-  int (*table_filter_)(void*, const crocksdb_table_properties_t*);
+  unsigned char (*table_filter_)(void*, const crocksdb_table_properties_t*);
 
  private:
   TableFilter() {}
@@ -3657,7 +3711,7 @@ struct TableFilter {
 
 void crocksdb_readoptions_set_table_filter(
     crocksdb_readoptions_t* opt, void* ctx,
-    int (*table_filter)(void*, const crocksdb_table_properties_t*),
+    unsigned char (*table_filter)(void*, const crocksdb_table_properties_t*),
     void (*destroy)(void*)) {
   opt->rep.table_filter = TableFilter(ctx, table_filter, destroy);
 }
@@ -4426,6 +4480,17 @@ void crocksdb_ingestexternalfileoptions_set_allow_blocking_flush(
     crocksdb_ingestexternalfileoptions_t* opt,
     unsigned char allow_blocking_flush) {
   opt->rep.allow_blocking_flush = allow_blocking_flush;
+}
+
+unsigned char crocksdb_ingestexternalfileoptions_get_write_global_seqno(
+    const crocksdb_ingestexternalfileoptions_t* opt) {
+  return opt->rep.write_global_seqno;
+}
+
+void crocksdb_ingestexternalfileoptions_set_write_global_seqno(
+    crocksdb_ingestexternalfileoptions_t* opt,
+    unsigned char write_global_seqno) {
+  opt->rep.write_global_seqno = write_global_seqno;
 }
 
 void crocksdb_ingestexternalfileoptions_destroy(
@@ -6261,6 +6326,18 @@ void ctitandb_options_set_blob_file_compression(ctitandb_options_t* opts,
   opts->rep.blob_file_compression = static_cast<CompressionType>(type);
 }
 
+void ctitandb_options_set_compression_options(ctitandb_options_t* opt,
+                                              int w_bits, int level,
+                                              int strategy, int max_dict_bytes,
+                                              int zstd_max_train_bytes) {
+  opt->rep.blob_file_compression_options.window_bits = w_bits;
+  opt->rep.blob_file_compression_options.level = level;
+  opt->rep.blob_file_compression_options.strategy = strategy;
+  opt->rep.blob_file_compression_options.max_dict_bytes = max_dict_bytes;
+  opt->rep.blob_file_compression_options.zstd_max_train_bytes =
+      zstd_max_train_bytes;
+}
+
 void ctitandb_options_set_gc_merge_rewrite(ctitandb_options_t* opts,
                                            unsigned char enable) {
   opts->rep.gc_merge_rewrite = enable;
@@ -6579,48 +6656,4 @@ void ctitandb_delete_blob_files_in_ranges_cf(
                         cf->rep, &ranges[0], num_ranges, include_end));
 }
 
-/* RocksDB Cloud */
-#ifdef USE_CLOUD
-struct crocksdb_cloud_envoptions_t {
-  CloudEnvOptions rep;
-};
-
-crocksdb_env_t* crocksdb_cloud_aws_env_create(
-    crocksdb_env_t* base_env, const char* src_cloud_bucket,
-    const char* src_cloud_object, const char* src_cloud_region,
-    const char* dest_cloud_bucket, const char* dest_cloud_object,
-    const char* dest_cloud_region, crocksdb_cloud_envoptions_t* cloud_options,
-    char** errptr) {
-  // Store a reference to a cloud env. A new cloud env object should be
-  // associated with every new cloud-db.
-  CloudEnv* cloud_env;
-
-  CloudEnv* cenv;
-  if (SaveError(errptr,
-                CloudEnv::NewAwsEnv(
-                    base_env->rep, src_cloud_bucket, src_cloud_object,
-                    src_cloud_region, dest_cloud_bucket, dest_cloud_object,
-                    dest_cloud_region, cloud_options->rep, nullptr, &cenv))) {
-    assert(cenv != nullptr);
-    return nullptr;
-  }
-  cloud_env = cenv;
-
-  crocksdb_env_t* result = new crocksdb_env_t;
-  result->rep = static_cast<Env*>(cloud_env);
-  result->block_cipher = nullptr;
-  result->encryption_provider = nullptr;
-  result->is_default = true;
-  return result;
-}
-
-crocksdb_cloud_envoptions_t* crocksdb_cloud_envoptions_create() {
-  crocksdb_cloud_envoptions_t* opt = new crocksdb_cloud_envoptions_t;
-  return opt;
-}
-
-void crocksdb_cloud_envoptions_destroy(crocksdb_cloud_envoptions_t* opt) {
-  delete opt;
-}
-#endif
 }  // end extern "C"

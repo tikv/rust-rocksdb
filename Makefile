@@ -1,13 +1,16 @@
 all: format build test
 
-format:
+prepare:
+	curl https://raw.githubusercontent.com/tikv/tikv/master/rust-toolchain > rust-toolchain
+
+format: prepare
 	@cargo fmt --all
 	@scripts/format-diff.sh
 
-build:
+build: prepare
 	@cargo build
 
-test:
+test: prepare
 	@export RUST_BACKTRACE=1 && cargo test -- --nocapture
 
 clean:
@@ -15,7 +18,7 @@ clean:
 	@cd librocksdb_sys && cargo clean
 
 # TODO it could be worth fixing some of these lints
-clippy:
+clippy: prepare
 	@cargo clippy --all -- \
 	-D warnings \
 	-A clippy::redundant_field_names -A clippy::single_match \
@@ -41,14 +44,3 @@ update_rocksdb:
 	fi
 	@git submodule sync
 	@git submodule update --init --remote librocksdb_sys/rocksdb
-
-update_rocksdb_cloud:
-	@if [ -n "${ROCKSDB_CLOUD_REPO}" ]; then \
-		git config --file=.gitmodules submodule.rocksdb-cloud.url https://github.com/${ROCKSDB_CLOUD_REPO}/rocksdb.git; \
-	fi
-	@if [ -n "${ROCKSDB_CLOUD_BRANCH}" ]; then \
-		git config --file=.gitmodules submodule.rocksdb-cloud.branch ${ROCKSDB_CLOUD_BRANCH}; \
-	fi
-	@git submodule sync
-	@git submodule update --init --remote librocksdb_sys/librocksdb_cloud_sys/rocksdb-cloud
-	

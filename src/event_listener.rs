@@ -105,6 +105,10 @@ impl CompactionJobInfo {
         unsafe { crocksdb_ffi::crocksdb_compactionjobinfo_num_corrupt_keys(&self.0) }
     }
 
+    pub fn base_input_level(&self) -> i32 {
+        unsafe { crocksdb_ffi::crocksdb_compactionjobinfo_base_input_level(&self.0) }
+    }
+
     pub fn output_level(&self) -> i32 {
         unsafe { crocksdb_ffi::crocksdb_compactionjobinfo_output_level(&self.0) }
     }
@@ -123,6 +127,10 @@ impl CompactionJobInfo {
 
     pub fn total_output_bytes(&self) -> u64 {
         unsafe { crocksdb_ffi::crocksdb_compactionjobinfo_total_output_bytes(&self.0) }
+    }
+
+    pub fn num_input_files_at_output_level(&self) -> usize {
+        unsafe { crocksdb_ffi::crocksdb_compactionjobinfo_num_input_files_at_output_level(&self.0) }
     }
 
     pub fn compaction_reason(&self) -> CompactionReason {
@@ -178,6 +186,10 @@ impl IngestionInfo {
             let prop = crocksdb_ffi::crocksdb_externalfileingestioninfo_table_properties(&self.0);
             TableProperties::from_ptr(prop)
         }
+    }
+
+    pub fn picked_level(&self) -> i32 {
+        unsafe { crocksdb_ffi::crocksdb_externalfileingestioninfo_picked_level(&self.0) }
     }
 }
 

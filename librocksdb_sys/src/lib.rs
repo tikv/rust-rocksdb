@@ -46,8 +46,6 @@ use libc::{c_char, c_double, c_int, c_uchar, c_void, size_t};
 #[repr(C)]
 pub struct Options(c_void);
 #[repr(C)]
-pub struct CloudEnvOptions(c_void);
-#[repr(C)]
 pub struct ColumnFamilyDescriptor(c_void);
 #[repr(C)]
 pub struct DBInstance(c_void);
@@ -85,6 +83,7 @@ pub struct DBCompactionFilter(c_void);
 pub struct DBCompactionFilterFactory(c_void);
 #[repr(C)]
 pub struct DBCompactionFilterContext(c_void);
+
 #[repr(C)]
 pub struct EnvOptions(c_void);
 #[repr(C)]
@@ -467,6 +466,15 @@ pub enum CompactionFilterDecision {
     RemoveAndSkipUntil = 3,
 }
 
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[repr(C)]
+pub enum DBTableFileCreationReason {
+    Flush = 0,
+    Compaction = 1,
+    Recovery = 2,
+    Misc = 3,
+}
+
 /// # Safety
 ///
 /// ptr must point to a valid CStr value
@@ -668,26 +676,32 @@ extern "C" {
     pub fn crocksdb_options_set_table_cache_numshardbits(options: *mut Options, bits: c_int);
     pub fn crocksdb_options_set_writable_file_max_buffer_size(options: *mut Options, nbytes: c_int);
     pub fn crocksdb_options_set_max_write_buffer_number(options: *mut Options, bufno: c_int);
+    pub fn crocksdb_options_get_max_write_buffer_number(options: *mut Options) -> c_int;
     pub fn crocksdb_options_set_min_write_buffer_number_to_merge(
         options: *mut Options,
         bufno: c_int,
     );
+    pub fn crocksdb_options_get_min_write_buffer_number_to_merge(options: *mut Options) -> c_int;
     pub fn crocksdb_options_set_level0_file_num_compaction_trigger(
         options: *mut Options,
         no: c_int,
     );
+    pub fn crocksdb_options_get_level0_file_num_compaction_trigger(options: *mut Options) -> c_int;
     pub fn crocksdb_options_set_level0_slowdown_writes_trigger(options: *mut Options, no: c_int);
     pub fn crocksdb_options_get_level0_slowdown_writes_trigger(options: *mut Options) -> c_int;
     pub fn crocksdb_options_set_level0_stop_writes_trigger(options: *mut Options, no: c_int);
     pub fn crocksdb_options_get_level0_stop_writes_trigger(options: *mut Options) -> c_int;
     pub fn crocksdb_options_set_write_buffer_size(options: *mut Options, bytes: u64);
+    pub fn crocksdb_options_get_write_buffer_size(options: *mut Options) -> u64;
     pub fn crocksdb_options_set_target_file_size_base(options: *mut Options, bytes: u64);
     pub fn crocksdb_options_get_target_file_size_base(options: *const Options) -> u64;
     pub fn crocksdb_options_set_target_file_size_multiplier(options: *mut Options, mul: c_int);
     pub fn crocksdb_options_set_max_bytes_for_level_base(options: *mut Options, bytes: u64);
+    pub fn crocksdb_options_get_max_bytes_for_level_base(options: *mut Options) -> u64;
     pub fn crocksdb_options_set_max_bytes_for_level_multiplier(options: *mut Options, mul: f64);
     pub fn crocksdb_options_get_max_bytes_for_level_multiplier(options: *mut Options) -> f64;
     pub fn crocksdb_options_set_max_compaction_bytes(options: *mut Options, bytes: u64);
+    pub fn crocksdb_options_get_max_compaction_bytes(options: *mut Options) -> u64;
     pub fn crocksdb_options_set_max_log_file_size(options: *mut Options, bytes: size_t);
     pub fn crocksdb_options_set_log_file_time_to_roll(options: *mut Options, bytes: size_t);
     pub fn crocksdb_options_set_info_log_level(options: *mut Options, level: DBInfoLogLevel);
@@ -817,6 +831,7 @@ extern "C" {
     );
     pub fn crocksdb_options_set_delayed_write_rate(options: *mut Options, rate: u64);
     pub fn crocksdb_options_set_force_consistency_checks(options: *mut Options, v: bool);
+    pub fn crocksdb_options_get_force_consistency_checks(options: *mut Options) -> bool;
     pub fn crocksdb_options_set_ratelimiter(options: *mut Options, limiter: *mut DBRateLimiter);
     pub fn crocksdb_options_get_ratelimiter(options: *mut Options) -> *mut DBRateLimiter;
     pub fn crocksdb_options_set_info_log(options: *mut Options, logger: *mut DBLogger);
@@ -982,7 +997,7 @@ extern "C" {
     pub fn crocksdb_readoptions_set_table_filter(
         readopts: *mut DBReadOptions,
         ctx: *mut c_void,
-        filter: extern "C" fn(*mut c_void, *const DBTableProperties) -> c_int,
+        filter: extern "C" fn(*mut c_void, *const DBTableProperties) -> c_uchar,
         destroy: extern "C" fn(*mut c_void),
     );
 
@@ -1573,6 +1588,10 @@ extern "C" {
             *mut c_void,
             *const DBCompactionFilterContext,
         ) -> *mut DBCompactionFilter,
+        should_filter_table_file_creation: extern "C" fn(
+            *const c_void,
+            DBTableFileCreationReason,
+        ) -> c_uchar,
         name: extern "C" fn(*mut c_void) -> *const c_char,
     ) -> *mut DBCompactionFilterFactory;
     pub fn crocksdb_compactionfilterfactory_destroy(factory: *mut DBCompactionFilterFactory);
@@ -1630,6 +1649,13 @@ extern "C" {
     pub fn crocksdb_ingestexternalfileoptions_set_allow_blocking_flush(
         opt: *mut IngestExternalFileOptions,
         allow_blocking_flush: bool,
+    );
+    pub fn crocksdb_ingestexternalfileoptions_get_write_global_seqno(
+        opt: *const IngestExternalFileOptions,
+    ) -> bool;
+    pub fn crocksdb_ingestexternalfileoptions_set_write_global_seqno(
+        opt: *mut IngestExternalFileOptions,
+        write_global_seqno: bool,
     );
     pub fn crocksdb_ingestexternalfileoptions_destroy(opt: *mut IngestExternalFileOptions);
 
@@ -2137,11 +2163,15 @@ extern "C" {
     ) -> *const DBTablePropertiesCollection;
     pub fn crocksdb_compactionjobinfo_elapsed_micros(info: *const DBCompactionJobInfo) -> u64;
     pub fn crocksdb_compactionjobinfo_num_corrupt_keys(info: *const DBCompactionJobInfo) -> u64;
+    pub fn crocksdb_compactionjobinfo_base_input_level(info: *const DBCompactionJobInfo) -> c_int;
     pub fn crocksdb_compactionjobinfo_output_level(info: *const DBCompactionJobInfo) -> c_int;
     pub fn crocksdb_compactionjobinfo_input_records(info: *const DBCompactionJobInfo) -> u64;
     pub fn crocksdb_compactionjobinfo_output_records(info: *const DBCompactionJobInfo) -> u64;
     pub fn crocksdb_compactionjobinfo_total_input_bytes(info: *const DBCompactionJobInfo) -> u64;
     pub fn crocksdb_compactionjobinfo_total_output_bytes(info: *const DBCompactionJobInfo) -> u64;
+    pub fn crocksdb_compactionjobinfo_num_input_files_at_output_level(
+        info: *const DBCompactionJobInfo,
+    ) -> size_t;
     pub fn crocksdb_compactionjobinfo_compaction_reason(
         info: *const DBCompactionJobInfo,
     ) -> CompactionReason;
@@ -2172,6 +2202,7 @@ extern "C" {
     pub fn crocksdb_externalfileingestioninfo_table_properties(
         info: *const DBIngestionInfo,
     ) -> *const DBTableProperties;
+    pub fn crocksdb_externalfileingestioninfo_picked_level(info: *const DBIngestionInfo) -> c_int;
 
     pub fn crocksdb_writestallinfo_cf_name(
         info: *const DBWriteStallInfo,
@@ -2554,6 +2585,14 @@ extern "C" {
         opts: *mut DBTitanDBOptions,
         t: DBCompressionType,
     );
+    pub fn ctitandb_options_set_compression_options(
+        options: *mut DBTitanDBOptions,
+        window_bits: c_int,
+        level: c_int,
+        strategy: c_int,
+        max_dict_bytes: c_int,
+        zstd_max_train_bytes: c_int,
+    );
 
     pub fn ctitandb_decode_blob_index(
         value: *const u8,
@@ -2668,26 +2707,6 @@ extern "C" {
         include_end: bool,
         errptr: *mut *mut c_char,
     );
-}
-
-// RocksDB Cloud
-extern "C" {
-    // NewAWSEnv
-    pub fn crocksdb_cloud_aws_env_create(
-        base_env: *mut DBEnv,
-        src_cloud_bucket: *const c_char,
-        src_cloud_object: *const c_char,
-        src_cloud_region: *const c_char,
-        dest_cloud_bucket: *const c_char,
-        dest_cloud_object: *const c_char,
-        dest_cloud_region: *const c_char,
-        opts: *mut CloudEnvOptions,
-        err: *mut *mut c_char,
-    ) -> *mut DBEnv;
-
-    // CloudEnvOptions
-    pub fn crocksdb_cloud_envoptions_create() -> *mut CloudEnvOptions;
-    pub fn crocksdb_cloud_envoptions_destroy(opt: *mut CloudEnvOptions);
 }
 
 #[cfg(test)]

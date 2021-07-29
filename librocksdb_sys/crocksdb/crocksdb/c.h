@@ -1223,6 +1223,8 @@ crocksdb_options_set_max_sequential_skip_in_iterations(crocksdb_options_t*,
                                                        uint64_t);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_disable_auto_compactions(
     crocksdb_options_t*, int);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_disable_write_stall(
+    crocksdb_options_t*, bool);
 extern C_ROCKSDB_LIBRARY_API int crocksdb_options_get_disable_auto_compactions(
     const crocksdb_options_t*);
 extern C_ROCKSDB_LIBRARY_API void

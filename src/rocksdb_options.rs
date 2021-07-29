@@ -1737,6 +1737,10 @@ impl ColumnFamilyOptions {
         }
     }
 
+    pub fn set_disable_write_stall(&mut self, disable: bool) {
+        unsafe { crocksdb_ffi::crocksdb_options_set_disable_write_stall(self.inner, disable) }
+    }
+
     pub fn get_disable_auto_compactions(&self) -> bool {
         unsafe { crocksdb_ffi::crocksdb_options_get_disable_auto_compactions(self.inner) == 1 }
     }

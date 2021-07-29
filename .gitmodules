@@ -1,7 +1,7 @@
 [submodule "rocksdb"]
 	path = librocksdb_sys/rocksdb
 	url = https://github.com/Connor1996/rocksdb.git
-	branch = disable-intra
+	branch = disable-write-stall 
 
 [submodule "titan"]
 	path = librocksdb_sys/libtitan_sys/titan

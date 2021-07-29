@@ -55,6 +55,7 @@ impl EventListener for EventCounter {
             let path = info.input_file_at(i);
             assert!(path.exists());
         }
+        assert_eq!(info.num_input_files_at_output_level(), 0);
 
         let output_file_count = info.output_file_count();
         assert_ne!(output_file_count, 0);

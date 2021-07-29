@@ -83,6 +83,7 @@ pub struct DBCompactionFilter(c_void);
 pub struct DBCompactionFilterFactory(c_void);
 #[repr(C)]
 pub struct DBCompactionFilterContext(c_void);
+
 #[repr(C)]
 pub struct EnvOptions(c_void);
 #[repr(C)]
@@ -463,6 +464,15 @@ pub enum CompactionFilterDecision {
     Remove = 1,
     ChangeValue = 2,
     RemoveAndSkipUntil = 3,
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[repr(C)]
+pub enum DBTableFileCreationReason {
+    Flush = 0,
+    Compaction = 1,
+    Recovery = 2,
+    Misc = 3,
 }
 
 /// # Safety
@@ -987,7 +997,7 @@ extern "C" {
     pub fn crocksdb_readoptions_set_table_filter(
         readopts: *mut DBReadOptions,
         ctx: *mut c_void,
-        filter: extern "C" fn(*mut c_void, *const DBTableProperties) -> c_int,
+        filter: extern "C" fn(*mut c_void, *const DBTableProperties) -> c_uchar,
         destroy: extern "C" fn(*mut c_void),
     );
 
@@ -1569,6 +1579,14 @@ extern "C" {
         context: *const DBCompactionFilterContext,
         offset: usize,
     ) -> *const DBTableProperties;
+    pub fn crocksdb_compactionfiltercontext_start_key(
+        context: *const DBCompactionFilterContext,
+        key_len: *mut size_t,
+    ) -> *const c_char;
+    pub fn crocksdb_compactionfiltercontext_end_key(
+        context: *const DBCompactionFilterContext,
+        key_len: *mut size_t,
+    ) -> *const c_char;
 
     // Compaction filter factory
     pub fn crocksdb_compactionfilterfactory_create(
@@ -1578,6 +1596,10 @@ extern "C" {
             *mut c_void,
             *const DBCompactionFilterContext,
         ) -> *mut DBCompactionFilter,
+        should_filter_table_file_creation: extern "C" fn(
+            *const c_void,
+            DBTableFileCreationReason,
+        ) -> c_uchar,
         name: extern "C" fn(*mut c_void) -> *const c_char,
     ) -> *mut DBCompactionFilterFactory;
     pub fn crocksdb_compactionfilterfactory_destroy(factory: *mut DBCompactionFilterFactory);
@@ -1635,6 +1657,13 @@ extern "C" {
     pub fn crocksdb_ingestexternalfileoptions_set_allow_blocking_flush(
         opt: *mut IngestExternalFileOptions,
         allow_blocking_flush: bool,
+    );
+    pub fn crocksdb_ingestexternalfileoptions_get_write_global_seqno(
+        opt: *const IngestExternalFileOptions,
+    ) -> bool;
+    pub fn crocksdb_ingestexternalfileoptions_set_write_global_seqno(
+        opt: *mut IngestExternalFileOptions,
+        write_global_seqno: bool,
     );
     pub fn crocksdb_ingestexternalfileoptions_destroy(opt: *mut IngestExternalFileOptions);
 

@@ -80,6 +80,12 @@ typedef struct crocksdb_lru_cache_options_t crocksdb_lru_cache_options_t;
 typedef struct crocksdb_cache_t crocksdb_cache_t;
 typedef struct crocksdb_memory_allocator_t crocksdb_memory_allocator_t;
 typedef struct crocksdb_compactionfilter_t crocksdb_compactionfilter_t;
+enum {
+  crocksdb_table_file_creation_reason_flush = 0,
+  crocksdb_table_file_creation_reason_compaction = 1,
+  crocksdb_table_file_creation_reason_recovery = 2,
+  crocksdb_table_file_creation_reason_misc = 3,
+};
 typedef struct crocksdb_compactionfiltercontext_t
     crocksdb_compactionfiltercontext_t;
 typedef struct crocksdb_compactionfilterfactory_t
@@ -839,7 +845,8 @@ crocksdb_compactionjobinfo_total_output_bytes(
     const crocksdb_compactionjobinfo_t*);
 extern C_ROCKSDB_LIBRARY_API size_t crocksdb_compactionjobinfo_num_input_files(
     const crocksdb_compactionjobinfo_t* info);
-extern C_ROCKSDB_LIBRARY_API size_t crocksdb_compactionjobinfo_num_input_files_at_output_level(
+extern C_ROCKSDB_LIBRARY_API size_t 
+crocksdb_compactionjobinfo_num_input_files_at_output_level(
     const crocksdb_compactionjobinfo_t* info);
 
 /* Subcompaction job info */
@@ -864,7 +871,8 @@ crocksdb_externalfileingestioninfo_internal_file_path(
 extern C_ROCKSDB_LIBRARY_API const crocksdb_table_properties_t*
 crocksdb_externalfileingestioninfo_table_properties(
     const crocksdb_externalfileingestioninfo_t*);
-extern C_ROCKSDB_LIBRARY_API const int crocksdb_externalfileingestioninfo_picked_level(
+extern C_ROCKSDB_LIBRARY_API const int
+crocksdb_externalfileingestioninfo_picked_level(
     const crocksdb_externalfileingestioninfo_t*);
 
 /* External write stall info */
@@ -1392,6 +1400,7 @@ crocksdb_compactionfilterfactory_create(
     void* state, void (*destructor)(void*),
     crocksdb_compactionfilter_t* (*create_compaction_filter)(
         void*, crocksdb_compactionfiltercontext_t* context),
+    unsigned char (*should_filter_table_file_creation)(void*, int reason),
     const char* (*name)(void*));
 extern C_ROCKSDB_LIBRARY_API void crocksdb_compactionfilterfactory_destroy(
     crocksdb_compactionfilterfactory_t*);
@@ -1487,7 +1496,7 @@ crocksdb_readoptions_set_ignore_range_deletions(crocksdb_readoptions_t*,
                                                 unsigned char);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_readoptions_set_table_filter(
     crocksdb_readoptions_t*, void*,
-    int (*table_filter)(void*, const crocksdb_table_properties_t*),
+    unsigned char (*table_filter)(void*, const crocksdb_table_properties_t*),
     void (*destory)(void*));
 
 /* Write options */
@@ -1784,9 +1793,15 @@ extern C_ROCKSDB_LIBRARY_API void
 crocksdb_ingestexternalfileoptions_set_allow_blocking_flush(
     crocksdb_ingestexternalfileoptions_t* opt,
     unsigned char allow_blocking_flush);
+extern C_ROCKSDB_LIBRARY_API unsigned char
+crocksdb_ingestexternalfileoptions_get_write_global_seqno(
+    const crocksdb_ingestexternalfileoptions_t* opt);
+extern C_ROCKSDB_LIBRARY_API void
+crocksdb_ingestexternalfileoptions_set_write_global_seqno(
+    crocksdb_ingestexternalfileoptions_t* opt,
+    unsigned char write_global_seqno);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_ingestexternalfileoptions_destroy(
     crocksdb_ingestexternalfileoptions_t* opt);
-
 extern C_ROCKSDB_LIBRARY_API void crocksdb_ingest_external_file(
     crocksdb_t* db, const char* const* file_list, const size_t list_len,
     const crocksdb_ingestexternalfileoptions_t* opt, char** errptr);

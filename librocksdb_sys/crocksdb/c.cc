@@ -2975,6 +2975,16 @@ int crocksdb_options_get_max_background_compactions(
   return opt->rep.max_background_compactions;
 }
 
+void crocksdb_options_set_base_background_compactions(crocksdb_options_t* opt,
+                                                      int n) {
+  opt->rep.base_background_compactions = n;
+}
+
+int crocksdb_options_get_base_background_compactions(
+    const crocksdb_options_t* opt) {
+  return opt->rep.base_background_compactions;
+}
+
 void crocksdb_options_set_max_background_flushes(crocksdb_options_t* opt,
                                                  int n) {
   opt->rep.max_background_flushes = n;
@@ -3059,14 +3069,18 @@ void crocksdb_options_set_disable_auto_compactions(crocksdb_options_t* opt,
   opt->rep.disable_auto_compactions = disable;
 }
 
-void crocksdb_options_set_disable_write_stall(crocksdb_options_t* opt,
-                                                   bool disable) {
-  opt->rep.disable_write_stall = disable;
-}
-
 int crocksdb_options_get_disable_auto_compactions(
     const crocksdb_options_t* opt) {
   return opt->rep.disable_auto_compactions;
+}
+
+void crocksdb_options_set_disable_write_stall(crocksdb_options_t* opt,
+                                              unsigned char disable) {
+  opt->rep.disable_write_stall = disable;
+}
+
+int crocksdb_options_get_disable_write_stall(const crocksdb_options_t* opt) {
+  return opt->rep.disable_write_stall;
 }
 
 void crocksdb_options_set_delete_obsolete_files_period_micros(

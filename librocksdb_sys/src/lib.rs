@@ -760,14 +760,20 @@ extern "C" {
         max_bg_compactions: c_int,
     );
     pub fn crocksdb_options_get_max_background_compactions(options: *const Options) -> c_int;
+    pub fn crocksdb_options_set_base_background_compactions(
+        options: *mut Options,
+        base_bg_compactions: c_int,
+    );
+    pub fn crocksdb_options_get_base_background_compactions(options: *const Options) -> c_int;
     pub fn crocksdb_options_set_max_background_flushes(
         options: *mut Options,
         max_bg_flushes: c_int,
     );
     pub fn crocksdb_options_get_max_background_flushes(options: *const Options) -> c_int;
     pub fn crocksdb_options_set_disable_auto_compactions(options: *mut Options, v: c_int);
-    pub fn crocksdb_options_set_disable_write_stall(options: *mut Options, v: bool);
     pub fn crocksdb_options_get_disable_auto_compactions(options: *const Options) -> c_int;
+    pub fn crocksdb_options_set_disable_write_stall(options: *mut Options, v: bool);
+    pub fn crocksdb_options_get_disable_write_stall(options: *const Options) -> bool;
     pub fn crocksdb_options_set_report_bg_io_stats(options: *mut Options, v: c_int);
     pub fn crocksdb_options_set_compaction_readahead_size(options: *mut Options, v: size_t);
     pub fn crocksdb_options_set_wal_recovery_mode(options: *mut Options, mode: DBRecoveryMode);

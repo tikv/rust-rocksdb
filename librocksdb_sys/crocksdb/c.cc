@@ -3079,7 +3079,8 @@ void crocksdb_options_set_disable_write_stall(crocksdb_options_t* opt,
   opt->rep.disable_write_stall = disable;
 }
 
-int crocksdb_options_get_disable_write_stall(const crocksdb_options_t* opt) {
+unsigned char crocksdb_options_get_disable_write_stall(
+    const crocksdb_options_t* opt) {
   return opt->rep.disable_write_stall;
 }
 

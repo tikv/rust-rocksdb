@@ -124,6 +124,9 @@ impl WriteBatch {
                 delete_fn,
                 delete_cf_fn,
             );
+
+            // Let rust free the memory
+            let _ = *(state as *const WriteBatchCallback);
         }
     }
 

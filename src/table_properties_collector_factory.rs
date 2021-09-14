@@ -14,8 +14,8 @@
 use crocksdb_ffi::{self, DBTablePropertiesCollector, DBTablePropertiesCollectorFactory};
 use libc::{c_char, c_void};
 use std::ffi::CString;
-use table_properties_collector::{new_table_properties_collector, TablePropertiesCollector};
 use std::marker::PhantomData;
+use table_properties_collector::{new_table_properties_collector, TablePropertiesCollector};
 
 /// Constructs `TablePropertiesCollector`.
 /// Internals create a new `TablePropertiesCollector` for each new table.
@@ -25,39 +25,48 @@ pub trait TablePropertiesCollectorFactory<T: TablePropertiesCollector> {
 }
 
 struct TablePropertiesCollectorFactoryHandle<C, T>
-    where C: TablePropertiesCollector,  T: TablePropertiesCollectorFactory<C> {
+where
+    C: TablePropertiesCollector,
+    T: TablePropertiesCollectorFactory<C>,
+{
     name: CString,
     rep: T,
     _marker: PhantomData<C>,
 }
 
-impl <C: TablePropertiesCollector, T: TablePropertiesCollectorFactory<C>> TablePropertiesCollectorFactoryHandle<C, T> {
-    fn new(
-        name: &str,
-        rep: T,
-    ) -> TablePropertiesCollectorFactoryHandle<C, T> {
+impl<C: TablePropertiesCollector, T: TablePropertiesCollectorFactory<C>>
+    TablePropertiesCollectorFactoryHandle<C, T>
+{
+    fn new(name: &str, rep: T) -> TablePropertiesCollectorFactoryHandle<C, T> {
         TablePropertiesCollectorFactoryHandle::<C, T> {
             name: CString::new(name).unwrap(),
             rep: rep,
-            _marker: PhantomData
+            _marker: PhantomData,
         }
     }
 }
 
-extern "C" fn name<C: TablePropertiesCollector, T: TablePropertiesCollectorFactory<C>>(handle: *mut c_void) -> *const c_char {
+extern "C" fn name<C: TablePropertiesCollector, T: TablePropertiesCollectorFactory<C>>(
+    handle: *mut c_void,
+) -> *const c_char {
     unsafe {
         let handle = &mut *(handle as *mut TablePropertiesCollectorFactoryHandle<C, T>);
         handle.name.as_ptr()
     }
 }
 
-extern "C" fn destruct<C: TablePropertiesCollector, T: TablePropertiesCollectorFactory<C>>(handle: *mut c_void) {
+extern "C" fn destruct<C: TablePropertiesCollector, T: TablePropertiesCollectorFactory<C>>(
+    handle: *mut c_void,
+) {
     unsafe {
         Box::from_raw(handle as *mut TablePropertiesCollectorFactoryHandle<C, T>);
     }
 }
 
-extern "C" fn create_table_properties_collector<C: TablePropertiesCollector, T: TablePropertiesCollectorFactory<C>>(
+extern "C" fn create_table_properties_collector<
+    C: TablePropertiesCollector,
+    T: TablePropertiesCollectorFactory<C>,
+>(
     handle: *mut c_void,
     cf: u32,
 ) -> *mut DBTablePropertiesCollector {
@@ -68,7 +77,10 @@ extern "C" fn create_table_properties_collector<C: TablePropertiesCollector, T: 
     }
 }
 
-pub unsafe fn new_table_properties_collector_factory<C: TablePropertiesCollector, T: TablePropertiesCollectorFactory<C>>(
+pub unsafe fn new_table_properties_collector_factory<
+    C: TablePropertiesCollector,
+    T: TablePropertiesCollectorFactory<C>,
+>(
     fname: &str,
     factory: T,
 ) -> *mut DBTablePropertiesCollectorFactory {

@@ -10,15 +10,15 @@ pub trait Logger: Send + Sync {
     fn logv(&self, log_level: InfoLogLevel, log: &str);
 }
 
-extern "C" fn destructor<C: Logger>(ctx: *mut c_void) {
+extern "C" fn destructor<L: Logger>(ctx: *mut c_void) {
     unsafe {
-        Box::from_raw(ctx as *mut C);
+        Box::from_raw(ctx as *mut L);
     }
 }
 
-extern "C" fn logv<C: Logger>(ctx: *mut c_void, log_level: InfoLogLevel, log: *const c_char) {
+extern "C" fn logv<L: Logger>(ctx: *mut c_void, log_level: InfoLogLevel, log: *const c_char) {
     unsafe {
-        let logger = &*(ctx as *mut C);
+        let logger = &*(ctx as *mut L);
         let log = CStr::from_ptr(log);
         logger.logv(log_level, &log.to_string_lossy());
     }

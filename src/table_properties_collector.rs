@@ -38,7 +38,7 @@ struct TablePropertiesCollectorHandle<T: TablePropertiesCollector> {
     rep: T,
 }
 
-impl <T: TablePropertiesCollector> TablePropertiesCollectorHandle<T> {
+impl<T: TablePropertiesCollector> TablePropertiesCollectorHandle<T> {
     fn new(name: &str, rep: T) -> TablePropertiesCollectorHandle<T> {
         TablePropertiesCollectorHandle {
             name: CString::new(name).unwrap(),
@@ -80,7 +80,10 @@ pub extern "C" fn add<T: TablePropertiesCollector>(
     }
 }
 
-pub extern "C" fn finish<T: TablePropertiesCollector>(handle: *mut c_void, props: *mut DBUserCollectedProperties) {
+pub extern "C" fn finish<T: TablePropertiesCollector>(
+    handle: *mut c_void,
+    props: *mut DBUserCollectedProperties,
+) {
     unsafe {
         let handle = &mut *(handle as *mut TablePropertiesCollectorHandle<T>);
         for (key, value) in handle.rep.finish() {

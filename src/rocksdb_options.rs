@@ -1430,7 +1430,10 @@ impl ColumnFamilyOptions {
         }
     }
 
-    pub fn add_table_properties_collector_factory<C: TablePropertiesCollector, T: TablePropertiesCollectorFactory<C>>(
+    pub fn add_table_properties_collector_factory<
+        C: TablePropertiesCollector,
+        T: TablePropertiesCollectorFactory<C>,
+    >(
         &mut self,
         fname: &str,
         factory: T,

@@ -237,13 +237,12 @@ extern "C" fn destructor<E: EventListener>(ctx: *mut c_void) {
 
 // Maybe we should reuse db instance?
 // TODO: refactor DB implement so that we can convert DBInstance to DB.
-extern "C" fn on_flush_begin<E: EventListener>(ctx: *mut c_void, _: *mut DBInstance, info: *const DBFlushJobInfo) {
-    let (ctx, info) = unsafe {
-        (
-            &*(ctx as *mut E),
-            &*(info as *const FlushJobInfo),
-        )
-    };
+extern "C" fn on_flush_begin<E: EventListener>(
+    ctx: *mut c_void,
+    _: *mut DBInstance,
+    info: *const DBFlushJobInfo,
+) {
+    let (ctx, info) = unsafe { (&*(ctx as *mut E), &*(info as *const FlushJobInfo)) };
     ctx.on_flush_begin(info);
 }
 
@@ -252,12 +251,7 @@ extern "C" fn on_flush_completed<E: EventListener>(
     _: *mut DBInstance,
     info: *const DBFlushJobInfo,
 ) {
-    let (ctx, info) = unsafe {
-        (
-            &*(ctx as *mut E),
-            &*(info as *const FlushJobInfo),
-        )
-    };
+    let (ctx, info) = unsafe { (&*(ctx as *mut E), &*(info as *const FlushJobInfo)) };
     ctx.on_flush_completed(info);
 }
 
@@ -266,12 +260,7 @@ extern "C" fn on_compaction_begin<E: EventListener>(
     _: *mut DBInstance,
     info: *const DBCompactionJobInfo,
 ) {
-    let (ctx, info) = unsafe {
-        (
-            &*(ctx as *mut E),
-            &*(info as *const CompactionJobInfo),
-        )
-    };
+    let (ctx, info) = unsafe { (&*(ctx as *mut E), &*(info as *const CompactionJobInfo)) };
     ctx.on_compaction_begin(info);
 }
 
@@ -280,32 +269,23 @@ extern "C" fn on_compaction_completed<E: EventListener>(
     _: *mut DBInstance,
     info: *const DBCompactionJobInfo,
 ) {
-    let (ctx, info) = unsafe {
-        (
-            &*(ctx as *mut E),
-            &*(info as *const CompactionJobInfo),
-        )
-    };
+    let (ctx, info) = unsafe { (&*(ctx as *mut E), &*(info as *const CompactionJobInfo)) };
     ctx.on_compaction_completed(info);
 }
 
-extern "C" fn on_subcompaction_begin<E: EventListener>(ctx: *mut c_void, info: *const DBSubcompactionJobInfo) {
-    let (ctx, info) = unsafe {
-        (
-            &*(ctx as *mut E),
-            &*(info as *const SubcompactionJobInfo),
-        )
-    };
+extern "C" fn on_subcompaction_begin<E: EventListener>(
+    ctx: *mut c_void,
+    info: *const DBSubcompactionJobInfo,
+) {
+    let (ctx, info) = unsafe { (&*(ctx as *mut E), &*(info as *const SubcompactionJobInfo)) };
     ctx.on_subcompaction_begin(info);
 }
 
-extern "C" fn on_subcompaction_completed<E: EventListener>(ctx: *mut c_void, info: *const DBSubcompactionJobInfo) {
-    let (ctx, info) = unsafe {
-        (
-            &*(ctx as *mut E),
-            &*(info as *const SubcompactionJobInfo),
-        )
-    };
+extern "C" fn on_subcompaction_completed<E: EventListener>(
+    ctx: *mut c_void,
+    info: *const DBSubcompactionJobInfo,
+) {
+    let (ctx, info) = unsafe { (&*(ctx as *mut E), &*(info as *const SubcompactionJobInfo)) };
     ctx.on_subcompaction_completed(info);
 }
 
@@ -314,12 +294,7 @@ extern "C" fn on_external_file_ingested<E: EventListener>(
     _: *mut DBInstance,
     info: *const DBIngestionInfo,
 ) {
-    let (ctx, info) = unsafe {
-        (
-            &*(ctx as *mut E),
-            &*(info as *const IngestionInfo),
-        )
-    };
+    let (ctx, info) = unsafe { (&*(ctx as *mut E), &*(info as *const IngestionInfo)) };
     ctx.on_external_file_ingested(info);
 }
 
@@ -340,31 +315,29 @@ extern "C" fn on_background_error<E: EventListener>(
     ctx.on_background_error(reason, result);
 }
 
-extern "C" fn on_stall_conditions_changed<E: EventListener>(ctx: *mut c_void, info: *const DBWriteStallInfo) {
-    let (ctx, info) = unsafe {
-        (
-            &*(ctx as *mut E),
-            &*(info as *const WriteStallInfo),
-        )
-    };
+extern "C" fn on_stall_conditions_changed<E: EventListener>(
+    ctx: *mut c_void,
+    info: *const DBWriteStallInfo,
+) {
+    let (ctx, info) = unsafe { (&*(ctx as *mut E), &*(info as *const WriteStallInfo)) };
     ctx.on_stall_conditions_changed(info);
 }
 
-pub fn new_event_listener<L: EventListener>(l: L) -> *mut DBEventListener {
-    let p: Box<dyn EventListener> = Box::new(l);
+pub fn new_event_listener<E: EventListener>(e: E) -> *mut DBEventListener {
+    let p: Box<dyn EventListener> = Box::new(e);
     unsafe {
         crocksdb_ffi::crocksdb_eventlistener_create(
             Box::into_raw(Box::new(p)) as *mut c_void,
-            destructor::<L>,
-            on_flush_begin::<L>,
-            on_flush_completed::<L>,
-            on_compaction_begin::<L>,
-            on_compaction_completed::<L>,
-            on_subcompaction_begin::<L>,
-            on_subcompaction_completed::<L>,
-            on_external_file_ingested::<L>,
-            on_background_error::<L>,
-            on_stall_conditions_changed::<L>,
+            destructor::<E>,
+            on_flush_begin::<E>,
+            on_flush_completed::<E>,
+            on_compaction_begin::<E>,
+            on_compaction_completed::<E>,
+            on_subcompaction_begin::<E>,
+            on_subcompaction_completed::<E>,
+            on_external_file_ingested::<E>,
+            on_background_error::<E>,
+            on_stall_conditions_changed::<E>,
         )
     }
 }

@@ -24,7 +24,10 @@ pub trait TableFilter {
     fn table_filter(&self, props: &TableProperties) -> bool;
 }
 
-pub extern "C" fn table_filter<T: TableFilter>(ctx: *mut c_void, props: *const DBTableProperties) -> c_uchar {
+pub extern "C" fn table_filter<T: TableFilter>(
+    ctx: *mut c_void,
+    props: *const DBTableProperties,
+) -> c_uchar {
     unsafe {
         let filter = &*(ctx as *mut T);
         let props = &*(props as *const TableProperties);

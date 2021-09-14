@@ -168,7 +168,10 @@ fn test_table_properties_collector_factory() {
     let mut opts = DBOptions::new();
     let mut cf_opts = ColumnFamilyOptions::new();
     opts.create_if_missing(true);
-    cf_opts.add_table_properties_collector_factory::<ExampleCollector, ExampleFactory>("example-collector", f);
+    cf_opts.add_table_properties_collector_factory::<ExampleCollector, ExampleFactory>(
+        "example-collector",
+        f,
+    );
 
     let path = tempdir_with_prefix("_rust_rocksdb_collectortest");
     let db = DB::open_cf(
@@ -242,7 +245,10 @@ fn test_table_properties_with_table_filter() {
     let mut opts = DBOptions::new();
     let mut cf_opts = ColumnFamilyOptions::new();
     opts.create_if_missing(true);
-    cf_opts.add_table_properties_collector_factory::<ExampleCollector, ExampleFactory>("example-collector", f);
+    cf_opts.add_table_properties_collector_factory::<ExampleCollector, ExampleFactory>(
+        "example-collector",
+        f,
+    );
     let path = tempdir_with_prefix("_rust_rocksdb_collector_with_table_filter");
     let db = DB::open_cf(
         opts,

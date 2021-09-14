@@ -31,7 +31,7 @@ where
 {
     name: CString,
     rep: T,
-    _marker: PhantomData<C>,
+    _phantom: PhantomData<C>,
 }
 
 impl<C: TablePropertiesCollector, T: TablePropertiesCollectorFactory<C>>
@@ -41,7 +41,7 @@ impl<C: TablePropertiesCollector, T: TablePropertiesCollectorFactory<C>>
         TablePropertiesCollectorFactoryHandle::<C, T> {
             name: CString::new(name).unwrap(),
             rep: rep,
-            _marker: PhantomData,
+            _phantom: PhantomData,
         }
     }
 }

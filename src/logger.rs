@@ -28,7 +28,7 @@ pub fn new_logger<L: Logger>(l: L) -> *mut DBLogger {
     unsafe {
         let p: Box<dyn Logger> = Box::new(l);
         crocksdb_ffi::crocksdb_logger_create(
-            Box::into_raw(Box::new(p)) as *mut c_void,
+            Box::into_raw(p) as *mut c_void,
             destructor::<L>,
             logv::<L>,
         )

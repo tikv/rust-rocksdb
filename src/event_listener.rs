@@ -327,7 +327,7 @@ pub fn new_event_listener<E: EventListener>(e: E) -> *mut DBEventListener {
     let p: Box<dyn EventListener> = Box::new(e);
     unsafe {
         crocksdb_ffi::crocksdb_eventlistener_create(
-            Box::into_raw(Box::new(p)) as *mut c_void,
+            Box::into_raw(p) as *mut c_void,
             destructor::<E>,
             on_flush_begin::<E>,
             on_flush_completed::<E>,

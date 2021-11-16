@@ -1724,9 +1724,9 @@ extern C_ROCKSDB_LIBRARY_API crocksdb_iterator_t*
 crocksdb_sstfilereader_new_iterator(crocksdb_sstfilereader_t* reader,
                                     const crocksdb_readoptions_t* options);
 
-extern C_ROCKSDB_LIBRARY_API void crocksdb_sstfilereader_read_table_properties(
-    const crocksdb_sstfilereader_t* reader, void* ctx,
-    void (*cb)(void*, const crocksdb_table_properties_t*));
+extern C_ROCKSDB_LIBRARY_API const crocksdb_table_properties_t*
+crocksdb_sstfilereader_read_table_properties(
+    const crocksdb_sstfilereader_t* reader);
 
 extern C_ROCKSDB_LIBRARY_API void crocksdb_sstfilereader_verify_checksum(
     crocksdb_sstfilereader_t* reader, char** errptr);

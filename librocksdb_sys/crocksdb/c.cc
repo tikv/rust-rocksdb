@@ -4368,11 +4368,10 @@ crocksdb_iterator_t* crocksdb_sstfilereader_new_iterator(
   return it;
 }
 
-void crocksdb_sstfilereader_read_table_properties(
-    const crocksdb_sstfilereader_t* reader, void* ctx,
-    void (*cb)(void*, const crocksdb_table_properties_t*)) {
+const crocksdb_table_properties_t* crocksdb_sstfilereader_read_table_properties(
+    const crocksdb_sstfilereader_t* reader) {
   auto props = reader->rep->GetTableProperties();
-  cb(ctx, reinterpret_cast<const crocksdb_table_properties_t*>(props.get()));
+  return reinterpret_cast<const crocksdb_table_properties_t*>(props.get());
 }
 
 void crocksdb_sstfilereader_verify_checksum(crocksdb_sstfilereader_t* reader,

@@ -30,7 +30,6 @@ use std::collections::BTreeMap;
 use std::ffi::{CStr, CString};
 use std::fmt::{self, Debug, Formatter};
 use std::io;
-use std::mem;
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
@@ -2326,24 +2325,10 @@ impl SstFileReader {
         }
     }
 
-    pub fn read_table_properties<F: FnOnce(&TableProperties)>(&self, mut action: F) {
-        extern "C" fn callback<F: FnOnce(&TableProperties)>(
-            ctx: *mut c_void,
-            ptr: *const crocksdb_ffi::DBTableProperties,
-        ) {
-            unsafe {
-                let caller = ptr::read(ctx as *mut F);
-                caller(TableProperties::from_ptr(ptr));
-            }
-        }
-
+    pub fn read_table_properties<F: FnOnce(&TableProperties)>(&self, action: F) {
         unsafe {
-            crocksdb_ffi::crocksdb_sstfilereader_read_table_properties(
-                self.inner,
-                &mut action as *mut F as *mut c_void,
-                callback::<F>,
-            );
-            mem::forget(action);
+            let ptr = crocksdb_ffi::crocksdb_sstfilereader_read_table_properties(self.inner);
+            action(TableProperties::from_ptr(ptr));
         }
     }
 

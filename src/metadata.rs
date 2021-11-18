@@ -11,7 +11,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crocksdb_ffi::{self, DBColumnFamilyMetaData, DBLevelMetaData, DBSstFileMetaData};
+use crocksdb_ffi::{
+    self, DBColumnFamilyMetaData, DBLevelMetaData, DBLiveFileMetaData, DBLivefiles,
+    DBSstFileMetaData,
+};
 use std::ffi::CStr;
 use std::slice;
 
@@ -116,6 +119,47 @@ impl<'a> SstFileMetaData<'a> {
         let mut len: size_t = 0;
         unsafe {
             let ptr = crocksdb_ffi::crocksdb_sst_file_meta_data_largestkey(self.inner, &mut len);
+            slice::from_raw_parts(ptr as *const u8, len)
+        }
+    }
+}
+
+pub struct LiveFiles {
+    inner: *const DBLivefiles,
+}
+
+impl LiveFiles {
+    pub fn from_ptr(inner: *mut DBLivefiles) -> LiveFiles {
+        LiveFiles { inner: inner }
+    }
+
+    pub fn get_files_count(&self) -> i32 {
+        unsafe { crocksdb_ffi::crocksdb_livefiles_count(self.inner) }
+    }
+
+    pub fn get_size(&self, index: i32) -> usize {
+        unsafe { crocksdb_ffi::crocksdb_livefiles_size(self.inner, index) }
+    }
+
+    pub fn get_name(&self, index: i32) -> String {
+        unsafe {
+            let ptr = crocksdb_ffi::crocksdb_livefiles_name(self.inner, index);
+            CStr::from_ptr(ptr).to_string_lossy().into_owned()
+        }
+    }
+
+    pub fn get_smallestkey(&self, index: i32) -> &[u8] {
+        let mut len: size_t = 0;
+        unsafe {
+            let ptr = crocksdb_ffi::crocksdb_livefiles_smallestkey(self.inner, index, &mut len);
+            slice::from_raw_parts(ptr as *const u8, len)
+        }
+    }
+
+    pub fn get_largestkey(&self, index: i32) -> &[u8] {
+        let mut len: size_t = 0;
+        unsafe {
+            let ptr = crocksdb_ffi::crocksdb_livefiles_largestkey(self.inner, index, &mut len);
             slice::from_raw_parts(ptr as *const u8, len)
         }
     }

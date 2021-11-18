@@ -46,6 +46,9 @@ use table_properties_rc::TablePropertiesCollection as RcTablePropertiesCollectio
 use titan::TitanDBOptions;
 use write_batch::WriteBatch;
 
+use crate::metadata::LiveFiles;
+use crate::LevelMetaData;
+
 pub struct CFHandle {
     inner: *mut DBCFHandle,
 }
@@ -1950,6 +1953,24 @@ impl DB {
             crocksdb_ffi::crocksdb_get_column_family_meta_data(self.inner, cf.inner, inner);
             ColumnFamilyMetaData::from_ptr(inner)
         }
+    }
+
+    /// Provide the integrated sst file name that includes the ".sst" ending.
+    pub fn get_range_from_live_file_name(&self, name: &str) -> Option<(Vec<u8>, Vec<u8>)> {
+        unsafe {
+            let inner = crocksdb_ffi::crocksdb_livefiles(self.inner);
+            let live_files = LiveFiles::from_ptr(inner);
+            let count = live_files.get_files_count();
+            for i in 0..count {
+                if live_files.get_name(i) == name {
+                    return Some((
+                        live_files.get_smallestkey(i).to_vec(),
+                        live_files.get_largestkey(i).to_vec(),
+                    ));
+                }
+            }
+        }
+        None
     }
 
     pub fn compact_files_cf(

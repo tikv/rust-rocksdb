@@ -11,10 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crocksdb_ffi::{
-    self, DBColumnFamilyMetaData, DBLevelMetaData, DBLiveFileMetaData, DBLivefiles,
-    DBSstFileMetaData,
-};
+use crocksdb_ffi::{self, DBColumnFamilyMetaData, DBLevelMetaData, DBLivefiles, DBSstFileMetaData};
 use std::ffi::CStr;
 use std::slice;
 
@@ -137,6 +134,7 @@ impl LiveFiles {
         unsafe { crocksdb_ffi::crocksdb_livefiles_count(self.inner) }
     }
 
+    #[allow(dead_code)]
     pub fn get_size(&self, index: i32) -> usize {
         unsafe { crocksdb_ffi::crocksdb_livefiles_size(self.inner, index) }
     }

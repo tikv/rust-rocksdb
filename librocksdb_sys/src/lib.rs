@@ -147,8 +147,6 @@ pub struct DBColumnFamilyMetaData(c_void);
 #[repr(C)]
 pub struct DBLevelMetaData(c_void);
 #[repr(C)]
-pub struct DBLiveFileMetaData(c_void);
-#[repr(C)]
 pub struct DBSstFileMetaData(c_void);
 #[repr(C)]
 pub struct DBCompactionOptions(c_void);
@@ -514,6 +512,7 @@ macro_rules! ffi_try {
 // TODO audit the use of boolean arguments, b/c I think they need to be u8
 // instead...
 extern "C" {
+    pub fn crocksdb_resume(db: *mut DBInstance, err: *mut *mut c_char);
     pub fn crocksdb_status_ptr_get_error(status: *mut DBStatusPtr, err: *mut *mut c_char);
     pub fn crocksdb_get_db_options(db: *mut DBInstance) -> *mut Options;
     pub fn crocksdb_set_db_options(

@@ -742,6 +742,10 @@ void crocksdb_status_ptr_get_error(crocksdb_status_ptr_t* status,
   SaveError(errptr, *(status->rep));
 }
 
+void crocksdb_resume(crocksdb_t* db, char** errptr) {
+  SaveError(errptr, db->rep->Resume());
+}
+
 crocksdb_backup_engine_t* crocksdb_backup_engine_open(
     const crocksdb_options_t* options, const char* path, char** errptr) {
   BackupEngine* be;

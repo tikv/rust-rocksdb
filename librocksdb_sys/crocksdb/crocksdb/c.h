@@ -240,6 +240,8 @@ extern C_ROCKSDB_LIBRARY_API crocksdb_t* crocksdb_open_for_read_only(
 extern C_ROCKSDB_LIBRARY_API void crocksdb_status_ptr_get_error(
     crocksdb_status_ptr_t*, char** errptr);
 
+extern C_ROCKSDB_LIBRARY_API void rocksdb_resume(crocksdb_t* db, char** errptr);
+
 extern C_ROCKSDB_LIBRARY_API crocksdb_backup_engine_t*
 crocksdb_backup_engine_open(const crocksdb_options_t* options, const char* path,
                             char** errptr);

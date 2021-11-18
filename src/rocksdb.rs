@@ -47,7 +47,6 @@ use titan::TitanDBOptions;
 use write_batch::WriteBatch;
 
 use crate::metadata::LiveFiles;
-use crate::LevelMetaData;
 
 pub struct CFHandle {
     inner: *mut DBCFHandle,
@@ -1213,6 +1212,14 @@ impl DB {
     pub fn sync_wal(&self) -> Result<(), String> {
         unsafe {
             ffi_try!(crocksdb_sync_wal(self.inner));
+            Ok(())
+        }
+    }
+
+    /// Ref https://github.com/facebook/rocksdb/wiki/Background-Error-Handling#recovery
+    pub fn resume(&self) -> Result<(), String> {
+        unsafe {
+            ffi_try!(crocksdb_resume(self.inner));
             Ok(())
         }
     }

@@ -1962,22 +1962,11 @@ impl DB {
         }
     }
 
-    /// Provide the integrated sst file name that includes the ".sst" ending.
-    pub fn get_range_from_live_file_name(&self, name: &str) -> Option<(Vec<u8>, Vec<u8>)> {
+    pub fn get_live_files(&self) -> LiveFiles {
         unsafe {
             let inner = crocksdb_ffi::crocksdb_livefiles(self.inner);
-            let live_files = LiveFiles::from_ptr(inner);
-            let count = live_files.get_files_count();
-            for i in 0..count {
-                if live_files.get_name(i) == name {
-                    return Some((
-                        live_files.get_smallestkey(i).to_vec(),
-                        live_files.get_largestkey(i).to_vec(),
-                    ));
-                }
-            }
+            LiveFiles::from_ptr(inner)
         }
-        None
     }
 
     pub fn compact_files_cf(

@@ -1884,7 +1884,7 @@ crocksdb_fifo_compaction_options_set_allow_compaction(
 extern C_ROCKSDB_LIBRARY_API void crocksdb_fifo_compaction_options_destroy(
     crocksdb_fifo_compaction_options_t* fifo_opts);
 
-extern C_ROCKSDB_LIBRARY_API int crocksdb_livefiles_count(
+extern C_ROCKSDB_LIBRARY_API size_t crocksdb_livefiles_count(
     const crocksdb_livefiles_t*);
 extern C_ROCKSDB_LIBRARY_API const char* crocksdb_livefiles_name(
     const crocksdb_livefiles_t*, int index);

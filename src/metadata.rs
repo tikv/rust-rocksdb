@@ -122,7 +122,7 @@ impl<'a> SstFileMetaData<'a> {
 }
 
 pub struct LiveFiles {
-    inner: *const DBLivefiles,
+    inner: *mut DBLivefiles,
 }
 
 impl LiveFiles {
@@ -130,7 +130,7 @@ impl LiveFiles {
         LiveFiles { inner: inner }
     }
 
-    pub fn get_files_count(&self) -> i32 {
+    pub fn get_files_count(&self) -> usize {
         unsafe { crocksdb_ffi::crocksdb_livefiles_count(self.inner) }
     }
 
@@ -159,6 +159,14 @@ impl LiveFiles {
         unsafe {
             let ptr = crocksdb_ffi::crocksdb_livefiles_largestkey(self.inner, index, &mut len);
             slice::from_raw_parts(ptr as *const u8, len)
+        }
+    }
+}
+
+impl Drop for LiveFiles {
+    fn drop(&mut self) {
+        unsafe {
+            crocksdb_ffi::crocksdb_livefiles_destroy(self.inner);
         }
     }
 }

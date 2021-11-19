@@ -4745,7 +4745,7 @@ void crocksdb_options_set_min_level_to_compress(crocksdb_options_t* opt,
   }
 }
 
-int crocksdb_livefiles_count(const crocksdb_livefiles_t* lf) {
+size_t crocksdb_livefiles_count(const crocksdb_livefiles_t* lf) {
   return static_cast<int>(lf->rep.size());
 }
 

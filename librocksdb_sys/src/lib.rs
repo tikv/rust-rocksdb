@@ -512,8 +512,8 @@ macro_rules! ffi_try {
 // TODO audit the use of boolean arguments, b/c I think they need to be u8
 // instead...
 extern "C" {
-    pub fn crocksdb_resume(db: *mut DBInstance, err: *mut *mut c_char);
     pub fn crocksdb_status_ptr_get_error(status: *mut DBStatusPtr, err: *mut *mut c_char);
+    pub fn crocksdb_resume(db: *mut DBInstance, err: *mut *mut c_char);
     pub fn crocksdb_get_db_options(db: *mut DBInstance) -> *mut Options;
     pub fn crocksdb_set_db_options(
         db: *mut DBInstance,
@@ -2312,7 +2312,7 @@ extern "C" {
     ) -> *const c_char;
 
     pub fn crocksdb_livefiles(db: *mut DBInstance) -> *mut DBLivefiles;
-    pub fn crocksdb_livefiles_count(lf: *const DBLivefiles) -> i32;
+    pub fn crocksdb_livefiles_count(lf: *const DBLivefiles) -> size_t;
     pub fn crocksdb_livefiles_size(lf: *const DBLivefiles, index: i32) -> size_t;
     pub fn crocksdb_livefiles_name(lf: *const DBLivefiles, index: i32) -> *const c_char;
     pub fn crocksdb_livefiles_smallestkey(
@@ -2325,6 +2325,7 @@ extern "C" {
         index: i32,
         size: *mut size_t,
     ) -> *const c_char;
+    pub fn crocksdb_livefiles_destroy(lf: *mut DBLivefiles);
 
     pub fn crocksdb_compaction_options_create() -> *mut DBCompactionOptions;
     pub fn crocksdb_compaction_options_destroy(opts: *mut DBCompactionOptions);

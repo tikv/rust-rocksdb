@@ -38,6 +38,9 @@ fn test_metadata() {
         db.flush(true).unwrap();
     }
 
+    let live_files = db.get_live_files();
+    assert_eq!(live_files.get_files_count(), 5);
+
     let cf_meta = db.get_column_family_meta_data(cf_handle);
     let cf_levels = cf_meta.get_levels();
     assert_eq!(cf_levels.len(), 7);

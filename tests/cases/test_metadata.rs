@@ -39,7 +39,13 @@ fn test_metadata() {
     }
 
     let live_files = db.get_live_files();
-    assert_eq!(live_files.get_files_count(), 5);
+    let files_count = live_files.get_files_count();
+    assert_eq!(files_count as u8, num_files);
+    for i in 0..files_count as i32 {
+        assert!(live_files.get_name(i).len() > 0);
+        assert_eq!(live_files.get_smallestkey(i), [num_files - 1 - i as u8]);
+        assert_eq!(live_files.get_largestkey(i), [num_files - 1 - i as u8]);
+    }
 
     let cf_meta = db.get_column_family_meta_data(cf_handle);
     let cf_levels = cf_meta.get_levels();

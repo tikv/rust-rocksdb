@@ -1783,11 +1783,7 @@ impl ColumnFamilyOptions {
         unsafe { crocksdb_ffi::crocksdb_options_get_num_levels(self.inner) as usize }
     }
 
-    pub fn set_prefix_extractor<S, ST>(
-        &mut self,
-        name: S,
-        transform: ST,
-    ) -> Result<(), String>
+    pub fn set_prefix_extractor<S, ST>(&mut self, name: S, transform: ST) -> Result<(), String>
     where
         S: Into<Vec<u8>>,
         ST: SliceTransform,

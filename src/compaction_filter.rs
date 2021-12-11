@@ -518,7 +518,7 @@ mod tests {
                 format!("key{}", i).as_bytes(),
                 format!("value{}", i).as_bytes(),
             )
-                .unwrap();
+            .unwrap();
         }
         db.compact_range_cf(cfh, None, None);
         let sk = rx.recv().unwrap();

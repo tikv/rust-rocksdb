@@ -1783,21 +1783,21 @@ impl ColumnFamilyOptions {
         unsafe { crocksdb_ffi::crocksdb_options_get_num_levels(self.inner) as usize }
     }
 
-    pub fn set_prefix_extractor<S, Slice>(
+    pub fn set_prefix_extractor<S, ST>(
         &mut self,
         name: S,
-        transform: Slice,
+        transform: ST,
     ) -> Result<(), String>
     where
         S: Into<Vec<u8>>,
-        Slice: SliceTransform,
+        ST: SliceTransform,
     {
         unsafe {
             let c_name = match CString::new(name) {
                 Ok(s) => s,
                 Err(e) => return Err(format!("failed to convert to cstring: {:?}", e)),
             };
-            let transform = new_slice_transform::<Slice>(c_name, transform)?;
+            let transform = new_slice_transform::<ST>(c_name, transform)?;
             crocksdb_ffi::crocksdb_options_set_prefix_extractor(self.inner, transform);
             Ok(())
         }
@@ -1809,21 +1809,21 @@ impl ColumnFamilyOptions {
         }
     }
 
-    pub fn set_memtable_insert_hint_prefix_extractor<S, Slice>(
+    pub fn set_memtable_insert_hint_prefix_extractor<S, ST>(
         &mut self,
         name: S,
-        transform: Slice,
+        transform: ST,
     ) -> Result<(), String>
     where
         S: Into<Vec<u8>>,
-        Slice: SliceTransform,
+        ST: SliceTransform,
     {
         unsafe {
             let c_name = match CString::new(name) {
                 Ok(s) => s,
                 Err(e) => return Err(format!("failed to convert to cstring: {:?}", e)),
             };
-            let transform = new_slice_transform::<Slice>(c_name, transform)?;
+            let transform = new_slice_transform::<ST>(c_name, transform)?;
             crocksdb_ffi::crocksdb_options_set_memtable_insert_with_hint_prefix_extractor(
                 self.inner, transform,
             );

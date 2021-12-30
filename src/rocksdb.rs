@@ -2709,9 +2709,7 @@ impl Env {
 
     pub fn set_high_priority_background_threads(&self, n: i32) {
         unsafe {
-            crocksdb_ffi::crocksdb_env_set_high_priority_background_threads(
-                self.inner, n
-            );
+            crocksdb_ffi::crocksdb_env_set_high_priority_background_threads(self.inner, n);
         }
     }
 }

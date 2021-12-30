@@ -2701,17 +2701,17 @@ impl Env {
         }
     }
 
-    pub fn set_background_threads(&self, n: u32) -> Result<(), String> {
+    pub fn set_background_threads(&self, n: u32) {
         unsafe {
-            ffi_try!(crocksdb_env_set_background_threads(self.inner, n as i32));
-            Ok(())
+            crocksdb_env_set_background_threads(self.inner, n as i32);
         }
     }
 
-    pub fn set_high_priority_background_threads(&self, n: u32) -> Result<(), String> {
+    pub fn set_high_priority_background_threads(&self, n: u32) {
         unsafe {
-            ffi_try!(crocksdb_env_set_high_priority_background_threads(self.inner, n as i32));
-            Ok(())
+            ffi_try!(crocksdb_env_set_high_priority_background_threads(
+                self.inner, n as i32
+            ));
         }
     }
 }
@@ -3750,9 +3750,9 @@ mod test {
         assert!(env.file_exists("a"));
         env.delete_file("a").unwrap();
         assert!(!env.file_exists("a"));
-        env.set_background_threads(4).unwrap();
-        env.set_background_threads(0).unwrap();
-        env.set_high_priority_background_threads(4).unwrap();
-        env.set_high_priority_background_threads(0).unwrap();
+        env.set_background_threads(4);
+        env.set_background_threads(0);
+        env.set_high_priority_background_threads(4);
+        env.set_high_priority_background_threads(0);
     }
 }

@@ -2703,15 +2703,15 @@ impl Env {
 
     pub fn set_background_threads(&self, n: u32) {
         unsafe {
-            crocksdb_env_set_background_threads(self.inner, n as i32);
+            crocksdb_ffi::crocksdb_env_set_background_threads(self.inner, n as i32);
         }
     }
 
     pub fn set_high_priority_background_threads(&self, n: u32) {
         unsafe {
-            ffi_try!(crocksdb_env_set_high_priority_background_threads(
+            crocksdb_ffi::crocksdb_env_set_high_priority_background_threads(
                 self.inner, n as i32
-            ));
+            );
         }
     }
 }

@@ -3746,10 +3746,7 @@ mod test {
     #[test]
     fn test_env_operations() {
         let env = Env::new_mem();
-        env.new_sequential_file("a", EnvOptions::new()).unwrap();
-        env.file_exists("a").unwrap();
-        env.delete_file("a").unwrap();
-        assert!(!env.file_exists("a").unwrap_err().contains("NotFound"));
+        assert!(env.file_exists("a").unwrap_err().contains("NotFound"));
         env.set_background_threads(4);
         env.set_background_threads(0);
         env.set_high_priority_background_threads(4);

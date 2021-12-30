@@ -2700,6 +2700,20 @@ impl Env {
             Ok(())
         }
     }
+
+    pub fn set_background_threads(&self, n: u32) -> Result<(), String> {
+        unsafe {
+            ffi_try!(crocksdb_env_set_background_threads(self.inner, n as i32));
+            Ok(())
+        }
+    }
+
+    pub fn set_high_priority_background_threads(&self, n: u32) -> Result<(), String> {
+        unsafe {
+            ffi_try!(crocksdb_env_set_high_priority_background_threads(self.inner, n as i32));
+            Ok(())
+        }
+    }
 }
 
 impl Drop for Env {
@@ -3727,5 +3741,18 @@ mod test {
         ingest_opt.move_files(true);
         db.ingest_external_file_cf(db.cf_handle("default").unwrap(), &ingest_opt, &[p1, p2])
             .unwrap();
+    }
+
+    #[test]
+    fn test_env_operations() {
+        let env = Env::new_mem();
+        env.new_sequential_file("a", EnvOptions::new()).unwrap();
+        assert!(env.file_exists("a"));
+        env.delete_file("a").unwrap();
+        assert!(!env.file_exists("a"));
+        env.set_background_threads(4).unwrap();
+        env.set_background_threads(0).unwrap();
+        env.set_high_priority_background_threads(4).unwrap();
+        env.set_high_priority_background_threads(0).unwrap();
     }
 }

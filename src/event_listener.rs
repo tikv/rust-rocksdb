@@ -60,6 +60,15 @@ impl FlushJobInfo {
 }
 
 #[repr(transparent)]
+pub struct StatusPtr(DBStatusPtr);
+
+impl StatusPtr {
+    pub fn reset_status(&mut self) {
+        unsafe { crocksdb_ffi::crocksdb_reset_status(&mut self.0) }
+    }
+}
+
+#[repr(transparent)]
 pub struct CompactionJobInfo(DBCompactionJobInfo);
 
 impl CompactionJobInfo {
@@ -225,7 +234,13 @@ pub trait EventListener: Send + Sync {
     fn on_subcompaction_begin(&self, _: &SubcompactionJobInfo) {}
     fn on_subcompaction_completed(&self, _: &SubcompactionJobInfo) {}
     fn on_external_file_ingested(&self, _: &IngestionInfo) {}
-    fn on_background_error(&self, _: DBBackgroundErrorReason, _: Result<(), String>) {}
+    fn on_background_error(
+        &self,
+        _: DBBackgroundErrorReason,
+        _: Result<(), String>,
+        _: &mut StatusPtr,
+    ) {
+    }
     fn on_stall_conditions_changed(&self, _: &WriteStallInfo) {}
 }
 
@@ -312,7 +327,7 @@ extern "C" fn on_background_error<E: EventListener>(
             }(),
         )
     };
-    ctx.on_background_error(reason, result);
+    ctx.on_background_error(reason, result, unsafe { &mut *(status as *mut StatusPtr) });
 }
 
 extern "C" fn on_stall_conditions_changed<E: EventListener>(

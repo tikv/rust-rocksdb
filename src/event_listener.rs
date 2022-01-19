@@ -59,13 +59,13 @@ impl FlushJobInfo {
     }
 }
 
-pub struct Status {
+pub struct MutableStatus {
     result: Result<(), String>,
     ptr: *mut DBStatusPtr,
 }
 
-impl Status {
-    pub fn reset_status(&self) {
+impl MutableStatus {
+    pub fn reset(&self) {
         unsafe { crocksdb_ffi::crocksdb_reset_status(self.ptr) }
     }
 
@@ -240,7 +240,7 @@ pub trait EventListener: Send + Sync {
     fn on_subcompaction_begin(&self, _: &SubcompactionJobInfo) {}
     fn on_subcompaction_completed(&self, _: &SubcompactionJobInfo) {}
     fn on_external_file_ingested(&self, _: &IngestionInfo) {}
-    fn on_background_error(&self, _: DBBackgroundErrorReason, _: Status) {}
+    fn on_background_error(&self, _: DBBackgroundErrorReason, _: MutableStatus) {}
     fn on_stall_conditions_changed(&self, _: &WriteStallInfo) {}
 }
 
@@ -327,7 +327,7 @@ extern "C" fn on_background_error<E: EventListener>(
             }(),
         )
     };
-    let status = Status {
+    let status = MutableStatus {
         result: result,
         ptr: status_ptr,
     };

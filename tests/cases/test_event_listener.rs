@@ -133,7 +133,7 @@ struct BackgroundErrorCounter {
 }
 
 impl EventListener for BackgroundErrorCounter {
-    fn on_background_error(&self, _: DBBackgroundErrorReason, _: Status) {
+    fn on_background_error(&self, _: DBBackgroundErrorReason, _: MutableStatus) {
         self.background_error.fetch_add(1, Ordering::SeqCst);
     }
 }
@@ -290,8 +290,8 @@ fn test_event_listener_background_error() {
 struct BackgroundErrorCleaner(Arc<AtomicUsize>);
 
 impl EventListener for BackgroundErrorCleaner {
-    fn on_background_error(&self, _: DBBackgroundErrorReason, s: Status) {
-        s.reset_status();
+    fn on_background_error(&self, _: DBBackgroundErrorReason, s: MutableStatus) {
+        s.reset();
         self.0.fetch_add(1, Ordering::SeqCst);
     }
 }

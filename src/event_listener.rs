@@ -59,12 +59,18 @@ impl FlushJobInfo {
     }
 }
 
-#[repr(transparent)]
-pub struct StatusPtr(DBStatusPtr);
+pub struct Status {
+    result: Result<(), String>,
+    ptr: *mut DBStatusPtr,
+}
 
-impl StatusPtr {
-    pub fn reset_status(&mut self) {
-        unsafe { crocksdb_ffi::crocksdb_reset_status(&mut self.0) }
+impl Status {
+    pub fn reset_status(&self) {
+        unsafe { crocksdb_ffi::crocksdb_reset_status(self.ptr) }
+    }
+
+    pub fn result(&self) -> Result<(), String> {
+        self.result.clone()
     }
 }
 
@@ -234,13 +240,7 @@ pub trait EventListener: Send + Sync {
     fn on_subcompaction_begin(&self, _: &SubcompactionJobInfo) {}
     fn on_subcompaction_completed(&self, _: &SubcompactionJobInfo) {}
     fn on_external_file_ingested(&self, _: &IngestionInfo) {}
-    fn on_background_error(
-        &self,
-        _: DBBackgroundErrorReason,
-        _: Result<(), String>,
-        _: &mut StatusPtr,
-    ) {
-    }
+    fn on_background_error(&self, _: DBBackgroundErrorReason, _: Status) {}
     fn on_stall_conditions_changed(&self, _: &WriteStallInfo) {}
 }
 
@@ -316,18 +316,22 @@ extern "C" fn on_external_file_ingested<E: EventListener>(
 extern "C" fn on_background_error<E: EventListener>(
     ctx: *mut c_void,
     reason: DBBackgroundErrorReason,
-    status: *mut DBStatusPtr,
+    status_ptr: *mut DBStatusPtr,
 ) {
     let (ctx, result) = unsafe {
         (
             &*(ctx as *mut E),
             || -> Result<(), String> {
-                ffi_try!(crocksdb_status_ptr_get_error(status));
+                ffi_try!(crocksdb_status_ptr_get_error(status_ptr));
                 Ok(())
             }(),
         )
     };
-    ctx.on_background_error(reason, result, unsafe { &mut *(status as *mut StatusPtr) });
+    let status = Status {
+        result: result,
+        ptr: status_ptr,
+    };
+    ctx.on_background_error(reason, status);
 }
 
 extern "C" fn on_stall_conditions_changed<E: EventListener>(

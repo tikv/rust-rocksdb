@@ -2892,7 +2892,7 @@ void crocksdb_options_set_enable_pipelined_write(crocksdb_options_t* opt,
 }
 
 void crocksdb_options_set_enable_pipelined_commit(crocksdb_options_t* opt,
-                                                   unsigned char v) {
+                                                  unsigned char v) {
   opt->rep.enable_pipelined_commit = v;
 }
 

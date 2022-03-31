@@ -20,6 +20,13 @@ tasks = [
         re.compile(r'};\s*'),
         re.compile(r'\s*\w(_\w)*.*,'),
     ),
+    (
+        'DBPerfFlag',
+        'perf_flag_defs.h',
+        re.compile(r'enum PerfFlag .* {'),
+        re.compile(r'};\s*'),
+        re.compile(r'\s*\w(_\w)*.*,'),
+    )
 ]
 
 print('/// This file is generated from generate.py.')
@@ -34,7 +41,7 @@ for task in tasks:
             if task[2].match(line):
                 begin = True
                 print('#[derive(Copy, Clone, Debug, Eq, PartialEq)]')
-                print('#[repr(C)]')
+                print('#[repr(u32)]')
                 print('pub enum {} {{'.format(task[0]))
             continue
         if task[3].match(line):

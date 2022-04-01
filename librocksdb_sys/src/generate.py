@@ -19,13 +19,6 @@ tasks = [
         re.compile(r'enum Histograms .* {'),
         re.compile(r'};\s*'),
         re.compile(r'\s*\w(_\w)*.*,'),
-    ),
-    (
-        'DBPerfFlag',
-        'perf_flag_defs.h',
-        re.compile(r'enum PerfFlag .* {'),
-        re.compile(r'};\s*'),
-        re.compile(r'\s*\w(_\w)*.*,'),
     )
 ]
 

@@ -221,6 +221,10 @@ pub unsafe fn lru_cache_set_capacity(cache: *mut DBCache, capacity: usize) {
     crocksdb_cache_set_capacity(cache, capacity)
 }
 
+pub unsafe fn lru_cache_set_strict_capacity_limit(cache: *mut DBCache, strict_limit: bool) {
+    crocksdb_cache_set_strict_capacity_limit(cache, strict_limit)
+}
+
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 #[repr(C)]
 pub enum DBEntryType {
@@ -579,6 +583,7 @@ extern "C" {
     pub fn crocksdb_cache_create_lru(opt: *mut DBLRUCacheOptions) -> *mut DBCache;
     pub fn crocksdb_cache_destroy(cache: *mut DBCache);
     pub fn crocksdb_cache_set_capacity(cache: *mut DBCache, capacity: size_t);
+    pub fn crocksdb_cache_set_strict_capacity_limit(cache: *mut DBCache, strict_limit: bool);
 
     pub fn crocksdb_block_based_options_create() -> *mut DBBlockBasedTableOptions;
     pub fn crocksdb_block_based_options_destroy(opts: *mut DBBlockBasedTableOptions);

@@ -2764,6 +2764,20 @@ impl Cache {
             }
         }
     }
+
+    pub fn set_capacity(&self, capacity: usize) {
+        // This is ok because self.inner is always a valid pointer.
+        unsafe {
+            crocksdb_ffi::lru_cache_set_capacity(self.inner, capacity);
+        }
+    }
+
+    pub fn set_strict_capacity_limit(&self, strict_limit: bool) {
+        // This is ok because self.inner is always a valid pointer.
+        unsafe {
+            crocksdb_ffi::lru_cache_set_strict_capacity_limit(self.inner, strict_limit);
+        }
+    }
 }
 
 impl Drop for Cache {
@@ -3729,5 +3743,20 @@ mod test {
         env.set_background_threads(0);
         env.set_high_priority_background_threads(4);
         env.set_high_priority_background_threads(0);
+    }
+
+    #[test]
+    fn test_lru_cache() {
+        let mut opt = LRUCacheOptions::new();
+        opt.set_capacity(1 << 14); // 16kb
+        opt.set_num_shard_bits(2);
+        opt.set_strict_capacity_limit(false);
+
+        let cache = Cache::new_lru_cache(opt);
+
+        // TODO: maybe we can export more method to do get/set tests.
+
+        cache.set_capacity(1 << 20); //1mb
+        cache.set_str
     }
 }

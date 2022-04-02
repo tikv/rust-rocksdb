@@ -3892,6 +3892,10 @@ void crocksdb_cache_set_capacity(crocksdb_cache_t* cache, size_t capacity) {
   cache->rep->SetCapacity(capacity);
 }
 
+void crocksdb_cache_set_strict_capacity_limit(crocksdb_cache_t* cache, bool strict_limit) {
+  cache->rep->SetStrictCapacityLimit(strict_limit);
+}
+
 crocksdb_env_t* crocksdb_default_env_create() {
   crocksdb_env_t* result = new crocksdb_env_t;
   result->rep = Env::Default();

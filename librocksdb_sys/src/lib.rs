@@ -214,6 +214,13 @@ pub unsafe fn new_lru_cache(opt: *mut DBLRUCacheOptions) -> *mut DBCache {
     crocksdb_cache_create_lru(opt)
 }
 
+/// # Safety
+/// 
+/// `DBCache` should be pointed to a valid Cache instance. 
+pub unsafe fn lru_cache_set_capacity(cache: *mut DBCache, capacity: usize) {
+    crocksdb_cache_set_capacity(cache, capacity)
+}
+
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 #[repr(C)]
 pub enum DBEntryType {
@@ -571,6 +578,7 @@ extern "C" {
     );
     pub fn crocksdb_cache_create_lru(opt: *mut DBLRUCacheOptions) -> *mut DBCache;
     pub fn crocksdb_cache_destroy(cache: *mut DBCache);
+    pub fn crocksdb_cache_set_capacity(cache: *mut DBCache, capacity: size_t);
 
     pub fn crocksdb_block_based_options_create() -> *mut DBBlockBasedTableOptions;
     pub fn crocksdb_block_based_options_destroy(opts: *mut DBBlockBasedTableOptions);

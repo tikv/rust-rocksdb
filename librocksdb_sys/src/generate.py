@@ -19,7 +19,7 @@ tasks = [
         re.compile(r'enum Histograms .* {'),
         re.compile(r'};\s*'),
         re.compile(r'\s*\w(_\w)*.*,'),
-    )
+    ),
 ]
 
 print('/// This file is generated from generate.py.')

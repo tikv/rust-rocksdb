@@ -16,6 +16,7 @@ exclude = [
 
 [features]
 default = []
+no-bundled-deps = []
 encryption = ["librocksdb_sys/encryption"]
 jemalloc = ["librocksdb_sys/jemalloc"]
 portable = ["librocksdb_sys/portable"]

@@ -79,52 +79,7 @@ fn main() {
         build.flag("-std=c++11");
         build.flag("-fno-rtti");
     }
-    if cfg!(not(feature = "no-bundled-deps")) {
-        link_cpp(&mut build);
-    }
     build.warnings(false).compile("libcrocksdb.a");
-}
-
-fn link_cpp(build: &mut Build) {
-    let tool = build.get_compiler();
-    let stdlib = if tool.is_like_gnu() {
-        "libstdc++.a"
-    } else if tool.is_like_clang() {
-        "libc++.a"
-    } else {
-        // Don't link to c++ statically on windows.
-        return;
-    };
-    let output = tool
-        .to_command()
-        .arg("--print-file-name")
-        .arg(stdlib)
-        .output()
-        .unwrap();
-    if !output.status.success() || output.stdout.is_empty() {
-        // fallback to dynamically
-        return;
-    }
-    let path = match str::from_utf8(&output.stdout) {
-        Ok(path) => PathBuf::from(path),
-        Err(_) => return,
-    };
-    if !path.is_absolute() {
-        return;
-    }
-    // remove lib prefix and .a postfix.
-    let libname = &stdlib[3..stdlib.len() - 2];
-    // optional static linking
-    if cfg!(feature = "static_libcpp") {
-        println!("cargo:rustc-link-lib=static={}", &libname);
-    } else {
-        println!("cargo:rustc-link-lib=dylib={}", &libname);
-    }
-    println!(
-        "cargo:rustc-link-search=native={}",
-        path.parent().unwrap().display()
-    );
-    build.cpp_link_stdlib(None);
 }
 
 fn build_rocksdb() -> Build {
@@ -132,15 +87,9 @@ fn build_rocksdb() -> Build {
     let mut cfg = Config::new("rocksdb");
     if cfg!(feature = "encryption") {
         cfg.register_dep("OPENSSL").define("WITH_OPENSSL", "ON");
-        if cfg!(not(feature = "no-bundled-deps")) {
-            println!("cargo:rustc-link-lib=static=crypto");
-        }
     }
     if cfg!(feature = "jemalloc") && NO_JEMALLOC_TARGETS.iter().all(|i| !target.contains(i)) {
         cfg.register_dep("JEMALLOC").define("WITH_JEMALLOC", "ON");
-        if cfg!(not(feature = "no-bundled-deps")) {
-            println!("cargo:rustc-link-lib=static=jemalloc");
-        }
     }
     if cfg!(feature = "portable") {
         cfg.define("PORTABLE", "ON");
@@ -211,13 +160,5 @@ fn build_rocksdb() -> Build {
 
     println!("cargo:rustc-link-lib=static=rocksdb");
     println!("cargo:rustc-link-lib=static=titan");
-    
-    if cfg!(not(feature = "no-bundled-deps")) {
-        println!("cargo:rustc-link-lib=static=z");
-        println!("cargo:rustc-link-lib=static=bz2");
-        println!("cargo:rustc-link-lib=static=lz4");
-        println!("cargo:rustc-link-lib=static=zstd");
-        println!("cargo:rustc-link-lib=static=snappy");
-    }
     build
 }

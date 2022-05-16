@@ -14,6 +14,9 @@
 #include <limits>
 
 #include "db/column_family.h"
+#include "file/random_access_file_reader.h"
+#include "file/sequence_file_reader.h"
+#include "file/writable_file_writer.h"
 #include "rocksdb/cache.h"
 #include "rocksdb/compaction_filter.h"
 #include "rocksdb/comparator.h"
@@ -56,7 +59,6 @@
 #include "titan/db.h"
 #include "titan/options.h"
 #include "util/coding.h"
-#include "util/file_reader_writer.h"
 
 #if !defined(ROCKSDB_MAJOR) || !defined(ROCKSDB_MINOR) || \
     !defined(ROCKSDB_PATCH)

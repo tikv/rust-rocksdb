@@ -116,7 +116,7 @@ impl BlockBasedOptions {
         }
     }
 
-    pub fn set_bloom_filter(&mut self, bits_per_key: c_int, block_based: bool) {
+    pub fn set_bloom_filter(&mut self, bits_per_key: c_double, block_based: bool) {
         unsafe {
             let bloom = if block_based {
                 crocksdb_ffi::crocksdb_filterpolicy_create_bloom(bits_per_key)

@@ -1440,9 +1440,9 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_filterpolicy_destroy(
     crocksdb_filterpolicy_t*);
 
 extern C_ROCKSDB_LIBRARY_API crocksdb_filterpolicy_t*
-crocksdb_filterpolicy_create_bloom(int bits_per_key);
+crocksdb_filterpolicy_create_bloom(double bits_per_key);
 extern C_ROCKSDB_LIBRARY_API crocksdb_filterpolicy_t*
-crocksdb_filterpolicy_create_bloom_full(int bits_per_key);
+crocksdb_filterpolicy_create_bloom_full(double bits_per_key);
 
 /* Merge Operator */
 

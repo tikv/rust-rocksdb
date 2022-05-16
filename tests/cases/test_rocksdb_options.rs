@@ -327,7 +327,7 @@ fn test_partitioned_index_filters() {
     // See https://github.com/facebook/rocksdb/wiki/Partitioned-Index-Filters#how-to-use-it
     block_opts.set_index_type(IndexType::TwoLevelIndexSearch);
     block_opts.set_partition_filters(true);
-    block_opts.set_bloom_filter(10, false);
+    block_opts.set_bloom_filter(10.0, false);
     block_opts.set_metadata_block_size(4096);
     block_opts.set_cache_index_and_filter_blocks(true);
     block_opts.set_pin_top_level_index_and_filter(true);

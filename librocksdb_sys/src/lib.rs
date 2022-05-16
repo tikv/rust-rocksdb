@@ -205,7 +205,7 @@ pub struct DBTitanBlobIndex {
     pub blob_size: u64,
 }
 
-pub fn new_bloom_filter(bits: c_int) -> *mut DBFilterPolicy {
+pub fn new_bloom_filter(bits: c_double) -> *mut DBFilterPolicy {
     unsafe { crocksdb_filterpolicy_create_bloom(bits) }
 }
 
@@ -923,8 +923,8 @@ extern "C" {
         option: *mut Options,
         factory: *mut DBSstPartitionerFactory,
     );
-    pub fn crocksdb_filterpolicy_create_bloom_full(bits_per_key: c_int) -> *mut DBFilterPolicy;
-    pub fn crocksdb_filterpolicy_create_bloom(bits_per_key: c_int) -> *mut DBFilterPolicy;
+    pub fn crocksdb_filterpolicy_create_bloom_full(bits_per_key: c_double) -> *mut DBFilterPolicy;
+    pub fn crocksdb_filterpolicy_create_bloom(bits_per_key: c_double) -> *mut DBFilterPolicy;
     pub fn crocksdb_open(
         options: *mut Options,
         path: *const c_char,

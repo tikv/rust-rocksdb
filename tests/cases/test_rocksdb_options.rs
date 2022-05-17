@@ -922,8 +922,8 @@ fn test_compact_on_deletion() {
     opt.set_target_level(1);
     db.compact_range_cf_opt(cf, &opt, None, None);
 
-    let name = format!("rocksdb.num-files-at-level{}", 1);
-    assert_eq!(db.get_property_int(&name).unwrap(), 1);
+    let level1_prop = format!("rocksdb.num-files-at-level{}", 1);
+    assert_eq!(db.get_property_int(&level1_prop).unwrap(), 1);
 
     for i in 0..num_keys {
         if i >= num_keys - window_size && i < num_keys - window_size + dels_trigger {
@@ -933,10 +933,15 @@ fn test_compact_on_deletion() {
         }
     }
     db.flush(true).unwrap();
-    std::thread::sleep(std::time::Duration::from_millis(100));
-
-    let name = format!("rocksdb.num-files-at-level{}", 0);
-    assert_eq!(db.get_property_int(&name).unwrap(), 0);
-    let name = format!("rocksdb.num-files-at-level{}", 1);
-    assert_eq!(db.get_property_int(&name).unwrap(), 1);
+    let max_retry = 1000;
+    let level0_prop = format!("rocksdb.num-files-at-level{}", 0);
+    for _ in 0..max_retry {
+        if db.get_property_int(&level0_prop).unwrap() == 0 {
+            break;
+        } else {
+            std::thread::sleep(std::time::Duration::from_millis(100));
+        }
+    }
+    assert_eq!(db.get_property_int(&level0_prop).unwrap(), 0);
+    assert_eq!(db.get_property_int(&level1_prop).unwrap(), 1);
 }

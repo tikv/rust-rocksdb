@@ -779,6 +779,22 @@ crocksdb_block_based_options_set_pin_l0_filter_and_index_blocks_in_cache(
 extern C_ROCKSDB_LIBRARY_API void
 crocksdb_block_based_options_set_read_amp_bytes_per_bit(
     crocksdb_block_based_table_options_t*, int);
+enum {
+  crocksdb_block_based_table_prepopulate_block_cache_disabled = 0,
+  crocksdb_block_based_table_prepopulate_block_cache_flush_only = 1,
+};
+extern C_ROCKSDB_LIBRARY_API void
+crocksdb_block_based_options_set_prepopulate_block_cache(
+    crocksdb_block_based_table_options_t*, int);  // uses one of the above enums
+enum {
+  crocksdb_block_based_table_checksum_type_no_checksum = 0,
+  crocksdb_block_based_table_checksum_type_crc32c = 1,
+  crocksdb_block_based_table_checksum_type_xxhash = 2,
+  crocksdb_block_based_table_checksum_type_xxhash64 = 3,
+  crocksdb_block_based_table_checksum_type_xxh3 = 4,
+};
+extern C_ROCKSDB_LIBRARY_API void crocksdb_block_based_options_set_checksum(
+    crocksdb_block_based_table_options_t*, int);  // uses one of the above enums
 extern C_ROCKSDB_LIBRARY_API void
 crocksdb_options_set_block_based_table_factory(
     crocksdb_options_t* opt,
@@ -1016,9 +1032,9 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_max_total_wal_size(
     crocksdb_options_t* opt, uint64_t n);
 extern C_ROCKSDB_LIBRARY_API void
 crocksdb_options_set_bottommost_compression_options(crocksdb_options_t*, int,
-                                                    int, int, int, int);
+                                                    int, int, int, int, int);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_compression_options(
-    crocksdb_options_t*, int, int, int, int, int);
+    crocksdb_options_t*, int, int, int, int, int, int);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_use_direct_reads(
     crocksdb_options_t* opt, unsigned char v);
 extern C_ROCKSDB_LIBRARY_API void
@@ -1474,6 +1490,10 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_readoptions_set_verify_checksums(
     crocksdb_readoptions_t*, unsigned char);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_readoptions_set_fill_cache(
     crocksdb_readoptions_t*, unsigned char);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_readoptions_set_auto_prefix_mode(
+    crocksdb_readoptions_t*, unsigned char);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_readoptions_set_adaptive_readahead(
+    crocksdb_readoptions_t*, unsigned char);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_readoptions_set_snapshot(
     crocksdb_readoptions_t*, const crocksdb_snapshot_t*);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_readoptions_set_iterate_lower_bound(
@@ -1524,6 +1544,9 @@ crocksdb_writeoptions_set_ignore_missing_column_families(
 extern C_ROCKSDB_LIBRARY_API void crocksdb_writeoptions_set_no_slowdown(
     crocksdb_writeoptions_t*, unsigned char);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_writeoptions_set_low_pri(
+    crocksdb_writeoptions_t*, unsigned char);
+extern C_ROCKSDB_LIBRARY_API void
+crocksdb_writeoptions_set_memtable_insert_hint_per_batch(
     crocksdb_writeoptions_t*, unsigned char);
 
 /* Compact range options */

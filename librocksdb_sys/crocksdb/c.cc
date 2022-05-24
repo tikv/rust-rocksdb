@@ -2000,6 +2000,17 @@ void crocksdb_block_based_options_set_read_amp_bytes_per_bit(
   options->rep.read_amp_bytes_per_bit = v;
 }
 
+void crocksdb_block_based_options_set_prepopulate_block_cache(
+    crocksdb_block_based_table_options_t* options, int v) {
+  options->rep.prepopulate_block_cache =
+      static_cast<BlockBasedTableOptions::PrepopulateBlockCache>(v);
+}
+
+void crocksdb_block_based_options_set_checksum(
+    crocksdb_block_based_table_options_t* options, int v) {
+  options->rep.checksum = static_cast<rocksdb::ChecksumType>(v);
+}
+
 void crocksdb_options_set_block_based_table_factory(
     crocksdb_options_t* opt,
     crocksdb_block_based_table_options_t* table_options) {
@@ -2742,23 +2753,26 @@ void crocksdb_options_get_compression_per_level(crocksdb_options_t* opt,
 void crocksdb_options_set_compression_options(crocksdb_options_t* opt,
                                               int w_bits, int level,
                                               int strategy, int max_dict_bytes,
-                                              int zstd_max_train_bytes) {
+                                              int zstd_max_train_bytes,
+                                              int parallel_threads) {
   opt->rep.compression_opts.window_bits = w_bits;
   opt->rep.compression_opts.level = level;
   opt->rep.compression_opts.strategy = strategy;
   opt->rep.compression_opts.max_dict_bytes = max_dict_bytes;
   opt->rep.compression_opts.zstd_max_train_bytes = zstd_max_train_bytes;
+  opt->rep.compression_opts.parallel_threads = parallel_threads;
 }
 
 void crocksdb_options_set_bottommost_compression_options(
     crocksdb_options_t* opt, int w_bits, int level, int strategy,
-    int max_dict_bytes, int zstd_max_train_bytes) {
+    int max_dict_bytes, int zstd_max_train_bytes, int parallel_threads) {
   opt->rep.bottommost_compression_opts.window_bits = w_bits;
   opt->rep.bottommost_compression_opts.level = level;
   opt->rep.bottommost_compression_opts.strategy = strategy;
   opt->rep.bottommost_compression_opts.max_dict_bytes = max_dict_bytes;
   opt->rep.bottommost_compression_opts.zstd_max_train_bytes =
       zstd_max_train_bytes;
+  opt->rep.bottommost_compression_opts.parallel_threads = parallel_threads;
   opt->rep.bottommost_compression_opts.enabled = true;
 }
 
@@ -3637,6 +3651,16 @@ void crocksdb_readoptions_set_fill_cache(crocksdb_readoptions_t* opt,
   opt->rep.fill_cache = v;
 }
 
+void crocksdb_readoptions_set_auto_prefix_mode(crocksdb_readoptions_t* opt,
+                                               unsigned char v) {
+  opt->rep.auto_prefix_mode = v;
+}
+
+void crocksdb_readoptions_set_adaptive_readahead(crocksdb_readoptions_t* opt,
+                                                 unsigned char v) {
+  opt->rep.adaptive_readahead = v;
+}
+
 void crocksdb_readoptions_set_snapshot(crocksdb_readoptions_t* opt,
                                        const crocksdb_snapshot_t* snap) {
   opt->rep.snapshot = (snap ? snap->rep : nullptr);
@@ -3787,6 +3811,11 @@ void crocksdb_writeoptions_set_no_slowdown(crocksdb_writeoptions_t* opt,
 void crocksdb_writeoptions_set_low_pri(crocksdb_writeoptions_t* opt,
                                        unsigned char v) {
   opt->rep.low_pri = v;
+}
+
+void crocksdb_writeoptions_set_memtable_insert_hint_per_batch(
+    crocksdb_writeoptions_t* opt, unsigned char v) {
+  opt->rep.memtable_insert_hint_per_batch = v;
 }
 
 crocksdb_compactoptions_t* crocksdb_compactoptions_create() {

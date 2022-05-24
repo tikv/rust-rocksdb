@@ -19,12 +19,12 @@ use compaction_filter::{
 };
 use comparator::{self, compare_callback, ComparatorCallback};
 use crocksdb_ffi::{
-    self, DBBlockBasedTableOptions, DBBottommostLevelCompaction, DBCompactOptions,
+    self, ChecksumType, DBBlockBasedTableOptions, DBBottommostLevelCompaction, DBCompactOptions,
     DBCompactionOptions, DBCompressionType, DBFifoCompactionOptions, DBFlushOptions,
     DBInfoLogLevel, DBInstance, DBLRUCacheOptions, DBRateLimiter, DBRateLimiterMode, DBReadOptions,
     DBRecoveryMode, DBRestoreOptions, DBSnapshot, DBStatisticsHistogramType,
     DBStatisticsTickerType, DBTitanDBOptions, DBTitanReadOptions, DBWriteOptions, IndexType,
-    Options,
+    Options, PrepopulateBlockCache,
 };
 use event_listener::{new_event_listener, EventListener};
 use libc::{self, c_double, c_int, c_uchar, c_void, size_t};
@@ -187,6 +187,24 @@ impl BlockBasedOptions {
             crocksdb_ffi::crocksdb_block_based_options_set_read_amp_bytes_per_bit(
                 self.inner, v as c_int,
             )
+        }
+    }
+
+    pub fn set_format_version(&mut self, v: u32) {
+        unsafe {
+            crocksdb_ffi::crocksdb_block_based_options_set_format_version(self.inner, v as c_int);
+        }
+    }
+
+    pub fn set_prepopulate_block_cache(&mut self, v: PrepopulateBlockCache) {
+        unsafe {
+            crocksdb_ffi::crocksdb_block_based_options_set_prepopulate_block_cache(self.inner, v);
+        }
+    }
+
+    pub fn set_checksum(&mut self, v: ChecksumType) {
+        unsafe {
+            crocksdb_ffi::crocksdb_block_based_options_set_checksum(self.inner, v);
         }
     }
 }
@@ -359,6 +377,18 @@ impl ReadOptions {
     pub fn fill_cache(&mut self, v: bool) {
         unsafe {
             crocksdb_ffi::crocksdb_readoptions_set_fill_cache(self.inner, v);
+        }
+    }
+
+    pub fn auto_prefix_mode(&mut self, v: bool) {
+        unsafe {
+            crocksdb_ffi::crocksdb_readoptions_set_auto_prefix_mode(self.inner, v);
+        }
+    }
+
+    pub fn adaptive_readahead(&mut self, v: bool) {
+        unsafe {
+            crocksdb_ffi::crocksdb_readoptions_set_adaptive_readahead(self.inner, v);
         }
     }
 
@@ -548,6 +578,12 @@ impl WriteOptions {
     pub fn set_low_pri(&mut self, v: bool) {
         unsafe {
             crocksdb_ffi::crocksdb_writeoptions_set_low_pri(self.inner, v);
+        }
+    }
+
+    pub fn set_memtable_insert_hint_per_batch(&mut self, v: bool) {
+        unsafe {
+            crocksdb_ffi::crocksdb_writeoptions_set_memtable_insert_hint_per_batch(self.inner, v);
         }
     }
 }
@@ -1451,6 +1487,7 @@ impl ColumnFamilyOptions {
         strategy: i32,
         max_dict_bytes: i32,
         zstd_max_train_bytes: i32,
+        parallel_threads: i32,
     ) {
         unsafe {
             crocksdb_ffi::crocksdb_options_set_compression_options(
@@ -1460,6 +1497,7 @@ impl ColumnFamilyOptions {
                 strategy,
                 max_dict_bytes,
                 zstd_max_train_bytes,
+                parallel_threads,
             )
         }
     }
@@ -1471,6 +1509,7 @@ impl ColumnFamilyOptions {
         strategy: i32,
         max_dict_bytes: i32,
         zstd_max_train_bytes: i32,
+        parallel_threads: i32,
     ) {
         unsafe {
             crocksdb_ffi::crocksdb_options_set_bottommost_compression_options(
@@ -1480,6 +1519,7 @@ impl ColumnFamilyOptions {
                 strategy,
                 max_dict_bytes,
                 zstd_max_train_bytes,
+                parallel_threads,
             )
         }
     }

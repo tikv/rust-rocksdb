@@ -1063,6 +1063,11 @@ void crocksdb_write(crocksdb_t* db, const crocksdb_writeoptions_t* options,
   SaveError(errptr, db->rep->Write(options->rep, &batch->rep));
 }
 
+void crocksdb_write_seq(crocksdb_t* db, const crocksdb_writeoptions_t* options,
+                    crocksdb_writebatch_t* batch, uint64_t* seq, char** errptr) {
+  SaveError(errptr, db->rep->Write(options->rep, &batch->rep, seq));
+}
+
 char* crocksdb_get(crocksdb_t* db, const crocksdb_readoptions_t* options,
                    const char* key, size_t keylen, size_t* vallen,
                    char** errptr) {

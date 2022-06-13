@@ -71,7 +71,7 @@ fn ensure_default_cf_exists<'a>(
     ttls: &mut Vec<i32>,
     is_titan: bool,
 ) {
-    let contains = list.iter().any(|ref cf| cf.is_default());
+    let contains = list.iter().any(|cf| cf.is_default());
     if !contains {
         let mut desc = ColumnFamilyDescriptor::default();
         if is_titan {
@@ -803,6 +803,23 @@ impl DB {
         Ok(())
     }
 
+    pub fn write_seq_opt(
+        &self,
+        batch: &WriteBatch,
+        writeopts: &WriteOptions,
+        seq: &mut u64,
+    ) -> Result<(), String> {
+        unsafe {
+            ffi_try!(crocksdb_write_seq(
+                self.inner,
+                writeopts.inner,
+                batch.inner,
+                seq
+            ));
+        }
+        Ok(())
+    }
+
     pub fn write(&self, batch: &WriteBatch) -> Result<(), String> {
         self.write_opt(batch, &WriteOptions::new())
     }
@@ -952,7 +969,7 @@ impl DB {
     }
 
     pub fn iter_opt(&self, opt: ReadOptions) -> DBIterator<&DB> {
-        DBIterator::new(&self, opt)
+        DBIterator::new(self, opt)
     }
 
     pub fn iter_cf(&self, cf_handle: &CFHandle) -> DBIterator<&DB> {
@@ -2039,7 +2056,7 @@ impl Drop for DB {
             // DB::SyncWal requires writable file support thread safe sync, but
             // not all types of env can create writable file that support thread
             // safe sync. eg, MemEnv.
-            self.sync_wal().unwrap_or_else(|_| {});
+            let _ = self.sync_wal();
         }
         unsafe {
             self.cfs.clear();

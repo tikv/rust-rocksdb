@@ -807,17 +807,17 @@ impl DB {
         &self,
         batch: &WriteBatch,
         writeopts: &WriteOptions,
-        seq: &mut u64,
-    ) -> Result<(), String> {
+    ) -> Result<u64, String> {
+        let mut seq = 0;
         unsafe {
             ffi_try!(crocksdb_write_seq(
                 self.inner,
                 writeopts.inner,
                 batch.inner,
-                seq
+                &mut seq
             ));
         }
-        Ok(())
+        Ok(seq)
     }
 
     pub fn write(&self, batch: &WriteBatch) -> Result<(), String> {

@@ -59,6 +59,7 @@
 #include "table/table_reader.h"
 #include "titan/db.h"
 #include "titan/options.h"
+#include "titan/statistics.h"
 #include "util/coding.h"
 
 #if !defined(ROCKSDB_MAJOR) || !defined(ROCKSDB_MINOR) || \
@@ -2665,9 +2666,14 @@ void crocksdb_options_set_sst_partitioner_factory(
 }
 
 void crocksdb_options_enable_statistics(crocksdb_options_t* opt,
-                                        unsigned char v) {
+                                        unsigned char v,
+                                        unsigned char is_titandb) {
   if (v) {
-    opt->rep.statistics = rocksdb::CreateDBStatistics();
+    if (is_titandb) {
+      opt->rep.statistics = rocksdb::titandb::CreateDBStatistics();
+    } else {
+      opt->rep.statistics = rocksdb::CreateDBStatistics();
+    }
   } else {
     opt->rep.statistics = nullptr;
   }

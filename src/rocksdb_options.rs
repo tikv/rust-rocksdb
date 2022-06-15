@@ -718,7 +718,12 @@ impl DBOptions {
 
     pub fn set_titandb_options(&mut self, opts: &TitanDBOptions) {
         unsafe {
+            let is_null_before = self.titan_inner.is_null();
             self.titan_inner = crocksdb_ffi::ctitandb_options_copy(opts.inner);
+            if is_null_before {
+                // Titan uses a different statistics.
+                self.enable_statistics(true);
+            }
         }
     }
 
@@ -881,7 +886,11 @@ impl DBOptions {
 
     pub fn enable_statistics(&mut self, v: bool) {
         unsafe {
-            crocksdb_ffi::crocksdb_options_enable_statistics(self.inner, v);
+            crocksdb_ffi::crocksdb_options_enable_statistics(
+                self.inner,
+                v,
+                !self.titan_inner.is_null(),
+            );
         }
     }
 

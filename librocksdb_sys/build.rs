@@ -211,6 +211,9 @@ fn build_rocksdb() -> Build {
     println!("cargo:rustc-link-lib=static=zstd");
     println!("cargo:rustc-link-lib=static=snappy");
 
-    println!("cargo:rerun-if-changed={}", cur_dir.join("crocksdb").display());
+    println!(
+        "cargo:rerun-if-changed={}",
+        cur_dir.join("crocksdb").display()
+    );
     build
 }

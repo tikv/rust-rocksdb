@@ -720,7 +720,7 @@ impl DBOptions {
         unsafe {
             let is_null_before = self.titan_inner.is_null();
             self.titan_inner = crocksdb_ffi::ctitandb_options_copy(opts.inner);
-            if is_null_before {
+            if is_null_before && self.get_statistics().is_some() {
                 // Titan uses a different statistics.
                 self.enable_statistics(true);
             }

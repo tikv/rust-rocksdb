@@ -1078,7 +1078,7 @@ crocksdb_options_get_sst_partitioner_factory(crocksdb_options_t*);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_sst_partitioner_factory(
     crocksdb_options_t*, crocksdb_sst_partitioner_factory_t*);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_enable_statistics(
-    crocksdb_options_t*, unsigned char, unsigned char);
+    crocksdb_options_t*, unsigned char);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_reset_statistics(
     crocksdb_options_t*);
 extern C_ROCKSDB_LIBRARY_API unsigned char crocksdb_load_latest_options(

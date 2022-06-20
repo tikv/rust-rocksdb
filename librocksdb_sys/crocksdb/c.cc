@@ -6449,7 +6449,6 @@ void ctitandb_options_set_blob_file_discardable_ratio(
   options->rep.blob_file_discardable_ratio = ratio;
 }
 
-
 void ctitandb_options_set_merge_small_file_threshold(
     ctitandb_options_t* options, uint64_t size) {
   options->rep.merge_small_file_threshold = size;

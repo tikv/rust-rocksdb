@@ -2669,11 +2669,7 @@ void crocksdb_options_enable_statistics(crocksdb_options_t* opt,
                                         unsigned char v,
                                         unsigned char is_titandb) {
   if (v) {
-    if (is_titandb) {
-      opt->rep.statistics = rocksdb::titandb::CreateDBStatistics();
-    } else {
-      opt->rep.statistics = rocksdb::CreateDBStatistics();
-    }
+    opt->rep.statistics = rocksdb::titandb::CreateDBStatistics();
   } else {
     opt->rep.statistics = nullptr;
   }

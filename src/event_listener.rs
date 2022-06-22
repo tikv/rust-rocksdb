@@ -57,6 +57,14 @@ impl FlushJobInfo {
     pub fn triggered_writes_stop(&self) -> bool {
         unsafe { crocksdb_ffi::crocksdb_flushjobinfo_triggered_writes_stop(&self.0) }
     }
+
+    pub fn largest_seqno(&self) -> u64 {
+        unsafe { crocksdb_ffi::crocksdb_flushjobinfo_largest_seqno(&self.0) }
+    }
+
+    pub fn smallest_seqno(&self) -> u64 {
+        unsafe { crocksdb_ffi::crocksdb_flushjobinfo_smallest_seqno(&self.0) }
+    }
 }
 
 pub struct MutableStatus {

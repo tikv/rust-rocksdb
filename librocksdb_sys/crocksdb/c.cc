@@ -2089,6 +2089,14 @@ unsigned char crocksdb_flushjobinfo_triggered_writes_stop(
   return info->rep.triggered_writes_stop;
 }
 
+uint64_t crocksdb_flushjobinfo_largest_seqno(const crocksdb_flushjobinfo_t* info) {
+  return info->rep.largest_seqno;
+}
+
+uint64_t crocksdb_flushjobinfo_smallest_seqno(const crocksdb_flushjobinfo_t* info) {
+  return info->rep.smallest_seqno;
+}
+
 void crocksdb_reset_status(crocksdb_status_ptr_t* status_ptr) {
   auto ptr = status_ptr->rep;
   *ptr = Status::OK();

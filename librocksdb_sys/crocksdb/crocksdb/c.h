@@ -44,6 +44,7 @@
 #ifndef C_ROCKSDB_INCLUDE_CWRAPPER_H_
 #define C_ROCKSDB_INCLUDE_CWRAPPER_H_
 
+#include <cstdint>
 #pragma once
 
 #ifdef _WIN32
@@ -807,6 +808,10 @@ extern C_ROCKSDB_LIBRARY_API unsigned char
 crocksdb_flushjobinfo_triggered_writes_slowdown(const crocksdb_flushjobinfo_t*);
 extern C_ROCKSDB_LIBRARY_API unsigned char
 crocksdb_flushjobinfo_triggered_writes_stop(const crocksdb_flushjobinfo_t*);
+extern C_ROCKSDB_LIBRARY_API uint64_t crocksdb_flushjobinfo_largest_seqno(
+    const crocksdb_flushjobinfo_t*);
+extern C_ROCKSDB_LIBRARY_API uint64_t crocksdb_flushjobinfo_smallest_seqno(
+    const crocksdb_flushjobinfo_t*);
 
 extern C_ROCKSDB_LIBRARY_API void crocksdb_reset_status(
     crocksdb_status_ptr_t* status_ptr);

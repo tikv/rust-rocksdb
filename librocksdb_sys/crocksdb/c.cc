@@ -1069,6 +1069,17 @@ void crocksdb_write(crocksdb_t* db, const crocksdb_writeoptions_t* options,
   SaveError(errptr, db->rep->Write(options->rep, &batch->rep));
 }
 
+void crocksdb_write_multi_batch(crocksdb_t* db,
+                                const crocksdb_writeoptions_t* options,
+                                crocksdb_writebatch_t** batches,
+                                size_t batch_size, char** errptr) {
+  std::vector<WriteBatch*> ws;
+  for (size_t i = 0; i < batch_size; i++) {
+    ws.push_back(&batches[i]->rep);
+  }
+  SaveError(errptr, db->rep->MultiBatchWrite(options->rep, std::move(ws)));
+}
+
 char* crocksdb_get(crocksdb_t* db, const crocksdb_readoptions_t* options,
                    const char* key, size_t keylen, size_t* vallen,
                    char** errptr) {
@@ -2919,9 +2930,14 @@ void crocksdb_options_set_enable_pipelined_write(crocksdb_options_t* opt,
   opt->rep.enable_pipelined_write = v;
 }
 
-void crocksdb_options_set_enable_pipelined_commit(crocksdb_options_t* opt,
-                                                  unsigned char v) {
-  opt->rep.enable_pipelined_commit = v;
+void crocksdb_options_set_enable_multi_batch_write(crocksdb_options_t* opt,
+                                                   unsigned char v) {
+  opt->rep.enable_multi_batch_write = v;
+}
+
+unsigned char crocksdb_options_is_enable_multi_batch_write(
+    crocksdb_options_t* opt) {
+  return opt->rep.enable_multi_batch_write;
 }
 
 void crocksdb_options_set_unordered_write(crocksdb_options_t* opt,
@@ -6488,11 +6504,6 @@ void ctitandb_options_set_blob_file_discardable_ratio(
   options->rep.blob_file_discardable_ratio = ratio;
 }
 
-void ctitandb_options_set_sample_file_size_ratio(ctitandb_options_t* options,
-                                                 double ratio) {
-  options->rep.sample_file_size_ratio = ratio;
-}
-
 void ctitandb_options_set_merge_small_file_threshold(
     ctitandb_options_t* options, uint64_t size) {
   options->rep.merge_small_file_threshold = size;
@@ -6543,11 +6554,6 @@ size_t ctitandb_options_get_blob_cache_capacity(ctitandb_options_t* opt) {
 void ctitandb_options_set_discardable_ratio(ctitandb_options_t* options,
                                             double ratio) {
   options->rep.blob_file_discardable_ratio = ratio;
-}
-
-void ctitandb_options_set_sample_ratio(ctitandb_options_t* options,
-                                       double ratio) {
-  options->rep.sample_file_size_ratio = ratio;
 }
 
 void ctitandb_options_set_blob_run_mode(ctitandb_options_t* options, int mode) {

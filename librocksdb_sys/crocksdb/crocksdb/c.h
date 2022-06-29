@@ -162,6 +162,7 @@ typedef struct crocksdb_writestallinfo_t crocksdb_writestallinfo_t;
 typedef struct crocksdb_writestallcondition_t crocksdb_writestallcondition_t;
 typedef struct crocksdb_map_property_t crocksdb_map_property_t;
 typedef struct crocksdb_writebatch_iterator_t crocksdb_writebatch_iterator_t;
+typedef struct crocksdb_memtableinfo_t crocksdb_memtableinfo_t;
 
 typedef enum crocksdb_sst_partitioner_result_t {
   kNotRequired = 0,
@@ -894,6 +895,20 @@ extern C_ROCKSDB_LIBRARY_API const crocksdb_writestallcondition_t*
 crocksdb_writestallinfo_cur(const crocksdb_writestallinfo_t*);
 extern C_ROCKSDB_LIBRARY_API const crocksdb_writestallcondition_t*
 crocksdb_writestallinfo_prev(const crocksdb_writestallinfo_t*);
+extern C_ROCKSDB_LIBRARY_API const char* crocksdb_memtableinfo_cf_name(
+    const crocksdb_memtableinfo_t*, size_t*);
+extern C_ROCKSDB_LIBRARY_API uint64_t
+crocksdb_memtableinfo_first_seqno(
+    const crocksdb_memtableinfo_t*);
+extern C_ROCKSDB_LIBRARY_API uint64_t
+crocksdb_memtableinfo_earliest_seqno(
+    const crocksdb_memtableinfo_t*);
+extern C_ROCKSDB_LIBRARY_API uint64_t
+crocksdb_memtableinfo_num_entries(
+    const crocksdb_memtableinfo_t*);
+extern C_ROCKSDB_LIBRARY_API uint64_t
+crocksdb_memtableinfo_num_deletes(
+    const crocksdb_memtableinfo_t*);
 
 /* Event listener */
 
@@ -916,6 +931,8 @@ typedef void (*on_background_error_cb)(void*, crocksdb_backgrounderrorreason_t,
 typedef void (*on_stall_conditions_changed_cb)(
     void*, const crocksdb_writestallinfo_t*);
 typedef void (*crocksdb_logger_logv_cb)(void*, int log_level, const char*);
+typedef void (*on_memtable_sealed_cb)(
+    void*, const crocksdb_memtableinfo_t*);
 
 extern C_ROCKSDB_LIBRARY_API crocksdb_eventlistener_t*
 crocksdb_eventlistener_create(
@@ -927,7 +944,8 @@ crocksdb_eventlistener_create(
     on_subcompaction_completed_cb on_subcompaction_completed,
     on_external_file_ingested_cb on_external_file_ingested,
     on_background_error_cb on_background_error,
-    on_stall_conditions_changed_cb on_stall_conditions_changed);
+    on_stall_conditions_changed_cb on_stall_conditions_changed,
+    on_memtable_sealed_cb on_memtable_sealed);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_eventlistener_destroy(
     crocksdb_eventlistener_t*);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_add_eventlistener(

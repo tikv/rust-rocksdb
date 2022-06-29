@@ -159,6 +159,8 @@ pub struct DBIOStatsContext(c_void);
 #[repr(C)]
 pub struct DBWriteStallInfo(c_void);
 #[repr(C)]
+pub struct DBMemTableInfo(c_void);
+#[repr(C)]
 pub struct DBStatusPtr(c_void);
 #[repr(C)]
 pub struct DBMapProperty(c_void);
@@ -2242,6 +2244,15 @@ extern "C" {
     pub fn crocksdb_writestallinfo_cur(info: *const DBWriteStallInfo)
         -> *const WriteStallCondition;
 
+    pub fn crocksdb_memtableinfo_cf_name(
+        info: *const DBMemTableInfo,
+        size: *mut size_t,
+    ) -> *const c_char;
+    pub fn crocksdb_memtableinfo_first_seqno(info: *const DBMemTableInfo) -> u64;
+    pub fn crocksdb_memtableinfo_earliest_seqno(info: *const DBMemTableInfo) -> u64;
+    pub fn crocksdb_memtableinfo_num_entries(info: *const DBMemTableInfo) -> u64;
+    pub fn crocksdb_memtableinfo_num_deletes(info: *const DBMemTableInfo) -> u64;
+
     pub fn crocksdb_eventlistener_create(
         state: *mut c_void,
         destructor: extern "C" fn(*mut c_void),
@@ -2254,6 +2265,7 @@ extern "C" {
         ingest: extern "C" fn(*mut c_void, *mut DBInstance, *const DBIngestionInfo),
         bg_error: extern "C" fn(*mut c_void, DBBackgroundErrorReason, *mut DBStatusPtr),
         stall_conditions: extern "C" fn(*mut c_void, *const DBWriteStallInfo),
+        memtable_sealed: extern "C" fn(*mut c_void, *const DBMemTableInfo),
     ) -> *mut DBEventListener;
     pub fn crocksdb_eventlistener_destroy(et: *mut DBEventListener);
     pub fn crocksdb_options_add_eventlistener(opt: *mut Options, et: *mut DBEventListener);

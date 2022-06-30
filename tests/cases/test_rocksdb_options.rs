@@ -754,7 +754,7 @@ fn test_read_options() {
 
     let mut read_opts = ReadOptions::new();
     read_opts.set_verify_checksums(true);
-    read_opts.fill_cache(true);
+    read_opts.set_fill_cache(true);
     read_opts.set_tailing(true);
     read_opts.set_pin_data(true);
     read_opts.set_background_purge_on_iterator_cleanup(true);

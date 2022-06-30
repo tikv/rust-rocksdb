@@ -374,19 +374,19 @@ impl ReadOptions {
         }
     }
 
-    pub fn fill_cache(&mut self, v: bool) {
+    pub fn set_fill_cache(&mut self, v: bool) {
         unsafe {
             crocksdb_ffi::crocksdb_readoptions_set_fill_cache(self.inner, v);
         }
     }
 
-    pub fn auto_prefix_mode(&mut self, v: bool) {
+    pub fn set_auto_prefix_mode(&mut self, v: bool) {
         unsafe {
             crocksdb_ffi::crocksdb_readoptions_set_auto_prefix_mode(self.inner, v);
         }
     }
 
-    pub fn adaptive_readahead(&mut self, v: bool) {
+    pub fn set_adaptive_readahead(&mut self, v: bool) {
         unsafe {
             crocksdb_ffi::crocksdb_readoptions_set_adaptive_readahead(self.inner, v);
         }
@@ -754,12 +754,7 @@ impl DBOptions {
 
     pub fn set_titandb_options(&mut self, opts: &TitanDBOptions) {
         unsafe {
-            let is_null_before = self.titan_inner.is_null();
             self.titan_inner = crocksdb_ffi::ctitandb_options_copy(opts.inner);
-            if is_null_before {
-                // Titan uses a different statistics.
-                self.enable_statistics(true);
-            }
         }
     }
 
@@ -922,11 +917,7 @@ impl DBOptions {
 
     pub fn enable_statistics(&mut self, v: bool) {
         unsafe {
-            crocksdb_ffi::crocksdb_options_enable_statistics(
-                self.inner,
-                v,
-                !self.titan_inner.is_null(),
-            );
+            crocksdb_ffi::crocksdb_options_enable_statistics(self.inner, v);
         }
     }
 

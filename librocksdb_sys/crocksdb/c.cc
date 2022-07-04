@@ -6554,6 +6554,11 @@ void ctitandb_options_set_discardable_ratio(ctitandb_options_t* options,
   options->rep.blob_file_discardable_ratio = ratio;
 }
 
+void ctitandb_options_set_sample_ratio(ctitandb_options_t* options,
+                                       double ratio) {
+  options->rep.sample_file_size_ratio = ratio;
+}
+
 void ctitandb_options_set_blob_run_mode(ctitandb_options_t* options, int mode) {
   options->rep.blob_run_mode = static_cast<TitanBlobRunMode>(mode);
 }

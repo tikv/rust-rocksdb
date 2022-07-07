@@ -48,7 +48,7 @@ impl Drop for TablePropertiesCollectionHandleWithDrop {
 #[derive(Clone)]
 pub struct TablePropertiesCollectionIteratorHandle {
     shared: Rc<TablePropertiesCollectionIteratorHandleWithDrop>,
-    _collection: TablePropertiesCollectionHandle,
+    collection: TablePropertiesCollectionHandle,
 }
 
 impl TablePropertiesCollectionIteratorHandle {
@@ -60,7 +60,7 @@ impl TablePropertiesCollectionIteratorHandle {
                 crocksdb_ffi::crocksdb_table_properties_collection_iter_create(collection.ptr());
             TablePropertiesCollectionIteratorHandle {
                 shared: Rc::new(TablePropertiesCollectionIteratorHandleWithDrop { ptr }),
-                _collection: collection,
+                collection,
             }
         }
     }
@@ -88,7 +88,7 @@ impl Drop for TablePropertiesCollectionIteratorHandleWithDrop {
 #[derive(Clone)]
 pub struct TablePropertiesHandle {
     ptr: *const DBTableProperties,
-    _iter_handle: TablePropertiesCollectionIteratorHandle,
+    iter_handle: TablePropertiesCollectionIteratorHandle,
 }
 
 impl TablePropertiesHandle {
@@ -96,10 +96,7 @@ impl TablePropertiesHandle {
         ptr: *const DBTableProperties,
         iter_handle: TablePropertiesCollectionIteratorHandle,
     ) -> TablePropertiesHandle {
-        TablePropertiesHandle {
-            ptr,
-            _iter_handle: iter_handle,
-        }
+        TablePropertiesHandle { ptr, iter_handle }
     }
 
     pub fn ptr(&self) -> *const DBTableProperties {
@@ -113,7 +110,7 @@ impl TablePropertiesHandle {
 #[derive(Clone)]
 pub struct UserCollectedPropertiesHandle {
     ptr: *const DBUserCollectedProperties,
-    _table_props_handle: TablePropertiesHandle,
+    table_props_handle: TablePropertiesHandle,
 }
 
 impl UserCollectedPropertiesHandle {
@@ -124,7 +121,7 @@ impl UserCollectedPropertiesHandle {
             );
             UserCollectedPropertiesHandle {
                 ptr,
-                _table_props_handle: table_props_handle,
+                table_props_handle,
             }
         }
     }

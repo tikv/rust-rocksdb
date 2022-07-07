@@ -14,7 +14,8 @@
 use crocksdb_ffi::{self, DBIOStatsContext, DBPerfContext, DBPerfFlags};
 
 use std::{
-    ops::{BitOr, BitOrAssign},
+    iter::Sum,
+    ops::{Add, AddAssign, BitOr, BitOrAssign},
     ptr::NonNull,
 };
 

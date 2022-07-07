@@ -207,7 +207,7 @@ pub struct DBTitanBlobIndex {
     pub blob_size: u64,
 }
 
-pub fn new_bloom_filter(bits: c_int) -> *mut DBFilterPolicy {
+pub fn new_bloom_filter(bits: c_double) -> *mut DBFilterPolicy {
     unsafe { crocksdb_filterpolicy_create_bloom(bits) }
 }
 
@@ -402,6 +402,23 @@ pub enum IndexType {
     BinarySearch = 0,
     HashSearch = 1,
     TwoLevelIndexSearch = 2,
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[repr(C)]
+pub enum PrepopulateBlockCache {
+    Disabled = 0,
+    FlushOnly = 1,
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[repr(C)]
+pub enum ChecksumType {
+    NoChecksum = 0,
+    CRC32c = 1,
+    XxHash = 2,
+    XxHash64 = 3,
+    XXH3 = 4,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -638,6 +655,18 @@ extern "C" {
         ck_options: *mut DBBlockBasedTableOptions,
         doit: bool,
     );
+    pub fn crocksdb_block_based_options_set_format_version(
+        ck_options: *mut DBBlockBasedTableOptions,
+        v: c_int,
+    );
+    pub fn crocksdb_block_based_options_set_prepopulate_block_cache(
+        ck_options: *mut DBBlockBasedTableOptions,
+        v: PrepopulateBlockCache,
+    );
+    pub fn crocksdb_block_based_options_set_checksum(
+        ck_options: *mut DBBlockBasedTableOptions,
+        v: ChecksumType,
+    );
     pub fn crocksdb_options_set_block_based_table_factory(
         options: *mut Options,
         block_options: *mut DBBlockBasedTableOptions,
@@ -671,7 +700,8 @@ extern "C" {
     pub fn crocksdb_options_set_use_fsync(options: *mut Options, v: c_int);
     pub fn crocksdb_options_set_bytes_per_sync(options: *mut Options, bytes: u64);
     pub fn crocksdb_options_set_enable_pipelined_write(options: *mut Options, v: bool);
-    pub fn crocksdb_options_set_enable_pipelined_commit(options: *mut Options, v: bool);
+    pub fn crocksdb_options_set_enable_multi_batch_write(options: *mut Options, v: bool);
+    pub fn crocksdb_options_is_enable_multi_batch_write(options: *mut Options) -> bool;
     pub fn crocksdb_options_set_unordered_write(options: *mut Options, v: bool);
     pub fn crocksdb_options_set_allow_concurrent_memtable_write(options: *mut Options, v: bool);
     pub fn crocksdb_options_set_manual_wal_flush(options: *mut Options, v: bool);
@@ -739,6 +769,7 @@ extern "C" {
         strategy: c_int,
         max_dict_bytes: c_int,
         zstd_max_train_bytes: c_int,
+        parallel_threads: c_int,
     );
     pub fn crocksdb_options_set_bottommost_compression_options(
         options: *mut Options,
@@ -747,6 +778,7 @@ extern "C" {
         strategy: c_int,
         max_dict_bytes: c_int,
         zstd_max_train_bytes: c_int,
+        parallel_threads: c_int,
     );
     pub fn crocksdb_options_set_compression_per_level(
         options: *mut Options,
@@ -926,8 +958,8 @@ extern "C" {
         option: *mut Options,
         factory: *mut DBSstPartitionerFactory,
     );
-    pub fn crocksdb_filterpolicy_create_bloom_full(bits_per_key: c_int) -> *mut DBFilterPolicy;
-    pub fn crocksdb_filterpolicy_create_bloom(bits_per_key: c_int) -> *mut DBFilterPolicy;
+    pub fn crocksdb_filterpolicy_create_bloom_full(bits_per_key: c_double) -> *mut DBFilterPolicy;
+    pub fn crocksdb_filterpolicy_create_bloom(bits_per_key: c_double) -> *mut DBFilterPolicy;
     pub fn crocksdb_open(
         options: *mut Options,
         path: *const c_char,
@@ -955,6 +987,10 @@ extern "C" {
     );
     pub fn crocksdb_writeoptions_set_no_slowdown(writeopts: *mut DBWriteOptions, v: bool);
     pub fn crocksdb_writeoptions_set_low_pri(writeopts: *mut DBWriteOptions, v: bool);
+    pub fn crocksdb_writeoptions_set_memtable_insert_hint_per_batch(
+        writeopts: *mut DBWriteOptions,
+        v: bool,
+    );
     pub fn crocksdb_put(
         db: *mut DBInstance,
         writeopts: *mut DBWriteOptions,
@@ -978,6 +1014,8 @@ extern "C" {
     pub fn crocksdb_readoptions_destroy(readopts: *mut DBReadOptions);
     pub fn crocksdb_readoptions_set_verify_checksums(readopts: *mut DBReadOptions, v: bool);
     pub fn crocksdb_readoptions_set_fill_cache(readopts: *mut DBReadOptions, v: bool);
+    pub fn crocksdb_readoptions_set_auto_prefix_mode(readopts: *mut DBReadOptions, v: bool);
+    pub fn crocksdb_readoptions_set_adaptive_readahead(readopts: *mut DBReadOptions, v: bool);
     pub fn crocksdb_readoptions_set_snapshot(
         readopts: *mut DBReadOptions,
         snapshot: *const DBSnapshot,
@@ -1167,6 +1205,14 @@ extern "C" {
         writeopts: *const DBWriteOptions,
         batch: *mut DBWriteBatch,
         seq: *mut u64,
+        err: *mut *mut c_char,
+    );
+
+    pub fn crocksdb_write_multi_batch(
+        db: *mut DBInstance,
+        writeopts: *const DBWriteOptions,
+        batch: *const *mut DBWriteBatch,
+        batchlen: size_t,
         err: *mut *mut c_char,
     );
     pub fn crocksdb_writebatch_create() -> *mut DBWriteBatch;
@@ -2686,7 +2732,6 @@ extern "C" {
     pub fn ctitandb_options_get_blob_cache_capacity(options: *const DBTitanDBOptions) -> usize;
 
     pub fn ctitandb_options_set_discardable_ratio(opts: *mut DBTitanDBOptions, ratio: f64);
-    pub fn ctitandb_options_set_sample_ratio(opts: *mut DBTitanDBOptions, ratio: f64);
     pub fn ctitandb_options_set_merge_small_file_threshold(opts: *mut DBTitanDBOptions, size: u64);
     pub fn ctitandb_options_set_blob_run_mode(opts: *mut DBTitanDBOptions, t: DBTitanDBBlobRunMode);
 

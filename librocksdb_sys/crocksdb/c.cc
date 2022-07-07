@@ -4050,6 +4050,8 @@ crocksdb_encryption_method_t crocksdb_file_encryption_info_method(
       return crocksdb_encryption_method_t::kAES192_CTR;
     case EncryptionMethod::kAES256_CTR:
       return crocksdb_encryption_method_t::kAES256_CTR;
+    case EncryptionMethod::kSM4_CTR:
+      return crocksdb_encryption_method_t::kSM4_CTR;
     default:
       assert(false);
   }
@@ -4092,6 +4094,9 @@ void crocksdb_file_encryption_info_set_method(
       break;
     case kAES256_CTR:
       file_info->rep->method = EncryptionMethod::kAES256_CTR;
+      break;
+    case kSM4_CTR:
+      file_info->rep->method = EncryptionMethod::kSM4_CTR;
       break;
     default:
       assert(false);

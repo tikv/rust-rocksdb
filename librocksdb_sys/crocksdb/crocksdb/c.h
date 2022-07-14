@@ -44,7 +44,6 @@
 #ifndef C_ROCKSDB_INCLUDE_CWRAPPER_H_
 #define C_ROCKSDB_INCLUDE_CWRAPPER_H_
 
-#include <cstdint>
 #pragma once
 
 #ifdef _WIN32

@@ -1073,7 +1073,8 @@ void crocksdb_write(crocksdb_t* db, const crocksdb_writeoptions_t* options,
 }
 
 void crocksdb_write_seq(crocksdb_t* db, const crocksdb_writeoptions_t* options,
-                    crocksdb_writebatch_t* batch, uint64_t* seq, char** errptr) {
+                        crocksdb_writebatch_t* batch, uint64_t* seq,
+                        char** errptr) {
   SaveError(errptr, db->rep->Write(options->rep, &batch->rep, seq));
 }
 
@@ -2121,11 +2122,13 @@ unsigned char crocksdb_flushjobinfo_triggered_writes_stop(
   return info->rep.triggered_writes_stop;
 }
 
-uint64_t crocksdb_flushjobinfo_largest_seqno(const crocksdb_flushjobinfo_t* info) {
+uint64_t crocksdb_flushjobinfo_largest_seqno(
+    const crocksdb_flushjobinfo_t* info) {
   return info->rep.largest_seqno;
 }
 
-uint64_t crocksdb_flushjobinfo_smallest_seqno(const crocksdb_flushjobinfo_t* info) {
+uint64_t crocksdb_flushjobinfo_smallest_seqno(
+    const crocksdb_flushjobinfo_t* info) {
   return info->rep.smallest_seqno;
 }
 
@@ -2306,8 +2309,8 @@ const crocksdb_writestallcondition_t* crocksdb_writestallinfo_prev(
       &info->rep.condition.prev);
 }
 
-const char* crocksdb_memtableinfo_cf_name(
-    const crocksdb_memtableinfo_t* info, size_t* size) {
+const char* crocksdb_memtableinfo_cf_name(const crocksdb_memtableinfo_t* info,
+                                          size_t* size) {
   *size = info->rep.cf_name.size();
   return info->rep.cf_name.data();
 }
@@ -2427,9 +2430,8 @@ struct crocksdb_eventlistener_t : public EventListener {
   }
 
   virtual void OnMemTableSealed(const MemTableInfo& info) {
-    on_memtable_sealed(
-        state_,
-        reinterpret_cast<const crocksdb_memtableinfo_t*>(&info));
+    on_memtable_sealed(state_,
+                       reinterpret_cast<const crocksdb_memtableinfo_t*>(&info));
   }
 
   virtual ~crocksdb_eventlistener_t() { destructor_(state_); }

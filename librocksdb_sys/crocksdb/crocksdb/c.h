@@ -829,10 +829,10 @@ extern C_ROCKSDB_LIBRARY_API unsigned char
 crocksdb_flushjobinfo_triggered_writes_slowdown(const crocksdb_flushjobinfo_t*);
 extern C_ROCKSDB_LIBRARY_API unsigned char
 crocksdb_flushjobinfo_triggered_writes_stop(const crocksdb_flushjobinfo_t*);
-extern C_ROCKSDB_LIBRARY_API uint64_t crocksdb_flushjobinfo_largest_seqno(
-    const crocksdb_flushjobinfo_t*);
-extern C_ROCKSDB_LIBRARY_API uint64_t crocksdb_flushjobinfo_smallest_seqno(
-    const crocksdb_flushjobinfo_t*);
+extern C_ROCKSDB_LIBRARY_API uint64_t
+crocksdb_flushjobinfo_largest_seqno(const crocksdb_flushjobinfo_t*);
+extern C_ROCKSDB_LIBRARY_API uint64_t
+crocksdb_flushjobinfo_smallest_seqno(const crocksdb_flushjobinfo_t*);
 
 extern C_ROCKSDB_LIBRARY_API void crocksdb_reset_status(
     crocksdb_status_ptr_t* status_ptr);
@@ -918,17 +918,13 @@ crocksdb_writestallinfo_prev(const crocksdb_writestallinfo_t*);
 extern C_ROCKSDB_LIBRARY_API const char* crocksdb_memtableinfo_cf_name(
     const crocksdb_memtableinfo_t*, size_t*);
 extern C_ROCKSDB_LIBRARY_API uint64_t
-crocksdb_memtableinfo_first_seqno(
-    const crocksdb_memtableinfo_t*);
+crocksdb_memtableinfo_first_seqno(const crocksdb_memtableinfo_t*);
 extern C_ROCKSDB_LIBRARY_API uint64_t
-crocksdb_memtableinfo_earliest_seqno(
-    const crocksdb_memtableinfo_t*);
+crocksdb_memtableinfo_earliest_seqno(const crocksdb_memtableinfo_t*);
 extern C_ROCKSDB_LIBRARY_API uint64_t
-crocksdb_memtableinfo_num_entries(
-    const crocksdb_memtableinfo_t*);
+crocksdb_memtableinfo_num_entries(const crocksdb_memtableinfo_t*);
 extern C_ROCKSDB_LIBRARY_API uint64_t
-crocksdb_memtableinfo_num_deletes(
-    const crocksdb_memtableinfo_t*);
+crocksdb_memtableinfo_num_deletes(const crocksdb_memtableinfo_t*);
 
 /* Event listener */
 
@@ -951,8 +947,7 @@ typedef void (*on_background_error_cb)(void*, crocksdb_backgrounderrorreason_t,
 typedef void (*on_stall_conditions_changed_cb)(
     void*, const crocksdb_writestallinfo_t*);
 typedef void (*crocksdb_logger_logv_cb)(void*, int log_level, const char*);
-typedef void (*on_memtable_sealed_cb)(
-    void*, const crocksdb_memtableinfo_t*);
+typedef void (*on_memtable_sealed_cb)(void*, const crocksdb_memtableinfo_t*);
 
 extern C_ROCKSDB_LIBRARY_API crocksdb_eventlistener_t*
 crocksdb_eventlistener_create(

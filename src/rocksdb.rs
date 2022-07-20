@@ -824,7 +824,8 @@ impl DB {
         &self,
         batches: &[WriteBatch],
         writeopts: &WriteOptions,
-    ) -> Result<(), String> {
+    ) -> Result<u64, String> {
+        let mut seq = 0;
         unsafe {
             let b: Vec<*mut DBWriteBatch> = batches.iter().map(|w| w.inner).collect();
             if !b.is_empty() {
@@ -832,11 +833,12 @@ impl DB {
                     self.inner,
                     writeopts.inner,
                     b.as_ptr(),
-                    b.len()
+                    b.len(),
+                    &mut seq
                 ));
             }
         }
-        Ok(())
+        Ok(seq)
     }
 
     pub fn write(&self, batch: &WriteBatch) -> Result<(), String> {

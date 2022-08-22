@@ -1080,9 +1080,9 @@ void crocksdb_write_seq(crocksdb_t* db, const crocksdb_writeoptions_t* options,
 
 void crocksdb_write_multi_batch(crocksdb_t* db,
                                 const crocksdb_writeoptions_t* options,
-                                crocksdb_writebatch_t** batches, 
-                                size_t batch_size,
-                                uint64_t* seq, char** errptr) {
+                                crocksdb_writebatch_t** batches,
+                                size_t batch_size, uint64_t* seq,
+                                char** errptr) {
   std::vector<WriteBatch*> ws;
   for (size_t i = 0; i < batch_size; i++) {
     ws.push_back(&batches[i]->rep);

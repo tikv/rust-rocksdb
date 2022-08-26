@@ -3548,12 +3548,14 @@ mod test {
             w.put_cf(cf, s.to_vec().as_slice(), b"a").unwrap();
             data.push(w);
         }
-        db.multi_batch_write(&data, &WriteOptions::new()).unwrap();
+        let seqno = db.multi_batch_write(&data, &WriteOptions::new()).unwrap();
         for s in &[b"ab", b"cd", b"ef"] {
             let v = db.get_cf(cf, s.to_vec().as_slice()).unwrap();
             assert!(v.is_some());
             assert_eq!(v.unwrap().to_utf8().unwrap(), "a");
         }
+        assert!(seqno > 0);
+        assert!(seqno <= db.get_latest_sequence_number());
     }
 
     #[test]

@@ -85,7 +85,8 @@ pub struct DBCompactionFilter(c_void);
 pub struct DBCompactionFilterFactory(c_void);
 #[repr(C)]
 pub struct DBCompactionFilterContext(c_void);
-
+#[repr(C)]
+pub struct DBCheckpoint(c_void);
 #[repr(C)]
 pub struct EnvOptions(c_void);
 #[repr(C)]
@@ -2334,6 +2335,21 @@ extern "C" {
     pub fn crocksdb_keyversions_key(kvs: *mut DBKeyVersions, index: usize) -> *const c_char;
 
     pub fn crocksdb_keyversions_value(kvs: *mut DBKeyVersions, index: usize) -> *const c_char;
+
+    // Checkpoint
+    pub fn crocksdb_checkpoint_object_create(
+        db: *mut DBInstance,
+        errptr: *mut *mut c_char,
+    ) -> *mut DBCheckpoint;
+
+    pub fn crocksdb_checkpoint_create(
+        check_point: *mut DBCheckpoint,
+        check_point_dir: *const c_char,
+        log_size_for_flush: u64,
+        errptr: *mut *mut c_char,
+    );
+
+    pub fn crocksdb_checkpoint_object_destroy(check_point: *mut DBCheckpoint);
 
     pub fn crocksdb_keyversions_seq(kvs: *mut DBKeyVersions, index: usize) -> u64;
 

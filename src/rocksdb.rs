@@ -1856,6 +1856,10 @@ impl DB {
         DB::open_default(restore_db_path)
     }
 
+    pub fn checkpoint(&self) -> Result<crate::Checkpoint, String> {
+        crate::Checkpoint::new(self.inner)
+    }
+
     pub fn get_block_cache_usage(&self) -> u64 {
         self.get_options().get_block_cache_usage()
     }

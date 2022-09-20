@@ -48,6 +48,7 @@
 #include "rocksdb/types.h"
 #include "rocksdb/universal_compaction.h"
 #include "rocksdb/utilities/backupable_db.h"
+#include "rocksdb/utilities/checkpoint.h"
 #include "rocksdb/utilities/db_ttl.h"
 #include "rocksdb/utilities/debug.h"
 #include "rocksdb/utilities/options_util.h"
@@ -77,6 +78,7 @@ using rocksdb::BackupInfo;
 using rocksdb::BlockBasedTableOptions;
 using rocksdb::BlockCipher;
 using rocksdb::Cache;
+using rocksdb::Checkpoint;
 using rocksdb::ColumnFamilyDescriptor;
 using rocksdb::ColumnFamilyHandle;
 using rocksdb::ColumnFamilyOptions;
@@ -222,6 +224,9 @@ struct crocksdb_backup_engine_t {
 };
 struct crocksdb_backup_engine_info_t {
   std::vector<BackupInfo> rep;
+};
+struct crocksdb_checkpoint_t {
+  Checkpoint* rep;
 };
 struct crocksdb_restore_options_t {
   RestoreOptions rep;
@@ -754,6 +759,29 @@ void crocksdb_status_ptr_get_error(crocksdb_status_ptr_t* status,
 
 void crocksdb_resume(crocksdb_t* db, char** errptr) {
   SaveError(errptr, db->rep->Resume());
+}
+
+crocksdb_checkpoint_t* crocksdb_checkpoint_object_create(crocksdb_t* db,
+                                                         char** errptr) {
+  Checkpoint* checkpoint;
+  if (SaveError(errptr, Checkpoint::Create(db->rep, &checkpoint))) {
+    return nullptr;
+  }
+  crocksdb_checkpoint_t* result = new crocksdb_checkpoint_t;
+  result->rep = checkpoint;
+  return result;
+}
+
+void crocksdb_checkpoint_create(crocksdb_checkpoint_t* checkpoint,
+                                const char* checkpoint_dir,
+                                uint64_t log_size_for_flush, char** errptr) {
+  SaveError(errptr, checkpoint->rep->CreateCheckpoint(
+                        std::string(checkpoint_dir), log_size_for_flush));
+}
+
+void crocksdb_checkpoint_object_destroy(crocksdb_checkpoint_t* checkpoint) {
+  delete checkpoint->rep;
+  delete checkpoint;
 }
 
 crocksdb_backup_engine_t* crocksdb_backup_engine_open(

@@ -80,6 +80,7 @@ typedef struct crocksdb_lru_cache_options_t crocksdb_lru_cache_options_t;
 typedef struct crocksdb_cache_t crocksdb_cache_t;
 typedef struct crocksdb_memory_allocator_t crocksdb_memory_allocator_t;
 typedef struct crocksdb_compactionfilter_t crocksdb_compactionfilter_t;
+typedef struct crocksdb_checkpoint_t crocksdb_checkpoint_t;
 enum {
   crocksdb_table_file_creation_reason_flush = 0,
   crocksdb_table_file_creation_reason_compaction = 1,
@@ -244,6 +245,16 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_status_ptr_get_error(
     crocksdb_status_ptr_t*, char** errptr);
 
 extern C_ROCKSDB_LIBRARY_API void rocksdb_resume(crocksdb_t* db, char** errptr);
+
+extern C_ROCKSDB_LIBRARY_API crocksdb_checkpoint_t*
+crocksdb_checkpoint_object_create(crocksdb_t* db, char** errptr);
+
+extern C_ROCKSDB_LIBRARY_API void rocksdb_checkpoint_create(
+    crocksdb_checkpoint_t* checkpoint, const char* checkpoint_dir,
+    uint64_t log_size_for_flush, char** errptr);
+
+extern C_ROCKSDB_LIBRARY_API void rocksdb_checkpoint_object_destroy(
+    crocksdb_checkpoint_t* checkpoint);
 
 extern C_ROCKSDB_LIBRARY_API crocksdb_backup_engine_t*
 crocksdb_backup_engine_open(const crocksdb_options_t* options, const char* path,

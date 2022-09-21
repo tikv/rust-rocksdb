@@ -249,11 +249,11 @@ extern C_ROCKSDB_LIBRARY_API void rocksdb_resume(crocksdb_t* db, char** errptr);
 extern C_ROCKSDB_LIBRARY_API crocksdb_checkpoint_t*
 crocksdb_checkpoint_object_create(crocksdb_t* db, char** errptr);
 
-extern C_ROCKSDB_LIBRARY_API void rocksdb_checkpoint_create(
+extern C_ROCKSDB_LIBRARY_API void crocksdb_checkpoint_create(
     crocksdb_checkpoint_t* checkpoint, const char* checkpoint_dir,
     uint64_t log_size_for_flush, char** errptr);
 
-extern C_ROCKSDB_LIBRARY_API void rocksdb_checkpoint_object_destroy(
+extern C_ROCKSDB_LIBRARY_API void crocksdb_checkpoint_object_destroy(
     crocksdb_checkpoint_t* checkpoint);
 
 extern C_ROCKSDB_LIBRARY_API crocksdb_backup_engine_t*
@@ -2544,6 +2544,7 @@ struct ctitandb_blob_index_t {
 typedef struct ctitandb_options_t ctitandb_options_t;
 typedef struct ctitandb_readoptions_t ctitandb_readoptions_t;
 typedef struct ctitandb_blob_index_t ctitandb_blob_index_t;
+typedef struct ctitandb_checkpoint_t ctitandb_checkpoint_t;
 
 extern C_ROCKSDB_LIBRARY_API crocksdb_t* ctitandb_open_column_families(
     const char* name, const ctitandb_options_t* tdb_options,
@@ -2555,6 +2556,16 @@ extern C_ROCKSDB_LIBRARY_API crocksdb_column_family_handle_t*
 ctitandb_create_column_family(
     crocksdb_t* db, const ctitandb_options_t* titan_column_family_options,
     const char* column_family_name, char** errptr);
+
+extern C_ROCKSDB_LIBRARY_API ctitandb_checkpoint_t*
+ctitandb_checkpoint_object_create(crocksdb_t* db, char** errptr);
+
+extern C_ROCKSDB_LIBRARY_API void ctitandb_checkpoint_create(
+    ctitandb_checkpoint_t* checkpoint, const char* checkpoint_dir,
+    uint64_t log_size_for_flush, char** errptr);
+
+extern C_ROCKSDB_LIBRARY_API void ctitandb_checkpoint_object_destroy(
+    ctitandb_checkpoint_t* checkpoint);
 
 /* TitanDBOptions */
 

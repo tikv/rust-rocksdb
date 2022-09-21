@@ -2336,7 +2336,6 @@ extern "C" {
 
     pub fn crocksdb_keyversions_value(kvs: *mut DBKeyVersions, index: usize) -> *const c_char;
 
-    // Checkpoint
     pub fn crocksdb_checkpoint_object_create(
         db: *mut DBInstance,
         errptr: *mut *mut c_char,
@@ -2829,6 +2828,20 @@ extern "C" {
         include_end: bool,
         errptr: *mut *mut c_char,
     );
+
+    pub fn ctitandb_checkpoint_object_create(
+        db: *mut DBInstance,
+        errptr: *mut *mut c_char,
+    ) -> *mut DBCheckpoint;
+
+    pub fn ctitandb_checkpoint_create(
+        check_point: *mut DBCheckpoint,
+        check_point_dir: *const c_char,
+        log_size_for_flush: u64,
+        errptr: *mut *mut c_char,
+    );
+
+    pub fn ctitandb_checkpoint_object_destroy(check_point: *mut DBCheckpoint);
 }
 
 #[cfg(test)]

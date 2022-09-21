@@ -58,6 +58,7 @@
 #include "table/block_based/block_based_table_factory.h"
 #include "table/sst_file_writer_collectors.h"
 #include "table/table_reader.h"
+#include "titan/checkpoint.h"
 #include "titan/db.h"
 #include "titan/options.h"
 #include "util/coding.h"
@@ -173,6 +174,7 @@ using rocksdb::ExternalSstFilePropertyNames;
 using rocksdb::IOStatsContext;
 using rocksdb::LDBTool;
 using rocksdb::LevelMetaData;
+using rocksdb::MemoryAllocator;
 using rocksdb::PerfContext;
 using rocksdb::PerfLevel;
 using rocksdb::PutFixed64;
@@ -195,8 +197,7 @@ using rocksdb::titandb::TitanDB;
 using rocksdb::titandb::TitanDBOptions;
 using rocksdb::titandb::TitanOptions;
 using rocksdb::titandb::TitanReadOptions;
-
-using rocksdb::MemoryAllocator;
+using TitanCheckpoint = rocksdb::titandb::Checkpoint;
 
 #ifdef OPENSSL
 using rocksdb::encryption::EncryptionMethod;
@@ -6411,9 +6412,37 @@ void crocksdb_run_sst_dump_tool(int argc, char** argv,
 }
 
 /* Titan */
+struct ctitandb_checkpoint_t {
+  TitanCheckpoint* rep;
+};
+
 struct ctitandb_options_t {
   TitanOptions rep;
 };
+
+ctitandb_checkpoint_t* ctitandb_checkpoint_object_create(crocksdb_t* db,
+                                                         char** errptr) {
+  TitanCheckpoint* checkpoint;
+  if (SaveError(errptr, TitanCheckpoint::Create(static_cast<TitanDB*>(db->rep),
+                                                &checkpoint))) {
+    return nullptr;
+  }
+  ctitandb_checkpoint_t* result = new ctitandb_checkpoint_t;
+  result->rep = checkpoint;
+  return result;
+}
+
+void ctitandb_checkpoint_create(ctitandb_checkpoint_t* checkpoint,
+                                const char* checkpoint_dir,
+                                uint64_t log_size_for_flush, char** errptr) {
+  SaveError(errptr, checkpoint->rep->CreateCheckpoint(
+                        std::string(checkpoint_dir), "", log_size_for_flush));
+}
+
+void ctitandb_checkpoint_object_destroy(ctitandb_checkpoint_t* checkpoint) {
+  delete checkpoint->rep;
+  delete checkpoint;
+}
 
 crocksdb_t* ctitandb_open_column_families(
     const char* name, const ctitandb_options_t* tdb_options,

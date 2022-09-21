@@ -1857,7 +1857,7 @@ impl DB {
     }
 
     pub fn checkpoint(&self) -> Result<crate::Checkpoint, String> {
-        crate::Checkpoint::new(self.inner)
+        crate::Checkpoint::new(self.inner, self.is_titan())
     }
 
     pub fn get_block_cache_usage(&self) -> u64 {

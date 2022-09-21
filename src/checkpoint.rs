@@ -5,13 +5,21 @@ use std::path::Path;
 
 pub struct Checkpoint {
     ptr: *mut librocksdb_sys::DBCheckpoint,
+    is_titan: bool,
 }
 
 impl Checkpoint {
     /// Creates new checkpoint object for specific DB.
-    pub(crate) fn new(db: *mut librocksdb_sys::DBInstance) -> Result<Checkpoint, String> {
+    pub(crate) fn new(
+        db: *mut librocksdb_sys::DBInstance,
+        is_titan: bool,
+    ) -> Result<Checkpoint, String> {
+        if is_titan {
+            let ptr = unsafe { ffi_try!(ctitandb_checkpoint_object_create(db)) };
+            return Ok(Checkpoint { ptr, is_titan });
+        }
         let ptr = unsafe { ffi_try!(crocksdb_checkpoint_object_create(db)) };
-        Ok(Checkpoint { ptr })
+        Ok(Checkpoint { ptr, is_titan })
     }
     /// Creates new physical DB checkpoint in directory specified by `path`.
     ///
@@ -33,6 +41,16 @@ impl Checkpoint {
             Some(s) => s,
             None => return Err(format!("{} is not a valid directory", out_dir.display())),
         };
+        if self.is_titan {
+            unsafe {
+                ffi_try!(ctitandb_checkpoint_create(
+                    self.ptr,
+                    out_dir.as_ptr(),
+                    log_size_for_flush
+                ));
+            }
+            return Ok(());
+        }
         unsafe {
             ffi_try!(crocksdb_checkpoint_create(
                 self.ptr,
@@ -40,12 +58,19 @@ impl Checkpoint {
                 log_size_for_flush
             ));
         }
+
         Ok(())
     }
 }
 
 impl Drop for Checkpoint {
     fn drop(&mut self) {
+        if self.is_titan {
+            unsafe {
+                librocksdb_sys::ctitandb_checkpoint_object_destroy(self.ptr);
+            }
+            return;
+        }
         unsafe {
             librocksdb_sys::crocksdb_checkpoint_object_destroy(self.ptr);
         }

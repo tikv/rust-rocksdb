@@ -6433,10 +6433,12 @@ ctitandb_checkpoint_t* ctitandb_checkpoint_object_create(crocksdb_t* db,
 }
 
 void ctitandb_checkpoint_create(ctitandb_checkpoint_t* checkpoint,
-                                const char* checkpoint_dir,
+                                const char* basedb_checkpoint_dir,
+                                const char* titan_checkpoint_dir,
                                 uint64_t log_size_for_flush, char** errptr) {
   SaveError(errptr, checkpoint->rep->CreateCheckpoint(
-                        std::string(checkpoint_dir), "", log_size_for_flush));
+                        std::string(basedb_checkpoint_dir),
+                        std::string(titan_checkpoint_dir), log_size_for_flush));
 }
 
 void ctitandb_checkpoint_object_destroy(ctitandb_checkpoint_t* checkpoint) {

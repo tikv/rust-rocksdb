@@ -9,9 +9,11 @@ fn check_checkpint_basic(path_str: &str, opts: DBOptions) {
     db.put(b"k1", b"v1").unwrap();
     db.put(b"k2", b"v2").unwrap();
     db.put(b"k3", b"v3").unwrap();
-    let mut checkpoint = db.checkpoint().unwrap();
+    let mut checkpoint = db.new_checkpointer().unwrap();
     let checkpoint_path = PathBuf::from(path_str).join("snap_1");
-    checkpoint.create_at(checkpoint_path.as_path(), 0).unwrap();
+    checkpoint
+        .create_at(checkpoint_path.as_path(), None, 0)
+        .unwrap();
     // put after checkpoint
     db.put(b"k4", b"v4").unwrap();
     drop(db);

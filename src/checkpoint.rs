@@ -16,10 +16,11 @@ impl Checkpoint {
     ) -> Result<Checkpoint, String> {
         if is_titan {
             let ptr = unsafe { ffi_try!(ctitandb_checkpoint_object_create(db)) };
-            return Ok(Checkpoint { ptr, is_titan });
+            Ok(Checkpoint { ptr, is_titan })
+        } else {
+            let ptr = unsafe { ffi_try!(crocksdb_checkpoint_object_create(db)) };
+            Ok(Checkpoint { ptr, is_titan })
         }
-        let ptr = unsafe { ffi_try!(crocksdb_checkpoint_object_create(db)) };
-        Ok(Checkpoint { ptr, is_titan })
     }
     /// Creates new physical DB checkpoint in directory specified by `path`.
     ///
@@ -36,27 +37,55 @@ impl Checkpoint {
     /// away from the default, the checkpoint may not contain up-to-date data
     /// if WAL writing is not always enabled.
     /// Flush will always trigger if it is 2PC.
-    pub fn create_at(&mut self, out_dir: &Path, log_size_for_flush: u64) -> Result<(), String> {
-        let out_dir = match out_dir.to_str().and_then(|s| CString::new(s).ok()) {
+    ///
+    /// basedb_out_dir: the checkpoint path about rocksdb
+    /// titan_out_dir: the checkpoint path about titan's files. if titan_out_dir
+    /// is None, the path will be "{basedb_out_dir}/titandb".
+    pub fn create_at(
+        &mut self,
+        basedb_out_dir: &Path,
+        titan_out_dir: Option<&Path>,
+        log_size_for_flush: u64,
+    ) -> Result<(), String> {
+        let basedb_out_dir = match basedb_out_dir.to_str().and_then(|s| CString::new(s).ok()) {
             Some(s) => s,
-            None => return Err(format!("{} is not a valid directory", out_dir.display())),
+            None => {
+                return Err(format!(
+                    "{} is not a valid directory",
+                    basedb_out_dir.display()
+                ))
+            }
         };
+        let mut titan_out_dir_str = CString::new("").ok().unwrap();
+        if let Some(titan_out_dir) = titan_out_dir {
+            match titan_out_dir.to_str().and_then(|s| CString::new(s).ok()) {
+                Some(s) => titan_out_dir_str = s,
+                None => {
+                    return Err(format!(
+                        "{} is not a valid directory",
+                        titan_out_dir.display()
+                    ))
+                }
+            };
+        }
+
         if self.is_titan {
             unsafe {
                 ffi_try!(ctitandb_checkpoint_create(
                     self.ptr,
-                    out_dir.as_ptr(),
+                    basedb_out_dir.as_ptr(),
+                    titan_out_dir_str.as_ptr(),
                     log_size_for_flush
                 ));
             }
-            return Ok(());
-        }
-        unsafe {
-            ffi_try!(crocksdb_checkpoint_create(
-                self.ptr,
-                out_dir.as_ptr(),
-                log_size_for_flush
-            ));
+        } else {
+            unsafe {
+                ffi_try!(crocksdb_checkpoint_create(
+                    self.ptr,
+                    basedb_out_dir.as_ptr(),
+                    log_size_for_flush
+                ));
+            }
         }
 
         Ok(())

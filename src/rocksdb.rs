@@ -1856,7 +1856,7 @@ impl DB {
         DB::open_default(restore_db_path)
     }
 
-    pub fn checkpoint(&self) -> Result<crate::Checkpoint, String> {
+    pub fn new_checkpointer(&self) -> Result<crate::Checkpoint, String> {
         crate::Checkpoint::new(self.inner, self.is_titan())
     }
 

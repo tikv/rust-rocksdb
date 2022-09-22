@@ -2835,8 +2835,9 @@ extern "C" {
     ) -> *mut DBCheckpoint;
 
     pub fn ctitandb_checkpoint_create(
-        check_point: *mut DBCheckpoint,
-        check_point_dir: *const c_char,
+        checkpoint: *mut DBCheckpoint,
+        basedb_checkpoint_dir: *const c_char,
+        titan_checkpoint_dir: *const c_char,
         log_size_for_flush: u64,
         errptr: *mut *mut c_char,
     );

@@ -2561,8 +2561,9 @@ extern C_ROCKSDB_LIBRARY_API ctitandb_checkpoint_t*
 ctitandb_checkpoint_object_create(crocksdb_t* db, char** errptr);
 
 extern C_ROCKSDB_LIBRARY_API void ctitandb_checkpoint_create(
-    ctitandb_checkpoint_t* checkpoint, const char* checkpoint_dir,
-    uint64_t log_size_for_flush, char** errptr);
+    ctitandb_checkpoint_t* checkpoint, const char* basedb_checkpoint_dir,
+    const char* titan_checkpoint_dir, uint64_t log_size_for_flush,
+    char** errptr);
 
 extern C_ROCKSDB_LIBRARY_API void ctitandb_checkpoint_object_destroy(
     ctitandb_checkpoint_t* checkpoint);

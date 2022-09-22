@@ -3,24 +3,23 @@
 use std::ffi::CString;
 use std::path::Path;
 
-pub struct Checkpoint {
+pub struct Checkpointer {
     ptr: *mut librocksdb_sys::DBCheckpoint,
     is_titan: bool,
 }
 
-impl Checkpoint {
+impl Checkpointer {
     /// Creates new checkpoint object for specific DB.
     pub(crate) fn new(
         db: *mut librocksdb_sys::DBInstance,
         is_titan: bool,
-    ) -> Result<Checkpoint, String> {
-        if is_titan {
-            let ptr = unsafe { ffi_try!(ctitandb_checkpoint_object_create(db)) };
-            Ok(Checkpoint { ptr, is_titan })
+    ) -> Result<Checkpointer, String> {
+        let ptr = if is_titan {
+            unsafe { ffi_try!(ctitandb_checkpoint_object_create(db)) }
         } else {
-            let ptr = unsafe { ffi_try!(crocksdb_checkpoint_object_create(db)) };
-            Ok(Checkpoint { ptr, is_titan })
-        }
+            unsafe { ffi_try!(crocksdb_checkpoint_object_create(db)) }
+        };
+        Ok(Checkpointer { ptr, is_titan })
     }
     /// Creates new physical DB checkpoint in directory specified by `path`.
     ///
@@ -92,7 +91,7 @@ impl Checkpoint {
     }
 }
 
-impl Drop for Checkpoint {
+impl Drop for Checkpointer {
     fn drop(&mut self) {
         if self.is_titan {
             unsafe {

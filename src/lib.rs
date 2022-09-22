@@ -27,7 +27,7 @@ extern crate tempfile;
 #[macro_use]
 extern crate lazy_static;
 
-pub use checkpoint::Checkpoint;
+pub use checkpoint::Checkpointer;
 pub use compaction_filter::{
     new_compaction_filter, new_compaction_filter_factory, new_compaction_filter_raw,
     CompactionFilter, CompactionFilterContext, CompactionFilterDecision, CompactionFilterFactory,

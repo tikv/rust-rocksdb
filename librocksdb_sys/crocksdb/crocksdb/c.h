@@ -230,6 +230,8 @@ typedef struct crocksdb_file_system_inspector_t
 
 /* DB operations */
 
+extern C_ROCKSDB_LIBRARY_API void* crocksdb_get_instance(crocksdb_t *ptr);
+
 extern C_ROCKSDB_LIBRARY_API crocksdb_t* crocksdb_open(
     const crocksdb_options_t* options, const char* name, char** errptr);
 

@@ -409,6 +409,10 @@ struct crocksdb_map_property_t {
   std::map<std::string, std::string> rep;
 };
 
+void *crocksdb_get_instance(crocksdb_t *crocksdb) {
+  return crocksdb->rep;
+}
+
 struct crocksdb_compactionfilter_t : public CompactionFilter {
   void* state_;
   void (*destructor_)(void*);

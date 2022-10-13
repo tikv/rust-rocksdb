@@ -162,6 +162,12 @@ impl Debug for DB {
     }
 }
 
+impl DB {
+    pub fn get_inner(&mut self) -> *mut DBInstance {
+        self.inner
+    }
+}
+
 unsafe impl Send for DB {}
 unsafe impl Sync for DB {}
 

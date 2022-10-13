@@ -26,6 +26,7 @@ valgrind = []
 [dependencies]
 libc = "0.2.11"
 librocksdb_sys = { path = "librocksdb_sys" }
+#cxxrocksdb = { path = "cxxrocksdb" }
 
 [dev-dependencies]
 crc = "1.8"

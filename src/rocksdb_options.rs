@@ -2349,3 +2349,8 @@ impl Drop for LRUCacheOptions {
         }
     }
 }
+
+pub struct MergeInstanceOptions {
+    pub merge_memtable: bool,
+    pub allow_source_write: bool,
+}

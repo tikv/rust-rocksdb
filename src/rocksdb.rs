@@ -757,6 +757,20 @@ impl DB {
         })
     }
 
+    pub fn merge_instances(&self, opts: &MergeInstanceOptions, dbs: &[DB]) -> Result<(), String> {
+        unsafe {
+            let dbs: Vec<*mut DBInstance> = dbs.iter().map(|db| db.inner).collect();
+            ffi_try!(crocksdb_merge_disjoint_instances(
+                self.inner,
+                opts.merge_memtable,
+                opts.allow_source_write,
+                dbs.as_ptr(),
+                dbs.len()
+            ));
+        }
+        Ok(())
+    }
+
     pub fn destroy(opts: &DBOptions, path: &str) -> Result<(), String> {
         let cpath = CString::new(path.as_bytes()).unwrap();
         unsafe {

@@ -23,8 +23,8 @@ use metadata::ColumnFamilyMetaData;
 use rocksdb_options::{
     CColumnFamilyDescriptor, ColumnFamilyDescriptor, ColumnFamilyOptions, CompactOptions,
     CompactionOptions, DBOptions, EnvOptions, FlushOptions, HistogramData,
-    IngestExternalFileOptions, LRUCacheOptions, ReadOptions, RestoreOptions, UnsafeSnap,
-    WriteOptions,
+    IngestExternalFileOptions, LRUCacheOptions, MergeInstanceOptions, ReadOptions, RestoreOptions,
+    UnsafeSnap, WriteOptions,
 };
 use std::collections::BTreeMap;
 use std::ffi::{CStr, CString};
@@ -726,6 +726,20 @@ impl DB {
             path: path.to_owned(),
             _cf_opts: options,
         })
+    }
+
+    pub fn merge_instances(&self, opts: &MergeInstanceOptions, dbs: &[DB]) -> Result<(), String> {
+        unsafe {
+            let dbs: Vec<*mut DBInstance> = dbs.iter().map(|db| db.inner).collect();
+            ffi_try!(crocksdb_merge_disjoint_instances(
+                self.inner,
+                opts.merge_memtable,
+                opts.allow_source_write,
+                dbs.as_ptr(),
+                dbs.len()
+            ));
+        }
+        Ok(())
     }
 
     pub fn destroy(opts: &DBOptions, path: &str) -> Result<(), String> {

@@ -979,6 +979,14 @@ extern "C" {
         error_if_log_file_exist: bool,
         err: *mut *mut c_char,
     ) -> *mut DBInstance;
+    pub fn crocksdb_merge_disjoint_instances(
+        db: *mut DBInstance,
+        merge_memtable: bool,
+        allow_source_write: bool,
+        instances: *const *mut DBInstance,
+        num_instances: size_t,
+        err: *mut *mut c_char,
+    ) -> *mut DBInstance;
     pub fn crocksdb_writeoptions_create() -> *mut DBWriteOptions;
     pub fn crocksdb_writeoptions_destroy(writeopts: *mut DBWriteOptions);
     pub fn crocksdb_writeoptions_set_sync(writeopts: *mut DBWriteOptions, v: bool);

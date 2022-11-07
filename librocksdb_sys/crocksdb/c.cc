@@ -120,6 +120,7 @@ using rocksdb::LiveFileMetaData;
 using rocksdb::Logger;
 using rocksdb::LRUCacheOptions;
 using rocksdb::MemTableInfo;
+using rocksdb::MergeInstanceOptions;
 using rocksdb::MergeOperator;
 using rocksdb::NewBloomFilterPolicy;
 using rocksdb::NewEncryptedEnv;
@@ -751,6 +752,22 @@ crocksdb_t* crocksdb_open_for_read_only(const crocksdb_options_t* options,
   crocksdb_t* result = new crocksdb_t;
   result->rep = db;
   return result;
+}
+
+void crocksdb_merge_disjoint_instances(crocksdb_t* db,
+                                       unsigned char merge_memtable,
+                                       unsigned char allow_source_write,
+                                       crocksdb_t** instances,
+                                       size_t num_instances,
+                                       char** errptr) {
+  MergeInstanceOptions opts;
+  opts.merge_memtable = merge_memtable;
+  opts.allow_source_write = allow_source_write;
+  std::vector<DB*> dbs;
+  for (auto i = 0; i < num_instances; i++) {
+    dbs.push_back(instances[i]->rep);
+  }
+  SaveError(errptr, db->rep->MergeDisjointInstances(opts, std::move(dbs)));
 }
 
 void crocksdb_status_ptr_get_error(crocksdb_status_ptr_t* status,

@@ -1861,9 +1861,7 @@ extern "C" {
 
     pub fn crocksdb_sstfilereader_read_table_properties(
         reader: *const SstFileReader,
-        ctx: *mut c_void,
-        callback: extern "C" fn(*mut c_void, *const DBTableProperties),
-    );
+    ) -> *const DBTableProperties;
 
     pub fn crocksdb_sstfilereader_verify_checksum(
         reader: *mut SstFileReader,

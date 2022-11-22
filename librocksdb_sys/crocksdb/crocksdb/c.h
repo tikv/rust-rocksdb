@@ -1143,10 +1143,14 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_statistics(
     crocksdb_options_t* opt, crocksdb_statistics_t* statistics);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_reset_statistics(
     crocksdb_options_t*);
-extern C_ROCKSDB_LIBRARY_API crocksdb_statistics_t* crocksdb_statistics_create();
-extern C_ROCKSDB_LIBRARY_API crocksdb_statistics_t* crocksdb_titan_statistics_create();
-extern C_ROCKSDB_LIBRARY_API crocksdb_statistics_t* crocksdb_empty_statistics_create();
-extern C_ROCKSDB_LIBRARY_API void crocksdb_statistics_destroy(crocksdb_statistics_t* statistics);
+extern C_ROCKSDB_LIBRARY_API crocksdb_statistics_t*
+crocksdb_statistics_create();
+extern C_ROCKSDB_LIBRARY_API crocksdb_statistics_t*
+crocksdb_titan_statistics_create();
+extern C_ROCKSDB_LIBRARY_API crocksdb_statistics_t*
+crocksdb_empty_statistics_create();
+extern C_ROCKSDB_LIBRARY_API void crocksdb_statistics_destroy(
+    crocksdb_statistics_t* statistics);
 
 /* returns a pointer to a malloc()-ed, null terminated string */
 extern C_ROCKSDB_LIBRARY_API char* crocksdb_options_statistics_get_string(

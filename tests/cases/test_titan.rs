@@ -391,7 +391,7 @@ fn test_titan_statistics() {
     tdb_opts.set_min_blob_size(0);
     let mut opts = DBOptions::new();
     opts.set_titandb_options(&tdb_opts);
-    opts.set_statistics(Statistics::new_titan());
+    opts.set_statistics(&Statistics::new_titan());
     opts.create_if_missing(true);
     let mut cf_opts = ColumnFamilyOptions::new();
     cf_opts.set_titandb_options(&tdb_opts);

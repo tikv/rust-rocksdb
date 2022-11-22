@@ -947,7 +947,7 @@ impl DBOptions {
         }
     }
 
-    pub fn set_statistics(&mut self, s: Statistics) {
+    pub fn set_statistics(&mut self, s: &Statistics) {
         unsafe {
             crocksdb_ffi::crocksdb_options_set_statistics(self.inner, s.inner);
         }

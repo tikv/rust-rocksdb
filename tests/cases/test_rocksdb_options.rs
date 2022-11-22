@@ -77,7 +77,7 @@ fn test_set_max_manifest_file_size() {
 #[test]
 fn test_set_statistics() {
     let mut opts = DBOptions::new();
-    opts.set_statistics(Statistics::new());
+    opts.set_statistics(&Statistics::new());
     opts.set_stats_dump_period_sec(60);
     assert!(opts.get_statistics().is_some());
     assert!(opts
@@ -808,7 +808,7 @@ fn test_block_based_options() {
 
     let mut opts = DBOptions::new();
     opts.create_if_missing(true);
-    opts.set_statistics(Statistics::new());
+    opts.set_statistics(&Statistics::new());
     opts.set_stats_dump_period_sec(60);
     let mut bopts = BlockBasedOptions::new();
     bopts.set_read_amp_bytes_per_bit(4);

@@ -326,6 +326,14 @@ impl Statistics {
             }
         }
     }
+
+    pub fn new_empty() -> Self {
+        unsafe {
+            Self {
+                inner: crocksdb_ffi::crocksdb_empty_statistics_create(),
+            }
+        }
+    }
 }
 
 impl Drop for Statistics {

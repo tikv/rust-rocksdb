@@ -823,11 +823,12 @@ extern "C" {
     pub fn crocksdb_options_set_wal_bytes_per_sync(options: *mut Options, v: u64);
 
     pub fn crocksdb_options_set_statistics(options: *mut Options, statistics: *mut DBStatistics);
-    pub fn crocksdb_options_reset_statistics(options: *mut Options);
     pub fn crocksdb_statistics_create() -> *mut DBStatistics;
     pub fn crocksdb_titan_statistics_create() -> *mut DBStatistics;
+    pub fn crocksdb_empty_statistics_create() -> *mut DBStatistics;
     pub fn crocksdb_statistics_destroy(statistics: *mut DBStatistics);
 
+    pub fn crocksdb_options_reset_statistics(options: *mut Options);
     pub fn crocksdb_options_statistics_get_string(options: *mut Options) -> *const c_char;
     pub fn crocksdb_options_statistics_get_ticker_count(
         options: *mut Options,

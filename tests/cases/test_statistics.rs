@@ -53,6 +53,7 @@ fn test_disable_db_statistics() {
     let path = tempdir_with_prefix("_rust_rocksdb_statistics");
     let mut opts = DBOptions::new();
     opts.create_if_missing(true);
+    opts.set_statistics(&Statistics::new_empty());
     let db = DB::open(opts, path.path().to_str().unwrap()).unwrap();
     let wopts = WriteOptions::new();
 

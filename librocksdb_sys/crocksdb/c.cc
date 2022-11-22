@@ -3318,13 +3318,6 @@ void crocksdb_options_set_statistics(crocksdb_options_t* opt,
   opt->rep.statistics = statistics->rep;
 }
 
-void crocksdb_options_reset_statistics(crocksdb_options_t* opt) {
-  if (opt->rep.statistics) {
-    auto* statistics = opt->rep.statistics.get();
-    statistics->Reset();
-  }
-}
-
 crocksdb_statistics_t* crocksdb_statistics_create() {
   crocksdb_statistics_t* statistics = new crocksdb_statistics_t;
   statistics->rep = rocksdb::CreateDBStatistics();
@@ -3337,11 +3330,24 @@ crocksdb_statistics_t* crocksdb_titan_statistics_create() {
   return statistics;
 }
 
+crocksdb_statistics_t* crocksdb_empty_statistics_create() {
+  crocksdb_statistics_t* statistics = new crocksdb_statistics_t;
+  statistics->rep = nullptr;
+  return statistics;
+}
+
 void crocksdb_statistics_destroy(crocksdb_statistics_t* statistics) {
   if (statistics->rep) {
     statistics->rep.reset();
   }
   delete statistics;
+}
+
+void crocksdb_options_reset_statistics(crocksdb_options_t* opt) {
+  if (opt->rep.statistics) {
+    auto* statistics = opt->rep.statistics.get();
+    statistics->Reset();
+  }
 }
 
 char* crocksdb_options_statistics_get_string(crocksdb_options_t* opt) {

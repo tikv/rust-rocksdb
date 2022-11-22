@@ -14,7 +14,7 @@
 //
 
 extern crate rocksdb;
-use rocksdb::{ColumnFamilyOptions, DBOptions, MergeOperands, Writable, DB};
+use rocksdb::{ColumnFamilyOptions, DBOptions, MergeOperands, Statistics, Writable, DB};
 
 // fn snapshot_test() {
 //    let path = "_rust_rocksdb_iteratortest";
@@ -114,7 +114,9 @@ fn custom_merge() {
 mod tests {
     use rocksdb::DBCompactionStyle;
     use rocksdb::DBRecoveryMode;
-    use rocksdb::{BlockBasedOptions, ColumnFamilyOptions, DBCompressionType, DBOptions, DB};
+    use rocksdb::{
+        BlockBasedOptions, ColumnFamilyOptions, DBCompressionType, DBOptions, Statistics, DB,
+    };
 
     #[allow(dead_code)]
     fn tuned_for_somebody_elses_disk(
@@ -149,7 +151,7 @@ mod tests {
         opts.set_max_background_jobs(4);
         cf_opts.set_report_bg_io_stats(true);
         opts.set_wal_recovery_mode(DBRecoveryMode::PointInTime);
-        opts.enable_statistics(true);
+        opts.set_statistics(Statistics::new());
         opts.set_stats_dump_period_sec(60);
         cf_opts.compression_per_level(&per_level_compression);
         blockopts.set_block_size(524288);

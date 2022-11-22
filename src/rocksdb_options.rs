@@ -22,7 +22,7 @@ use crocksdb_ffi::{
     self, ChecksumType, DBBlockBasedTableOptions, DBBottommostLevelCompaction, DBCompactOptions,
     DBCompactionOptions, DBCompressionType, DBFifoCompactionOptions, DBFlushOptions,
     DBInfoLogLevel, DBInstance, DBLRUCacheOptions, DBRateLimiter, DBRateLimiterMode, DBReadOptions,
-    DBRecoveryMode, DBRestoreOptions, DBSnapshot, DBStatisticsHistogramType,
+    DBRecoveryMode, DBRestoreOptions, DBSnapshot, DBStatistics, DBStatisticsHistogramType,
     DBStatisticsTickerType, DBTitanDBOptions, DBTitanReadOptions, DBWriteOptions, IndexType,
     Options, PrepopulateBlockCache,
 };
@@ -31,8 +31,7 @@ use libc::{self, c_double, c_int, c_uchar, c_void, size_t};
 use logger::{new_logger, Logger};
 use merge_operator::MergeFn;
 use merge_operator::{self, full_merge_callback, partial_merge_callback, MergeOperatorCallback};
-use rocksdb::Env;
-use rocksdb::{Cache, MemoryAllocator};
+use rocksdb::{Cache, Env, MemoryAllocator};
 use slice_transform::{new_slice_transform, SliceTransform};
 use sst_partitioner::{new_sst_partitioner_factory, SstPartitionerFactory};
 use std::ffi::{CStr, CString};
@@ -303,6 +302,39 @@ impl Drop for RateLimiter {
 
 const DEFAULT_REFILL_PERIOD_US: i64 = 100 * 1000; // 100ms should work for most cases
 const DEFAULT_FAIRNESS: i32 = 10; // should be good by leaving it at default 10
+
+pub struct Statistics {
+    pub inner: *mut DBStatistics,
+}
+
+unsafe impl Send for Statistics {}
+unsafe impl Sync for Statistics {}
+
+impl Statistics {
+    pub fn new() -> Self {
+        unsafe {
+            Self {
+                inner: crocksdb_ffi::crocksdb_statistics_create(),
+            }
+        }
+    }
+
+    pub fn new_titan() -> Self {
+        unsafe {
+            Self {
+                inner: crocksdb_ffi::crocksdb_titan_statistics_create(),
+            }
+        }
+    }
+}
+
+impl Drop for Statistics {
+    fn drop(&mut self) {
+        unsafe {
+            crocksdb_ffi::crocksdb_statistics_destroy(self.inner);
+        }
+    }
+}
 
 /// The UnsafeSnap must be destroyed by db, it maybe be leaked
 /// if not using it properly, hence named as unsafe.
@@ -915,9 +947,9 @@ impl DBOptions {
         }
     }
 
-    pub fn enable_statistics(&mut self, v: bool) {
+    pub fn set_statistics(&mut self, s: Statistics) {
         unsafe {
-            crocksdb_ffi::crocksdb_options_enable_statistics(self.inner, v);
+            crocksdb_ffi::crocksdb_options_set_statistics(self.inner, s.inner);
         }
     }
 

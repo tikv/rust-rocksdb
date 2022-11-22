@@ -23,7 +23,7 @@ use rocksdb::crocksdb_ffi::{
 use rocksdb::{
     BlockBasedOptions, Cache, ColumnFamilyOptions, CompactOptions, DBOptions, Env,
     FifoCompactionOptions, IndexType, LRUCacheOptions, ReadOptions, SeekKey, SliceTransform,
-    Writable, WriteOptions, DB,
+    Statistics, Writable, WriteOptions, DB,
 };
 
 use super::tempdir_with_prefix;
@@ -75,9 +75,9 @@ fn test_set_max_manifest_file_size() {
 }
 
 #[test]
-fn test_enable_statistics() {
+fn test_set_statistics() {
     let mut opts = DBOptions::new();
-    opts.enable_statistics(true);
+    opts.set_statistics(Statistics::new());
     opts.set_stats_dump_period_sec(60);
     assert!(opts.get_statistics().is_some());
     assert!(opts
@@ -808,7 +808,7 @@ fn test_block_based_options() {
 
     let mut opts = DBOptions::new();
     opts.create_if_missing(true);
-    opts.enable_statistics(true);
+    opts.set_statistics(Statistics::new());
     opts.set_stats_dump_period_sec(60);
     let mut bopts = BlockBasedOptions::new();
     bopts.set_read_amp_bytes_per_bit(4);

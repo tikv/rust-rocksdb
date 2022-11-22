@@ -146,6 +146,7 @@ using rocksdb::SstFileReader;
 using rocksdb::SstFileWriter;
 using rocksdb::SstPartitioner;
 using rocksdb::SstPartitionerFactory;
+using rocksdb::Statistics;
 using rocksdb::Status;
 using rocksdb::SubcompactionJobInfo;
 using rocksdb::TableFileCreationReason;
@@ -355,6 +356,9 @@ struct crocksdb_externalsstfileinfo_t {
 };
 struct crocksdb_ratelimiter_t {
   std::shared_ptr<RateLimiter> rep;
+};
+struct crocksdb_statistics_t {
+  std::shared_ptr<Statistics> rep;
 };
 struct crocksdb_histogramdata_t {
   HistogramData rep;
@@ -2760,22 +2764,6 @@ void crocksdb_options_set_sst_partitioner_factory(
   opt->rep.sst_partitioner_factory = factory->rep;
 }
 
-void crocksdb_options_enable_statistics(crocksdb_options_t* opt,
-                                        unsigned char v) {
-  if (v) {
-    opt->rep.statistics = rocksdb::titandb::CreateDBStatistics();
-  } else {
-    opt->rep.statistics = nullptr;
-  }
-}
-
-void crocksdb_options_reset_statistics(crocksdb_options_t* opt) {
-  if (opt->rep.statistics) {
-    auto* statistics = opt->rep.statistics.get();
-    statistics->Reset();
-  }
-}
-
 void crocksdb_options_set_num_levels(crocksdb_options_t* opt, int n) {
   opt->rep.num_levels = n;
 }
@@ -3323,6 +3311,37 @@ void crocksdb_options_set_force_consistency_checks(crocksdb_options_t* opt,
 unsigned char crocksdb_options_get_force_consistency_checks(
     crocksdb_options_t* opt) {
   return opt->rep.force_consistency_checks;
+}
+
+void crocksdb_options_set_statistics(crocksdb_options_t* opt,
+                                     crocksdb_statistics_t* statistics) {
+  opt->rep.statistics = statistics->rep;
+}
+
+void crocksdb_options_reset_statistics(crocksdb_options_t* opt) {
+  if (opt->rep.statistics) {
+    auto* statistics = opt->rep.statistics.get();
+    statistics->Reset();
+  }
+}
+
+crocksdb_statistics_t* crocksdb_statistics_create() {
+  crocksdb_statistics_t* statistics = new crocksdb_statistics_t;
+  statistics->rep = rocksdb::CreateDBStatistics();
+  return statistics;
+}
+
+crocksdb_statistics_t* crocksdb_titan_statistics_create() {
+  crocksdb_statistics_t* statistics = new crocksdb_statistics_t;
+  statistics->rep = rocksdb::titandb::CreateDBStatistics();
+  return statistics;
+}
+
+void crocksdb_statistics_destroy(crocksdb_statistics_t* statistics) {
+  if (statistics->rep) {
+    statistics->rep.reset();
+  }
+  delete statistics;
 }
 
 char* crocksdb_options_statistics_get_string(crocksdb_options_t* opt) {

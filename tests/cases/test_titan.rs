@@ -18,9 +18,9 @@ use rand::Rng;
 use rocksdb::{
     CFHandle, ColumnFamilyOptions, CompactOptions, DBBottommostLevelCompaction, DBCompressionType,
     DBEntryType, DBOptions, DBStatisticsHistogramType as HistogramType,
-    DBStatisticsTickerType as TickerType, Range, ReadOptions, SeekKey, TablePropertiesCollector,
-    TablePropertiesCollectorFactory, TitanBlobIndex, TitanDBOptions, UserCollectedProperties,
-    Writable, WriteOptions, DB,
+    DBStatisticsTickerType as TickerType, Range, ReadOptions, SeekKey, Statistics,
+    TablePropertiesCollector, TablePropertiesCollectorFactory, TitanBlobIndex, TitanDBOptions,
+    UserCollectedProperties, Writable, WriteOptions, DB,
 };
 
 use super::tempdir_with_prefix;
@@ -391,7 +391,7 @@ fn test_titan_statistics() {
     tdb_opts.set_min_blob_size(0);
     let mut opts = DBOptions::new();
     opts.set_titandb_options(&tdb_opts);
-    opts.enable_statistics(true);
+    opts.set_statistics(Statistics::new_titan());
     opts.create_if_missing(true);
     let mut cf_opts = ColumnFamilyOptions::new();
     cf_opts.set_titandb_options(&tdb_opts);

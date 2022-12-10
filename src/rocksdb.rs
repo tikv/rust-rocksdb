@@ -2724,6 +2724,14 @@ impl Env {
         }
     }
 
+    pub fn is_db_locked(&self, path: &str) -> Result<bool, String> {
+        unsafe {
+            let file_path = CString::new(path).unwrap();
+            let locked = ffi_try!(crocksdb_env_is_db_locked(self.inner, file_path.as_ptr()));
+            Ok(locked)
+        }
+    }
+
     pub fn set_background_threads(&self, n: i32) {
         unsafe {
             crocksdb_ffi::crocksdb_env_set_background_threads(self.inner, n);

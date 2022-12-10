@@ -4088,9 +4088,9 @@ struct CTRBlockCipher : public BlockCipher {
 
   const char* Name() const override { return "CTRBlockCipher"; }
 
-  virtual size_t BlockSize() { return block_size_; }
+  size_t BlockSize() override { return block_size_; }
 
-  virtual Status Encrypt(char* data) {
+  Status Encrypt(char* data) override {
     const char* ciper_ptr = cipertext_.c_str();
     for (size_t i = 0; i < block_size_; i++) {
       data[i] = data[i] ^ ciper_ptr[i];
@@ -4099,7 +4099,7 @@ struct CTRBlockCipher : public BlockCipher {
     return Status::OK();
   }
 
-  virtual Status Decrypt(char* data) {
+  Status Decrypt(char* data) override {
     Encrypt(data);
     return Status::OK();
   }
@@ -4144,6 +4144,22 @@ void crocksdb_env_file_exists(crocksdb_env_t* env, const char* path,
 void crocksdb_env_delete_file(crocksdb_env_t* env, const char* path,
                               char** errptr) {
   SaveError(errptr, env->rep->DeleteFile(path));
+}
+
+unsigned char crocksdb_env_is_db_locked(crocksdb_env_t* env, const char* path, char** errptr) {
+  FileLock* lock;
+  std::string file = rocksdb::LockFileName(path);
+  Status s = env->rep->LockFile(file, &lock);
+  if (s.ok()) {
+    env->rep->UnlockFile(lock);
+    return false;
+  } else {
+    const char* state = s.getState();
+    if (state == nullptr || (std::strstr(state, "lock hold") == nullptr && std::strstr(state, "While lock file") == nullptr)) {
+      SaveError(errptr, s);
+    }
+    return true;
+  }
 }
 
 void crocksdb_env_destroy(crocksdb_env_t* env) {

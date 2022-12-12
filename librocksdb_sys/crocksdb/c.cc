@@ -3317,6 +3317,12 @@ void crocksdb_options_set_statistics(crocksdb_options_t* opt,
                                      crocksdb_statistics_t* statistics) {
   opt->rep.statistics = statistics->rep;
 }
+crocksdb_statistics_t* crocksdb_options_get_statistics(
+    crocksdb_options_t* opt) {
+  crocksdb_statistics_t* statistics = new crocksdb_statistics_t;
+  statistics->rep = opt->rep.statistics;
+  return statistics;
+}
 
 crocksdb_statistics_t* crocksdb_statistics_create() {
   crocksdb_statistics_t* statistics = new crocksdb_statistics_t;
@@ -3336,6 +3342,13 @@ crocksdb_statistics_t* crocksdb_empty_statistics_create() {
   return statistics;
 }
 
+crocksdb_statistics_t* crocksdb_statistics_copy(
+    crocksdb_statistics_t* statistics) {
+  crocksdb_statistics_t* new_statistics = new crocksdb_statistics_t;
+  new_statistics->rep = statistics->rep;
+  return new_statistics;
+}
+
 void crocksdb_statistics_destroy(crocksdb_statistics_t* statistics) {
   if (statistics->rep) {
     statistics->rep.reset();
@@ -3343,56 +3356,54 @@ void crocksdb_statistics_destroy(crocksdb_statistics_t* statistics) {
   delete statistics;
 }
 
-void crocksdb_options_reset_statistics(crocksdb_options_t* opt) {
-  if (opt->rep.statistics) {
-    auto* statistics = opt->rep.statistics.get();
-    statistics->Reset();
+unsigned char crocksdb_statistics_is_empty(crocksdb_statistics_t* statistics) {
+  return statistics->rep == nullptr;
+}
+
+void crocksdb_statistics_reset(crocksdb_statistics_t* statistics) {
+  if (statistics->rep) {
+    statistics->rep->Reset();
   }
 }
 
-char* crocksdb_options_statistics_get_string(crocksdb_options_t* opt) {
-  if (opt->rep.statistics) {
-    rocksdb::Statistics* statistics = opt->rep.statistics.get();
-    return strdup(statistics->ToString().c_str());
-  }
-  return nullptr;
-}
-
-uint64_t crocksdb_options_statistics_get_ticker_count(crocksdb_options_t* opt,
-                                                      uint32_t ticker_type) {
-  if (opt->rep.statistics) {
-    rocksdb::Statistics* statistics = opt->rep.statistics.get();
-    return statistics->getTickerCount(ticker_type);
-  }
-  return 0;
-}
-
-uint64_t crocksdb_options_statistics_get_and_reset_ticker_count(
-    crocksdb_options_t* opt, uint32_t ticker_type) {
-  if (opt->rep.statistics) {
-    rocksdb::Statistics* statistics = opt->rep.statistics.get();
-    return statistics->getAndResetTickerCount(ticker_type);
-  }
-  return 0;
-}
-
-char* crocksdb_options_statistics_get_histogram_string(crocksdb_options_t* opt,
-                                                       uint32_t type) {
-  if (opt->rep.statistics) {
-    rocksdb::Statistics* statistics = opt->rep.statistics.get();
-    return strdup(statistics->getHistogramString(type).c_str());
+char* crocksdb_statistics_to_string(crocksdb_statistics_t* statistics) {
+  if (statistics->rep) {
+    return strdup(statistics->rep->ToString().c_str());
   }
   return nullptr;
 }
 
-unsigned char crocksdb_options_statistics_get_histogram(
-    crocksdb_options_t* opt, uint32_t type, double* median,
+uint64_t crocksdb_statistics_get_ticker_count(crocksdb_statistics_t* statistics,
+                                              uint32_t ticker_type) {
+  if (statistics->rep) {
+    return statistics->rep->getTickerCount(ticker_type);
+  }
+  return 0;
+}
+
+uint64_t crocksdb_statistics_get_and_reset_ticker_count(
+    crocksdb_statistics_t* statistics, uint32_t ticker_type) {
+  if (statistics->rep) {
+    return statistics->rep->getAndResetTickerCount(ticker_type);
+  }
+  return 0;
+}
+
+char* crocksdb_statistics_get_histogram_string(
+    crocksdb_statistics_t* statistics, uint32_t type) {
+  if (statistics->rep) {
+    return strdup(statistics->rep->getHistogramString(type).c_str());
+  }
+  return nullptr;
+}
+
+unsigned char crocksdb_statistics_get_histogram(
+    crocksdb_statistics_t* statistics, uint32_t type, double* median,
     double* percentile95, double* percentile99, double* average,
     double* standard_deviation, double* max) {
-  if (opt->rep.statistics) {
-    rocksdb::Statistics* statistics = opt->rep.statistics.get();
+  if (statistics->rep) {
     crocksdb_histogramdata_t data;
-    statistics->histogramData(type, &data.rep);
+    statistics->rep->histogramData(type, &data.rep);
     *median = data.rep.median;
     *percentile95 = data.rep.percentile95;
     *percentile99 = data.rep.percentile99;

@@ -23,7 +23,7 @@ pub struct ColumnFamilyMetaData {
 
 impl ColumnFamilyMetaData {
     pub fn from_ptr(inner: *mut DBColumnFamilyMetaData) -> ColumnFamilyMetaData {
-        ColumnFamilyMetaData { inner: inner }
+        ColumnFamilyMetaData { inner }
     }
 
     pub fn get_levels(&self) -> Vec<LevelMetaData> {
@@ -127,7 +127,7 @@ pub struct LiveFiles {
 
 impl LiveFiles {
     pub fn from_ptr(inner: *mut DBLivefiles) -> LiveFiles {
-        LiveFiles { inner: inner }
+        LiveFiles { inner }
     }
 
     pub fn get_files_count(&self) -> usize {

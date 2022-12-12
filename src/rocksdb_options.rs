@@ -311,27 +311,104 @@ unsafe impl Send for Statistics {}
 unsafe impl Sync for Statistics {}
 
 impl Statistics {
-    pub fn new() -> Self {
+    pub fn new() -> Arc<Self> {
         unsafe {
-            Self {
+            let s = Self {
                 inner: crocksdb_ffi::crocksdb_statistics_create(),
-            }
+            };
+            Arc::new(s)
         }
     }
 
-    pub fn new_titan() -> Self {
+    pub fn new_titan() -> Arc<Self> {
         unsafe {
-            Self {
+            let s = Self {
                 inner: crocksdb_ffi::crocksdb_titan_statistics_create(),
-            }
+            };
+            Arc::new(s)
         }
     }
 
-    pub fn new_empty() -> Self {
+    pub fn new_empty() -> Arc<Self> {
         unsafe {
-            Self {
+            let s = Self {
                 inner: crocksdb_ffi::crocksdb_empty_statistics_create(),
+            };
+            Arc::new(s)
+        }
+    }
+
+    pub(crate) fn from_raw(inner: *mut DBStatistics) -> Self {
+        Self { inner }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        unsafe { crocksdb_ffi::crocksdb_statistics_is_empty(self.inner) }
+    }
+
+    pub fn to_string(&self) -> Option<String> {
+        unsafe {
+            let value = crocksdb_ffi::crocksdb_statistics_to_string(self.inner);
+
+            if value.is_null() {
+                return None;
             }
+
+            // Must valid UTF-8 format.
+            let s = CStr::from_ptr(value).to_str().unwrap().to_owned();
+            libc::free(value as *mut c_void);
+            Some(s)
+        }
+    }
+
+    pub fn reset(&self) {
+        unsafe {
+            crocksdb_ffi::crocksdb_statistics_reset(self.inner);
+        }
+    }
+
+    pub fn get_ticker_count(&self, ticker_type: DBStatisticsTickerType) -> u64 {
+        unsafe { crocksdb_ffi::crocksdb_statistics_get_ticker_count(self.inner, ticker_type) }
+    }
+
+    pub fn get_and_reset_ticker_count(&self, ticker_type: DBStatisticsTickerType) -> u64 {
+        unsafe {
+            crocksdb_ffi::crocksdb_statistics_get_and_reset_ticker_count(self.inner, ticker_type)
+        }
+    }
+
+    pub fn get_histogram_string(&self, hist_type: DBStatisticsHistogramType) -> Option<String> {
+        unsafe {
+            let value =
+                crocksdb_ffi::crocksdb_statistics_get_histogram_string(self.inner, hist_type);
+
+            if value.is_null() {
+                return None;
+            }
+
+            let s = CStr::from_ptr(value).to_str().unwrap().to_owned();
+            libc::free(value as *mut c_void);
+            Some(s)
+        }
+    }
+
+    pub fn get_histogram(&self, hist_type: DBStatisticsHistogramType) -> Option<HistogramData> {
+        unsafe {
+            let mut data = HistogramData::default();
+            let ret = crocksdb_ffi::crocksdb_statistics_get_histogram(
+                self.inner,
+                hist_type,
+                &mut data.median,
+                &mut data.percentile95,
+                &mut data.percentile99,
+                &mut data.average,
+                &mut data.standard_deviation,
+                &mut data.max,
+            );
+            if !ret {
+                return None;
+            }
+            Some(data)
         }
     }
 }
@@ -730,6 +807,7 @@ pub struct DBOptions {
     pub inner: *mut Options,
     env: Option<Arc<Env>>,
     pub titan_inner: *mut DBTitanDBOptions,
+    statistics: Arc<Statistics>,
 }
 
 impl Drop for DBOptions {
@@ -752,6 +830,7 @@ impl Default for DBOptions {
                 inner: opts,
                 env: None,
                 titan_inner: ptr::null_mut::<DBTitanDBOptions>(),
+                statistics: Statistics::new_empty(),
             }
         }
     }
@@ -770,6 +849,7 @@ impl Clone for DBOptions {
                 inner: opts,
                 env: self.env.clone(),
                 titan_inner: titan_opts,
+                statistics: self.statistics.clone(),
             }
         }
     }
@@ -786,9 +866,12 @@ impl DBOptions {
 
     pub unsafe fn from_raw(inner: *mut Options) -> DBOptions {
         DBOptions {
-            inner: inner,
+            inner,
             env: None,
             titan_inner: ptr::null_mut::<DBTitanDBOptions>(),
+            statistics: Arc::new(Statistics::from_raw(
+                crocksdb_ffi::crocksdb_options_get_statistics(inner),
+            )),
         }
     }
 
@@ -898,7 +981,7 @@ impl DBOptions {
     }
 
     pub fn get_max_background_jobs(&self) -> i32 {
-        unsafe { crocksdb_ffi::crocksdb_options_get_max_background_jobs(self.inner) as i32 }
+        unsafe { crocksdb_ffi::crocksdb_options_get_max_background_jobs(self.inner) }
     }
 
     pub fn set_max_background_compactions(&mut self, n: c_int) {
@@ -908,7 +991,7 @@ impl DBOptions {
     }
 
     pub fn get_max_background_compactions(&self) -> i32 {
-        unsafe { crocksdb_ffi::crocksdb_options_get_max_background_compactions(self.inner) as i32 }
+        unsafe { crocksdb_ffi::crocksdb_options_get_max_background_compactions(self.inner) }
     }
 
     pub fn set_base_background_compactions(&mut self, n: c_int) {
@@ -918,7 +1001,7 @@ impl DBOptions {
     }
 
     pub fn get_base_background_compactions(&self) -> i32 {
-        unsafe { crocksdb_ffi::crocksdb_options_get_base_background_compactions(self.inner) as i32 }
+        unsafe { crocksdb_ffi::crocksdb_options_get_base_background_compactions(self.inner) }
     }
 
     pub fn set_max_background_flushes(&mut self, n: c_int) {
@@ -928,7 +1011,7 @@ impl DBOptions {
     }
 
     pub fn get_max_background_flushes(&self) -> i32 {
-        unsafe { crocksdb_ffi::crocksdb_options_get_max_background_flushes(self.inner) as i32 }
+        unsafe { crocksdb_ffi::crocksdb_options_get_max_background_flushes(self.inner) }
     }
 
     pub fn set_max_subcompactions(&mut self, n: u32) {
@@ -955,91 +1038,15 @@ impl DBOptions {
         }
     }
 
-    pub fn set_statistics(&mut self, s: &Statistics) {
+    pub fn set_statistics(&mut self, s: Arc<Statistics>) {
         unsafe {
             crocksdb_ffi::crocksdb_options_set_statistics(self.inner, s.inner);
+            self.statistics = s;
         }
     }
 
-    pub fn get_statistics_ticker_count(&self, ticker_type: DBStatisticsTickerType) -> u64 {
-        unsafe {
-            crocksdb_ffi::crocksdb_options_statistics_get_ticker_count(self.inner, ticker_type)
-        }
-    }
-
-    pub fn get_and_reset_statistics_ticker_count(
-        &self,
-        ticker_type: DBStatisticsTickerType,
-    ) -> u64 {
-        unsafe {
-            crocksdb_ffi::crocksdb_options_statistics_get_and_reset_ticker_count(
-                self.inner,
-                ticker_type,
-            )
-        }
-    }
-
-    pub fn get_statistics_histogram(
-        &self,
-        hist_type: DBStatisticsHistogramType,
-    ) -> Option<HistogramData> {
-        unsafe {
-            let mut data = HistogramData::default();
-            let ret = crocksdb_ffi::crocksdb_options_statistics_get_histogram(
-                self.inner,
-                hist_type,
-                &mut data.median,
-                &mut data.percentile95,
-                &mut data.percentile99,
-                &mut data.average,
-                &mut data.standard_deviation,
-                &mut data.max,
-            );
-            if !ret {
-                return None;
-            }
-            Some(data)
-        }
-    }
-
-    pub fn get_statistics_histogram_string(
-        &self,
-        hist_type: DBStatisticsHistogramType,
-    ) -> Option<String> {
-        unsafe {
-            let value = crocksdb_ffi::crocksdb_options_statistics_get_histogram_string(
-                self.inner, hist_type,
-            );
-
-            if value.is_null() {
-                return None;
-            }
-
-            let s = CStr::from_ptr(value).to_str().unwrap().to_owned();
-            libc::free(value as *mut c_void);
-            Some(s)
-        }
-    }
-
-    pub fn get_statistics(&self) -> Option<String> {
-        unsafe {
-            let value = crocksdb_ffi::crocksdb_options_statistics_get_string(self.inner);
-
-            if value.is_null() {
-                return None;
-            }
-
-            // Must valid UTF-8 format.
-            let s = CStr::from_ptr(value).to_str().unwrap().to_owned();
-            libc::free(value as *mut c_void);
-            Some(s)
-        }
-    }
-
-    pub fn reset_statistics(&self) {
-        unsafe {
-            crocksdb_ffi::crocksdb_options_reset_statistics(self.inner);
-        }
+    pub fn get_statistics(&self) -> &Arc<Statistics> {
+        &self.statistics
     }
 
     pub fn set_stats_dump_period_sec(&mut self, period: usize) {
@@ -1064,13 +1071,13 @@ impl DBOptions {
 
     pub fn set_wal_ttl_seconds(&mut self, ttl: u64) {
         unsafe {
-            crocksdb_ffi::crocksdb_options_set_wal_ttl_seconds(self.inner, ttl as u64);
+            crocksdb_ffi::crocksdb_options_set_wal_ttl_seconds(self.inner, ttl);
         }
     }
 
     pub fn set_wal_size_limit_mb(&mut self, limit: u64) {
         unsafe {
-            crocksdb_ffi::crocksdb_options_set_wal_size_limit_mb(self.inner, limit as u64);
+            crocksdb_ffi::crocksdb_options_set_wal_size_limit_mb(self.inner, limit);
         }
     }
 
@@ -1586,8 +1593,7 @@ impl ColumnFamilyOptions {
 
     pub fn get_compression_per_level(&self) -> Vec<DBCompressionType> {
         unsafe {
-            let size =
-                crocksdb_ffi::crocksdb_options_get_compression_level_number(self.inner) as usize;
+            let size = crocksdb_ffi::crocksdb_options_get_compression_level_number(self.inner);
             let mut ret = Vec::with_capacity(size);
             let pret = ret.as_mut_ptr();
             crocksdb_ffi::crocksdb_options_get_compression_per_level(self.inner, pret);
@@ -1603,7 +1609,7 @@ impl ColumnFamilyOptions {
     pub fn add_merge_operator(&mut self, name: &str, merge_fn: MergeFn) {
         let cb = Box::new(MergeOperatorCallback {
             name: CString::new(name.as_bytes()).unwrap(),
-            merge_fn: merge_fn,
+            merge_fn,
         });
         let cb = Box::into_raw(cb) as *mut c_void;
 
@@ -1673,7 +1679,7 @@ impl ColumnFamilyOptions {
     }
 
     pub fn get_write_buffer_size(&self) -> u64 {
-        unsafe { crocksdb_ffi::crocksdb_options_get_write_buffer_size(self.inner) as u64 }
+        unsafe { crocksdb_ffi::crocksdb_options_get_write_buffer_size(self.inner) }
     }
 
     pub fn set_max_bytes_for_level_base(&mut self, size: u64) {
@@ -1683,7 +1689,7 @@ impl ColumnFamilyOptions {
     }
 
     pub fn get_max_bytes_for_level_base(&self) -> u64 {
-        unsafe { crocksdb_ffi::crocksdb_options_get_max_bytes_for_level_base(self.inner) as u64 }
+        unsafe { crocksdb_ffi::crocksdb_options_get_max_bytes_for_level_base(self.inner) }
     }
 
     pub fn set_max_bytes_for_level_multiplier(&mut self, mul: i32) {
@@ -2246,10 +2252,7 @@ impl RestoreOptions {
 
     pub fn set_keep_log_files(&mut self, flag: bool) {
         unsafe {
-            crocksdb_ffi::crocksdb_restore_options_set_keep_log_files(
-                self.inner,
-                if flag { 1 } else { 0 },
-            )
+            crocksdb_ffi::crocksdb_restore_options_set_keep_log_files(self.inner, flag.into())
         }
     }
 }

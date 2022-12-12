@@ -13,7 +13,7 @@
 // limitations under the License.
 //
 
-use rocksdb::{ColumnFamilyOptions, DBOptions, MergeOperands, Writable, DB, Env};
+use rocksdb::{ColumnFamilyOptions, DBOptions, Env, MergeOperands, Writable, DB};
 
 use super::tempdir_with_prefix;
 
@@ -162,7 +162,9 @@ fn test_db_lock() {
     let temp = tempdir_with_prefix("_rust_rocksdb_test_open_for_read_only");
     let path = temp.path().to_str().unwrap();
     let env = Env::default();
-    assert!(env.is_db_locked(temp.path().join("non-exist").to_str().unwrap()).is_err());
+    assert!(env
+        .is_db_locked(temp.path().join("non-exist").to_str().unwrap())
+        .is_err());
 
     let mut opts = DBOptions::new();
     opts.create_if_missing(true);

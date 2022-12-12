@@ -827,11 +827,13 @@ impl Default for DBOptions {
         unsafe {
             let opts = crocksdb_ffi::crocksdb_options_create();
             assert!(!opts.is_null(), "Could not create rocksdb db options");
+            let statistics = Statistics::new_empty();
+            crocksdb_ffi::crocksdb_options_set_statistics(opts, statistics.inner);
             DBOptions {
                 inner: opts,
                 env: None,
                 titan_inner: ptr::null_mut::<DBTitanDBOptions>(),
-                statistics: Statistics::new_empty(),
+                statistics,
             }
         }
     }

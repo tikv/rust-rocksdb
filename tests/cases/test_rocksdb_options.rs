@@ -79,18 +79,30 @@ fn test_set_statistics() {
     let mut opts = DBOptions::new();
     opts.set_statistics(Statistics::new());
     opts.set_stats_dump_period_sec(60);
-    let statistics = opts.get_statistics();
-    assert!(!statistics.is_empty());
-    assert!(statistics.get_histogram(HistogramType::DbSeek).is_some());
-    assert!(statistics
+    assert!(!opts.get_statistics().is_empty());
+    assert!(opts
+        .get_statistics()
+        .get_histogram(HistogramType::DbSeek)
+        .is_some());
+    assert!(opts
+        .get_statistics()
         .get_histogram_string(HistogramType::DbSeek)
         .is_some());
-    assert_eq!(statistics.get_ticker_count(TickerType::BlockCacheMiss), 0);
     assert_eq!(
-        statistics.get_and_reset_ticker_count(TickerType::BlockCacheMiss),
+        opts.get_statistics()
+            .get_ticker_count(TickerType::BlockCacheMiss),
         0
     );
-    assert_eq!(statistics.get_ticker_count(TickerType::BlockCacheMiss), 0);
+    assert_eq!(
+        opts.get_statistics()
+            .get_and_reset_ticker_count(TickerType::BlockCacheMiss),
+        0
+    );
+    assert_eq!(
+        opts.get_statistics()
+            .get_ticker_count(TickerType::BlockCacheMiss),
+        0
+    );
 
     let opts = DBOptions::new();
     assert!(opts.get_statistics().is_empty());

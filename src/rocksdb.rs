@@ -22,7 +22,7 @@ use metadata::ColumnFamilyMetaData;
 use rocksdb_options::{
     CColumnFamilyDescriptor, ColumnFamilyDescriptor, ColumnFamilyOptions, CompactOptions,
     CompactionOptions, DBOptions, EnvOptions, FlushOptions, IngestExternalFileOptions,
-    LRUCacheOptions, ReadOptions, RestoreOptions, Statistics, UnsafeSnap, WriteOptions,
+    LRUCacheOptions, ReadOptions, RestoreOptions, UnsafeSnap, WriteOptions,
 };
 use std::collections::BTreeMap;
 use std::ffi::{CStr, CString};
@@ -1608,10 +1608,6 @@ impl DB {
         }
 
         None
-    }
-
-    pub fn get_statistics(&self) -> &Arc<Statistics> {
-        self.opts.get_statistics()
     }
 
     pub fn get_db_options(&self) -> DBOptions {

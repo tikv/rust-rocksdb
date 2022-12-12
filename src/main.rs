@@ -148,7 +148,7 @@ mod tests {
         opts.set_max_background_jobs(4);
         cf_opts.set_report_bg_io_stats(true);
         opts.set_wal_recovery_mode(DBRecoveryMode::PointInTime);
-        opts.set_statistics(Statistics::new());
+        opts.set_statistics(&Statistics::new());
         opts.set_stats_dump_period_sec(60);
         cf_opts.compression_per_level(&per_level_compression);
         blockopts.set_block_size(524288);

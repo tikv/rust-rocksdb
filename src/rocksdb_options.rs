@@ -311,36 +311,28 @@ unsafe impl Send for Statistics {}
 unsafe impl Sync for Statistics {}
 
 impl Statistics {
-    pub fn new() -> Arc<Self> {
+    pub fn new() -> Self {
         unsafe {
-            let s = Self {
+            Self {
                 inner: crocksdb_ffi::crocksdb_statistics_create(),
-            };
-            Arc::new(s)
+            }
         }
     }
 
-    pub fn new_titan() -> Arc<Self> {
+    pub fn new_titan() -> Self {
         unsafe {
-            let s = Self {
+            Self {
                 inner: crocksdb_ffi::crocksdb_titan_statistics_create(),
-            };
-            Arc::new(s)
+            }
         }
     }
 
-    pub fn new_empty() -> Arc<Self> {
+    pub fn new_empty() -> Self {
         unsafe {
-            let s = Self {
+            Self {
                 inner: crocksdb_ffi::crocksdb_empty_statistics_create(),
-            };
-            Arc::new(s)
+            }
         }
-    }
-
-    pub(crate) fn from_raw(inner: *mut DBStatistics) -> Arc<Self> {
-        let s = Self { inner };
-        Arc::new(s)
     }
 
     pub fn is_empty(&self) -> bool {
@@ -808,7 +800,6 @@ pub struct DBOptions {
     pub inner: *mut Options,
     env: Option<Arc<Env>>,
     pub titan_inner: *mut DBTitanDBOptions,
-    statistics: Arc<Statistics>,
 }
 
 impl Drop for DBOptions {
@@ -827,13 +818,10 @@ impl Default for DBOptions {
         unsafe {
             let opts = crocksdb_ffi::crocksdb_options_create();
             assert!(!opts.is_null(), "Could not create rocksdb db options");
-            let statistics = Statistics::new_empty();
-            crocksdb_ffi::crocksdb_options_set_statistics(opts, statistics.inner);
             DBOptions {
                 inner: opts,
                 env: None,
                 titan_inner: ptr::null_mut::<DBTitanDBOptions>(),
-                statistics,
             }
         }
     }
@@ -852,7 +840,6 @@ impl Clone for DBOptions {
                 inner: opts,
                 env: self.env.clone(),
                 titan_inner: titan_opts,
-                statistics: self.statistics.clone(),
             }
         }
     }
@@ -872,7 +859,6 @@ impl DBOptions {
             inner,
             env: None,
             titan_inner: ptr::null_mut::<DBTitanDBOptions>(),
-            statistics: Statistics::from_raw(crocksdb_ffi::crocksdb_options_get_statistics(inner)),
         }
     }
 
@@ -1039,15 +1025,10 @@ impl DBOptions {
         }
     }
 
-    pub fn set_statistics(&mut self, s: Arc<Statistics>) {
+    pub fn set_statistics(&mut self, s: &Statistics) {
         unsafe {
             crocksdb_ffi::crocksdb_options_set_statistics(self.inner, s.inner);
-            self.statistics = s;
         }
-    }
-
-    pub fn get_statistics(&self) -> &Arc<Statistics> {
-        &self.statistics
     }
 
     pub fn set_stats_dump_period_sec(&mut self, period: usize) {

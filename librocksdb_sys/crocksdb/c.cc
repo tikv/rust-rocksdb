@@ -3342,13 +3342,6 @@ crocksdb_statistics_t* crocksdb_empty_statistics_create() {
   return statistics;
 }
 
-crocksdb_statistics_t* crocksdb_statistics_copy(
-    crocksdb_statistics_t* statistics) {
-  crocksdb_statistics_t* new_statistics = new crocksdb_statistics_t;
-  new_statistics->rep = statistics->rep;
-  return new_statistics;
-}
-
 void crocksdb_statistics_destroy(crocksdb_statistics_t* statistics) {
   if (statistics->rep) {
     statistics->rep.reset();

@@ -1152,8 +1152,6 @@ extern C_ROCKSDB_LIBRARY_API crocksdb_statistics_t*
 crocksdb_titan_statistics_create();
 extern C_ROCKSDB_LIBRARY_API crocksdb_statistics_t*
 crocksdb_empty_statistics_create();
-extern C_ROCKSDB_LIBRARY_API crocksdb_statistics_t* crocksdb_statistics_copy(
-    crocksdb_statistics_t* statistics);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_statistics_destroy(
     crocksdb_statistics_t* statistics);
 extern C_ROCKSDB_LIBRARY_API unsigned char crocksdb_statistics_is_empty(

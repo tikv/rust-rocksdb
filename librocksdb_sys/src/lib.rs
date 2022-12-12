@@ -828,7 +828,6 @@ extern "C" {
     pub fn crocksdb_statistics_create() -> *mut DBStatistics;
     pub fn crocksdb_titan_statistics_create() -> *mut DBStatistics;
     pub fn crocksdb_empty_statistics_create() -> *mut DBStatistics;
-    pub fn crocksdb_statistics_copy(statistics: *mut DBStatistics) -> *mut DBStatistics;
     pub fn crocksdb_statistics_destroy(statistics: *mut DBStatistics);
 
     pub fn crocksdb_statistics_is_empty(statistics: *mut DBStatistics) -> bool;

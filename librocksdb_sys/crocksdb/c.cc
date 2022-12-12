@@ -4146,7 +4146,8 @@ void crocksdb_env_delete_file(crocksdb_env_t* env, const char* path,
   SaveError(errptr, env->rep->DeleteFile(path));
 }
 
-unsigned char crocksdb_env_is_db_locked(crocksdb_env_t* env, const char* path, char** errptr) {
+unsigned char crocksdb_env_is_db_locked(crocksdb_env_t* env, const char* path,
+                                        char** errptr) {
   FileLock* lock;
   std::string file = rocksdb::LockFileName(path);
   Status s = env->rep->LockFile(file, &lock);
@@ -4155,7 +4156,9 @@ unsigned char crocksdb_env_is_db_locked(crocksdb_env_t* env, const char* path, c
     return false;
   } else {
     const char* state = s.getState();
-    if (state == nullptr || (std::strstr(state, "lock hold") == nullptr && std::strstr(state, "While lock file") == nullptr)) {
+    if (state == nullptr ||
+        (std::strstr(state, "lock hold") == nullptr &&
+         std::strstr(state, "While lock file") == nullptr)) {
       SaveError(errptr, s);
     }
     return true;

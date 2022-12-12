@@ -1686,7 +1686,8 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_env_file_exists(crocksdb_env_t* env,
 extern C_ROCKSDB_LIBRARY_API void crocksdb_env_delete_file(crocksdb_env_t* env,
                                                            const char* path,
                                                            char** errptr);
-extern C_ROCKSDB_LIBRARY_API unsigned char crocksdb_env_is_db_locked(crocksdb_env_t* env, const char* path, char** errptr);
+extern C_ROCKSDB_LIBRARY_API unsigned char crocksdb_env_is_db_locked(
+    crocksdb_env_t* env, const char* path, char** errptr);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_env_destroy(crocksdb_env_t*);
 
 extern C_ROCKSDB_LIBRARY_API crocksdb_envoptions_t*

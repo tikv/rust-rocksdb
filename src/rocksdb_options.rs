@@ -338,8 +338,9 @@ impl Statistics {
         }
     }
 
-    pub(crate) fn from_raw(inner: *mut DBStatistics) -> Self {
-        Self { inner }
+    pub(crate) fn from_raw(inner: *mut DBStatistics) -> Arc<Self> {
+        let s = Self { inner };
+        Arc::new(s)
     }
 
     pub fn is_empty(&self) -> bool {
@@ -869,9 +870,7 @@ impl DBOptions {
             inner,
             env: None,
             titan_inner: ptr::null_mut::<DBTitanDBOptions>(),
-            statistics: Arc::new(Statistics::from_raw(
-                crocksdb_ffi::crocksdb_options_get_statistics(inner),
-            )),
+            statistics: Statistics::from_raw(crocksdb_ffi::crocksdb_options_get_statistics(inner)),
         }
     }
 

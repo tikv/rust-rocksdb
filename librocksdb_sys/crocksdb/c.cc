@@ -130,6 +130,7 @@ using rocksdb::PartitionerRequest;
 using rocksdb::PartitionerResult;
 using rocksdb::PerfFlags;
 using rocksdb::PinnableSlice;
+using rocksdb::PostWriteCallback;
 using rocksdb::RandomAccessFile;
 using rocksdb::Range;
 using rocksdb::RangePtr;
@@ -699,6 +700,25 @@ struct crocksdb_file_system_inspector_t {
   std::shared_ptr<FileSystemInspector> rep;
 };
 
+struct crocksdb_post_write_callback_t : public PostWriteCallback {
+  void* state_;
+  void (*on_post_write_callback)(void*);
+
+  void Callback() override { on_post_write_callback(state_); }
+};
+
+crocksdb_post_write_callback_t* crocksdb_post_write_callback_create(
+    void* state_, on_post_write_callback_cb on_post_write_callback) {
+  crocksdb_post_write_callback_t* et = new crocksdb_post_write_callback_t;
+  et->state_ = state_;
+  et->on_post_write_callback = on_post_write_callback;
+  return et;
+}
+
+void crocksdb_post_write_callback_destroy(crocksdb_post_write_callback_t* t) {
+  delete t;
+}
+
 static bool SaveError(char** errptr, const Status& s) {
   assert(errptr != nullptr);
   if (s.ok()) {
@@ -1108,7 +1128,15 @@ void crocksdb_write(crocksdb_t* db, const crocksdb_writeoptions_t* options,
 void crocksdb_write_seq(crocksdb_t* db, const crocksdb_writeoptions_t* options,
                         crocksdb_writebatch_t* batch, uint64_t* seq,
                         char** errptr) {
-  SaveError(errptr, db->rep->Write(options->rep, &batch->rep, seq));
+  SaveError(errptr, db->rep->Write(options->rep, &batch->rep, seq, nullptr));
+}
+
+void crocksdb_write_seq_callback(crocksdb_t* db,
+                                 const crocksdb_writeoptions_t* options,
+                                 crocksdb_writebatch_t* batch, uint64_t* seq,
+                                 crocksdb_post_write_callback_t* callback,
+                                 char** errptr) {
+  SaveError(errptr, db->rep->Write(options->rep, &batch->rep, seq, callback));
 }
 
 void crocksdb_write_multi_batch(crocksdb_t* db,
@@ -1120,7 +1148,7 @@ void crocksdb_write_multi_batch(crocksdb_t* db,
   for (size_t i = 0; i < batch_size; i++) {
     ws.push_back(&batches[i]->rep);
   }
-  SaveError(errptr, db->rep->MultiBatchWrite(options->rep, std::move(ws), seq));
+  SaveError(errptr, db->rep->MultiBatchWrite(options->rep, std::move(ws), seq, nullptr));
 }
 
 char* crocksdb_get(crocksdb_t* db, const crocksdb_readoptions_t* options,

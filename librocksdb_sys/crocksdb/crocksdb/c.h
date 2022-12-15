@@ -150,6 +150,7 @@ typedef struct crocksdb_subcompactionjobinfo_t crocksdb_subcompactionjobinfo_t;
 typedef struct crocksdb_externalfileingestioninfo_t
     crocksdb_externalfileingestioninfo_t;
 typedef struct crocksdb_eventlistener_t crocksdb_eventlistener_t;
+typedef struct crocksdb_post_write_callback_t crocksdb_post_write_callback_t;
 typedef struct crocksdb_keyversions_t crocksdb_keyversions_t;
 typedef struct crocksdb_column_family_meta_data_t
     crocksdb_column_family_meta_data_t;
@@ -401,6 +402,11 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_write(
 extern C_ROCKSDB_LIBRARY_API void crocksdb_write_seq(
     crocksdb_t* db, const crocksdb_writeoptions_t* options,
     crocksdb_writebatch_t* batch, uint64_t* seq, char** errptr);
+
+extern C_ROCKSDB_LIBRARY_API void crocksdb_write_seq_callback(
+    crocksdb_t* db, const crocksdb_writeoptions_t* options,
+    crocksdb_writebatch_t* batch, uint64_t* seq,
+    crocksdb_post_write_callback_t* callback, char** errptr);
 
 extern C_ROCKSDB_LIBRARY_API void crocksdb_write_multi_batch(
     crocksdb_t* db, const crocksdb_writeoptions_t* options,
@@ -963,7 +969,6 @@ typedef void (*on_stall_conditions_changed_cb)(
     void*, const crocksdb_writestallinfo_t*);
 typedef void (*crocksdb_logger_logv_cb)(void*, int log_level, const char*);
 typedef void (*on_memtable_sealed_cb)(void*, const crocksdb_memtableinfo_t*);
-
 extern C_ROCKSDB_LIBRARY_API crocksdb_eventlistener_t*
 crocksdb_eventlistener_create(
     void* state_, void (*destructor_)(void*), on_flush_begin_cb on_flush_begin,
@@ -980,6 +985,13 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_eventlistener_destroy(
     crocksdb_eventlistener_t*);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_add_eventlistener(
     crocksdb_options_t*, crocksdb_eventlistener_t*);
+
+typedef void (*on_post_write_callback_cb)(void*);
+extern C_ROCKSDB_LIBRARY_API crocksdb_post_write_callback_t*
+crocksdb_post_write_callback_create(
+    void* state_, on_post_write_callback_cb on_post_write_callback);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_post_write_callback_destroy(
+    crocksdb_post_write_callback_t*);
 
 /* Cuckoo table options */
 

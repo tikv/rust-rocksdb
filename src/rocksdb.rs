@@ -14,7 +14,8 @@
 
 use crocksdb_ffi::{
     self, DBBackupEngine, DBCFHandle, DBCache, DBCompressionType, DBEnv, DBInstance, DBMapProperty,
-    DBPinnableSlice, DBSequentialFile, DBTablePropertiesCollection, DBTitanDBOptions, DBWriteBatch,
+    DBPinnableSlice, DBPostWriteCallback, DBSequentialFile, DBTablePropertiesCollection,
+    DBTitanDBOptions, DBWriteBatch,
 };
 use libc::{self, c_char, c_int, c_void, size_t};
 use librocksdb_sys::DBMemoryAllocator;
@@ -473,6 +474,39 @@ impl<'a> Range<'a> {
     }
 }
 
+pub struct PostWriteCallback<'a, F: FnMut()> {
+    _callback: &'a mut F,
+    raw: *mut DBPostWriteCallback,
+}
+
+extern "C" fn on_post_write_callback<F: FnMut()>(ctx: *mut c_void) {
+    unsafe {
+        let ctx = &mut *(ctx as *mut F);
+        ctx();
+    }
+}
+
+impl<'a, F: FnMut()> PostWriteCallback<'a, F> {
+    #[inline]
+    fn new(f: &'a mut F) -> Self {
+        let raw = unsafe {
+            crocksdb_ffi::crocksdb_post_write_callback_create(
+                f as *mut F as *mut c_void,
+                on_post_write_callback::<F>,
+            )
+        };
+        Self { _callback: f, raw }
+    }
+}
+
+impl<'a, F: FnMut()> Drop for PostWriteCallback<'a, F> {
+    fn drop(&mut self) {
+        unsafe {
+            crocksdb_ffi::crocksdb_post_write_callback_destroy(self.raw);
+        }
+    }
+}
+
 pub struct KeyVersion {
     pub key: String,
     pub value: String,
@@ -828,6 +862,26 @@ impl DB {
                     &mut seq
                 ));
             }
+        }
+        Ok(seq)
+    }
+
+    pub fn write_with_callback<F: FnMut()>(
+        &self,
+        batch: &WriteBatch,
+        writeopts: &WriteOptions,
+        callback: &mut F,
+    ) -> Result<u64, String> {
+        let mut seq = 0;
+        let callback = PostWriteCallback::new(callback);
+        unsafe {
+            ffi_try!(crocksdb_write_seq_callback(
+                self.inner,
+                writeopts.inner,
+                batch.inner,
+                &mut seq,
+                callback.raw
+            ));
         }
         Ok(seq)
     }

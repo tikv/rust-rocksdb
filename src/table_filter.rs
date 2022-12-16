@@ -37,6 +37,6 @@ pub extern "C" fn table_filter<T: TableFilter>(
 
 pub extern "C" fn destroy_table_filter<T: TableFilter>(filter: *mut c_void) {
     unsafe {
-        Box::from_raw(filter as *mut T);
+        let _ = Box::from_raw(filter as *mut T);
     }
 }

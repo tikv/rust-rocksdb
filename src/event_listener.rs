@@ -278,7 +278,7 @@ pub trait EventListener: Send + Sync {
 
 extern "C" fn destructor<E: EventListener>(ctx: *mut c_void) {
     unsafe {
-        Box::from_raw(ctx as *mut E);
+        let _ = Box::from_raw(ctx as *mut E);
     }
 }
 
@@ -360,7 +360,7 @@ extern "C" fn on_background_error<E: EventListener>(
         )
     };
     let status = MutableStatus {
-        result: result,
+        result,
         ptr: status_ptr,
     };
     ctx.on_background_error(reason, status);

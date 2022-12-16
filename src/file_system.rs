@@ -13,7 +13,7 @@ pub trait FileSystemInspector: Sync + Send {
 extern "C" fn file_system_inspector_destructor<T: FileSystemInspector>(ctx: *mut c_void) {
     unsafe {
         // Recover from raw pointer and implicitly drop.
-        Box::from_raw(ctx as *mut T);
+        let _ = Box::from_raw(ctx as *mut T);
     }
 }
 

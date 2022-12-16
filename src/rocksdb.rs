@@ -14,17 +14,15 @@
 
 use crocksdb_ffi::{
     self, DBBackupEngine, DBCFHandle, DBCache, DBCompressionType, DBEnv, DBInstance, DBMapProperty,
-    DBPinnableSlice, DBSequentialFile, DBStatisticsHistogramType, DBStatisticsTickerType,
-    DBTablePropertiesCollection, DBTitanDBOptions, DBWriteBatch,
+    DBPinnableSlice, DBSequentialFile, DBTablePropertiesCollection, DBTitanDBOptions, DBWriteBatch,
 };
 use libc::{self, c_char, c_int, c_void, size_t};
 use librocksdb_sys::DBMemoryAllocator;
 use metadata::ColumnFamilyMetaData;
 use rocksdb_options::{
     CColumnFamilyDescriptor, ColumnFamilyDescriptor, ColumnFamilyOptions, CompactOptions,
-    CompactionOptions, DBOptions, EnvOptions, FlushOptions, HistogramData,
-    IngestExternalFileOptions, LRUCacheOptions, ReadOptions, RestoreOptions, UnsafeSnap,
-    WriteOptions,
+    CompactionOptions, DBOptions, EnvOptions, FlushOptions, IngestExternalFileOptions,
+    LRUCacheOptions, ReadOptions, RestoreOptions, UnsafeSnap, WriteOptions,
 };
 use std::collections::BTreeMap;
 use std::ffi::{CStr, CString};
@@ -78,7 +76,7 @@ fn ensure_default_cf_exists<'a>(
             desc.options.set_titandb_options(&TitanDBOptions::new());
         }
         list.push(desc);
-        if ttls.len() > 0 {
+        if !ttls.is_empty() {
             ttls.push(0);
         }
     }
@@ -138,11 +136,7 @@ impl MapProperty {
 
     pub fn get_property_int_value(&self, property: &str) -> u64 {
         let propname = CString::new(property.as_bytes()).unwrap();
-        unsafe {
-            let value =
-                crocksdb_ffi::crocksdb_map_property_int_value(self.inner, propname.as_ptr());
-            return value as u64;
-        }
+        unsafe { crocksdb_ffi::crocksdb_map_property_int_value(self.inner, propname.as_ptr()) }
     }
 }
 
@@ -297,7 +291,7 @@ impl<D> DBIterator<D> {
         let key_len_ptr: *mut size_t = &mut key_len;
         unsafe {
             let key_ptr = crocksdb_ffi::crocksdb_iter_key(self.inner, key_len_ptr);
-            slice::from_raw_parts(key_ptr, key_len as usize)
+            slice::from_raw_parts(key_ptr, key_len)
         }
     }
 
@@ -308,7 +302,7 @@ impl<D> DBIterator<D> {
         let val_len_ptr: *mut size_t = &mut val_len;
         unsafe {
             let val_ptr = crocksdb_ffi::crocksdb_iter_value(self.inner, val_len_ptr);
-            slice::from_raw_parts(val_ptr, val_len as usize)
+            slice::from_raw_parts(val_ptr, val_len)
         }
     }
 
@@ -400,7 +394,7 @@ impl<D: Deref<Target = DB>> Snapshot<D> {
         unsafe {
             Snapshot {
                 snap: db.unsafe_snap(),
-                db: db,
+                db,
             }
         }
     }
@@ -481,10 +475,7 @@ pub struct Range<'a> {
 
 impl<'a> Range<'a> {
     pub fn new(start_key: &'a [u8], end_key: &'a [u8]) -> Range<'a> {
-        Range {
-            start_key: start_key,
-            end_key: end_key,
-        }
+        Range { start_key, end_key }
     }
 }
 
@@ -509,7 +500,7 @@ impl DB {
 
     pub fn open_with_ttl(opts: DBOptions, path: &str, ttls: &[i32]) -> Result<DB, String> {
         let cfds: Vec<&str> = vec![];
-        if ttls.len() == 0 {
+        if ttls.is_empty() {
             return Err("ttls is empty in with_ttl function".to_owned());
         }
         DB::open_cf_with_ttl(opts, path, cfds, ttls)
@@ -531,7 +522,7 @@ impl DB {
     where
         T: Into<ColumnFamilyDescriptor<'a>>,
     {
-        if ttls.len() == 0 {
+        if ttls.is_empty() {
             return Err("ttls is empty in with_ttl function".to_owned());
         }
         DB::open_cf_internal(opts, path, cfds, ttls, None)
@@ -575,7 +566,7 @@ impl DB {
         const ERR_NULL_CF_HANDLE: &str = "Received null column family handle from DB";
 
         let cpath = CString::new(path.as_bytes()).map_err(|_| ERR_CONVERT_PATH.to_owned())?;
-        fs::create_dir_all(&Path::new(path)).map_err(|e| {
+        fs::create_dir_all(Path::new(path)).map_err(|e| {
             format!(
                 "Failed to create rocksdb directory: \
                  src/rocksdb.rs:                              \
@@ -611,7 +602,7 @@ impl DB {
 
         let readonly = error_if_log_file_exist.is_some();
 
-        let with_ttl = if ttls_vec.len() > 0 {
+        let with_ttl = if !ttls_vec.is_empty() {
             if ttls_vec.len() == cf_names.len() {
                 true
             } else {
@@ -1625,39 +1616,6 @@ impl DB {
         None
     }
 
-    pub fn get_statistics(&self) -> Option<String> {
-        self.opts.get_statistics()
-    }
-
-    pub fn reset_statistics(&self) {
-        self.opts.reset_statistics();
-    }
-
-    pub fn get_statistics_ticker_count(&self, ticker_type: DBStatisticsTickerType) -> u64 {
-        self.opts.get_statistics_ticker_count(ticker_type)
-    }
-
-    pub fn get_and_reset_statistics_ticker_count(
-        &self,
-        ticker_type: DBStatisticsTickerType,
-    ) -> u64 {
-        self.opts.get_and_reset_statistics_ticker_count(ticker_type)
-    }
-
-    pub fn get_statistics_histogram_string(
-        &self,
-        hist_type: DBStatisticsHistogramType,
-    ) -> Option<String> {
-        self.opts.get_statistics_histogram_string(hist_type)
-    }
-
-    pub fn get_statistics_histogram(
-        &self,
-        hist_type: DBStatisticsHistogramType,
-    ) -> Option<HistogramData> {
-        self.opts.get_statistics_histogram(hist_type)
-    }
-
     pub fn get_db_options(&self) -> DBOptions {
         unsafe {
             let inner = crocksdb_ffi::crocksdb_get_db_options(self.inner);
@@ -1972,7 +1930,7 @@ impl DB {
                 end_key.as_ptr(),
                 end_key.len() as size_t
             ));
-            let size = crocksdb_ffi::crocksdb_keyversions_count(kvs) as usize;
+            let size = crocksdb_ffi::crocksdb_keyversions_count(kvs);
             let mut key_versions = Vec::with_capacity(size);
             for i in 0..size {
                 key_versions.push(KeyVersion {
@@ -2522,7 +2480,7 @@ impl SstFileWriter {
     }
 
     pub fn file_size(&mut self) -> u64 {
-        unsafe { crocksdb_ffi::crocksdb_sstfilewriter_file_size(self.inner) as u64 }
+        unsafe { crocksdb_ffi::crocksdb_sstfilewriter_file_size(self.inner) }
     }
 }
 
@@ -2549,7 +2507,7 @@ impl ExternalSstFileInfo {
         let mut len: size_t = 0;
         unsafe {
             let ptr = crocksdb_ffi::crocksdb_externalsstfileinfo_file_path(self.inner, &mut len);
-            let bytes = slice::from_raw_parts(ptr, len as usize);
+            let bytes = slice::from_raw_parts(ptr, len);
             PathBuf::from(String::from_utf8(bytes.to_owned()).unwrap())
         }
     }
@@ -2558,7 +2516,7 @@ impl ExternalSstFileInfo {
         let mut len: size_t = 0;
         unsafe {
             let ptr = crocksdb_ffi::crocksdb_externalsstfileinfo_smallest_key(self.inner, &mut len);
-            slice::from_raw_parts(ptr, len as usize)
+            slice::from_raw_parts(ptr, len)
         }
     }
 
@@ -2566,20 +2524,20 @@ impl ExternalSstFileInfo {
         let mut len: size_t = 0;
         unsafe {
             let ptr = crocksdb_ffi::crocksdb_externalsstfileinfo_largest_key(self.inner, &mut len);
-            slice::from_raw_parts(ptr, len as usize)
+            slice::from_raw_parts(ptr, len)
         }
     }
 
     pub fn sequence_number(&self) -> u64 {
-        unsafe { crocksdb_ffi::crocksdb_externalsstfileinfo_sequence_number(self.inner) as u64 }
+        unsafe { crocksdb_ffi::crocksdb_externalsstfileinfo_sequence_number(self.inner) }
     }
 
     pub fn file_size(&self) -> u64 {
-        unsafe { crocksdb_ffi::crocksdb_externalsstfileinfo_file_size(self.inner) as u64 }
+        unsafe { crocksdb_ffi::crocksdb_externalsstfileinfo_file_size(self.inner) }
     }
 
     pub fn num_entries(&self) -> u64 {
-        unsafe { crocksdb_ffi::crocksdb_externalsstfileinfo_num_entries(self.inner) as u64 }
+        unsafe { crocksdb_ffi::crocksdb_externalsstfileinfo_num_entries(self.inner) }
     }
 }
 
@@ -2593,7 +2551,7 @@ impl Drop for ExternalSstFileInfo {
 
 pub fn supported_compression() -> Vec<DBCompressionType> {
     unsafe {
-        let size = crocksdb_ffi::crocksdb_get_supported_compression_number() as usize;
+        let size = crocksdb_ffi::crocksdb_get_supported_compression_number();
         let mut v: Vec<DBCompressionType> = Vec::with_capacity(size);
         let pv = v.as_mut_ptr();
         crocksdb_ffi::crocksdb_get_supported_compression(pv, size as size_t);
@@ -2730,6 +2688,14 @@ impl Env {
         }
     }
 
+    pub fn is_db_locked(&self, path: &str) -> Result<bool, String> {
+        unsafe {
+            let file_path = CString::new(path).unwrap();
+            let locked = ffi_try!(crocksdb_env_is_db_locked(self.inner, file_path.as_ptr()));
+            Ok(locked)
+        }
+    }
+
     pub fn set_background_threads(&self, n: i32) {
         unsafe {
             crocksdb_ffi::crocksdb_env_set_background_threads(self.inner, n);
@@ -2757,7 +2723,7 @@ pub struct SequentialFile {
 
 impl SequentialFile {
     fn new(inner: *mut DBSequentialFile) -> SequentialFile {
-        SequentialFile { inner: inner }
+        SequentialFile { inner }
     }
 
     pub fn skip(&mut self, n: usize) -> Result<(), String> {
@@ -2786,7 +2752,7 @@ impl io::Read for SequentialFile {
                     crocksdb_ffi::error_message(err),
                 ));
             }
-            Ok(size as usize)
+            Ok(size)
         }
     }
 }

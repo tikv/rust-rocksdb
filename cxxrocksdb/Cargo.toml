@@ -1,0 +1,36 @@
+[package]
+edition = "2018"
+version = "0.1.0"
+name = "cxxrocksdb"
+authors = ["Sunny Bains <sunny.bains@pingcap.com>"]
+
+[lib]
+name = "cxxrocksdb"
+path = "src/lib.rs"
+crate-type = ["staticlib"]
+
+[dependencies]
+once_cell = "1"
+async-recursion = "0.3"
+tokio = { version = "1", features = ["full"] }
+rocksdb = { path = ".." }
+#iou = "0.3.3"
+
+[dependencies.cxx]
+version = "1"
+cxx-build = "1"
+features = ["c++20"]
+
+[dependencies.futures]
+version = "0.3"
+features = ["thread-pool"]
+
+[build-dependencies]
+cc = "1.0.3"
+cmake = "0.1"
+cxx-build = "1"
+pkg-config = "0.3"
+
+[dependencies.snappy-sys]
+git = "https://github.com/busyjay/rust-snappy.git"
+branch = "static-link"

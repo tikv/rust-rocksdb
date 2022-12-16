@@ -1215,18 +1215,10 @@ extern "C" {
         batch: *mut DBWriteBatch,
         err: *mut *mut c_char,
     );
-    pub fn crocksdb_write_seq(
+    pub fn crocksdb_write_callback(
         db: *mut DBInstance,
         writeopts: *const DBWriteOptions,
         batch: *mut DBWriteBatch,
-        seq: *mut u64,
-        err: *mut *mut c_char,
-    );
-    pub fn crocksdb_write_seq_callback(
-        db: *mut DBInstance,
-        writeopts: *const DBWriteOptions,
-        batch: *mut DBWriteBatch,
-        seq: *mut u64,
         callback: *mut DBPostWriteCallback,
         err: *mut *mut c_char,
     );
@@ -1236,7 +1228,14 @@ extern "C" {
         writeopts: *const DBWriteOptions,
         batch: *const *mut DBWriteBatch,
         batchlen: size_t,
-        seq: *mut u64,
+        err: *mut *mut c_char,
+    );
+    pub fn crocksdb_write_multi_batch_callback(
+        db: *mut DBInstance,
+        writeopts: *const DBWriteOptions,
+        batch: *const *mut DBWriteBatch,
+        batchlen: size_t,
+        callback: *mut DBPostWriteCallback,
         err: *mut *mut c_char,
     );
     pub fn crocksdb_writebatch_create() -> *mut DBWriteBatch;
@@ -2348,7 +2347,7 @@ extern "C" {
 
     pub fn crocksdb_post_write_callback_create(
         state: *mut c_void,
-        post_write_callback: extern "C" fn(*mut c_void),
+        post_write_callback: extern "C" fn(*mut c_void, u64),
     ) -> *mut DBPostWriteCallback;
     pub fn crocksdb_post_write_callback_destroy(et: *mut DBPostWriteCallback);
 

@@ -702,9 +702,11 @@ struct crocksdb_file_system_inspector_t {
 
 struct crocksdb_post_write_callback_t : public PostWriteCallback {
   void* state_;
-  void (*on_post_write_callback)(void*);
+  void (*on_post_write_callback)(void*, uint64_t);
 
-  void Callback() override { on_post_write_callback(state_); }
+  void Callback(SequenceNumber seq) override {
+    on_post_write_callback(state_, seq);
+  }
 };
 
 crocksdb_post_write_callback_t* crocksdb_post_write_callback_create(
@@ -1125,30 +1127,35 @@ void crocksdb_write(crocksdb_t* db, const crocksdb_writeoptions_t* options,
   SaveError(errptr, db->rep->Write(options->rep, &batch->rep));
 }
 
-void crocksdb_write_seq(crocksdb_t* db, const crocksdb_writeoptions_t* options,
-                        crocksdb_writebatch_t* batch, uint64_t* seq,
-                        char** errptr) {
-  SaveError(errptr, db->rep->Write(options->rep, &batch->rep, seq, nullptr));
-}
-
-void crocksdb_write_seq_callback(crocksdb_t* db,
-                                 const crocksdb_writeoptions_t* options,
-                                 crocksdb_writebatch_t* batch, uint64_t* seq,
-                                 crocksdb_post_write_callback_t* callback,
-                                 char** errptr) {
-  SaveError(errptr, db->rep->Write(options->rep, &batch->rep, seq, callback));
+void crocksdb_write_callback(crocksdb_t* db,
+                             const crocksdb_writeoptions_t* options,
+                             crocksdb_writebatch_t* batch,
+                             crocksdb_post_write_callback_t* callback,
+                             char** errptr) {
+  SaveError(errptr, db->rep->Write(options->rep, &batch->rep, callback));
 }
 
 void crocksdb_write_multi_batch(crocksdb_t* db,
                                 const crocksdb_writeoptions_t* options,
                                 crocksdb_writebatch_t** batches,
-                                size_t batch_size, uint64_t* seq,
-                                char** errptr) {
+                                size_t batch_size, char** errptr) {
   std::vector<WriteBatch*> ws;
   for (size_t i = 0; i < batch_size; i++) {
     ws.push_back(&batches[i]->rep);
   }
-  SaveError(errptr, db->rep->MultiBatchWrite(options->rep, std::move(ws), seq, nullptr));
+  SaveError(errptr, db->rep->MultiBatchWrite(options->rep, std::move(ws)));
+}
+
+void crocksdb_write_multi_batch_callback(
+    crocksdb_t* db, const crocksdb_writeoptions_t* options,
+    crocksdb_writebatch_t** batches, size_t batch_size,
+    crocksdb_post_write_callback_t* callback, char** errptr) {
+  std::vector<WriteBatch*> ws;
+  for (size_t i = 0; i < batch_size; i++) {
+    ws.push_back(&batches[i]->rep);
+  }
+  SaveError(errptr,
+            db->rep->MultiBatchWrite(options->rep, std::move(ws), callback));
 }
 
 char* crocksdb_get(crocksdb_t* db, const crocksdb_readoptions_t* options,

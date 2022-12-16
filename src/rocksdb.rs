@@ -474,19 +474,19 @@ impl<'a> Range<'a> {
     }
 }
 
-pub struct PostWriteCallback<'a, F: FnMut()> {
+pub struct PostWriteCallback<'a, F: FnMut(u64)> {
     _callback: &'a mut F,
     raw: *mut DBPostWriteCallback,
 }
 
-extern "C" fn on_post_write_callback<F: FnMut()>(ctx: *mut c_void) {
+extern "C" fn on_post_write_callback<F: FnMut(u64)>(ctx: *mut c_void, seq: u64) {
     unsafe {
         let ctx = &mut *(ctx as *mut F);
-        ctx();
+        ctx(seq);
     }
 }
 
-impl<'a, F: FnMut()> PostWriteCallback<'a, F> {
+impl<'a, F: FnMut(u64)> PostWriteCallback<'a, F> {
     #[inline]
     fn new(f: &'a mut F) -> Self {
         let raw = unsafe {
@@ -499,7 +499,7 @@ impl<'a, F: FnMut()> PostWriteCallback<'a, F> {
     }
 }
 
-impl<'a, F: FnMut()> Drop for PostWriteCallback<'a, F> {
+impl<'a, F: FnMut(u64)> Drop for PostWriteCallback<'a, F> {
     fn drop(&mut self) {
         unsafe {
             crocksdb_ffi::crocksdb_post_write_callback_destroy(self.raw);
@@ -828,29 +828,29 @@ impl DB {
         Ok(())
     }
 
-    pub fn write_seq_opt(
+    pub fn write_callback<F: FnMut(u64)>(
         &self,
         batch: &WriteBatch,
         writeopts: &WriteOptions,
-    ) -> Result<u64, String> {
-        let mut seq = 0;
+        mut callback: F,
+    ) -> Result<(), String> {
+        let callback = PostWriteCallback::new(&mut callback);
         unsafe {
-            ffi_try!(crocksdb_write_seq(
+            ffi_try!(crocksdb_write_callback(
                 self.inner,
                 writeopts.inner,
                 batch.inner,
-                &mut seq
+                callback.raw
             ));
         }
-        Ok(seq)
+        Ok(())
     }
 
     pub fn multi_batch_write(
         &self,
         batches: &[WriteBatch],
         writeopts: &WriteOptions,
-    ) -> Result<u64, String> {
-        let mut seq = 0;
+    ) -> Result<(), String> {
         unsafe {
             let b: Vec<*mut DBWriteBatch> = batches.iter().map(|w| w.inner).collect();
             if !b.is_empty() {
@@ -858,32 +858,33 @@ impl DB {
                     self.inner,
                     writeopts.inner,
                     b.as_ptr(),
-                    b.len(),
-                    &mut seq
+                    b.len()
                 ));
             }
         }
-        Ok(seq)
+        Ok(())
     }
 
-    pub fn write_with_callback<F: FnMut()>(
+    pub fn multi_batch_write_callback<F: FnMut(u64)>(
         &self,
-        batch: &WriteBatch,
+        batches: &[WriteBatch],
         writeopts: &WriteOptions,
-        callback: &mut F,
-    ) -> Result<u64, String> {
-        let mut seq = 0;
-        let callback = PostWriteCallback::new(callback);
+        mut callback: F,
+    ) -> Result<(), String> {
+        let callback = PostWriteCallback::new(&mut callback);
         unsafe {
-            ffi_try!(crocksdb_write_seq_callback(
-                self.inner,
-                writeopts.inner,
-                batch.inner,
-                &mut seq,
-                callback.raw
-            ));
+            let b: Vec<*mut DBWriteBatch> = batches.iter().map(|w| w.inner).collect();
+            if !b.is_empty() {
+                ffi_try!(crocksdb_write_multi_batch_callback(
+                    self.inner,
+                    writeopts.inner,
+                    b.as_ptr(),
+                    b.len(),
+                    callback.raw
+                ));
+            }
         }
-        Ok(seq)
+        Ok(())
     }
 
     pub fn write(&self, batch: &WriteBatch) -> Result<(), String> {
@@ -3572,14 +3573,16 @@ mod test {
             w.put_cf(cf, s.to_vec().as_slice(), b"a").unwrap();
             data.push(w);
         }
-        let seqno = db.multi_batch_write(&data, &WriteOptions::new()).unwrap();
+        let mut seqno = None;
+        db.multi_batch_write_callback(&data, &WriteOptions::new(), |s| seqno = Some(s))
+            .unwrap();
         for s in &[b"ab", b"cd", b"ef"] {
             let v = db.get_cf(cf, s.to_vec().as_slice()).unwrap();
             assert!(v.is_some());
             assert_eq!(v.unwrap().to_utf8().unwrap(), "a");
         }
-        assert!(seqno > 0);
-        assert!(seqno <= db.get_latest_sequence_number());
+        assert!(seqno.unwrap() > 0);
+        assert!(seqno.unwrap() <= db.get_latest_sequence_number());
     }
 
     #[test]

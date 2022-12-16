@@ -399,19 +399,19 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_write(
     crocksdb_t* db, const crocksdb_writeoptions_t* options,
     crocksdb_writebatch_t* batch, char** errptr);
 
-extern C_ROCKSDB_LIBRARY_API void crocksdb_write_seq(
-    crocksdb_t* db, const crocksdb_writeoptions_t* options,
-    crocksdb_writebatch_t* batch, uint64_t* seq, char** errptr);
-
-extern C_ROCKSDB_LIBRARY_API void crocksdb_write_seq_callback(
-    crocksdb_t* db, const crocksdb_writeoptions_t* options,
-    crocksdb_writebatch_t* batch, uint64_t* seq,
-    crocksdb_post_write_callback_t* callback, char** errptr);
-
 extern C_ROCKSDB_LIBRARY_API void crocksdb_write_multi_batch(
     crocksdb_t* db, const crocksdb_writeoptions_t* options,
-    crocksdb_writebatch_t** batches, size_t batch_size, uint64_t* seq,
+    crocksdb_writebatch_t** batches, size_t batch_size, char** errptr);
+
+extern C_ROCKSDB_LIBRARY_API void crocksdb_write_callback(
+    crocksdb_t* db, const crocksdb_writeoptions_t* options,
+    crocksdb_writebatch_t* batch, crocksdb_post_write_callback_t* callback,
     char** errptr);
+
+extern C_ROCKSDB_LIBRARY_API void crocksdb_write_multi_batch_callback(
+    crocksdb_t* db, const crocksdb_writeoptions_t* options,
+    crocksdb_writebatch_t** batches, size_t batch_size,
+    crocksdb_post_write_callback_t* callback, char** errptr);
 
 /* Returns NULL if not found.  A malloc()ed array otherwise.
    Stores the length of the array in *vallen. */
@@ -986,7 +986,7 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_eventlistener_destroy(
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_add_eventlistener(
     crocksdb_options_t*, crocksdb_eventlistener_t*);
 
-typedef void (*on_post_write_callback_cb)(void*);
+typedef void (*on_post_write_callback_cb)(void*, uint64_t);
 extern C_ROCKSDB_LIBRARY_API crocksdb_post_write_callback_t*
 crocksdb_post_write_callback_create(
     void* state_, on_post_write_callback_cb on_post_write_callback);

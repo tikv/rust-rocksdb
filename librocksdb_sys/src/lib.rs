@@ -118,6 +118,8 @@ pub struct DBFifoCompactionOptions(c_void);
 #[repr(C)]
 pub struct DBPinnableSlice(c_void);
 #[repr(C)]
+pub struct DBConcurrentTaskLimiter(c_void);
+#[repr(C)]
 pub struct DBUserCollectedProperties(c_void);
 #[repr(C)]
 pub struct DBUserCollectedPropertiesIterator(c_void);
@@ -695,6 +697,10 @@ extern "C" {
         options: *mut Options,
         wbm: *mut DBWriteBufferManager,
     );
+    pub fn crocksdb_options_set_concurrent_task_limiter(
+        options: *mut Options,
+        wbm: *mut DBConcurrentTaskLimiter,
+    );
     pub fn crocksdb_options_set_compaction_filter(
         options: *mut Options,
         filter: *mut DBCompactionFilter,
@@ -956,6 +962,12 @@ extern "C" {
         flush_oldest_first: bool,
     ) -> *mut DBWriteBufferManager;
     pub fn crocksdb_write_buffer_manager_destroy(wbm: *mut DBWriteBufferManager);
+
+    pub fn crocksdb_concurrent_task_limiter_create(
+        name: *const c_char,
+        limit: u32,
+    ) -> *mut DBConcurrentTaskLimiter;
+    pub fn crocksdb_concurrent_task_limiter_destroy(limiter: *mut DBConcurrentTaskLimiter);
 
     pub fn crocksdb_options_set_soft_pending_compaction_bytes_limit(options: *mut Options, v: u64);
     pub fn crocksdb_options_get_soft_pending_compaction_bytes_limit(options: *mut Options) -> u64;

@@ -20,6 +20,7 @@
 #include "rocksdb/cache.h"
 #include "rocksdb/compaction_filter.h"
 #include "rocksdb/comparator.h"
+#include "rocksdb/concurrent_task_limiter.h"
 #include "rocksdb/convenience.h"
 #include "rocksdb/db.h"
 #include "rocksdb/encryption.h"
@@ -213,6 +214,9 @@ using rocksdb::FileSystemInspector;
 using rocksdb::NewFileSystemInspectedEnv;
 using std::shared_ptr;
 
+using rocksdb::ConcurrentTaskLimiter;
+using rocksdb::NewConcurrentTaskLimiter;
+
 extern "C" {
 
 const char* block_base_table_str = "BlockBasedTable";
@@ -361,6 +365,9 @@ struct crocksdb_ratelimiter_t {
 };
 struct crocksdb_write_buffer_manager_t {
   std::shared_ptr<WriteBufferManager> rep;
+};
+struct crocksdb_concurrent_task_limiter_t {
+  std::shared_ptr<ConcurrentTaskLimiter> rep;
 };
 struct crocksdb_statistics_t {
   std::shared_ptr<Statistics> rep;
@@ -2655,6 +2662,11 @@ void crocksdb_options_set_write_buffer_manager(
   opt->rep.write_buffer_manager = wbm->rep;
 }
 
+void crocksdb_options_set_concurrent_task_limiter(
+    crocksdb_options_t* opt, crocksdb_concurrent_task_limiter_t* limiter) {
+  opt->rep.compaction_thread_limiter = limiter->rep;
+}
+
 crocksdb_logger_t* crocksdb_logger_create(void* rep, void (*destructor_)(void*),
                                           crocksdb_logger_logv_cb logv) {
   crocksdb_logger_t* logger = new crocksdb_logger_t;
@@ -3577,10 +3589,20 @@ crocksdb_write_buffer_manager_t* crocksdb_write_buffer_manager_create(
 
 void crocksdb_write_buffer_manager_destroy(
     crocksdb_write_buffer_manager_t* wbm) {
-  if (wbm->rep) {
-    wbm->rep.reset();
-  }
   delete wbm;
+}
+
+crocksdb_concurrent_task_limiter_t* crocksdb_concurrent_task_limiter_create(
+    const char* name, uint32_t limit) {
+  crocksdb_concurrent_task_limiter_t* limiter =
+      new crocksdb_concurrent_task_limiter_t;
+  limiter->rep.reset(NewConcurrentTaskLimiter(name, limit));
+  return limiter;
+}
+
+void crocksdb_concurrent_task_limiter_destroy(
+    crocksdb_concurrent_task_limiter_t* limiter) {
+  delete limiter;
 }
 
 /*

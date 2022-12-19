@@ -2938,7 +2938,7 @@ mod test {
     use write_batch::WriteBatchRef;
 
     use super::*;
-    use crate::tempdir_with_prefix;
+    use crate::{tempdir_with_prefix, ConcurrentTaskLimiter};
 
     #[test]
     fn external() {
@@ -3778,5 +3778,27 @@ mod test {
         env.set_background_threads(0);
         env.set_high_priority_background_threads(4);
         env.set_high_priority_background_threads(0);
+    }
+
+    #[test]
+    fn test_concurrent_task_limiter() {
+        let path = tempdir_with_prefix("_rust_rocksdb_test_concurrent_task_limiter");
+        let cfs = ["default", "cf1"];
+        let mut cfs_opts = vec![];
+        let limiter = ConcurrentTaskLimiter::new("test", 3);
+        for _ in 0..cfs.len() {
+            let mut opts = ColumnFamilyOptions::new();
+            opts.set_concurrent_task_limiter(&limiter);
+            cfs_opts.push(opts);
+        }
+        let mut opts = DBOptions::new();
+        opts.create_if_missing(true);
+        opts.create_missing_column_families(true);
+        let db = DB::open_cf(
+            opts,
+            path.path().to_str().unwrap(),
+            cfs.iter().map(|cf| *cf).zip(cfs_opts).collect(),
+        )
+        .unwrap();
     }
 }

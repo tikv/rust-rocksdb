@@ -20,11 +20,11 @@ use compaction_filter::{
 use comparator::{self, compare_callback, ComparatorCallback};
 use crocksdb_ffi::{
     self, ChecksumType, DBBlockBasedTableOptions, DBBottommostLevelCompaction, DBCompactOptions,
-    DBCompactionOptions, DBCompressionType, DBFifoCompactionOptions, DBFlushOptions,
-    DBInfoLogLevel, DBInstance, DBLRUCacheOptions, DBRateLimiter, DBRateLimiterMode, DBReadOptions,
-    DBRecoveryMode, DBRestoreOptions, DBSnapshot, DBStatistics, DBStatisticsHistogramType,
-    DBStatisticsTickerType, DBTitanDBOptions, DBTitanReadOptions, DBWriteBufferManager,
-    DBWriteOptions, IndexType, Options, PrepopulateBlockCache,
+    DBCompactionOptions, DBCompressionType, DBConcurrentTaskLimiter, DBFifoCompactionOptions,
+    DBFlushOptions, DBInfoLogLevel, DBInstance, DBLRUCacheOptions, DBRateLimiter,
+    DBRateLimiterMode, DBReadOptions, DBRecoveryMode, DBRestoreOptions, DBSnapshot, DBStatistics,
+    DBStatisticsHistogramType, DBStatisticsTickerType, DBTitanDBOptions, DBTitanReadOptions,
+    DBWriteBufferManager, DBWriteOptions, IndexType, Options, PrepopulateBlockCache,
 };
 use event_listener::{new_event_listener, EventListener};
 use libc::{self, c_double, c_int, c_uchar, c_void, size_t};
@@ -369,6 +369,32 @@ impl Drop for WriteBufferManager {
     fn drop(&mut self) {
         unsafe {
             crocksdb_ffi::crocksdb_write_buffer_manager_destroy(self.inner);
+        }
+    }
+}
+
+pub struct ConcurrentTaskLimiter {
+    pub inner: *mut DBConcurrentTaskLimiter,
+}
+
+unsafe impl Send for ConcurrentTaskLimiter {}
+unsafe impl Sync for ConcurrentTaskLimiter {}
+
+impl ConcurrentTaskLimiter {
+    pub fn new(name: &str, limit: u32) -> Self {
+        let name = CString::new(name.as_bytes()).unwrap();
+        unsafe {
+            Self {
+                inner: crocksdb_ffi::crocksdb_concurrent_task_limiter_create(name.as_ptr(), limit),
+            }
+        }
+    }
+}
+
+impl Drop for ConcurrentTaskLimiter {
+    fn drop(&mut self) {
+        unsafe {
+            crocksdb_ffi::crocksdb_concurrent_task_limiter_destroy(self.inner);
         }
     }
 }
@@ -1538,6 +1564,12 @@ impl ColumnFamilyOptions {
             crocksdb_ffi::crocksdb_options_set_compaction_filter_factory(self.inner, factory.inner);
             std::mem::forget(factory); // Deconstructor will be called after `self` is dropped.
             Ok(())
+        }
+    }
+
+    pub fn set_concurrent_task_limiter(&mut self, limiter: &ConcurrentTaskLimiter) {
+        unsafe {
+            crocksdb_ffi::crocksdb_options_set_concurrent_task_limiter(self.inner, limiter.inner);
         }
     }
 

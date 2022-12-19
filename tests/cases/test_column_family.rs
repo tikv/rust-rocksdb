@@ -173,6 +173,6 @@ fn test_db_lock() {
     drop(db);
     assert_eq!(env.is_db_locked(path), Ok(false));
 
-    let r1 = DB::open_for_read_only(opts.clone(), path, false).unwrap();
+    let _r1 = DB::open_for_read_only(opts.clone(), path, false).unwrap();
     assert_eq!(env.is_db_locked(path), Ok(false));
 }

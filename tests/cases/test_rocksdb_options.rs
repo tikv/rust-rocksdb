@@ -185,7 +185,7 @@ fn test_set_writeampbasedratelimiter_with_auto_tuned() {
     );
     let db = DB::open(opts, path.path().to_str().unwrap()).unwrap();
     let mut opts = db.get_db_options();
-    assert!(opts.set_auto_tuned(false).is_ok(), true);
+    assert!(opts.set_auto_tuned(false).is_ok(), "{}", true);
     assert_eq!(opts.get_auto_tuned().unwrap(), false);
     drop(db);
 }
@@ -199,7 +199,7 @@ fn test_set_ratelimiter_bytes_per_second() {
     opts.set_ratelimiter(100 * 1024 * 1024);
     let db = DB::open(opts, path.path().to_str().unwrap()).unwrap();
     let mut opts = db.get_db_options();
-    assert!(opts.set_rate_bytes_per_sec(200 * 1024 * 1024).is_ok(), true);
+    assert!(opts.set_rate_bytes_per_sec(200 * 1024 * 1024).is_ok(), "{}", true);
     assert_eq!(opts.get_rate_bytes_per_sec().unwrap(), 200 * 1024 * 1024);
     drop(db);
 }

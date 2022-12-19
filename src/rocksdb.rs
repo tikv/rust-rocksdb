@@ -491,7 +491,7 @@ impl<'a, F: FnMut(u64)> PostWriteCallback<'a, F> {
     #[inline]
     fn new(f: &'a mut F) -> Self {
         unsafe {
-            let mut raw_buf: [u64; 3] = MaybeUninit::uninit().assume_init();
+            let mut raw_buf: MaybeUninit<[u64; 3]> = MaybeUninit::uninit();
             crocksdb_ffi::crocksdb_post_write_callback_init(
                 raw_buf.as_mut_ptr() as *mut c_void,
                 std::mem::size_of_val(&raw_buf),
@@ -500,7 +500,7 @@ impl<'a, F: FnMut(u64)> PostWriteCallback<'a, F> {
             );
             Self {
                 _callback: f,
-                raw_buf,
+                raw_buf: raw_buf.assume_init(),
             }
         }
     }

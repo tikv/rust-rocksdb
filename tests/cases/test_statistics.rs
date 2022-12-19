@@ -87,7 +87,7 @@ fn test_shared_db_statistics() {
     let statistics = Statistics::new();
     opts.set_statistics(&statistics);
 
-    let db_inactive = DB::open(opts.clone(), path1.path().to_str().unwrap()).unwrap();
+    let _db_inactive = DB::open(opts.clone(), path1.path().to_str().unwrap()).unwrap();
     let db = DB::open(opts, path2.path().to_str().unwrap()).unwrap();
     let wopts = WriteOptions::new();
 

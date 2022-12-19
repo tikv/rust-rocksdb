@@ -386,8 +386,8 @@ mod tests {
         ) -> *mut DBCompactionFilter {
             let start_key = context.start_key();
             let end_key = context.end_key();
-            &self.0.send(start_key.to_owned()).unwrap();
-            &self.0.send(end_key.to_owned()).unwrap();
+            self.0.send(start_key.to_owned()).unwrap();
+            self.0.send(end_key.to_owned()).unwrap();
 
             unsafe {
                 new_compaction_filter_raw::<KeyRangeFilter>(

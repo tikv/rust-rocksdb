@@ -477,7 +477,7 @@ impl<'a> Range<'a> {
 
 pub struct PostWriteCallback<'a, F: FnMut(u64)> {
     _callback: &'a mut F,
-    raw_buf: [u64; 3],
+    raw_buf: MaybeUninit<[u64; 3]>,
 }
 
 extern "C" fn on_post_write_callback<F: FnMut(u64)>(ctx: *mut c_void, seq: u64) {
@@ -500,7 +500,7 @@ impl<'a, F: FnMut(u64)> PostWriteCallback<'a, F> {
             );
             Self {
                 _callback: f,
-                raw_buf: raw_buf.assume_init(),
+                raw_buf,
             }
         }
     }
@@ -3577,16 +3577,16 @@ mod test {
             w.put_cf(cf, s.to_vec().as_slice(), b"a").unwrap();
             data.push(w);
         }
-        let mut seqno = None;
-        db.multi_batch_write_callback(&data, &WriteOptions::new(), |s| seqno = Some(s))
+        let mut seqno = 0;
+        db.multi_batch_write_callback(&data, &WriteOptions::new(), |s| seqno = s)
             .unwrap();
         for s in &[b"ab", b"cd", b"ef"] {
             let v = db.get_cf(cf, s.to_vec().as_slice()).unwrap();
             assert!(v.is_some());
             assert_eq!(v.unwrap().to_utf8().unwrap(), "a");
         }
-        assert!(seqno.unwrap() > 0);
-        assert!(seqno.unwrap() <= db.get_latest_sequence_number());
+        assert!(seqno > 0);
+        assert!(seqno <= db.get_latest_sequence_number());
     }
 
     #[test]

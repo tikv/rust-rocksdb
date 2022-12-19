@@ -2345,11 +2345,6 @@ extern "C" {
     pub fn crocksdb_eventlistener_destroy(et: *mut DBEventListener);
     pub fn crocksdb_options_add_eventlistener(opt: *mut Options, et: *mut DBEventListener);
 
-    pub fn crocksdb_post_write_callback_create(
-        state: *mut c_void,
-        post_write_callback: extern "C" fn(*mut c_void, u64),
-    ) -> *mut DBPostWriteCallback;
-    pub fn crocksdb_post_write_callback_destroy(et: *mut DBPostWriteCallback);
     pub fn crocksdb_post_write_callback_init(
         buf: *mut c_void,
         buf_len: usize,

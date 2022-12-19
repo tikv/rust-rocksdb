@@ -988,11 +988,6 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_options_add_eventlistener(
 
 typedef void (*on_post_write_callback_cb)(void*, uint64_t);
 extern C_ROCKSDB_LIBRARY_API crocksdb_post_write_callback_t*
-crocksdb_post_write_callback_create(
-    void* state_, on_post_write_callback_cb on_post_write_callback);
-extern C_ROCKSDB_LIBRARY_API void crocksdb_post_write_callback_destroy(
-    crocksdb_post_write_callback_t*);
-extern C_ROCKSDB_LIBRARY_API crocksdb_post_write_callback_t*
 crocksdb_post_write_callback_init(
     void* buf, size_t buf_len, void* state_,
     on_post_write_callback_cb on_post_write_callback);

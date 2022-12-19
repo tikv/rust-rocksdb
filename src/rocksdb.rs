@@ -30,6 +30,7 @@ use std::ffi::{CStr, CString};
 use std::fmt::{self, Debug, Formatter};
 use std::io;
 use std::mem;
+use std::mem::MaybeUninit;
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
@@ -476,7 +477,7 @@ impl<'a> Range<'a> {
 
 pub struct PostWriteCallback<'a, F: FnMut(u64)> {
     _callback: &'a mut F,
-    raw: *mut DBPostWriteCallback,
+    raw_buf: [u64; 3],
 }
 
 extern "C" fn on_post_write_callback<F: FnMut(u64)>(ctx: *mut c_void, seq: u64) {
@@ -489,21 +490,24 @@ extern "C" fn on_post_write_callback<F: FnMut(u64)>(ctx: *mut c_void, seq: u64) 
 impl<'a, F: FnMut(u64)> PostWriteCallback<'a, F> {
     #[inline]
     fn new(f: &'a mut F) -> Self {
-        let raw = unsafe {
-            crocksdb_ffi::crocksdb_post_write_callback_create(
+        unsafe {
+            let mut raw_buf: [u64; 3] = MaybeUninit::uninit().assume_init();
+            crocksdb_ffi::crocksdb_post_write_callback_init(
+                raw_buf.as_mut_ptr() as *mut c_void,
+                std::mem::size_of_val(&raw_buf),
                 f as *mut F as *mut c_void,
                 on_post_write_callback::<F>,
-            )
-        };
-        Self { _callback: f, raw }
-    }
-}
-
-impl<'a, F: FnMut(u64)> Drop for PostWriteCallback<'a, F> {
-    fn drop(&mut self) {
-        unsafe {
-            crocksdb_ffi::crocksdb_post_write_callback_destroy(self.raw);
+            );
+            Self {
+                _callback: f,
+                raw_buf,
+            }
         }
+    }
+
+    #[inline]
+    fn as_raw_callback(&mut self) -> *mut DBPostWriteCallback {
+        self.raw_buf.as_mut_ptr() as *mut DBPostWriteCallback
     }
 }
 
@@ -834,13 +838,13 @@ impl DB {
         writeopts: &WriteOptions,
         mut callback: F,
     ) -> Result<(), String> {
-        let callback = PostWriteCallback::new(&mut callback);
+        let mut callback = PostWriteCallback::new(&mut callback);
         unsafe {
             ffi_try!(crocksdb_write_callback(
                 self.inner,
                 writeopts.inner,
                 batch.inner,
-                callback.raw
+                callback.as_raw_callback()
             ));
         }
         Ok(())
@@ -871,7 +875,7 @@ impl DB {
         writeopts: &WriteOptions,
         mut callback: F,
     ) -> Result<(), String> {
-        let callback = PostWriteCallback::new(&mut callback);
+        let mut callback = PostWriteCallback::new(&mut callback);
         unsafe {
             let b: Vec<*mut DBWriteBatch> = batches.iter().map(|w| w.inner).collect();
             if !b.is_empty() {
@@ -880,7 +884,7 @@ impl DB {
                     writeopts.inner,
                     b.as_ptr(),
                     b.len(),
-                    callback.raw
+                    callback.as_raw_callback()
                 ));
             }
         }

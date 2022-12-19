@@ -2350,6 +2350,12 @@ extern "C" {
         post_write_callback: extern "C" fn(*mut c_void, u64),
     ) -> *mut DBPostWriteCallback;
     pub fn crocksdb_post_write_callback_destroy(et: *mut DBPostWriteCallback);
+    pub fn crocksdb_post_write_callback_init(
+        buf: *mut c_void,
+        buf_len: usize,
+        state: *mut c_void,
+        post_write_callback: extern "C" fn(*mut c_void, u64),
+    ) -> *mut DBPostWriteCallback;
 
     // Get All Key Versions
     pub fn crocksdb_keyversions_destroy(kvs: *mut DBKeyVersions);

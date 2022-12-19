@@ -3781,14 +3781,14 @@ mod test {
     }
 
     #[test]
-    fn test_concurrent_task_limiter() {
-        let path = tempdir_with_prefix("_rust_rocksdb_test_concurrent_task_limiter");
+    fn test_compaction_thread_limiter() {
+        let path = tempdir_with_prefix("_rust_rocksdb_test_compaction_thread_limiter");
         let cfs = ["default", "cf1"];
         let mut cfs_opts = vec![];
         let limiter = ConcurrentTaskLimiter::new("test", 3);
         for _ in 0..cfs.len() {
             let mut opts = ColumnFamilyOptions::new();
-            opts.set_concurrent_task_limiter(&limiter);
+            opts.set_compaction_thread_limiter(&limiter);
             cfs_opts.push(opts);
         }
         let mut opts = DBOptions::new();

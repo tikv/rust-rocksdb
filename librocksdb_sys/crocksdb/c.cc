@@ -2662,7 +2662,7 @@ void crocksdb_options_set_write_buffer_manager(
   opt->rep.write_buffer_manager = wbm->rep;
 }
 
-void crocksdb_options_set_concurrent_task_limiter(
+void crocksdb_options_set_compaction_thread_limiter(
     crocksdb_options_t* opt, crocksdb_concurrent_task_limiter_t* limiter) {
   opt->rep.compaction_thread_limiter = limiter->rep;
 }

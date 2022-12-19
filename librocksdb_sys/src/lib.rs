@@ -697,7 +697,7 @@ extern "C" {
         options: *mut Options,
         wbm: *mut DBWriteBufferManager,
     );
-    pub fn crocksdb_options_set_concurrent_task_limiter(
+    pub fn crocksdb_options_set_compaction_thread_limiter(
         options: *mut Options,
         wbm: *mut DBConcurrentTaskLimiter,
     );

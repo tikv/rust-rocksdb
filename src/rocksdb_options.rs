@@ -1567,9 +1567,9 @@ impl ColumnFamilyOptions {
         }
     }
 
-    pub fn set_concurrent_task_limiter(&mut self, limiter: &ConcurrentTaskLimiter) {
+    pub fn set_compaction_thread_limiter(&mut self, limiter: &ConcurrentTaskLimiter) {
         unsafe {
-            crocksdb_ffi::crocksdb_options_set_concurrent_task_limiter(self.inner, limiter.inner);
+            crocksdb_ffi::crocksdb_options_set_compaction_thread_limiter(self.inner, limiter.inner);
         }
     }
 

@@ -711,10 +711,10 @@ struct crocksdb_post_write_callback_t : public PostWriteCallback {
 
 crocksdb_post_write_callback_t* crocksdb_post_write_callback_create(
     void* state, on_post_write_callback_cb on_post_write_callback) {
-  crocksdb_post_write_callback_t* et = new crocksdb_post_write_callback_t;
-  et->state_ = state;
-  et->on_post_write_callback = on_post_write_callback;
-  return et;
+  crocksdb_post_write_callback_t* r = new crocksdb_post_write_callback_t;
+  r->state_ = state;
+  r->on_post_write_callback = on_post_write_callback;
+  return r;
 }
 
 void crocksdb_post_write_callback_destroy(crocksdb_post_write_callback_t* t) {
@@ -725,10 +725,11 @@ crocksdb_post_write_callback_t* crocksdb_post_write_callback_init(
     void* buf, size_t buf_len, void* state,
     on_post_write_callback_cb on_post_write_callback) {
   assert(buf_len == sizeof(crocksdb_post_write_callback_t));
-  crocksdb_post_write_callback_t* et = new (buf) crocksdb_post_write_callback_t;
-  et->state_ = state;
-  et->on_post_write_callback = on_post_write_callback;
-  return et;
+  assert(alignof(buf) == alignof(crocksdb_post_write_callback_t));
+  crocksdb_post_write_callback_t* r = new (buf) crocksdb_post_write_callback_t;
+  r->state_ = state;
+  r->on_post_write_callback = on_post_write_callback;
+  return r;
 }
 
 static bool SaveError(char** errptr, const Status& s) {

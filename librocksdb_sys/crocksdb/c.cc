@@ -712,9 +712,10 @@ struct crocksdb_post_write_callback_t : public PostWriteCallback {
 crocksdb_post_write_callback_t* crocksdb_post_write_callback_init(
     void* buf, size_t buf_len, void* state,
     on_post_write_callback_cb on_post_write_callback) {
-  assert(buf_len == sizeof(crocksdb_post_write_callback_t));
-  assert(std::align(alignof(crocksdb_post_write_callback_t), buf_len, buf,
-                    buf_len) == buf);
+  void* input_buf = buf;
+  assert(std::align(alignof(crocksdb_post_write_callback_t),
+                    sizeof(crocksdb_post_write_callback_t), buf,
+                    buf_len) == input_buf);
   crocksdb_post_write_callback_t* r = new (buf) crocksdb_post_write_callback_t;
   r->state_ = state;
   r->on_post_write_callback = on_post_write_callback;

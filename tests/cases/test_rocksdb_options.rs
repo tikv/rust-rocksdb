@@ -22,8 +22,8 @@ use rocksdb::crocksdb_ffi::{
 };
 use rocksdb::{
     BlockBasedOptions, Cache, ColumnFamilyOptions, CompactOptions, DBOptions, Env,
-    FifoCompactionOptions, IndexType, LRUCacheOptions, ReadOptions, SeekKey, SliceTransform,
-    Statistics, Writable, WriteOptions, DB,
+    FifoCompactionOptions, IndexType, LRUCacheOptions, RateLimiter, ReadOptions, SeekKey,
+    SliceTransform, Statistics, Writable, WriteOptions, DB,
 };
 
 use super::tempdir_with_prefix;
@@ -161,7 +161,8 @@ fn test_set_ratelimiter() {
     let mut opts = DBOptions::new();
     opts.create_if_missing(true);
     // compaction and flush rate limited below 100MB/sec
-    opts.set_ratelimiter(100 * 1024 * 1024);
+    let rate_limiter = RateLimiter::new(100 * 1024 * 1024, 100 * 1000, 10);
+    opts.set_rate_limiter(&rate_limiter);
     let db = DB::open(opts, path.path().to_str().unwrap()).unwrap();
     drop(db);
 }
@@ -171,12 +172,14 @@ fn test_set_ratelimiter_with_auto_tuned() {
     let path = tempdir_with_prefix("_rust_rocksdb_test_set_rate_limiter_with_auto_tuned");
     let mut opts = DBOptions::new();
     opts.create_if_missing(true);
-    opts.set_ratelimiter_with_auto_tuned(
+    let rate_limiter = RateLimiter::new_with_auto_tuned(
         100 * 1024 * 1024,
         10 * 100000,
+        10,
         DBRateLimiterMode::AllIo,
         true,
     );
+    opts.set_rate_limiter(&rate_limiter);
     let db = DB::open(opts, path.path().to_str().unwrap()).unwrap();
     drop(db);
 }
@@ -187,16 +190,18 @@ fn test_set_writeampbasedratelimiter_with_auto_tuned() {
         tempdir_with_prefix("_rust_rocksdb_test_set_write_amp_based_rate_limiter_with_auto_tuned");
     let mut opts = DBOptions::new();
     opts.create_if_missing(true);
-    opts.set_writeampbasedratelimiter_with_auto_tuned(
+    let rate_limiter = RateLimiter::new_writeampbased_with_auto_tuned(
         100 * 1024 * 1024,
         10 * 100000,
+        10,
         DBRateLimiterMode::AllIo,
         true,
     );
+    opts.set_rate_limiter(&rate_limiter);
     let db = DB::open(opts, path.path().to_str().unwrap()).unwrap();
     let mut opts = db.get_db_options();
-    assert!(opts.set_auto_tuned(false).is_ok(), true);
-    assert_eq!(opts.get_auto_tuned().unwrap(), false);
+    opts.get_rate_limiter().unwrap().set_auto_tuned(false);
+    assert_eq!(rate_limiter.get_auto_tuned(), false);
     drop(db);
 }
 
@@ -206,11 +211,14 @@ fn test_set_ratelimiter_bytes_per_second() {
     let mut opts = DBOptions::new();
     opts.create_if_missing(true);
     // compaction and flush rate limited below 100MB/sec
-    opts.set_ratelimiter(100 * 1024 * 1024);
+    let rate_limiter = RateLimiter::new(100 * 1024 * 1024, 100 * 1000, 10);
+    opts.set_rate_limiter(&rate_limiter);
     let db = DB::open(opts, path.path().to_str().unwrap()).unwrap();
     let mut opts = db.get_db_options();
-    assert!(opts.set_rate_bytes_per_sec(200 * 1024 * 1024).is_ok(), true);
-    assert_eq!(opts.get_rate_bytes_per_sec().unwrap(), 200 * 1024 * 1024);
+    opts.get_rate_limiter()
+        .unwrap()
+        .set_bytes_per_second(200 * 1024 * 1024);
+    assert_eq!(rate_limiter.get_bytes_per_second(), 200 * 1024 * 1024);
     drop(db);
 }
 

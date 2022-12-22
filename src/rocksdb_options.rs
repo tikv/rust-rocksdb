@@ -271,6 +271,12 @@ impl RateLimiter {
         }
     }
 
+    pub fn set_auto_tuned(&self, auto_tuned: bool) {
+        unsafe {
+            crocksdb_ffi::crocksdb_ratelimiter_set_auto_tuned(self.inner, auto_tuned);
+        }
+    }
+
     pub fn get_singleburst_bytes(&self) -> i64 {
         unsafe { crocksdb_ffi::crocksdb_ratelimiter_get_singleburst_bytes(self.inner) }
     }
@@ -292,6 +298,10 @@ impl RateLimiter {
     pub fn get_total_requests(&self, pri: c_uchar) -> i64 {
         unsafe { crocksdb_ffi::crocksdb_ratelimiter_get_total_requests(self.inner, pri) }
     }
+
+    pub fn get_auto_tuned(&self) -> bool {
+        unsafe { crocksdb_ffi::crocksdb_ratelimiter_get_auto_tuned(self.inner) }
+    }
 }
 
 impl Drop for RateLimiter {
@@ -299,9 +309,6 @@ impl Drop for RateLimiter {
         unsafe { crocksdb_ffi::crocksdb_ratelimiter_destroy(self.inner) }
     }
 }
-
-const DEFAULT_REFILL_PERIOD_US: i64 = 100 * 1000; // 100ms should work for most cases
-const DEFAULT_FAIRNESS: i32 = 10; // should be good by leaving it at default 10
 
 pub struct Statistics {
     pub inner: *mut DBStatistics,
@@ -1174,107 +1181,19 @@ impl DBOptions {
         }
     }
 
-    pub fn set_ratelimiter(&mut self, rate_bytes_per_sec: i64) {
-        let rate_limiter = RateLimiter::new(
-            rate_bytes_per_sec,
-            DEFAULT_REFILL_PERIOD_US,
-            DEFAULT_FAIRNESS,
-        );
+    pub fn set_rate_limiter(&mut self, rate_limiter: &RateLimiter) {
         unsafe {
             crocksdb_ffi::crocksdb_options_set_ratelimiter(self.inner, rate_limiter.inner);
         }
     }
 
-    pub fn set_ratelimiter_with_auto_tuned(
-        &mut self,
-        rate_bytes_per_sec: i64,
-        refill_period_us: i64,
-        mode: DBRateLimiterMode,
-        auto_tuned: bool,
-    ) {
-        let rate_limiter = RateLimiter::new_with_auto_tuned(
-            rate_bytes_per_sec,
-            refill_period_us,
-            DEFAULT_FAIRNESS,
-            mode,
-            auto_tuned,
-        );
-        unsafe {
-            crocksdb_ffi::crocksdb_options_set_ratelimiter(self.inner, rate_limiter.inner);
-        }
-    }
-
-    pub fn set_writeampbasedratelimiter_with_auto_tuned(
-        &mut self,
-        rate_bytes_per_sec: i64,
-        refill_period_us: i64,
-        mode: DBRateLimiterMode,
-        auto_tuned: bool,
-    ) {
-        let rate_limiter = RateLimiter::new_writeampbased_with_auto_tuned(
-            rate_bytes_per_sec,
-            refill_period_us,
-            DEFAULT_FAIRNESS,
-            mode,
-            auto_tuned,
-        );
-        unsafe {
-            crocksdb_ffi::crocksdb_options_set_ratelimiter(self.inner, rate_limiter.inner);
-        }
-    }
-
-    pub fn set_rate_bytes_per_sec(&mut self, rate_bytes_per_sec: i64) -> Result<(), String> {
+    pub fn get_rate_limiter(&self) -> Option<RateLimiter> {
         let limiter = unsafe { crocksdb_ffi::crocksdb_options_get_ratelimiter(self.inner) };
         if limiter.is_null() {
-            return Err("Failed to get rate limiter".to_owned());
+            None
+        } else {
+            Some(RateLimiter { inner: limiter })
         }
-
-        let rate_limiter = RateLimiter { inner: limiter };
-
-        unsafe {
-            crocksdb_ffi::crocksdb_ratelimiter_set_bytes_per_second(
-                rate_limiter.inner,
-                rate_bytes_per_sec,
-            );
-        }
-        Ok(())
-    }
-
-    pub fn get_rate_bytes_per_sec(&self) -> Option<i64> {
-        let limiter = unsafe { crocksdb_ffi::crocksdb_options_get_ratelimiter(self.inner) };
-        if limiter.is_null() {
-            return None;
-        }
-
-        let rate_limiter = RateLimiter { inner: limiter };
-        let rate =
-            unsafe { crocksdb_ffi::crocksdb_ratelimiter_get_bytes_per_second(rate_limiter.inner) };
-        Some(rate)
-    }
-
-    pub fn set_auto_tuned(&mut self, auto_tuned: bool) -> Result<(), String> {
-        let limiter = unsafe { crocksdb_ffi::crocksdb_options_get_ratelimiter(self.inner) };
-        if limiter.is_null() {
-            return Err("Failed to get rate limiter".to_owned());
-        }
-
-        let rate_limiter = RateLimiter { inner: limiter };
-
-        unsafe {
-            crocksdb_ffi::crocksdb_ratelimiter_set_auto_tuned(rate_limiter.inner, auto_tuned);
-        }
-        Ok(())
-    }
-
-    pub fn get_auto_tuned(&self) -> Option<bool> {
-        let limiter = unsafe { crocksdb_ffi::crocksdb_options_get_ratelimiter(self.inner) };
-        if limiter.is_null() {
-            return None;
-        }
-
-        let rate_limiter = RateLimiter { inner: limiter };
-        let mode = unsafe { crocksdb_ffi::crocksdb_ratelimiter_get_auto_tuned(rate_limiter.inner) };
-        Some(mode)
     }
 
     // Create a info log with `path` and save to options logger field directly.

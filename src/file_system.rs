@@ -52,7 +52,7 @@ extern "C" fn file_system_inspector_write<T: FileSystemInspector>(
 }
 
 pub struct DBFileSystemInspector {
-    pub inner: *mut DBFileSystemInspectorInstance,
+    pub(crate) inner: *mut DBFileSystemInspectorInstance,
 }
 
 unsafe impl Send for DBFileSystemInspector {}

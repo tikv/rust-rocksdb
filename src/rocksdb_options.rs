@@ -311,7 +311,7 @@ impl Drop for RateLimiter {
 }
 
 pub struct Statistics {
-    pub inner: *mut DBStatistics,
+    pub(crate) inner: *mut DBStatistics,
 }
 
 unsafe impl Send for Statistics {}
@@ -422,7 +422,7 @@ impl Drop for Statistics {
 }
 
 pub struct WriteBufferManager {
-    pub inner: *mut DBWriteBufferManager,
+    pub(crate) inner: *mut DBWriteBufferManager,
 }
 
 unsafe impl Send for WriteBufferManager {}
@@ -451,7 +451,7 @@ impl Drop for WriteBufferManager {
 }
 
 pub struct ConcurrentTaskLimiter {
-    pub inner: *mut DBConcurrentTaskLimiter,
+    pub(crate) inner: *mut DBConcurrentTaskLimiter,
 }
 
 unsafe impl Send for ConcurrentTaskLimiter {}
@@ -692,7 +692,7 @@ impl ReadOptions {
 }
 
 pub struct WriteOptions {
-    pub inner: *mut DBWriteOptions,
+    pub(crate) inner: *mut DBWriteOptions,
 }
 
 impl Drop for WriteOptions {
@@ -761,7 +761,7 @@ impl WriteOptions {
 }
 
 pub struct CompactOptions {
-    pub inner: *mut DBCompactOptions,
+    pub(crate) inner: *mut DBCompactOptions,
 }
 
 impl CompactOptions {
@@ -819,7 +819,7 @@ impl Drop for CompactOptions {
 }
 
 pub struct CompactionOptions {
-    pub inner: *mut DBCompactionOptions,
+    pub(crate) inner: *mut DBCompactionOptions,
 }
 
 impl CompactionOptions {
@@ -859,9 +859,9 @@ impl Drop for CompactionOptions {
 }
 
 pub struct DBOptions {
-    pub inner: *mut Options,
+    pub(crate) inner: *mut Options,
     env: Option<Arc<Env>>,
-    pub titan_inner: *mut DBTitanDBOptions,
+    pub(crate) titan_inner: *mut DBTitanDBOptions,
 }
 
 impl Drop for DBOptions {
@@ -1331,8 +1331,8 @@ impl DBOptions {
 }
 
 pub struct ColumnFamilyOptions {
-    pub inner: *mut Options,
-    pub titan_inner: *mut DBTitanDBOptions,
+    pub(crate) inner: *mut Options,
+    pub(crate) titan_inner: *mut DBTitanDBOptions,
     env: Option<Arc<Env>>,
     filter: Option<CompactionFilterHandle>,
 }
@@ -2066,7 +2066,7 @@ impl Drop for CColumnFamilyDescriptor {
 }
 
 pub struct FlushOptions {
-    pub inner: *mut DBFlushOptions,
+    pub(crate) inner: *mut DBFlushOptions,
 }
 
 impl FlushOptions {
@@ -2101,7 +2101,7 @@ impl Drop for FlushOptions {
 
 /// IngestExternalFileOptions is used by DB::ingest_external_file
 pub struct IngestExternalFileOptions {
-    pub inner: *mut crocksdb_ffi::IngestExternalFileOptions,
+    pub(crate) inner: *mut crocksdb_ffi::IngestExternalFileOptions,
 }
 
 impl IngestExternalFileOptions {
@@ -2184,7 +2184,7 @@ impl Drop for IngestExternalFileOptions {
 
 /// Options while opening a file to read/write
 pub struct EnvOptions {
-    pub inner: *mut crocksdb_ffi::EnvOptions,
+    pub(crate) inner: *mut crocksdb_ffi::EnvOptions,
 }
 
 impl EnvOptions {
@@ -2206,7 +2206,7 @@ impl Drop for EnvOptions {
 }
 
 pub struct RestoreOptions {
-    pub inner: *mut DBRestoreOptions,
+    pub(crate) inner: *mut DBRestoreOptions,
 }
 
 impl RestoreOptions {
@@ -2234,7 +2234,7 @@ impl Drop for RestoreOptions {
 }
 
 pub struct FifoCompactionOptions {
-    pub inner: *mut DBFifoCompactionOptions,
+    pub(crate) inner: *mut DBFifoCompactionOptions,
 }
 
 impl FifoCompactionOptions {
@@ -2274,7 +2274,7 @@ impl Drop for FifoCompactionOptions {
 }
 
 pub struct LRUCacheOptions {
-    pub inner: *mut DBLRUCacheOptions,
+    pub(crate) inner: *mut DBLRUCacheOptions,
 }
 
 impl LRUCacheOptions {

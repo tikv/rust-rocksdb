@@ -130,7 +130,7 @@ extern "C" fn filter<C: CompactionFilter>(
 }
 
 pub struct CompactionFilterHandle {
-    pub inner: *mut DBCompactionFilter,
+    pub(crate) inner: *mut DBCompactionFilter,
 }
 
 impl Drop for CompactionFilterHandle {
@@ -295,7 +295,7 @@ mod factory {
 }
 
 pub struct CompactionFilterFactoryHandle {
-    pub inner: *mut DBCompactionFilterFactory,
+    pub(crate) inner: *mut DBCompactionFilterFactory,
 }
 
 impl Drop for CompactionFilterFactoryHandle {

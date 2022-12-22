@@ -2555,7 +2555,7 @@ pub fn supported_compression() -> Vec<DBCompressionType> {
 }
 
 pub struct Env {
-    pub inner: *mut DBEnv,
+    pub(crate) inner: *mut DBEnv,
     #[allow(dead_code)]
     base: Option<Arc<Env>>,
 }
@@ -2760,7 +2760,7 @@ impl Drop for SequentialFile {
 }
 
 pub struct Cache {
-    pub inner: *mut DBCache,
+    pub(crate) inner: *mut DBCache,
 }
 
 unsafe impl Sync for Cache {}
@@ -2786,7 +2786,7 @@ impl Drop for Cache {
 }
 
 pub struct MemoryAllocator {
-    pub inner: *mut DBMemoryAllocator,
+    pub(crate) inner: *mut DBMemoryAllocator,
 }
 
 impl MemoryAllocator {

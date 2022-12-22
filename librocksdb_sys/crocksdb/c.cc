@@ -3433,7 +3433,6 @@ unsigned char crocksdb_statistics_get_histogram(
 void crocksdb_options_set_ratelimiter(crocksdb_options_t* opt,
                                       crocksdb_ratelimiter_t* limiter) {
   opt->rep.rate_limiter = limiter->rep;
-  limiter->rep = nullptr;
 }
 
 crocksdb_ratelimiter_t* crocksdb_options_get_ratelimiter(

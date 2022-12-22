@@ -83,7 +83,7 @@ extern "C" fn name<C: CompactionFilter>(filter: *mut c_void) -> *const c_char {
 
 extern "C" fn destructor<C: CompactionFilter>(filter: *mut c_void) {
     unsafe {
-        Box::from_raw(filter as *mut CompactionFilterProxy<C>);
+        let _ = Box::from_raw(filter as *mut CompactionFilterProxy<C>);
     }
 }
 
@@ -267,7 +267,7 @@ mod factory {
 
     pub(super) extern "C" fn destructor<C: CompactionFilterFactory>(factory: *mut c_void) {
         unsafe {
-            Box::from_raw(factory as *mut CompactionFilterFactoryProxy<C>);
+            let _ = Box::from_raw(factory as *mut CompactionFilterFactoryProxy<C>);
         }
     }
 

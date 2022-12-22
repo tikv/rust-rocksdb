@@ -40,7 +40,7 @@ impl<C: TablePropertiesCollector, T: TablePropertiesCollectorFactory<C>>
     fn new(name: &str, rep: T) -> TablePropertiesCollectorFactoryHandle<C, T> {
         TablePropertiesCollectorFactoryHandle::<C, T> {
             name: CString::new(name).unwrap(),
-            rep: rep,
+            rep,
             _phantom: PhantomData,
         }
     }
@@ -59,7 +59,7 @@ extern "C" fn destruct<C: TablePropertiesCollector, T: TablePropertiesCollectorF
     handle: *mut c_void,
 ) {
     unsafe {
-        Box::from_raw(handle as *mut TablePropertiesCollectorFactoryHandle<C, T>);
+        let _ = Box::from_raw(handle as *mut TablePropertiesCollectorFactoryHandle<C, T>);
     }
 }
 

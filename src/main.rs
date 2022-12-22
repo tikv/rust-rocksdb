@@ -14,7 +14,7 @@
 //
 
 extern crate rocksdb;
-use rocksdb::{ColumnFamilyOptions, DBOptions, MergeOperands, Statistics, Writable, DB};
+use rocksdb::{ColumnFamilyOptions, DBOptions, MergeOperands, Writable, DB};
 
 // fn snapshot_test() {
 //    let path = "_rust_rocksdb_iteratortest";
@@ -67,13 +67,10 @@ fn main() {
 
 fn concat_merge(_: &[u8], existing_val: Option<&[u8]>, operands: &mut MergeOperands) -> Vec<u8> {
     let mut result: Vec<u8> = Vec::with_capacity(operands.size_hint().0);
-    match existing_val {
-        Some(v) => {
-            for e in v {
-                result.push(*e)
-            }
+    if let Some(v) = existing_val {
+        for e in v {
+            result.push(*e)
         }
-        None => (),
     }
     for op in operands {
         for e in op {

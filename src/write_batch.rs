@@ -55,7 +55,7 @@ impl WriteBatch {
         unsafe {
             let mut data_size: usize = 0;
             let _ = crocksdb_ffi::crocksdb_writebatch_data(self.inner, &mut data_size);
-            return data_size;
+            data_size
         }
     }
 
@@ -90,7 +90,7 @@ impl WriteBatch {
         let val_len_ptr: *mut size_t = &mut val_len;
         unsafe {
             let val_ptr = crocksdb_ffi::crocksdb_writebatch_data(self.inner, val_len_ptr);
-            slice::from_raw_parts(val_ptr, val_len as usize)
+            slice::from_raw_parts(val_ptr, val_len)
         }
     }
 
@@ -235,8 +235,8 @@ pub unsafe extern "C" fn put_fn(
     vlen: size_t,
 ) {
     let proxy: &mut WriteBatchCallback = &mut *(state as *mut WriteBatchCallback);
-    let a: &[u8] = slice::from_raw_parts(k as *const u8, klen as usize);
-    let b: &[u8] = slice::from_raw_parts(v as *const u8, vlen as usize);
+    let a: &[u8] = slice::from_raw_parts(k as *const u8, klen);
+    let b: &[u8] = slice::from_raw_parts(v as *const u8, vlen);
     proxy.invoke(0, DBValueType::TypeValue, a, Some(b));
 }
 
@@ -249,20 +249,20 @@ pub unsafe extern "C" fn put_cf_fn(
     vlen: size_t,
 ) {
     let proxy: &mut WriteBatchCallback = &mut *(state as *mut WriteBatchCallback);
-    let a: &[u8] = slice::from_raw_parts(k as *const u8, klen as usize);
-    let b: &[u8] = slice::from_raw_parts(v as *const u8, vlen as usize);
+    let a: &[u8] = slice::from_raw_parts(k as *const u8, klen);
+    let b: &[u8] = slice::from_raw_parts(v as *const u8, vlen);
     proxy.invoke(cf_id, DBValueType::TypeValue, a, Some(b));
 }
 
 pub unsafe extern "C" fn delete_fn(state: *mut c_void, k: *const u8, klen: size_t) {
     let proxy: &mut WriteBatchCallback = &mut *(state as *mut WriteBatchCallback);
-    let k: &[u8] = slice::from_raw_parts(k as *const u8, klen as usize);
+    let k: &[u8] = slice::from_raw_parts(k as *const u8, klen);
     proxy.invoke(0, DBValueType::TypeDeletion, k, None);
 }
 
 pub unsafe extern "C" fn delete_cf_fn(state: *mut c_void, cf_id: u32, k: *const u8, klen: size_t) {
     let proxy: &mut WriteBatchCallback = &mut *(state as *mut WriteBatchCallback);
-    let k: &[u8] = slice::from_raw_parts(k as *const u8, klen as usize);
+    let k: &[u8] = slice::from_raw_parts(k as *const u8, klen);
     proxy.invoke(cf_id, DBValueType::TypeDeletion, k, None);
 }
 

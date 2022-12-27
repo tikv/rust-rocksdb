@@ -20,7 +20,7 @@ impl Drop for TestDrop {
 #[derive(Default, Clone)]
 struct TestLogger {
     print: Arc<AtomicUsize>,
-    drop: Option<TestDrop>,
+    _drop: Option<TestDrop>,
 }
 
 impl Logger for TestLogger {
@@ -36,7 +36,7 @@ fn test_logger() {
     let path = tempdir_with_prefix("_rust_rocksdb_test_create_info_rust_log_opt");
     let mut opts = DBOptions::new();
     let logger = TestLogger {
-        drop: Some(TestDrop {
+        _drop: Some(TestDrop {
             called: drop_called.clone(),
         }),
         print: Default::default(),

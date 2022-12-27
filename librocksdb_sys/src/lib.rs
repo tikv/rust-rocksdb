@@ -76,6 +76,8 @@ pub struct DBCFHandle(c_void);
 #[repr(C)]
 pub struct DBWriteBatch(c_void);
 #[repr(C)]
+pub struct DBPostWriteCallback(c_void);
+#[repr(C)]
 pub struct DBComparator(c_void);
 #[repr(C)]
 pub struct DBFlushOptions(c_void);
@@ -1239,11 +1241,11 @@ extern "C" {
         batch: *mut DBWriteBatch,
         err: *mut *mut c_char,
     );
-    pub fn crocksdb_write_seq(
+    pub fn crocksdb_write_callback(
         db: *mut DBInstance,
         writeopts: *const DBWriteOptions,
         batch: *mut DBWriteBatch,
-        seq: *mut u64,
+        callback: *mut DBPostWriteCallback,
         err: *mut *mut c_char,
     );
 
@@ -1252,7 +1254,14 @@ extern "C" {
         writeopts: *const DBWriteOptions,
         batch: *const *mut DBWriteBatch,
         batchlen: size_t,
-        seq: *mut u64,
+        err: *mut *mut c_char,
+    );
+    pub fn crocksdb_write_multi_batch_callback(
+        db: *mut DBInstance,
+        writeopts: *const DBWriteOptions,
+        batch: *const *mut DBWriteBatch,
+        batchlen: size_t,
+        callback: *mut DBPostWriteCallback,
         err: *mut *mut c_char,
     );
     pub fn crocksdb_writebatch_create() -> *mut DBWriteBatch;
@@ -2361,6 +2370,14 @@ extern "C" {
     ) -> *mut DBEventListener;
     pub fn crocksdb_eventlistener_destroy(et: *mut DBEventListener);
     pub fn crocksdb_options_add_eventlistener(opt: *mut Options, et: *mut DBEventListener);
+
+    pub fn crocksdb_post_write_callback_init(
+        buf: *mut c_void,
+        buf_len: usize,
+        state: *mut c_void,
+        post_write_callback: extern "C" fn(*mut c_void, u64),
+    ) -> *mut DBPostWriteCallback;
+
     // Get All Key Versions
     pub fn crocksdb_keyversions_destroy(kvs: *mut DBKeyVersions);
 

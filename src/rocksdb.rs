@@ -14,7 +14,8 @@
 
 use crocksdb_ffi::{
     self, DBBackupEngine, DBCFHandle, DBCache, DBCompressionType, DBEnv, DBInstance, DBMapProperty,
-    DBPinnableSlice, DBSequentialFile, DBTablePropertiesCollection, DBTitanDBOptions, DBWriteBatch,
+    DBPinnableSlice, DBPostWriteCallback, DBSequentialFile, DBTablePropertiesCollection,
+    DBTitanDBOptions, DBWriteBatch,
 };
 use libc::{self, c_char, c_int, c_void, size_t};
 use librocksdb_sys::DBMemoryAllocator;
@@ -29,6 +30,7 @@ use std::ffi::{CStr, CString};
 use std::fmt::{self, Debug, Formatter};
 use std::io;
 use std::mem;
+use std::mem::MaybeUninit;
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
@@ -473,6 +475,42 @@ impl<'a> Range<'a> {
     }
 }
 
+pub struct PostWriteCallback<'a, F: FnMut(u64)> {
+    _callback: &'a mut F,
+    raw_buf: MaybeUninit<[u64; 3]>,
+}
+
+extern "C" fn on_post_write_callback<F: FnMut(u64)>(ctx: *mut c_void, seq: u64) {
+    unsafe {
+        let ctx = &mut *(ctx as *mut F);
+        ctx(seq);
+    }
+}
+
+impl<'a, F: FnMut(u64)> PostWriteCallback<'a, F> {
+    #[inline]
+    fn new(f: &'a mut F) -> Self {
+        unsafe {
+            let mut raw_buf: MaybeUninit<[u64; 3]> = MaybeUninit::uninit();
+            crocksdb_ffi::crocksdb_post_write_callback_init(
+                raw_buf.as_mut_ptr() as *mut c_void,
+                std::mem::size_of_val(&raw_buf),
+                f as *mut F as *mut c_void,
+                on_post_write_callback::<F>,
+            );
+            Self {
+                _callback: f,
+                raw_buf,
+            }
+        }
+    }
+
+    #[inline]
+    fn as_raw_callback(&mut self) -> *mut DBPostWriteCallback {
+        self.raw_buf.as_mut_ptr() as *mut DBPostWriteCallback
+    }
+}
+
 pub struct KeyVersion {
     pub key: String,
     pub value: String,
@@ -794,29 +832,29 @@ impl DB {
         Ok(())
     }
 
-    pub fn write_seq_opt(
+    pub fn write_callback<F: FnMut(u64)>(
         &self,
         batch: &WriteBatch,
         writeopts: &WriteOptions,
-    ) -> Result<u64, String> {
-        let mut seq = 0;
+        mut callback: F,
+    ) -> Result<(), String> {
+        let mut callback = PostWriteCallback::new(&mut callback);
         unsafe {
-            ffi_try!(crocksdb_write_seq(
+            ffi_try!(crocksdb_write_callback(
                 self.inner,
                 writeopts.inner,
                 batch.inner,
-                &mut seq
+                callback.as_raw_callback()
             ));
         }
-        Ok(seq)
+        Ok(())
     }
 
     pub fn multi_batch_write(
         &self,
         batches: &[WriteBatch],
         writeopts: &WriteOptions,
-    ) -> Result<u64, String> {
-        let mut seq = 0;
+    ) -> Result<(), String> {
         unsafe {
             let b: Vec<*mut DBWriteBatch> = batches.iter().map(|w| w.inner).collect();
             if !b.is_empty() {
@@ -824,12 +862,33 @@ impl DB {
                     self.inner,
                     writeopts.inner,
                     b.as_ptr(),
-                    b.len(),
-                    &mut seq
+                    b.len()
                 ));
             }
         }
-        Ok(seq)
+        Ok(())
+    }
+
+    pub fn multi_batch_write_callback<F: FnMut(u64)>(
+        &self,
+        batches: &[WriteBatch],
+        writeopts: &WriteOptions,
+        mut callback: F,
+    ) -> Result<(), String> {
+        let mut callback = PostWriteCallback::new(&mut callback);
+        unsafe {
+            let b: Vec<*mut DBWriteBatch> = batches.iter().map(|w| w.inner).collect();
+            if !b.is_empty() {
+                ffi_try!(crocksdb_write_multi_batch_callback(
+                    self.inner,
+                    writeopts.inner,
+                    b.as_ptr(),
+                    b.len(),
+                    callback.as_raw_callback()
+                ));
+            }
+        }
+        Ok(())
     }
 
     pub fn write(&self, batch: &WriteBatch) -> Result<(), String> {
@@ -3518,7 +3577,9 @@ mod test {
             w.put_cf(cf, s.to_vec().as_slice(), b"a").unwrap();
             data.push(w);
         }
-        let seqno = db.multi_batch_write(&data, &WriteOptions::new()).unwrap();
+        let mut seqno = 0;
+        db.multi_batch_write_callback(&data, &WriteOptions::new(), |s| seqno = s)
+            .unwrap();
         for s in &[b"ab", b"cd", b"ef"] {
             let v = db.get_cf(cf, s.to_vec().as_slice()).unwrap();
             assert!(v.is_some());
@@ -3760,7 +3821,7 @@ mod test {
         let mut opts = DBOptions::new();
         opts.create_if_missing(true);
         opts.create_missing_column_families(true);
-        let db = DB::open_cf(
+        let _db = DB::open_cf(
             opts,
             path.path().to_str().unwrap(),
             cfs.iter().map(|cf| *cf).zip(cfs_opts).collect(),

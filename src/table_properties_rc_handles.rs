@@ -48,7 +48,7 @@ impl Drop for TablePropertiesCollectionHandleWithDrop {
 #[derive(Clone)]
 pub struct TablePropertiesCollectionIteratorHandle {
     shared: Rc<TablePropertiesCollectionIteratorHandleWithDrop>,
-    collection: TablePropertiesCollectionHandle,
+    _collection: TablePropertiesCollectionHandle,
 }
 
 impl TablePropertiesCollectionIteratorHandle {
@@ -60,7 +60,7 @@ impl TablePropertiesCollectionIteratorHandle {
                 crocksdb_ffi::crocksdb_table_properties_collection_iter_create(collection.ptr());
             TablePropertiesCollectionIteratorHandle {
                 shared: Rc::new(TablePropertiesCollectionIteratorHandleWithDrop { ptr }),
-                collection,
+                _collection: collection,
             }
         }
     }
@@ -88,15 +88,15 @@ impl Drop for TablePropertiesCollectionIteratorHandleWithDrop {
 #[derive(Clone)]
 pub struct TablePropertiesHandle {
     ptr: *const DBTableProperties,
-    iter_handle: TablePropertiesCollectionIteratorHandle,
+    _iter_handle: TablePropertiesCollectionIteratorHandle,
 }
 
 impl TablePropertiesHandle {
     pub fn new(
         ptr: *const DBTableProperties,
-        iter_handle: TablePropertiesCollectionIteratorHandle,
+        _iter_handle: TablePropertiesCollectionIteratorHandle,
     ) -> TablePropertiesHandle {
-        TablePropertiesHandle { ptr, iter_handle }
+        TablePropertiesHandle { ptr, _iter_handle }
     }
 
     pub fn ptr(&self) -> *const DBTableProperties {
@@ -110,7 +110,7 @@ impl TablePropertiesHandle {
 #[derive(Clone)]
 pub struct UserCollectedPropertiesHandle {
     ptr: *const DBUserCollectedProperties,
-    table_props_handle: TablePropertiesHandle,
+    _table_props_handle: TablePropertiesHandle,
 }
 
 impl UserCollectedPropertiesHandle {
@@ -121,7 +121,7 @@ impl UserCollectedPropertiesHandle {
             );
             UserCollectedPropertiesHandle {
                 ptr,
-                table_props_handle,
+                _table_props_handle: table_props_handle,
             }
         }
     }

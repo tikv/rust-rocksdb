@@ -2354,3 +2354,12 @@ pub struct MergeInstanceOptions {
     pub merge_memtable: bool,
     pub allow_source_write: bool,
 }
+
+impl Default for MergeInstanceOptions {
+    fn default() -> Self {
+        Self {
+            merge_memtable: false,
+            allow_source_write: true,
+        }
+    }
+}

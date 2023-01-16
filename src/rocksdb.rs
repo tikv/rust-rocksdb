@@ -757,7 +757,7 @@ impl DB {
         })
     }
 
-    pub fn merge_instances(&self, opts: &MergeInstanceOptions, dbs: &[DB]) -> Result<(), String> {
+    pub fn merge_instances(&self, opts: &MergeInstanceOptions, dbs: &[&DB]) -> Result<(), String> {
         unsafe {
             let dbs: Vec<*mut DBInstance> = dbs.iter().map(|db| db.inner).collect();
             ffi_try!(crocksdb_merge_disjoint_instances(
@@ -3879,7 +3879,7 @@ mod test {
             merge_memtable: true,
             allow_source_write: true,
         };
-        db3.merge_instances(&mopts, &[db1, db2]).unwrap();
+        db3.merge_instances(&mopts, &[&db1, &db2]).unwrap();
         assert_eq!(db3.get(b"1").unwrap().unwrap(), b"v");
         assert_eq!(db3.get(b"2").unwrap().unwrap(), b"v");
     }

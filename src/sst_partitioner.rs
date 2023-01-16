@@ -32,7 +32,7 @@ pub trait SstPartitioner {
 extern "C" fn sst_partitioner_destructor<P: SstPartitioner>(ctx: *mut c_void) {
     unsafe {
         // Recover from raw pointer and implicitly drop.
-        Box::from_raw(ctx as *mut P);
+        let _ = Box::from_raw(ctx as *mut P);
     }
 }
 
@@ -87,7 +87,7 @@ pub trait SstPartitionerFactory: Sync + Send {
 extern "C" fn sst_partitioner_factory_destroy<F: SstPartitionerFactory>(ctx: *mut c_void) {
     unsafe {
         // Recover from raw pointer and implicitly drop.
-        Box::from_raw(ctx as *mut F);
+        let _ = Box::from_raw(ctx as *mut F);
     }
 }
 

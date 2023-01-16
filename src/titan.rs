@@ -12,7 +12,7 @@ use std::ptr;
 use std::slice;
 
 pub struct TitanDBOptions {
-    pub inner: *mut DBTitanDBOptions,
+    pub(crate) inner: *mut DBTitanDBOptions,
 }
 
 impl TitanDBOptions {

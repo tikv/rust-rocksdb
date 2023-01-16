@@ -21,7 +21,8 @@ fn test_db_statistics() {
     let path = tempdir_with_prefix("_rust_rocksdb_statistics");
     let mut opts = DBOptions::new();
     opts.create_if_missing(true);
-    opts.enable_statistics(true);
+    let statistics = Statistics::new();
+    opts.set_statistics(&statistics);
     let db = DB::open(opts, path.path().to_str().unwrap()).unwrap();
     let wopts = WriteOptions::new();
 
@@ -33,18 +34,18 @@ fn test_db_statistics() {
     assert_eq!(db.get(b"k1").unwrap().unwrap(), b"b");
     assert_eq!(db.get(b"k2").unwrap().unwrap(), b"c");
 
-    assert!(db.get_statistics_ticker_count(TickerType::BlockCacheHit) > 0);
-    assert!(db.get_and_reset_statistics_ticker_count(TickerType::BlockCacheHit) > 0);
-    assert_eq!(db.get_statistics_ticker_count(TickerType::BlockCacheHit), 0);
-    assert!(db
-        .get_statistics_histogram_string(HistogramType::DbGet)
+    assert!(statistics.get_ticker_count(TickerType::BlockCacheHit) > 0);
+    assert!(statistics.get_and_reset_ticker_count(TickerType::BlockCacheHit) > 0);
+    assert_eq!(statistics.get_ticker_count(TickerType::BlockCacheHit), 0);
+    assert!(statistics
+        .get_histogram_string(HistogramType::DbGet)
         .is_some());
-    assert!(db.get_statistics_histogram(HistogramType::DbGet).is_some());
+    assert!(statistics.get_histogram(HistogramType::DbGet).is_some());
 
-    let get_micros = db.get_statistics_histogram(HistogramType::DbGet).unwrap();
+    let get_micros = statistics.get_histogram(HistogramType::DbGet).unwrap();
     assert!(get_micros.max > 0.0);
-    db.reset_statistics();
-    let get_micros = db.get_statistics_histogram(HistogramType::DbGet).unwrap();
+    statistics.reset();
+    let get_micros = statistics.get_histogram(HistogramType::DbGet).unwrap();
     assert_eq!(get_micros.max, 0.0);
 }
 
@@ -53,7 +54,8 @@ fn test_disable_db_statistics() {
     let path = tempdir_with_prefix("_rust_rocksdb_statistics");
     let mut opts = DBOptions::new();
     opts.create_if_missing(true);
-    opts.enable_statistics(false);
+    let statistics = Statistics::new_empty();
+    opts.set_statistics(&statistics);
     let db = DB::open(opts, path.path().to_str().unwrap()).unwrap();
     let wopts = WriteOptions::new();
 
@@ -65,13 +67,50 @@ fn test_disable_db_statistics() {
     assert_eq!(db.get(b"k1").unwrap().unwrap(), b"b");
     assert_eq!(db.get(b"k2").unwrap().unwrap(), b"c");
 
-    assert_eq!(db.get_statistics_ticker_count(TickerType::BlockCacheHit), 0);
+    assert_eq!(statistics.get_ticker_count(TickerType::BlockCacheHit), 0);
     assert_eq!(
-        db.get_and_reset_statistics_ticker_count(TickerType::BlockCacheHit),
+        statistics.get_and_reset_ticker_count(TickerType::BlockCacheHit),
         0
     );
-    assert!(db
-        .get_statistics_histogram_string(HistogramType::DbGet)
+    assert!(statistics
+        .get_histogram_string(HistogramType::DbGet)
         .is_none());
-    assert!(db.get_statistics_histogram(HistogramType::DbGet).is_none());
+    assert!(statistics.get_histogram(HistogramType::DbGet).is_none());
+}
+
+#[test]
+fn test_shared_db_statistics() {
+    let path1 = tempdir_with_prefix("_rust_rocksdb_statistics");
+    let path2 = tempdir_with_prefix("_rust_rocksdb_statistics");
+    let mut opts = DBOptions::new();
+    opts.create_if_missing(true);
+    let statistics = Statistics::new();
+    opts.set_statistics(&statistics);
+
+    let _db_inactive = DB::open(opts.clone(), path1.path().to_str().unwrap()).unwrap();
+    let db = DB::open(opts, path2.path().to_str().unwrap()).unwrap();
+    let wopts = WriteOptions::new();
+
+    db.put_opt(b"k0", b"a", &wopts).unwrap();
+    db.put_opt(b"k1", b"b", &wopts).unwrap();
+    db.put_opt(b"k2", b"c", &wopts).unwrap();
+    db.flush(true /* sync */).unwrap(); // flush memtable to sst file.
+
+    assert_eq!(db.get(b"k0").unwrap().unwrap(), b"a");
+    assert_eq!(db.get(b"k1").unwrap().unwrap(), b"b");
+    assert_eq!(db.get(b"k2").unwrap().unwrap(), b"c");
+
+    assert!(statistics.get_ticker_count(TickerType::BlockCacheHit) > 0);
+    assert!(statistics.get_and_reset_ticker_count(TickerType::BlockCacheHit) > 0);
+    assert_eq!(statistics.get_ticker_count(TickerType::BlockCacheHit), 0);
+    assert!(statistics
+        .get_histogram_string(HistogramType::DbGet)
+        .is_some());
+    assert!(statistics.get_histogram(HistogramType::DbGet).is_some());
+
+    let get_micros = statistics.get_histogram(HistogramType::DbGet).unwrap();
+    assert!(get_micros.max > 0.0);
+    statistics.reset();
+    let get_micros = statistics.get_histogram(HistogramType::DbGet).unwrap();
+    assert_eq!(get_micros.max, 0.0);
 }

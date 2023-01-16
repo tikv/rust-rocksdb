@@ -42,7 +42,7 @@ impl<T: TablePropertiesCollector> TablePropertiesCollectorHandle<T> {
     fn new(name: &str, rep: T) -> TablePropertiesCollectorHandle<T> {
         TablePropertiesCollectorHandle {
             name: CString::new(name).unwrap(),
-            rep: rep,
+            rep,
         }
     }
 }
@@ -56,7 +56,7 @@ extern "C" fn name<T: TablePropertiesCollector>(handle: *mut c_void) -> *const c
 
 extern "C" fn destruct<T: TablePropertiesCollector>(handle: *mut c_void) {
     unsafe {
-        Box::from_raw(handle as *mut TablePropertiesCollectorHandle<T>);
+        let _ = Box::from_raw(handle as *mut TablePropertiesCollectorHandle<T>);
     }
 }
 

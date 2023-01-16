@@ -20,6 +20,7 @@
 #include "rocksdb/cache.h"
 #include "rocksdb/compaction_filter.h"
 #include "rocksdb/comparator.h"
+#include "rocksdb/concurrent_task_limiter.h"
 #include "rocksdb/convenience.h"
 #include "rocksdb/db.h"
 #include "rocksdb/encryption.h"
@@ -54,6 +55,7 @@
 #include "rocksdb/utilities/options_util.h"
 #include "rocksdb/utilities/table_properties_collectors.h"
 #include "rocksdb/write_batch.h"
+#include "rocksdb/write_buffer_manager.h"
 #include "src/blob_format.h"
 #include "table/block_based/block_based_table_factory.h"
 #include "table/sst_file_writer_collectors.h"
@@ -131,6 +133,7 @@ using rocksdb::PartitionerRequest;
 using rocksdb::PartitionerResult;
 using rocksdb::PerfFlags;
 using rocksdb::PinnableSlice;
+using rocksdb::PostWriteCallback;
 using rocksdb::RandomAccessFile;
 using rocksdb::Range;
 using rocksdb::RangePtr;
@@ -147,6 +150,7 @@ using rocksdb::SstFileReader;
 using rocksdb::SstFileWriter;
 using rocksdb::SstPartitioner;
 using rocksdb::SstPartitionerFactory;
+using rocksdb::Statistics;
 using rocksdb::Status;
 using rocksdb::SubcompactionJobInfo;
 using rocksdb::TableFileCreationReason;
@@ -158,6 +162,7 @@ using rocksdb::UserCollectedProperties;
 using rocksdb::WALRecoveryMode;
 using rocksdb::WritableFile;
 using rocksdb::WriteBatch;
+using rocksdb::WriteBufferManager;
 using rocksdb::WriteOptions;
 using rocksdb::WriteStallCondition;
 using rocksdb::WriteStallInfo;
@@ -210,6 +215,9 @@ using rocksdb::encryption::NewKeyManagedEncryptedEnv;
 using rocksdb::FileSystemInspector;
 using rocksdb::NewFileSystemInspectedEnv;
 using std::shared_ptr;
+
+using rocksdb::ConcurrentTaskLimiter;
+using rocksdb::NewConcurrentTaskLimiter;
 
 extern "C" {
 
@@ -356,6 +364,15 @@ struct crocksdb_externalsstfileinfo_t {
 };
 struct crocksdb_ratelimiter_t {
   std::shared_ptr<RateLimiter> rep;
+};
+struct crocksdb_write_buffer_manager_t {
+  std::shared_ptr<WriteBufferManager> rep;
+};
+struct crocksdb_concurrent_task_limiter_t {
+  std::shared_ptr<ConcurrentTaskLimiter> rep;
+};
+struct crocksdb_statistics_t {
+  std::shared_ptr<Statistics> rep;
 };
 struct crocksdb_histogramdata_t {
   HistogramData rep;
@@ -695,6 +712,28 @@ struct crocksdb_sst_partitioner_factory_t {
 struct crocksdb_file_system_inspector_t {
   std::shared_ptr<FileSystemInspector> rep;
 };
+
+struct crocksdb_post_write_callback_t : public PostWriteCallback {
+  void* state_;
+  void (*on_post_write_callback)(void*, uint64_t);
+
+  void Callback(SequenceNumber seq) override {
+    on_post_write_callback(state_, seq);
+  }
+};
+
+crocksdb_post_write_callback_t* crocksdb_post_write_callback_init(
+    void* buf, size_t buf_len, void* state,
+    on_post_write_callback_cb on_post_write_callback) {
+  void* input_buf = buf;
+  assert(std::align(alignof(crocksdb_post_write_callback_t),
+                    sizeof(crocksdb_post_write_callback_t), buf,
+                    buf_len) == input_buf);
+  crocksdb_post_write_callback_t* r = new (buf) crocksdb_post_write_callback_t;
+  r->state_ = state;
+  r->on_post_write_callback = on_post_write_callback;
+  return r;
+}
 
 static bool SaveError(char** errptr, const Status& s) {
   assert(errptr != nullptr);
@@ -1118,22 +1157,35 @@ void crocksdb_write(crocksdb_t* db, const crocksdb_writeoptions_t* options,
   SaveError(errptr, db->rep->Write(options->rep, &batch->rep));
 }
 
-void crocksdb_write_seq(crocksdb_t* db, const crocksdb_writeoptions_t* options,
-                        crocksdb_writebatch_t* batch, uint64_t* seq,
-                        char** errptr) {
-  SaveError(errptr, db->rep->Write(options->rep, &batch->rep, seq));
+void crocksdb_write_callback(crocksdb_t* db,
+                             const crocksdb_writeoptions_t* options,
+                             crocksdb_writebatch_t* batch,
+                             crocksdb_post_write_callback_t* callback,
+                             char** errptr) {
+  SaveError(errptr, db->rep->Write(options->rep, &batch->rep, callback));
 }
 
 void crocksdb_write_multi_batch(crocksdb_t* db,
                                 const crocksdb_writeoptions_t* options,
                                 crocksdb_writebatch_t** batches,
-                                size_t batch_size, uint64_t* seq,
-                                char** errptr) {
+                                size_t batch_size, char** errptr) {
   std::vector<WriteBatch*> ws;
   for (size_t i = 0; i < batch_size; i++) {
     ws.push_back(&batches[i]->rep);
   }
-  SaveError(errptr, db->rep->MultiBatchWrite(options->rep, std::move(ws), seq));
+  SaveError(errptr, db->rep->MultiBatchWrite(options->rep, std::move(ws)));
+}
+
+void crocksdb_write_multi_batch_callback(
+    crocksdb_t* db, const crocksdb_writeoptions_t* options,
+    crocksdb_writebatch_t** batches, size_t batch_size,
+    crocksdb_post_write_callback_t* callback, char** errptr) {
+  std::vector<WriteBatch*> ws;
+  for (size_t i = 0; i < batch_size; i++) {
+    ws.push_back(&batches[i]->rep);
+  }
+  SaveError(errptr,
+            db->rep->MultiBatchWrite(options->rep, std::move(ws), callback));
 }
 
 char* crocksdb_get(crocksdb_t* db, const crocksdb_readoptions_t* options,
@@ -2658,6 +2710,16 @@ void crocksdb_options_set_env(crocksdb_options_t* opt, crocksdb_env_t* env) {
   opt->rep.env = (env ? env->rep : nullptr);
 }
 
+void crocksdb_options_set_write_buffer_manager(
+    crocksdb_options_t* opt, crocksdb_write_buffer_manager_t* wbm) {
+  opt->rep.write_buffer_manager = wbm->rep;
+}
+
+void crocksdb_options_set_compaction_thread_limiter(
+    crocksdb_options_t* opt, crocksdb_concurrent_task_limiter_t* limiter) {
+  opt->rep.compaction_thread_limiter = limiter->rep;
+}
+
 crocksdb_logger_t* crocksdb_logger_create(void* rep, void (*destructor_)(void*),
                                           crocksdb_logger_logv_cb logv) {
   crocksdb_logger_t* logger = new crocksdb_logger_t;
@@ -2775,22 +2837,6 @@ crocksdb_options_get_sst_partitioner_factory(crocksdb_options_t* opt) {
 void crocksdb_options_set_sst_partitioner_factory(
     crocksdb_options_t* opt, crocksdb_sst_partitioner_factory_t* factory) {
   opt->rep.sst_partitioner_factory = factory->rep;
-}
-
-void crocksdb_options_enable_statistics(crocksdb_options_t* opt,
-                                        unsigned char v) {
-  if (v) {
-    opt->rep.statistics = rocksdb::titandb::CreateDBStatistics();
-  } else {
-    opt->rep.statistics = nullptr;
-  }
-}
-
-void crocksdb_options_reset_statistics(crocksdb_options_t* opt) {
-  if (opt->rep.statistics) {
-    auto* statistics = opt->rep.statistics.get();
-    statistics->Reset();
-  }
 }
 
 void crocksdb_options_set_num_levels(crocksdb_options_t* opt, int n) {
@@ -3342,49 +3388,90 @@ unsigned char crocksdb_options_get_force_consistency_checks(
   return opt->rep.force_consistency_checks;
 }
 
-char* crocksdb_options_statistics_get_string(crocksdb_options_t* opt) {
-  if (opt->rep.statistics) {
-    rocksdb::Statistics* statistics = opt->rep.statistics.get();
-    return strdup(statistics->ToString().c_str());
+void crocksdb_options_set_statistics(crocksdb_options_t* opt,
+                                     crocksdb_statistics_t* statistics) {
+  opt->rep.statistics = statistics->rep;
+}
+crocksdb_statistics_t* crocksdb_options_get_statistics(
+    crocksdb_options_t* opt) {
+  crocksdb_statistics_t* statistics = new crocksdb_statistics_t;
+  statistics->rep = opt->rep.statistics;
+  return statistics;
+}
+
+crocksdb_statistics_t* crocksdb_statistics_create() {
+  crocksdb_statistics_t* statistics = new crocksdb_statistics_t;
+  statistics->rep = rocksdb::CreateDBStatistics();
+  return statistics;
+}
+
+crocksdb_statistics_t* crocksdb_titan_statistics_create() {
+  crocksdb_statistics_t* statistics = new crocksdb_statistics_t;
+  statistics->rep = rocksdb::titandb::CreateDBStatistics();
+  return statistics;
+}
+
+crocksdb_statistics_t* crocksdb_empty_statistics_create() {
+  crocksdb_statistics_t* statistics = new crocksdb_statistics_t;
+  statistics->rep = nullptr;
+  return statistics;
+}
+
+void crocksdb_statistics_destroy(crocksdb_statistics_t* statistics) {
+  if (statistics->rep) {
+    statistics->rep.reset();
+  }
+  delete statistics;
+}
+
+unsigned char crocksdb_statistics_is_empty(crocksdb_statistics_t* statistics) {
+  return statistics->rep == nullptr;
+}
+
+void crocksdb_statistics_reset(crocksdb_statistics_t* statistics) {
+  if (statistics->rep) {
+    statistics->rep->Reset();
+  }
+}
+
+char* crocksdb_statistics_to_string(crocksdb_statistics_t* statistics) {
+  if (statistics->rep) {
+    return strdup(statistics->rep->ToString().c_str());
   }
   return nullptr;
 }
 
-uint64_t crocksdb_options_statistics_get_ticker_count(crocksdb_options_t* opt,
-                                                      uint32_t ticker_type) {
-  if (opt->rep.statistics) {
-    rocksdb::Statistics* statistics = opt->rep.statistics.get();
-    return statistics->getTickerCount(ticker_type);
+uint64_t crocksdb_statistics_get_ticker_count(crocksdb_statistics_t* statistics,
+                                              uint32_t ticker_type) {
+  if (statistics->rep) {
+    return statistics->rep->getTickerCount(ticker_type);
   }
   return 0;
 }
 
-uint64_t crocksdb_options_statistics_get_and_reset_ticker_count(
-    crocksdb_options_t* opt, uint32_t ticker_type) {
-  if (opt->rep.statistics) {
-    rocksdb::Statistics* statistics = opt->rep.statistics.get();
-    return statistics->getAndResetTickerCount(ticker_type);
+uint64_t crocksdb_statistics_get_and_reset_ticker_count(
+    crocksdb_statistics_t* statistics, uint32_t ticker_type) {
+  if (statistics->rep) {
+    return statistics->rep->getAndResetTickerCount(ticker_type);
   }
   return 0;
 }
 
-char* crocksdb_options_statistics_get_histogram_string(crocksdb_options_t* opt,
-                                                       uint32_t type) {
-  if (opt->rep.statistics) {
-    rocksdb::Statistics* statistics = opt->rep.statistics.get();
-    return strdup(statistics->getHistogramString(type).c_str());
+char* crocksdb_statistics_get_histogram_string(
+    crocksdb_statistics_t* statistics, uint32_t type) {
+  if (statistics->rep) {
+    return strdup(statistics->rep->getHistogramString(type).c_str());
   }
   return nullptr;
 }
 
-unsigned char crocksdb_options_statistics_get_histogram(
-    crocksdb_options_t* opt, uint32_t type, double* median,
+unsigned char crocksdb_statistics_get_histogram(
+    crocksdb_statistics_t* statistics, uint32_t type, double* median,
     double* percentile95, double* percentile99, double* average,
     double* standard_deviation, double* max) {
-  if (opt->rep.statistics) {
-    rocksdb::Statistics* statistics = opt->rep.statistics.get();
+  if (statistics->rep) {
     crocksdb_histogramdata_t data;
-    statistics->histogramData(type, &data.rep);
+    statistics->rep->histogramData(type, &data.rep);
     *median = data.rep.median;
     *percentile95 = data.rep.percentile95;
     *percentile99 = data.rep.percentile99;
@@ -3399,7 +3486,6 @@ unsigned char crocksdb_options_statistics_get_histogram(
 void crocksdb_options_set_ratelimiter(crocksdb_options_t* opt,
                                       crocksdb_ratelimiter_t* limiter) {
   opt->rep.rate_limiter = limiter->rep;
-  limiter->rep = nullptr;
 }
 
 crocksdb_ratelimiter_t* crocksdb_options_get_ratelimiter(
@@ -3547,6 +3633,32 @@ unsigned char crocksdb_ratelimiter_get_auto_tuned(
 int64_t crocksdb_ratelimiter_get_total_requests(crocksdb_ratelimiter_t* limiter,
                                                 unsigned char pri) {
   return limiter->rep->GetTotalRequests(static_cast<Env::IOPriority>(pri));
+}
+
+crocksdb_write_buffer_manager_t* crocksdb_write_buffer_manager_create(
+    size_t flush_size, float stall_ratio, unsigned char flush_oldest_first) {
+  crocksdb_write_buffer_manager_t* wbm = new crocksdb_write_buffer_manager_t;
+  wbm->rep = std::make_shared<WriteBufferManager>(
+      flush_size, nullptr, stall_ratio, flush_oldest_first);
+  return wbm;
+}
+
+void crocksdb_write_buffer_manager_destroy(
+    crocksdb_write_buffer_manager_t* wbm) {
+  delete wbm;
+}
+
+crocksdb_concurrent_task_limiter_t* crocksdb_concurrent_task_limiter_create(
+    const char* name, uint32_t limit) {
+  crocksdb_concurrent_task_limiter_t* limiter =
+      new crocksdb_concurrent_task_limiter_t;
+  limiter->rep.reset(NewConcurrentTaskLimiter(name, limit));
+  return limiter;
+}
+
+void crocksdb_concurrent_task_limiter_destroy(
+    crocksdb_concurrent_task_limiter_t* limiter) {
+  delete limiter;
 }
 
 /*
@@ -4080,9 +4192,9 @@ struct CTRBlockCipher : public BlockCipher {
 
   const char* Name() const override { return "CTRBlockCipher"; }
 
-  virtual size_t BlockSize() { return block_size_; }
+  size_t BlockSize() override { return block_size_; }
 
-  virtual Status Encrypt(char* data) {
+  Status Encrypt(char* data) override {
     const char* ciper_ptr = cipertext_.c_str();
     for (size_t i = 0; i < block_size_; i++) {
       data[i] = data[i] ^ ciper_ptr[i];
@@ -4091,7 +4203,7 @@ struct CTRBlockCipher : public BlockCipher {
     return Status::OK();
   }
 
-  virtual Status Decrypt(char* data) {
+  Status Decrypt(char* data) override {
     Encrypt(data);
     return Status::OK();
   }
@@ -4136,6 +4248,25 @@ void crocksdb_env_file_exists(crocksdb_env_t* env, const char* path,
 void crocksdb_env_delete_file(crocksdb_env_t* env, const char* path,
                               char** errptr) {
   SaveError(errptr, env->rep->DeleteFile(path));
+}
+
+unsigned char crocksdb_env_is_db_locked(crocksdb_env_t* env, const char* path,
+                                        char** errptr) {
+  FileLock* lock;
+  std::string file = rocksdb::LockFileName(path);
+  Status s = env->rep->LockFile(file, &lock);
+  if (s.ok()) {
+    env->rep->UnlockFile(lock);
+    return false;
+  } else {
+    const char* state = s.getState();
+    if (state == nullptr ||
+        (std::strstr(state, "lock hold") == nullptr &&
+         std::strstr(state, "While lock file") == nullptr)) {
+      SaveError(errptr, s);
+    }
+    return true;
+  }
 }
 
 void crocksdb_env_destroy(crocksdb_env_t* env) {

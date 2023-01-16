@@ -51,9 +51,8 @@ pub unsafe extern "C" fn full_merge_callback(
 ) -> *const c_char {
     let cb: &mut MergeOperatorCallback = &mut *(raw_cb as *mut MergeOperatorCallback);
     let operands = &mut MergeOperands::new(operands_list, operands_list_len, num_operands);
-    let key: &[u8] = slice::from_raw_parts(raw_key as *const u8, key_len as usize);
-    let oldval: &[u8] =
-        slice::from_raw_parts(existing_value as *const u8, existing_value_len as usize);
+    let key: &[u8] = slice::from_raw_parts(raw_key as *const u8, key_len);
+    let oldval: &[u8] = slice::from_raw_parts(existing_value as *const u8, existing_value_len);
     let mut result = (cb.merge_fn)(key, Some(oldval), operands);
     result.shrink_to_fit();
     // TODO(tan) investigate zero-copy techniques to improve performance
@@ -78,7 +77,7 @@ pub unsafe extern "C" fn partial_merge_callback(
 ) -> *const c_char {
     let cb: &mut MergeOperatorCallback = &mut *(raw_cb as *mut MergeOperatorCallback);
     let operands = &mut MergeOperands::new(operands_list, operands_list_len, num_operands);
-    let key: &[u8] = slice::from_raw_parts(raw_key as *const u8, key_len as usize);
+    let key: &[u8] = slice::from_raw_parts(raw_key as *const u8, key_len);
     let mut result = (cb.merge_fn)(key, None, operands);
     result.shrink_to_fit();
     // TODO(tan) investigate zero-copy techniques to improve performance
@@ -106,8 +105,8 @@ impl MergeOperands {
     ) -> MergeOperands {
         assert!(num_operands >= 0);
         MergeOperands {
-            operands_list: operands_list,
-            operands_list_len: operands_list_len,
+            operands_list,
+            operands_list_len,
             num_operands: num_operands as usize,
             cursor: 0,
         }
@@ -126,7 +125,7 @@ impl<'a> Iterator for &'a mut MergeOperands {
                 let spacing = mem::size_of::<*const *const u8>();
                 let spacing_len = mem::size_of::<*const size_t>();
                 let len_ptr = (base_len + (spacing_len * self.cursor)) as *const size_t;
-                let len = *len_ptr as usize;
+                let len = *len_ptr;
                 let ptr = base + (spacing * self.cursor);
                 self.cursor += 1;
                 Some(slice::from_raw_parts(

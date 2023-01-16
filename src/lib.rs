@@ -16,6 +16,8 @@
 // FIXME: we should remove this line after we add safe doc to all the unsafe functions
 // see: https://rust-lang.github.io/rust-clippy/master/index.html#missing_safety_doc
 #![allow(clippy::missing_safety_doc)]
+#![allow(clippy::new_without_default)]
+#![allow(clippy::type_complexity)]
 
 extern crate core;
 extern crate libc;
@@ -63,9 +65,9 @@ pub use rocksdb::{
 };
 pub use rocksdb_options::{
     BlockBasedOptions, CColumnFamilyDescriptor, ColumnFamilyOptions, CompactOptions,
-    CompactionOptions, DBOptions, EnvOptions, FifoCompactionOptions, HistogramData,
-    IngestExternalFileOptions, LRUCacheOptions, RateLimiter, ReadOptions, RestoreOptions,
-    WriteOptions,
+    CompactionOptions, ConcurrentTaskLimiter, DBOptions, EnvOptions, FifoCompactionOptions,
+    HistogramData, IngestExternalFileOptions, LRUCacheOptions, RateLimiter, ReadOptions,
+    RestoreOptions, Statistics, WriteBufferManager, WriteOptions,
 };
 pub use slice_transform::SliceTransform;
 pub use sst_partitioner::{

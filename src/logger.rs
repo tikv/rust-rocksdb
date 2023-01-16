@@ -12,7 +12,7 @@ pub trait Logger: Send + Sync {
 
 extern "C" fn destructor<L: Logger>(ctx: *mut c_void) {
     unsafe {
-        Box::from_raw(ctx as *mut L);
+        let _ = Box::from_raw(ctx as *mut L);
     }
 }
 

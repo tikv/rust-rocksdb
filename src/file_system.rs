@@ -13,7 +13,7 @@ pub trait FileSystemInspector: Sync + Send {
 extern "C" fn file_system_inspector_destructor<T: FileSystemInspector>(ctx: *mut c_void) {
     unsafe {
         // Recover from raw pointer and implicitly drop.
-        Box::from_raw(ctx as *mut T);
+        let _ = Box::from_raw(ctx as *mut T);
     }
 }
 
@@ -52,7 +52,7 @@ extern "C" fn file_system_inspector_write<T: FileSystemInspector>(
 }
 
 pub struct DBFileSystemInspector {
-    pub inner: *mut DBFileSystemInspectorInstance,
+    pub(crate) inner: *mut DBFileSystemInspectorInstance,
 }
 
 unsafe impl Send for DBFileSystemInspector {}
@@ -114,7 +114,7 @@ mod test {
         pub refill_bytes: usize,
         pub read_called: usize,
         pub write_called: usize,
-        pub drop: Option<TestDrop>,
+        pub _drop: Option<TestDrop>,
     }
 
     impl Default for TestFileSystemInspector {
@@ -123,7 +123,7 @@ mod test {
                 refill_bytes: 0,
                 read_called: 0,
                 write_called: 0,
-                drop: None,
+                _drop: None,
             }
         }
     }
@@ -153,7 +153,7 @@ mod test {
     fn test_create_and_destroy_inspector() {
         let drop_called = Arc::new(AtomicUsize::new(0));
         let fs_inspector = Arc::new(Mutex::new(TestFileSystemInspector {
-            drop: Some(TestDrop {
+            _drop: Some(TestDrop {
                 called: drop_called.clone(),
             }),
             ..Default::default()

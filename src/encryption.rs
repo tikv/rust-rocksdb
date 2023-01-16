@@ -184,7 +184,7 @@ extern "C" fn encryption_key_manager_link_file<T: EncryptionKeyManager>(
 }
 
 pub struct DBEncryptionKeyManager {
-    pub inner: *mut DBEncryptionKeyManagerInstance,
+    pub(crate) inner: *mut DBEncryptionKeyManagerInstance,
 }
 
 unsafe impl Send for DBEncryptionKeyManager {}

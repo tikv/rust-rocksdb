@@ -81,12 +81,6 @@ typedef struct crocksdb_cache_t crocksdb_cache_t;
 typedef struct crocksdb_memory_allocator_t crocksdb_memory_allocator_t;
 typedef struct crocksdb_compactionfilter_t crocksdb_compactionfilter_t;
 typedef struct crocksdb_checkpoint_t crocksdb_checkpoint_t;
-enum {
-  crocksdb_table_file_creation_reason_flush = 0,
-  crocksdb_table_file_creation_reason_compaction = 1,
-  crocksdb_table_file_creation_reason_recovery = 2,
-  crocksdb_table_file_creation_reason_misc = 3,
-};
 typedef struct crocksdb_compactionfiltercontext_t
     crocksdb_compactionfiltercontext_t;
 typedef struct crocksdb_compactionfilterfactory_t

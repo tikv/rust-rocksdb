@@ -5253,7 +5253,8 @@ struct crocksdb_table_properties_t {
 };
 
 uint64_t crocksdb_table_properties_get_u64(
-    const crocksdb_table_properties_t* props, crocksdb_table_u64_property_t prop) {
+    const crocksdb_table_properties_t* props,
+    crocksdb_table_u64_property_t prop) {
   const TableProperties& rep = props->rep;
   switch (prop) {
     case kOriginalFileNumber:
@@ -5310,8 +5311,8 @@ uint64_t crocksdb_table_properties_get_u64(
 }
 
 const char* crocksdb_table_properties_get_str(
-    const crocksdb_table_properties_t* props, crocksdb_table_str_property_t prop,
-    size_t* slen) {
+    const crocksdb_table_properties_t* props,
+    crocksdb_table_str_property_t prop, size_t* slen) {
   const TableProperties& rep = props->rep;
   switch (prop) {
     case kDbId:

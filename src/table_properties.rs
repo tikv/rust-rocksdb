@@ -13,7 +13,8 @@
 
 use crocksdb_ffi::{
     self, DBTableProperties, DBTablePropertiesCollection, DBTablePropertiesCollectionIterator,
-    DBTableU64Property, DBTableStrProperty, DBUserCollectedProperties, DBUserCollectedPropertiesIterator,
+    DBTableStrProperty, DBTableU64Property, DBUserCollectedProperties,
+    DBUserCollectedPropertiesIterator,
 };
 use libc::size_t;
 use std::marker::PhantomData;

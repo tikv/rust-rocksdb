@@ -2501,8 +2501,15 @@ struct crocksdb_eventlistener_t : public EventListener {
       case BackgroundErrorReason::kMemTable:
         r = crocksdb_backgrounderrorreason_t::kMemTable;
         break;
-      default:
-        assert(false);
+      case BackgroundErrorReason::kManifestWrite:
+        r = crocksdb_backgrounderrorreason_t::kManifestWrite;
+        break;
+      case BackgroundErrorReason::kFlushNoWAL:
+        r = crocksdb_backgrounderrorreason_t::kFlushNoWAL;
+        break;
+      case BackgroundErrorReason::kManifestWriteNoWAL:
+        r = crocksdb_backgrounderrorreason_t::kManifestWriteNoWAL;
+        break;
     }
     crocksdb_status_ptr_t* s = new crocksdb_status_ptr_t;
     s->rep = status;
@@ -4327,8 +4334,6 @@ crocksdb_encryption_method_t crocksdb_file_encryption_info_method(
       return crocksdb_encryption_method_t::kAES256_CTR;
     case EncryptionMethod::kSM4_CTR:
       return crocksdb_encryption_method_t::kSM4_CTR;
-    default:
-      assert(false);
   }
 }
 
@@ -4373,8 +4378,6 @@ void crocksdb_file_encryption_info_set_method(
     case kSM4_CTR:
       file_info->rep->method = EncryptionMethod::kSM4_CTR;
       break;
-    default:
-      assert(false);
   };
 }
 
@@ -5250,13 +5253,23 @@ struct crocksdb_table_properties_t {
 };
 
 uint64_t crocksdb_table_properties_get_u64(
-    const crocksdb_table_properties_t* props, crocksdb_table_property_t prop) {
+    const crocksdb_table_properties_t* props, crocksdb_table_u64_property_t prop) {
   const TableProperties& rep = props->rep;
   switch (prop) {
+    case kOriginalFileNumber:
+      return rep.orig_file_number;
     case kDataSize:
       return rep.data_size;
     case kIndexSize:
       return rep.index_size;
+    case kIndexPartitions:
+      return rep.index_partitions;
+    case kTopLevelIndexSize:
+      return rep.top_level_index_size;
+    case kIndexKeyIsUserKey:
+      return rep.index_key_is_user_key;
+    case kIndexValueIsDeltaEncoded:
+      return rep.index_value_is_delta_encoded;
     case kFilterSize:
       return rep.filter_size;
     case kRawKeySize:
@@ -5267,22 +5280,49 @@ uint64_t crocksdb_table_properties_get_u64(
       return rep.num_data_blocks;
     case kNumEntries:
       return rep.num_entries;
+    case kNumFilterEntries:
+      return rep.num_filter_entries;
+    case kNumDeletions:
+      return rep.num_deletions;
+    case kNumMergeOperands:
+      return rep.num_merge_operands;
+    case kNumRangeDeletions:
+      return rep.num_range_deletions;
     case kFormatVersion:
       return rep.format_version;
     case kFixedKeyLen:
-      return rep.data_size;
-    case kColumnFamilyID:
+      return rep.fixed_key_len;
+    case kColumnFamilyId:
       return rep.column_family_id;
+    case kCreationTime:
+      return rep.creation_time;
+    case kOldestKeyTime:
+      return rep.oldest_key_time;
+    case kFileCreationTime:
+      return rep.file_creation_time;
+    case kSlowCompressionEstimatedDataSize:
+      return rep.slow_compression_estimated_data_size;
+    case kFastCompressionEstimatedDataSize:
+      return rep.fast_compression_estimated_data_size;
     default:
-      return 0;
+      assert(false);
   }
 }
 
 const char* crocksdb_table_properties_get_str(
-    const crocksdb_table_properties_t* props, crocksdb_table_property_t prop,
+    const crocksdb_table_properties_t* props, crocksdb_table_str_property_t prop,
     size_t* slen) {
   const TableProperties& rep = props->rep;
   switch (prop) {
+    case kDbId:
+      *slen = rep.db_id.size();
+      return rep.db_id.data();
+    case kDbSessionId:
+      *slen = rep.db_session_id.size();
+      return rep.db_session_id.data();
+    case kDbHostId:
+      *slen = rep.db_host_id.size();
+      return rep.db_host_id.data();
     case kColumnFamilyName:
       *slen = rep.column_family_name.size();
       return rep.column_family_name.data();
@@ -5304,8 +5344,11 @@ const char* crocksdb_table_properties_get_str(
     case kCompressionName:
       *slen = rep.compression_name.size();
       return rep.compression_name.data();
+    case kCompressionOptions:
+      *slen = rep.compression_options.size();
+      return rep.compression_options.data();
     default:
-      return nullptr;
+      assert(false);
   }
 }
 

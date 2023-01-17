@@ -355,9 +355,10 @@ pub enum DBInfoLogLevel {
     NumInfoLog = 6,
 }
 
+// @needs_manual_sync
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 #[repr(C)]
-pub enum DBTableProperty {
+pub enum DBTableU64Property {
     DataSize = 1,
     IndexSize = 2,
     FilterSize = 3,
@@ -368,13 +369,37 @@ pub enum DBTableProperty {
     FormatVersion = 8,
     FixedKeyLen = 9,
     ColumnFamilyId = 10,
-    ColumnFamilyName = 11,
-    FilterPolicyName = 12,
-    ComparatorName = 13,
-    MergeOperatorName = 14,
-    PrefixExtractorName = 15,
-    PropertyCollectorsNames = 16,
-    CompressionName = 17,
+    OriginalFileNumber = 11,
+    IndexPartitions = 12,
+    TopLevelIndexSize = 13,
+    IndexKeyIsUserKey = 14,
+    IndexValueIsDeltaEncoded = 15,
+    NumFilterEntries = 16,
+    NumDeletions = 17,
+    NumMergeOperands = 18,
+    NumRangeDeletions = 19,
+    CreationTime = 20,
+    OldestKeyTime = 21,
+    FileCreationTime = 22,
+    SlowCompressionEstimatedDataSize = 23,
+    FastCompressionEstimatedDataSize = 24,
+}
+
+// @needs_manual_sync
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[repr(C)]
+pub enum DBTableStrProperty {
+    DbId = 1,
+    DbSessionId = 2,
+    DbHostId = 3,
+    FilterPolicyName = 4,
+    ColumnFamilyName = 5,
+    ComparatorName = 6,
+    MergeOperatorName = 7,
+    PrefixExtractorName = 8,
+    PropertyCollectorsNames = 9,
+    CompressionName = 10,
+    CompressionOptions = 11,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -2124,12 +2149,12 @@ extern "C" {
 
     pub fn crocksdb_table_properties_get_u64(
         props: *const DBTableProperties,
-        prop: DBTableProperty,
+        prop: DBTableU64Property,
     ) -> u64;
 
     pub fn crocksdb_table_properties_get_str(
         props: *const DBTableProperties,
-        prop: DBTableProperty,
+        prop: DBTableStrProperty,
         slen: *mut size_t,
     ) -> *const u8;
 

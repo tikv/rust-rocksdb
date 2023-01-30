@@ -2133,6 +2133,11 @@ void crocksdb_options_set_wal_bytes_per_sync(crocksdb_options_t* opt,
   opt->rep.wal_bytes_per_sync = v;
 }
 
+void crocksdb_options_set_disable_periodic_work_scheduler(
+    crocksdb_options_t* opt, unsigned char v) {
+  opt->rep.disable_periodic_work_scheduler = v;
+}
+
 static BlockBasedTableOptions* get_block_based_table_options(
     crocksdb_options_t* opt) {
   if (opt && opt->rep.table_factory != nullptr) {
@@ -5848,6 +5853,12 @@ void crocksdb_compact_files_cf(crocksdb_t* db,
     input_files.push_back(input_file_names[i]);
   }
   auto s = db->rep->CompactFiles(opts->rep, cf->rep, input_files, output_level);
+  SaveError(errptr, s);
+}
+
+void crocksdb_do_periodic_work(crocksdb_t* db, int work_type, char** errptr) {
+  auto s =
+      db->rep->DoPeriodicWork(static_cast<DB::PeriodicWorkType>(work_type));
   SaveError(errptr, s);
 }
 

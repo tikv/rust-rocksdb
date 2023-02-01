@@ -1328,12 +1328,6 @@ impl DBOptions {
             Some(CStr::from_ptr(memtable_name).to_str().unwrap())
         }
     }
-
-    pub fn disable_periodic_work_scheduler(&self, v: bool) {
-        unsafe {
-            crocksdb_ffi::crocksdb_options_set_disable_periodic_work_scheduler(self.inner, v);
-        }
-    }
 }
 
 pub struct ColumnFamilyOptions {

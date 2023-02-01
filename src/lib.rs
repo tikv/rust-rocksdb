@@ -46,7 +46,7 @@ pub use file_system::FileSystemInspector;
 pub use librocksdb_sys::{
     self as crocksdb_ffi, new_bloom_filter, ChecksumType, CompactionPriority, CompactionReason,
     DBBackgroundErrorReason, DBBottommostLevelCompaction, DBCompactionStyle, DBCompressionType,
-    DBEntryType, DBInfoLogLevel, DBPeriodicWorkType, DBRateLimiterMode, DBRecoveryMode,
+    DBEntryType, DBInfoLogLevel, DBRateLimiterMode, DBRecoveryMode,
     DBSstPartitionerResult as SstPartitionerResult, DBStatisticsHistogramType,
     DBStatisticsTickerType, DBStatusPtr, DBTableFileCreationReason, DBTitanDBBlobRunMode,
     DBValueType, IndexType, PrepopulateBlockCache, WriteStallCondition,

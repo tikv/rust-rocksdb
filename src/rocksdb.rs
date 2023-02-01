@@ -18,7 +18,7 @@ use crocksdb_ffi::{
     DBTitanDBOptions, DBWriteBatch,
 };
 use libc::{self, c_char, c_int, c_void, size_t};
-use librocksdb_sys::{DBMemoryAllocator, DBPeriodicWorkType};
+use librocksdb_sys::DBMemoryAllocator;
 use metadata::ColumnFamilyMetaData;
 use rocksdb_options::{
     CColumnFamilyDescriptor, ColumnFamilyDescriptor, ColumnFamilyOptions, CompactOptions,
@@ -2041,13 +2041,6 @@ impl DB {
             Ok(())
         }
     }
-
-    pub fn do_periodic_work(&self, work_type: DBPeriodicWorkType) -> Result<(), String> {
-        unsafe {
-            ffi_try!(crocksdb_do_periodic_work(self.inner, work_type));
-            Ok(())
-        }
-    }
 }
 
 impl Writable for DB {
@@ -3834,17 +3827,5 @@ mod test {
             cfs.iter().map(|cf| *cf).zip(cfs_opts).collect(),
         )
         .unwrap();
-    }
-
-    #[test]
-    fn test_offload_periodic_work() {
-        let path = tempdir_with_prefix("_rust_rocksdb_test_offload_periodic_work");
-        let mut opts = DBOptions::new();
-        opts.create_if_missing(true);
-        opts.create_missing_column_families(true);
-        opts.disable_periodic_work_scheduler(true);
-        let db = DB::open(opts, path.path().to_str().unwrap()).unwrap();
-        db.do_periodic_work(DBPeriodicWorkType::FlushInfoLog)
-            .unwrap();
     }
 }

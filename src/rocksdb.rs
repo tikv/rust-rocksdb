@@ -821,6 +821,18 @@ impl DB {
         }
     }
 
+    pub fn disable_manual_compaction(&self) {
+        unsafe {
+            crocksdb_ffi::crocksdb_disable_manual_compaction(self.inner);
+        }
+    }
+
+    pub fn enable_manual_compaction(&self) {
+        unsafe {
+            crocksdb_ffi::crocksdb_enable_manual_compaction(self.inner);
+        }
+    }
+
     pub fn path(&self) -> &str {
         &self.path
     }

@@ -921,6 +921,14 @@ void crocksdb_continue_bg_work(crocksdb_t* db) {
   db->rep->ContinueBackgroundWork();
 }
 
+void crocksdb_disable_manual_compaction(crocksdb_t* db) {
+  db->rep->DisableManualCompaction();
+}
+
+void crocksdb_enable_manual_compaction(crocksdb_t* db) {
+  db->rep->EnableManualCompaction();
+}
+
 crocksdb_t* crocksdb_open_column_families(
     const crocksdb_options_t* db_options, const char* name,
     int num_column_families, const char** column_family_names,

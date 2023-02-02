@@ -3029,6 +3029,11 @@ void crocksdb_options_set_stats_dump_period_sec(crocksdb_options_t* opt,
   opt->rep.stats_dump_period_sec = v;
 }
 
+void crocksdb_options_set_stats_persist_period_sec(crocksdb_options_t* opt,
+                                                   uint32_t v) {
+  opt->rep.stats_persist_period_sec = v;
+}
+
 void crocksdb_options_set_advise_random_on_open(crocksdb_options_t* opt,
                                                 unsigned char v) {
   opt->rep.advise_random_on_open = v;

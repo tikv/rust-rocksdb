@@ -1303,6 +1303,8 @@ crocksdb_options_set_skip_log_error_on_recovery(crocksdb_options_t*,
                                                 unsigned char);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_stats_dump_period_sec(
     crocksdb_options_t*, unsigned int);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_stats_persist_period_sec(
+    crocksdb_options_t*, uint32_t);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_advise_random_on_open(
     crocksdb_options_t*, unsigned char);
 extern C_ROCKSDB_LIBRARY_API void

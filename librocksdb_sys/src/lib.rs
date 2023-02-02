@@ -894,7 +894,9 @@ extern "C" {
         standard_deviation: *mut c_double,
         max: *mut c_double,
     ) -> bool;
+
     pub fn crocksdb_options_set_stats_dump_period_sec(options: *mut Options, v: usize);
+    pub fn crocksdb_options_set_stats_persist_period_sec(options: *mut Options, v: u32);
     pub fn crocksdb_options_set_num_levels(options: *mut Options, v: c_int);
     pub fn crocksdb_options_get_num_levels(options: *mut Options) -> c_int;
     pub fn crocksdb_options_set_db_log_dir(options: *mut Options, path: *const c_char);

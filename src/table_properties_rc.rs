@@ -6,7 +6,7 @@
 //! the collection stay valid for the lifetime of the collection, it doesn't
 //! guarantee that the _DB_ stays valid for the lifetime of the collection.
 
-use crocksdb_ffi::{DBTablePropertiesCollection, DBTableProperty};
+use crocksdb_ffi::{DBTablePropertiesCollection, DBTableU64Property};
 use libc::size_t;
 use librocksdb_sys as crocksdb_ffi;
 use std::ops::Deref;
@@ -140,12 +140,12 @@ impl TableProperties {
         TableProperties { handle }
     }
 
-    fn get_u64(&self, prop: DBTableProperty) -> u64 {
+    fn get_u64(&self, prop: DBTableU64Property) -> u64 {
         unsafe { crocksdb_ffi::crocksdb_table_properties_get_u64(self.handle.ptr(), prop) }
     }
 
     pub fn num_entries(&self) -> u64 {
-        self.get_u64(DBTableProperty::NumEntries)
+        self.get_u64(DBTableU64Property::NumEntries)
     }
 
     pub fn user_collected_properties(&self) -> UserCollectedProperties {

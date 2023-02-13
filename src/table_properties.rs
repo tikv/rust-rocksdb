@@ -13,7 +13,8 @@
 
 use crocksdb_ffi::{
     self, DBTableProperties, DBTablePropertiesCollection, DBTablePropertiesCollectionIterator,
-    DBTableProperty, DBUserCollectedProperties, DBUserCollectedPropertiesIterator,
+    DBTableStrProperty, DBTableU64Property, DBUserCollectedProperties,
+    DBUserCollectedPropertiesIterator,
 };
 use libc::size_t;
 use std::marker::PhantomData;
@@ -140,11 +141,11 @@ impl TableProperties {
         &*(ptr as *const TableProperties)
     }
 
-    fn get_u64(&self, prop: DBTableProperty) -> u64 {
+    fn get_u64(&self, prop: DBTableU64Property) -> u64 {
         unsafe { crocksdb_ffi::crocksdb_table_properties_get_u64(&self.inner, prop) }
     }
 
-    fn get_str(&self, prop: DBTableProperty) -> &str {
+    fn get_str(&self, prop: DBTableStrProperty) -> &str {
         unsafe {
             let mut slen: size_t = 0;
             let s = crocksdb_ffi::crocksdb_table_properties_get_str(&self.inner, prop, &mut slen);
@@ -154,71 +155,71 @@ impl TableProperties {
     }
 
     pub fn data_size(&self) -> u64 {
-        self.get_u64(DBTableProperty::DataSize)
+        self.get_u64(DBTableU64Property::DataSize)
     }
 
     pub fn index_size(&self) -> u64 {
-        self.get_u64(DBTableProperty::IndexSize)
+        self.get_u64(DBTableU64Property::IndexSize)
     }
 
     pub fn filter_size(&self) -> u64 {
-        self.get_u64(DBTableProperty::FilterSize)
+        self.get_u64(DBTableU64Property::FilterSize)
     }
 
     pub fn raw_key_size(&self) -> u64 {
-        self.get_u64(DBTableProperty::RawKeySize)
+        self.get_u64(DBTableU64Property::RawKeySize)
     }
 
     pub fn raw_value_size(&self) -> u64 {
-        self.get_u64(DBTableProperty::RawValueSize)
+        self.get_u64(DBTableU64Property::RawValueSize)
     }
 
     pub fn num_data_blocks(&self) -> u64 {
-        self.get_u64(DBTableProperty::NumDataBlocks)
+        self.get_u64(DBTableU64Property::NumDataBlocks)
     }
 
     pub fn num_entries(&self) -> u64 {
-        self.get_u64(DBTableProperty::NumEntries)
+        self.get_u64(DBTableU64Property::NumEntries)
     }
 
     pub fn format_version(&self) -> u64 {
-        self.get_u64(DBTableProperty::FormatVersion)
+        self.get_u64(DBTableU64Property::FormatVersion)
     }
 
     pub fn fixed_key_len(&self) -> u64 {
-        self.get_u64(DBTableProperty::FixedKeyLen)
+        self.get_u64(DBTableU64Property::FixedKeyLen)
     }
 
     pub fn column_family_id(&self) -> u64 {
-        self.get_u64(DBTableProperty::ColumnFamilyId)
+        self.get_u64(DBTableU64Property::ColumnFamilyId)
     }
 
     pub fn column_family_name(&self) -> &str {
-        self.get_str(DBTableProperty::ColumnFamilyName)
+        self.get_str(DBTableStrProperty::ColumnFamilyName)
     }
 
     pub fn filter_policy_name(&self) -> &str {
-        self.get_str(DBTableProperty::FilterPolicyName)
+        self.get_str(DBTableStrProperty::FilterPolicyName)
     }
 
     pub fn comparator_name(&self) -> &str {
-        self.get_str(DBTableProperty::ComparatorName)
+        self.get_str(DBTableStrProperty::ComparatorName)
     }
 
     pub fn merge_operator_name(&self) -> &str {
-        self.get_str(DBTableProperty::MergeOperatorName)
+        self.get_str(DBTableStrProperty::MergeOperatorName)
     }
 
     pub fn prefix_extractor_name(&self) -> &str {
-        self.get_str(DBTableProperty::PrefixExtractorName)
+        self.get_str(DBTableStrProperty::PrefixExtractorName)
     }
 
     pub fn property_collectors_names(&self) -> &str {
-        self.get_str(DBTableProperty::PropertyCollectorsNames)
+        self.get_str(DBTableStrProperty::PropertyCollectorsNames)
     }
 
     pub fn compression_name(&self) -> &str {
-        self.get_str(DBTableProperty::CompressionName)
+        self.get_str(DBTableStrProperty::CompressionName)
     }
 
     pub fn user_collected_properties(&self) -> &UserCollectedProperties {

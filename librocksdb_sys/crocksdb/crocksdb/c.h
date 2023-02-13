@@ -81,12 +81,6 @@ typedef struct crocksdb_cache_t crocksdb_cache_t;
 typedef struct crocksdb_memory_allocator_t crocksdb_memory_allocator_t;
 typedef struct crocksdb_compactionfilter_t crocksdb_compactionfilter_t;
 typedef struct crocksdb_checkpoint_t crocksdb_checkpoint_t;
-enum {
-  crocksdb_table_file_creation_reason_flush = 0,
-  crocksdb_table_file_creation_reason_compaction = 1,
-  crocksdb_table_file_creation_reason_recovery = 2,
-  crocksdb_table_file_creation_reason_misc = 3,
-};
 typedef struct crocksdb_compactionfiltercontext_t
     crocksdb_compactionfiltercontext_t;
 typedef struct crocksdb_compactionfilterfactory_t
@@ -182,7 +176,7 @@ typedef struct crocksdb_sst_partitioner_context_t
 typedef struct crocksdb_sst_partitioner_factory_t
     crocksdb_sst_partitioner_factory_t;
 
-typedef enum crocksdb_table_property_t {
+typedef enum crocksdb_table_u64_property_t {
   kDataSize = 1,
   kIndexSize = 2,
   kFilterSize = 3,
@@ -192,15 +186,36 @@ typedef enum crocksdb_table_property_t {
   kNumEntries = 7,
   kFormatVersion = 8,
   kFixedKeyLen = 9,
-  kColumnFamilyID = 10,
-  kColumnFamilyName = 11,
-  kFilterPolicyName = 12,
-  kComparatorName = 13,
-  kMergeOperatorName = 14,
-  kPrefixExtractorName = 15,
-  kPropertyCollectorsNames = 16,
-  kCompressionName = 17,
-} crocksdb_table_property_t;
+  kColumnFamilyId = 10,
+  kOriginalFileNumber = 11,
+  kIndexPartitions = 12,
+  kTopLevelIndexSize = 13,
+  kIndexKeyIsUserKey = 14,
+  kIndexValueIsDeltaEncoded = 15,
+  kNumFilterEntries = 16,
+  kNumDeletions = 17,
+  kNumMergeOperands = 18,
+  kNumRangeDeletions = 19,
+  kCreationTime = 20,
+  kOldestKeyTime = 21,
+  kFileCreationTime = 22,
+  kSlowCompressionEstimatedDataSize = 23,
+  kFastCompressionEstimatedDataSize = 24,
+} crocksdb_table_u64_property_t;
+
+typedef enum crocksdb_table_str_property_t {
+  kDbId = 1,
+  kDbSessionId = 2,
+  kDbHostId = 3,
+  kFilterPolicyName = 4,
+  kColumnFamilyName = 5,
+  kComparatorName = 6,
+  kMergeOperatorName = 7,
+  kPrefixExtractorName = 8,
+  kPropertyCollectorsNames = 9,
+  kCompressionName = 10,
+  kCompressionOptions = 11,
+} crocksdb_table_str_property_t;
 
 typedef enum crocksdb_ratelimiter_mode_t {
   kReadsOnly = 1,
@@ -213,6 +228,9 @@ typedef enum crocksdb_backgrounderrorreason_t {
   kCompaction = 2,
   kWriteCallback = 3,
   kMemTable = 4,
+  kManifestWrite = 5,
+  kFlushNoWAL = 6,
+  kManifestWriteNoWAL = 7,
 } crocksdb_backgrounderrorreason_t;
 
 #ifdef OPENSSL
@@ -361,6 +379,11 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_close(crocksdb_t* db);
 // crocksdb_continue_bg_work is called
 extern C_ROCKSDB_LIBRARY_API void crocksdb_pause_bg_work(crocksdb_t* db);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_continue_bg_work(crocksdb_t* db);
+
+extern C_ROCKSDB_LIBRARY_API void crocksdb_disable_manual_compaction(
+    crocksdb_t* db);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_enable_manual_compaction(
+    crocksdb_t* db);
 
 extern C_ROCKSDB_LIBRARY_API void crocksdb_put(
     crocksdb_t* db, const crocksdb_writeoptions_t* options, const char* key,
@@ -1290,6 +1313,8 @@ crocksdb_options_set_skip_log_error_on_recovery(crocksdb_options_t*,
                                                 unsigned char);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_stats_dump_period_sec(
     crocksdb_options_t*, unsigned int);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_stats_persist_period_sec(
+    crocksdb_options_t*, uint32_t);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_advise_random_on_open(
     crocksdb_options_t*, unsigned char);
 extern C_ROCKSDB_LIBRARY_API void
@@ -2063,10 +2088,10 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_get_supported_compression(int*,
 /* Table Properties */
 
 extern C_ROCKSDB_LIBRARY_API uint64_t crocksdb_table_properties_get_u64(
-    const crocksdb_table_properties_t*, crocksdb_table_property_t prop);
+    const crocksdb_table_properties_t*, crocksdb_table_u64_property_t prop);
 
 extern C_ROCKSDB_LIBRARY_API const char* crocksdb_table_properties_get_str(
-    const crocksdb_table_properties_t*, crocksdb_table_property_t prop,
+    const crocksdb_table_properties_t*, crocksdb_table_str_property_t prop,
     size_t* slen);
 
 extern C_ROCKSDB_LIBRARY_API const crocksdb_user_collected_properties_t*

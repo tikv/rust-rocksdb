@@ -1105,6 +1105,12 @@ impl DBOptions {
         }
     }
 
+    pub fn set_stats_persist_period_sec(&mut self, n: u32) {
+        unsafe {
+            crocksdb_ffi::crocksdb_options_set_stats_persist_period_sec(self.inner, n);
+        }
+    }
+
     pub fn set_db_log_dir(&mut self, path: &str) {
         let path = CString::new(path.as_bytes()).unwrap();
         unsafe {

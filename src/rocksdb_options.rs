@@ -1737,6 +1737,12 @@ impl ColumnFamilyOptions {
         }
     }
 
+    pub fn set_target_file_size_multiplier(&mut self, multiplier: i32) {
+        unsafe {
+            crocksdb_ffi::crocksdb_options_set_target_file_size_multiplier(self.inner, multiplier)
+        }
+    }
+
     pub fn get_target_file_size_base(&self) -> u64 {
         unsafe { crocksdb_ffi::crocksdb_options_get_target_file_size_base(self.inner) }
     }

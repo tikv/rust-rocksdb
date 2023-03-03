@@ -3528,6 +3528,11 @@ void crocksdb_options_set_atomic_flush(crocksdb_options_t* opt,
   opt->rep.atomic_flush = enable;
 }
 
+void crocksdb_options_avoid_flush_during_recovery(crocksdb_options_t* opt,
+                                                  unsigned char avoid) {
+  opt->rep.avoid_flush_during_recovery = avoid;
+}
+
 void crocksdb_options_avoid_flush_during_shutdown(crocksdb_options_t* opt,
                                                   unsigned char avoid) {
   opt->rep.avoid_flush_during_shutdown = avoid;

@@ -1285,6 +1285,12 @@ impl DBOptions {
         }
     }
 
+    pub fn avoid_flush_during_recovery(&self, avoid: bool) {
+        unsafe {
+            crocksdb_ffi::crocksdb_options_avoid_flush_during_recovery(self.inner, avoid);
+        }
+    }
+
     pub fn avoid_flush_during_shutdown(&self, avoid: bool) {
         unsafe {
             crocksdb_ffi::crocksdb_options_avoid_flush_during_shutdown(self.inner, avoid);

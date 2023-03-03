@@ -1440,6 +1440,8 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_vector_memtable_factory(
     crocksdb_options_t* opt, uint64_t reserved_bytes);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_atomic_flush(
     crocksdb_options_t* opt, unsigned char enable);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_options_avoid_flush_during_recovery(
+    crocksdb_options_t* opt, unsigned char avoid);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_avoid_flush_during_shutdown(
     crocksdb_options_t* opt, unsigned char avoid);
 

@@ -2359,6 +2359,7 @@ impl Drop for LRUCacheOptions {
 pub struct MergeInstanceOptions {
     pub merge_memtable: bool,
     pub allow_source_write: bool,
+    pub max_preload_files: i32,
 }
 
 impl Default for MergeInstanceOptions {
@@ -2366,6 +2367,7 @@ impl Default for MergeInstanceOptions {
         Self {
             merge_memtable: false,
             allow_source_write: true,
+            max_preload_files: 16,
         }
     }
 }

@@ -764,6 +764,7 @@ impl DB {
                 self.inner,
                 opts.merge_memtable,
                 opts.allow_source_write,
+                opts.max_preload_files,
                 dbs.as_ptr(),
                 dbs.len()
             ));
@@ -3890,6 +3891,7 @@ mod test {
         let mopts = MergeInstanceOptions {
             merge_memtable: true,
             allow_source_write: true,
+            ..Default::default()
         };
         db3.merge_instances(&mopts, &[&db1, &db2]).unwrap();
         assert_eq!(db3.get(b"1").unwrap().unwrap(), b"v");

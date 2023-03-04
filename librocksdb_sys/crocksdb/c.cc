@@ -796,12 +796,13 @@ crocksdb_t* crocksdb_open_for_read_only(const crocksdb_options_t* options,
 void crocksdb_merge_disjoint_instances(crocksdb_t* db,
                                        unsigned char merge_memtable,
                                        unsigned char allow_source_write,
+                                       int max_preload_files,
                                        crocksdb_t** instances,
-                                       size_t num_instances,
-                                       char** errptr) {
+                                       size_t num_instances, char** errptr) {
   MergeInstanceOptions opts;
   opts.merge_memtable = merge_memtable;
   opts.allow_source_write = allow_source_write;
+  opts.max_preload_files = max_preload_files;
   std::vector<DB*> dbs;
   for (auto i = 0; i < num_instances; i++) {
     dbs.push_back(instances[i]->rep);

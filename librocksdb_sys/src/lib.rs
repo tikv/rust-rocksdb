@@ -1050,6 +1050,7 @@ extern "C" {
         db: *mut DBInstance,
         merge_memtable: bool,
         allow_source_write: bool,
+        max_preload_files: c_int,
         instances: *const *mut DBInstance,
         num_instances: size_t,
         err: *mut *mut c_char,

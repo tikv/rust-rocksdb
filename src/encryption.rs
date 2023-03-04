@@ -71,7 +71,7 @@ fn copy_error<T: Into<Vec<u8>>>(err: T) -> *const c_char {
 extern "C" fn encryption_key_manager_destructor<T: EncryptionKeyManager>(ctx: *mut c_void) {
     unsafe {
         // Recover from raw pointer and implicitly drop.
-        Box::from_raw(ctx as *mut T);
+        let _ = Box::from_raw(ctx as *mut T);
     }
 }
 

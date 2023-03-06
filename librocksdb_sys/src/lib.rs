@@ -1726,6 +1726,9 @@ extern "C" {
         context: *const DBCompactionFilterContext,
         key_len: *mut size_t,
     ) -> *const c_char;
+    pub fn crocksdb_compactionfiltercontext_reason(
+        context: *const DBCompactionFilterContext,
+    ) -> DBTableFileCreationReason;
 
     // Compaction filter factory
     pub fn crocksdb_compactionfilterfactory_create(

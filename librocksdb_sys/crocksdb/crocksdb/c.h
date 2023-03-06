@@ -1526,6 +1526,9 @@ extern C_ROCKSDB_LIBRARY_API crocksdb_table_properties_t*
 crocksdb_compactionfiltercontext_table_properties(
     crocksdb_compactionfiltercontext_t* context, size_t offset);
 
+extern C_ROCKSDB_LIBRARY_API int crocksdb_compactionfiltercontext_reason(
+    crocksdb_compactionfiltercontext_t* context);
+
 /* Compaction Filter Factory */
 
 extern C_ROCKSDB_LIBRARY_API crocksdb_compactionfilterfactory_t*

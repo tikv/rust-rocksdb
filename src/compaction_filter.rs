@@ -227,6 +227,11 @@ impl CompactionFilterContext {
             slice::from_raw_parts(end_key_ptr, end_key_len)
         }
     }
+
+    pub fn reason(&self) -> DBTableFileCreationReason {
+        let ctx = &self.0 as *const DBCompactionFilterContext;
+        unsafe { crocksdb_ffi::crocksdb_compactionfiltercontext_reason(ctx) }
+    }
 }
 
 pub trait CompactionFilterFactory {
@@ -294,7 +299,6 @@ mod factory {
     ) -> c_uchar {
         unsafe {
             let factory = &*(factory as *const CompactionFilterFactoryProxy<C>);
-            let reason: DBTableFileCreationReason = reason as DBTableFileCreationReason;
             factory.factory.should_filter_table_file_creation(reason) as c_uchar
         }
     }

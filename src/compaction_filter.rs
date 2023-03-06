@@ -244,17 +244,6 @@ pub trait CompactionFilterFactory {
         // For compatibility, `CompactionFilter`s by default apply during compaction.
         matches!(reason, DBTableFileCreationReason::Compaction)
     }
-
-    unsafe fn create_compaction_filter_raw(
-        &self,
-        context: &CompactionFilterContext,
-    ) -> *mut DBCompactionFilter {
-        if let Some((name, filter)) = self.create_compaction_filter(context) {
-            new_compaction_filter_raw(name, filter)
-        } else {
-            std::ptr::null_mut()
-        }
-    }
 }
 
 #[repr(C)]
@@ -291,7 +280,11 @@ mod factory {
         unsafe {
             let factory = &mut *(factory as *mut CompactionFilterFactoryProxy<C>);
             let context: &CompactionFilterContext = &*(context as *const CompactionFilterContext);
-            factory.factory.create_compaction_filter_raw(context)
+            if let Some((name, filter)) = factory.factory.create_compaction_filter(context) {
+                super::new_compaction_filter_raw(name, filter)
+            } else {
+                std::ptr::null_mut()
+            }
         }
     }
 

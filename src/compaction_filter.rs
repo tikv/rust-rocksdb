@@ -227,6 +227,11 @@ impl CompactionFilterContext {
             slice::from_raw_parts(end_key_ptr, end_key_len)
         }
     }
+
+    pub fn reason(&self) -> DBTableFileCreationReason {
+        let ctx = &self.0 as *const DBCompactionFilterContext;
+        unsafe { crocksdb_ffi::crocksdb_compactionfiltercontext_reason(ctx) }
+    }
 }
 
 pub trait CompactionFilterFactory {
@@ -243,17 +248,6 @@ pub trait CompactionFilterFactory {
     fn should_filter_table_file_creation(&self, reason: DBTableFileCreationReason) -> bool {
         // For compatibility, `CompactionFilter`s by default apply during compaction.
         matches!(reason, DBTableFileCreationReason::Compaction)
-    }
-
-    unsafe fn create_compaction_filter_raw(
-        &self,
-        context: &CompactionFilterContext,
-    ) -> *mut DBCompactionFilter {
-        if let Some((name, filter)) = self.create_compaction_filter(context) {
-            new_compaction_filter_raw(name, filter)
-        } else {
-            std::ptr::null_mut()
-        }
     }
 }
 
@@ -291,7 +285,11 @@ mod factory {
         unsafe {
             let factory = &mut *(factory as *mut CompactionFilterFactoryProxy<C>);
             let context: &CompactionFilterContext = &*(context as *const CompactionFilterContext);
-            factory.factory.create_compaction_filter_raw(context)
+            if let Some((name, filter)) = factory.factory.create_compaction_filter(context) {
+                super::new_compaction_filter_raw(name, filter)
+            } else {
+                std::ptr::null_mut()
+            }
         }
     }
 
@@ -301,7 +299,6 @@ mod factory {
     ) -> c_uchar {
         unsafe {
             let factory = &*(factory as *const CompactionFilterFactoryProxy<C>);
-            let reason: DBTableFileCreationReason = reason as DBTableFileCreationReason;
             factory.factory.should_filter_table_file_creation(reason) as c_uchar
         }
     }

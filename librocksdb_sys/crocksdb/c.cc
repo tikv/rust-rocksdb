@@ -3756,6 +3756,11 @@ const char* crocksdb_compactionfiltercontext_start_key(
   return result.data();
 }
 
+int crocksdb_compactionfiltercontext_reason(
+    crocksdb_compactionfiltercontext_t* context) {
+  return static_cast<int>(context->rep.reason);
+}
+
 const char* crocksdb_compactionfiltercontext_end_key(
     crocksdb_compactionfiltercontext_t* context, size_t* key_len) {
   const Slice& result = context->rep.end_key;

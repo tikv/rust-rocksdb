@@ -1215,6 +1215,16 @@ impl DBOptions {
         }
     }
 
+    pub fn get_write_buffer_manager(&self) -> Option<WriteBufferManager> {
+        let manager =
+            unsafe { crocksdb_ffi::crocksdb_options_get_write_buffer_manager(self.inner) };
+        if manager.is_null() {
+            None
+        } else {
+            Some(WriteBufferManager { inner: manager })
+        }
+    }
+
     // Create a info log with `path` and save to options logger field directly.
     // TODO: export more logger options like level, roll size, time, etc...
     pub fn create_info_log(&self, path: &str) -> Result<(), String> {

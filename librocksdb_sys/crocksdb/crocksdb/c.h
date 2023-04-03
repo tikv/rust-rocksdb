@@ -1436,6 +1436,8 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_ratelimiter(
     crocksdb_options_t* opt, crocksdb_ratelimiter_t* limiter);
 extern C_ROCKSDB_LIBRARY_API crocksdb_ratelimiter_t*
 crocksdb_options_get_ratelimiter(crocksdb_options_t* opt);
+extern C_ROCKSDB_LIBRARY_API crocksdb_write_buffer_manager_t*
+crocksdb_options_get_write_buffer_manager(crocksdb_options_t* opt);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_vector_memtable_factory(
     crocksdb_options_t* opt, uint64_t reserved_bytes);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_atomic_flush(

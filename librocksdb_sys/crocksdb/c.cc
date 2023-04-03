@@ -3518,6 +3518,17 @@ crocksdb_ratelimiter_t* crocksdb_options_get_ratelimiter(
   return nullptr;
 }
 
+crocksdb_write_buffer_manager_t* crocksdb_options_get_write_buffer_manager(
+    crocksdb_options_t* opt) {
+  if (opt->rep.write_buffer_manager != nullptr) {
+    crocksdb_write_buffer_manager_t* manager =
+        new crocksdb_write_buffer_manager_t;
+    manager->rep = opt->rep.write_buffer_manager;
+    return manager;
+  }
+  return nullptr;
+}
+
 void crocksdb_options_set_vector_memtable_factory(crocksdb_options_t* opt,
                                                   uint64_t reserved_bytes) {
   opt->rep.memtable_factory.reset(new VectorRepFactory(reserved_bytes));

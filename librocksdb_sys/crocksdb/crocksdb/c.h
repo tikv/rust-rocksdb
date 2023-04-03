@@ -1447,7 +1447,19 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_options_avoid_flush_during_shutdown(
 
 extern C_ROCKSDB_LIBRARY_API crocksdb_write_buffer_manager_t*
 crocksdb_write_buffer_manager_create(size_t flush_size, float stall_ratio,
-                                     unsigned char flush_oldest_first);
+                                     unsigned char flush_oldest_first,
+                                     uint64_t flush_deadline);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_write_buffer_manager_set_flush_size(
+    crocksdb_write_buffer_manager_t* wbm, size_t flush_size);
+
+extern C_ROCKSDB_LIBRARY_API void
+crocksdb_write_buffer_manager_set_flush_oldest_first(
+    crocksdb_write_buffer_manager_t* wbm, unsigned char flush_oldest_first);
+
+extern C_ROCKSDB_LIBRARY_API void
+crocksdb_write_buffer_manager_set_flush_deadline(
+    crocksdb_write_buffer_manager_t* wbm, uint64_t flush_deadline);
+
 extern C_ROCKSDB_LIBRARY_API void crocksdb_write_buffer_manager_destroy(
     crocksdb_write_buffer_manager_t* wbm);
 

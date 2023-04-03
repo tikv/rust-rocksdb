@@ -992,7 +992,20 @@ extern "C" {
         flush_size: size_t,
         stall_ratio: c_float,
         flush_oldest_first: bool,
+        flush_deadline: u64,
     ) -> *mut DBWriteBufferManager;
+    pub fn crocksdb_write_buffer_manager_set_flush_size(
+        wbm: *mut DBWriteBufferManager,
+        flush_size: size_t,
+    );
+    pub fn crocksdb_write_buffer_manager_set_flush_oldest_first(
+        wbm: *mut DBWriteBufferManager,
+        flush_oldest_first: bool,
+    );
+    pub fn crocksdb_write_buffer_manager_set_flush_deadline(
+        wbm: *mut DBWriteBufferManager,
+        flush_deadline: u64,
+    );
     pub fn crocksdb_write_buffer_manager_destroy(wbm: *mut DBWriteBufferManager);
 
     pub fn crocksdb_concurrent_task_limiter_create(

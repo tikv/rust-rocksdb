@@ -3661,11 +3661,27 @@ int64_t crocksdb_ratelimiter_get_total_requests(crocksdb_ratelimiter_t* limiter,
 }
 
 crocksdb_write_buffer_manager_t* crocksdb_write_buffer_manager_create(
-    size_t flush_size, float stall_ratio, unsigned char flush_oldest_first) {
+    size_t flush_size, float stall_ratio, unsigned char flush_oldest_first,
+    uint64_t flush_deadline) {
   crocksdb_write_buffer_manager_t* wbm = new crocksdb_write_buffer_manager_t;
   wbm->rep = std::make_shared<WriteBufferManager>(
-      flush_size, nullptr, stall_ratio, flush_oldest_first);
+      flush_size, nullptr, stall_ratio, flush_oldest_first, flush_deadline);
   return wbm;
+}
+
+void crocksdb_write_buffer_manager_set_flush_size(
+    crocksdb_write_buffer_manager_t* wbm, size_t flush_size) {
+  wbm->rep->SetFlushSize(flush_size);
+}
+
+void crocksdb_write_buffer_manager_set_flush_oldest_first(
+    crocksdb_write_buffer_manager_t* wbm, unsigned char flush_oldest_first) {
+  wbm->rep->SetFlushOldestFirst(flush_oldest_first);
+}
+
+void crocksdb_write_buffer_manager_set_flush_deadline(
+    crocksdb_write_buffer_manager_t* wbm, uint64_t flush_deadline) {
+  wbm->rep->SetDeadline(flush_deadline);
 }
 
 void crocksdb_write_buffer_manager_destroy(

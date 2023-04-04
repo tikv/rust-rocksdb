@@ -817,6 +817,9 @@ extern C_ROCKSDB_LIBRARY_API void
 crocksdb_block_based_options_set_hash_index_allow_collision(
     crocksdb_block_based_table_options_t*, unsigned char);
 extern C_ROCKSDB_LIBRARY_API void
+crocksdb_block_based_options_set_optimize_filters_for_memory(
+    crocksdb_block_based_table_options_t*, unsigned char);
+extern C_ROCKSDB_LIBRARY_API void
 crocksdb_block_based_options_set_partition_filters(
     crocksdb_block_based_table_options_t*, unsigned char);
 extern C_ROCKSDB_LIBRARY_API void
@@ -1570,6 +1573,9 @@ extern C_ROCKSDB_LIBRARY_API crocksdb_filterpolicy_t*
 crocksdb_filterpolicy_create_bloom(double bits_per_key);
 extern C_ROCKSDB_LIBRARY_API crocksdb_filterpolicy_t*
 crocksdb_filterpolicy_create_bloom_full(double bits_per_key);
+extern C_ROCKSDB_LIBRARY_API crocksdb_filterpolicy_t*
+crocksdb_filterpolicy_create_ribbon(double bits_per_key,
+                                    int bloom_before_level);
 
 /* Merge Operator */
 

@@ -654,6 +654,10 @@ extern "C" {
         block_options: *mut DBBlockBasedTableOptions,
         v: c_uchar,
     );
+    pub fn crocksdb_block_based_options_set_optimize_filters_for_memory(
+        block_options: *mut DBBlockBasedTableOptions,
+        v: c_uchar,
+    );
     pub fn crocksdb_block_based_options_set_partition_filters(
         block_options: *mut DBBlockBasedTableOptions,
         v: c_uchar,
@@ -1028,6 +1032,10 @@ extern "C" {
     );
     pub fn crocksdb_filterpolicy_create_bloom_full(bits_per_key: c_double) -> *mut DBFilterPolicy;
     pub fn crocksdb_filterpolicy_create_bloom(bits_per_key: c_double) -> *mut DBFilterPolicy;
+    pub fn crocksdb_filterpolicy_create_ribbon(
+        bits_per_key: c_double,
+        bloom_before_level: c_int,
+    ) -> *mut DBFilterPolicy;
     pub fn crocksdb_open(
         options: *mut Options,
         path: *const c_char,

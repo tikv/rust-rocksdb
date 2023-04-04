@@ -264,6 +264,11 @@ extern C_ROCKSDB_LIBRARY_API crocksdb_t* crocksdb_open_for_read_only(
     const crocksdb_options_t* options, const char* name,
     unsigned char error_if_log_file_exist, char** errptr);
 
+extern C_ROCKSDB_LIBRARY_API void crocksdb_merge_disjoint_instances(
+    crocksdb_t* db, unsigned char merge_memtable,
+    unsigned char allow_source_write, int max_preload_files,
+    crocksdb_t** instances, size_t num_instances, char** errptr);
+
 extern C_ROCKSDB_LIBRARY_API void crocksdb_status_ptr_get_error(
     crocksdb_status_ptr_t*, char** errptr);
 
@@ -1438,6 +1443,8 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_vector_memtable_factory(
     crocksdb_options_t* opt, uint64_t reserved_bytes);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_atomic_flush(
     crocksdb_options_t* opt, unsigned char enable);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_options_avoid_flush_during_recovery(
+    crocksdb_options_t* opt, unsigned char avoid);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_avoid_flush_during_shutdown(
     crocksdb_options_t* opt, unsigned char avoid);
 

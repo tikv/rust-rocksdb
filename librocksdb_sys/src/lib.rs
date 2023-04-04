@@ -1022,6 +1022,7 @@ extern "C" {
     pub fn crocksdb_options_get_path_target_size(options: *mut Options, idx: size_t) -> u64;
     pub fn crocksdb_options_set_vector_memtable_factory(options: *mut Options, reserved_bytes: u64);
     pub fn crocksdb_options_set_atomic_flush(option: *mut Options, enable: bool);
+    pub fn crocksdb_options_avoid_flush_during_recovery(option: *mut Options, avoid: bool);
     pub fn crocksdb_options_avoid_flush_during_shutdown(option: *mut Options, avoid: bool);
     pub fn crocksdb_options_get_sst_partitioner_factory(
         option: *mut Options,
@@ -1051,6 +1052,15 @@ extern "C" {
         options: *mut Options,
         path: *const c_char,
         error_if_log_file_exist: bool,
+        err: *mut *mut c_char,
+    ) -> *mut DBInstance;
+    pub fn crocksdb_merge_disjoint_instances(
+        db: *mut DBInstance,
+        merge_memtable: bool,
+        allow_source_write: bool,
+        max_preload_files: c_int,
+        instances: *const *mut DBInstance,
+        num_instances: size_t,
         err: *mut *mut c_char,
     ) -> *mut DBInstance;
     pub fn crocksdb_writeoptions_create() -> *mut DBWriteOptions;

@@ -1301,6 +1301,12 @@ impl DBOptions {
         }
     }
 
+    pub fn avoid_flush_during_recovery(&self, avoid: bool) {
+        unsafe {
+            crocksdb_ffi::crocksdb_options_avoid_flush_during_recovery(self.inner, avoid);
+        }
+    }
+
     pub fn avoid_flush_during_shutdown(&self, avoid: bool) {
         unsafe {
             crocksdb_ffi::crocksdb_options_avoid_flush_during_shutdown(self.inner, avoid);
@@ -2362,6 +2368,22 @@ impl Drop for LRUCacheOptions {
     fn drop(&mut self) {
         unsafe {
             crocksdb_ffi::crocksdb_lru_cache_options_destroy(self.inner);
+        }
+    }
+}
+
+pub struct MergeInstanceOptions {
+    pub merge_memtable: bool,
+    pub allow_source_write: bool,
+    pub max_preload_files: i32,
+}
+
+impl Default for MergeInstanceOptions {
+    fn default() -> Self {
+        Self {
+            merge_memtable: false,
+            allow_source_write: true,
+            max_preload_files: 16,
         }
     }
 }

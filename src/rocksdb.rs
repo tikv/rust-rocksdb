@@ -23,7 +23,7 @@ use metadata::ColumnFamilyMetaData;
 use rocksdb_options::{
     CColumnFamilyDescriptor, ColumnFamilyDescriptor, ColumnFamilyOptions, CompactOptions,
     CompactionOptions, DBOptions, EnvOptions, FlushOptions, IngestExternalFileOptions,
-    LRUCacheOptions, ReadOptions, RestoreOptions, UnsafeSnap, WriteOptions,
+    LRUCacheOptions, MergeInstanceOptions, ReadOptions, RestoreOptions, UnsafeSnap, WriteOptions,
 };
 use std::collections::BTreeMap;
 use std::ffi::{CStr, CString};
@@ -755,6 +755,21 @@ impl DB {
             path: path.to_owned(),
             _cf_opts: options,
         })
+    }
+
+    pub fn merge_instances(&self, opts: &MergeInstanceOptions, dbs: &[&DB]) -> Result<(), String> {
+        unsafe {
+            let dbs: Vec<*mut DBInstance> = dbs.iter().map(|db| db.inner).collect();
+            ffi_try!(crocksdb_merge_disjoint_instances(
+                self.inner,
+                opts.merge_memtable,
+                opts.allow_source_write,
+                opts.max_preload_files,
+                dbs.as_ptr(),
+                dbs.len()
+            ));
+        }
+        Ok(())
     }
 
     pub fn destroy(opts: &DBOptions, path: &str) -> Result<(), String> {
@@ -3839,5 +3854,47 @@ mod test {
             cfs.iter().map(|cf| *cf).zip(cfs_opts).collect(),
         )
         .unwrap();
+    }
+
+    #[test]
+    fn test_merge_instance() {
+        let path_dir = tempdir_with_prefix("_test_merge_instance");
+        let root_path = path_dir.path();
+        let cfs = ["default", "cf1"];
+        let cfs_opts = vec![ColumnFamilyOptions::new(); 2];
+        let mut opts = DBOptions::new();
+        opts.set_write_buffer_manager(&crate::WriteBufferManager::new(0, 0.0, true));
+        opts.create_if_missing(true);
+        opts.create_missing_column_families(true);
+        let mut wopts = WriteOptions::new();
+        wopts.disable_wal(true);
+        let db1 = DB::open_cf(
+            opts.clone(),
+            root_path.join("1").to_str().unwrap(),
+            cfs.iter().map(|cf| *cf).zip(cfs_opts.clone()).collect(),
+        )
+        .unwrap();
+        db1.put_opt(b"1", b"v", &wopts).unwrap();
+        let db2 = DB::open_cf(
+            opts.clone(),
+            root_path.join("2").to_str().unwrap(),
+            cfs.iter().map(|cf| *cf).zip(cfs_opts.clone()).collect(),
+        )
+        .unwrap();
+        db2.put_opt(b"2", b"v", &wopts).unwrap();
+        let db3 = DB::open_cf(
+            opts,
+            root_path.join("3").to_str().unwrap(),
+            cfs.iter().map(|cf| *cf).zip(cfs_opts).collect(),
+        )
+        .unwrap();
+        let mopts = MergeInstanceOptions {
+            merge_memtable: true,
+            allow_source_write: true,
+            ..Default::default()
+        };
+        db3.merge_instances(&mopts, &[&db1, &db2]).unwrap();
+        assert_eq!(db3.get(b"1").unwrap().unwrap(), b"v");
+        assert_eq!(db3.get(b"2").unwrap().unwrap(), b"v");
     }
 }

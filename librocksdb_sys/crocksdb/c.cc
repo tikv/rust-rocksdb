@@ -122,6 +122,7 @@ using rocksdb::LiveFileMetaData;
 using rocksdb::Logger;
 using rocksdb::LRUCacheOptions;
 using rocksdb::MemTableInfo;
+using rocksdb::MergeInstanceOptions;
 using rocksdb::MergeOperator;
 using rocksdb::NewBloomFilterPolicy;
 using rocksdb::NewRibbonFilterPolicy;
@@ -791,6 +792,23 @@ crocksdb_t* crocksdb_open_for_read_only(const crocksdb_options_t* options,
   crocksdb_t* result = new crocksdb_t;
   result->rep = db;
   return result;
+}
+
+void crocksdb_merge_disjoint_instances(crocksdb_t* db,
+                                       unsigned char merge_memtable,
+                                       unsigned char allow_source_write,
+                                       int max_preload_files,
+                                       crocksdb_t** instances,
+                                       size_t num_instances, char** errptr) {
+  MergeInstanceOptions opts;
+  opts.merge_memtable = merge_memtable;
+  opts.allow_source_write = allow_source_write;
+  opts.max_preload_files = max_preload_files;
+  std::vector<DB*> dbs;
+  for (auto i = 0; i < num_instances; i++) {
+    dbs.push_back(instances[i]->rep);
+  }
+  SaveError(errptr, db->rep->MergeDisjointInstances(opts, std::move(dbs)));
 }
 
 void crocksdb_status_ptr_get_error(crocksdb_status_ptr_t* status,
@@ -3515,6 +3533,11 @@ void crocksdb_options_set_vector_memtable_factory(crocksdb_options_t* opt,
 void crocksdb_options_set_atomic_flush(crocksdb_options_t* opt,
                                        unsigned char enable) {
   opt->rep.atomic_flush = enable;
+}
+
+void crocksdb_options_avoid_flush_during_recovery(crocksdb_options_t* opt,
+                                                  unsigned char avoid) {
+  opt->rep.avoid_flush_during_recovery = avoid;
 }
 
 void crocksdb_options_avoid_flush_during_shutdown(crocksdb_options_t* opt,

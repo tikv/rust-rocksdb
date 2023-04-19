@@ -266,8 +266,8 @@ extern C_ROCKSDB_LIBRARY_API crocksdb_t* crocksdb_open_for_read_only(
 
 extern C_ROCKSDB_LIBRARY_API void crocksdb_merge_disjoint_instances(
     crocksdb_t* db, unsigned char merge_memtable,
-    unsigned char allow_source_write, crocksdb_t** instances,
-    size_t num_instances, char** errptr);
+    unsigned char allow_source_write, int max_preload_files,
+    crocksdb_t** instances, size_t num_instances, char** errptr);
 
 extern C_ROCKSDB_LIBRARY_API void crocksdb_status_ptr_get_error(
     crocksdb_status_ptr_t*, char** errptr);
@@ -820,6 +820,9 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_block_based_options_set_index_type(
     crocksdb_block_based_table_options_t*, int);  // uses one of the above enums
 extern C_ROCKSDB_LIBRARY_API void
 crocksdb_block_based_options_set_hash_index_allow_collision(
+    crocksdb_block_based_table_options_t*, unsigned char);
+extern C_ROCKSDB_LIBRARY_API void
+crocksdb_block_based_options_set_optimize_filters_for_memory(
     crocksdb_block_based_table_options_t*, unsigned char);
 extern C_ROCKSDB_LIBRARY_API void
 crocksdb_block_based_options_set_partition_filters(
@@ -1589,6 +1592,9 @@ extern C_ROCKSDB_LIBRARY_API crocksdb_filterpolicy_t*
 crocksdb_filterpolicy_create_bloom(double bits_per_key);
 extern C_ROCKSDB_LIBRARY_API crocksdb_filterpolicy_t*
 crocksdb_filterpolicy_create_bloom_full(double bits_per_key);
+extern C_ROCKSDB_LIBRARY_API crocksdb_filterpolicy_t*
+crocksdb_filterpolicy_create_ribbon(double bits_per_key,
+                                    int bloom_before_level);
 
 /* Merge Operator */
 

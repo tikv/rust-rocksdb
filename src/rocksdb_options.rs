@@ -127,6 +127,22 @@ impl BlockBasedOptions {
         }
     }
 
+    pub fn set_ribbon_filter(&mut self, bits_per_key: f64, bloom_before_level: i32) {
+        unsafe {
+            let filter =
+                crocksdb_ffi::crocksdb_filterpolicy_create_ribbon(bits_per_key, bloom_before_level);
+            crocksdb_ffi::crocksdb_block_based_options_set_filter_policy(self.inner, filter);
+        }
+    }
+
+    pub fn set_optimize_filters_for_memory(&mut self, v: bool) {
+        unsafe {
+            crocksdb_ffi::crocksdb_block_based_options_set_optimize_filters_for_memory(
+                self.inner, v as u8,
+            );
+        }
+    }
+
     pub fn set_hash_index_allow_collision(&mut self, v: bool) {
         unsafe {
             crocksdb_ffi::crocksdb_block_based_options_set_hash_index_allow_collision(
@@ -2385,6 +2401,7 @@ impl Drop for LRUCacheOptions {
 pub struct MergeInstanceOptions {
     pub merge_memtable: bool,
     pub allow_source_write: bool,
+    pub max_preload_files: i32,
 }
 
 impl Default for MergeInstanceOptions {
@@ -2392,6 +2409,7 @@ impl Default for MergeInstanceOptions {
         Self {
             merge_memtable: false,
             allow_source_write: true,
+            max_preload_files: 16,
         }
     }
 }

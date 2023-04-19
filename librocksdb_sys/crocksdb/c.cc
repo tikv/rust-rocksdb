@@ -128,6 +128,7 @@ using rocksdb::NewBloomFilterPolicy;
 using rocksdb::NewEncryptedEnv;
 using rocksdb::NewGenericRateLimiter;
 using rocksdb::NewLRUCache;
+using rocksdb::NewRibbonFilterPolicy;
 using rocksdb::Options;
 using rocksdb::PartitionerRequest;
 using rocksdb::PartitionerResult;
@@ -796,12 +797,13 @@ crocksdb_t* crocksdb_open_for_read_only(const crocksdb_options_t* options,
 void crocksdb_merge_disjoint_instances(crocksdb_t* db,
                                        unsigned char merge_memtable,
                                        unsigned char allow_source_write,
+                                       int max_preload_files,
                                        crocksdb_t** instances,
-                                       size_t num_instances,
-                                       char** errptr) {
+                                       size_t num_instances, char** errptr) {
   MergeInstanceOptions opts;
   opts.merge_memtable = merge_memtable;
   opts.allow_source_write = allow_source_write;
+  opts.max_preload_files = max_preload_files;
   std::vector<DB*> dbs;
   for (auto i = 0; i < num_instances; i++) {
     dbs.push_back(instances[i]->rep);
@@ -2096,6 +2098,11 @@ void crocksdb_block_based_options_set_index_type(
 void crocksdb_block_based_options_set_hash_index_allow_collision(
     crocksdb_block_based_table_options_t* options, unsigned char v) {
   options->rep.hash_index_allow_collision = v;
+}
+
+void crocksdb_block_based_options_set_optimize_filters_for_memory(
+    crocksdb_block_based_table_options_t* options, unsigned char v) {
+  options->rep.optimize_filters_for_memory = v;
 }
 
 void crocksdb_block_based_options_set_partition_filters(
@@ -3853,38 +3860,44 @@ void crocksdb_filterpolicy_destroy(crocksdb_filterpolicy_t* filter) {
   delete filter;
 }
 
+// Make a crocksdb_filterpolicy_t, but override all of its methods so
+// they delegate to a NewBloomFilterPolicy() instead of user
+// supplied C functions.
+struct FilterPolicyWrapper : public crocksdb_filterpolicy_t {
+  const FilterPolicy* rep_;
+  std::string full_name_;
+  ~FilterPolicyWrapper() override { delete rep_; }
+  const char* Name() const override { return full_name_.c_str(); }
+  void CreateFilter(const Slice* keys, int n, std::string* dst) const override {
+    return rep_->CreateFilter(keys, n, dst);
+  }
+  bool KeyMayMatch(const Slice& key, const Slice& filter) const override {
+    return rep_->KeyMayMatch(key, filter);
+  }
+  // No need to override GetFilterBitsBuilder if this one is overridden
+  FilterBitsBuilder* GetBuilderWithContext(
+      const FilterBuildingContext& context) const override {
+    return rep_->GetBuilderWithContext(context);
+  }
+  FilterBitsReader* GetFilterBitsReader(const Slice& contents) const override {
+    return rep_->GetFilterBitsReader(contents);
+  }
+  static void DoNothing(void*) {}
+};
+
 crocksdb_filterpolicy_t* crocksdb_filterpolicy_create_bloom_format(
     double bits_per_key, bool original_format) {
-  // Make a crocksdb_filterpolicy_t, but override all of its methods so
-  // they delegate to a NewBloomFilterPolicy() instead of user
-  // supplied C functions.
-  struct Wrapper : public crocksdb_filterpolicy_t {
-    const FilterPolicy* rep_;
-    ~Wrapper() override { delete rep_; }
-    const char* Name() const override { return rep_->Name(); }
-    void CreateFilter(const Slice* keys, int n,
-                      std::string* dst) const override {
-      return rep_->CreateFilter(keys, n, dst);
-    }
-    bool KeyMayMatch(const Slice& key, const Slice& filter) const override {
-      return rep_->KeyMayMatch(key, filter);
-    }
-    // No need to override GetFilterBitsBuilder if this one is overridden
-    FilterBitsBuilder* GetBuilderWithContext(
-        const FilterBuildingContext& context) const override {
-      return rep_->GetBuilderWithContext(context);
-    }
-    FilterBitsReader* GetFilterBitsReader(
-        const Slice& contents) const override {
-      return rep_->GetFilterBitsReader(contents);
-    }
-    static void DoNothing(void*) {}
-  };
-  Wrapper* wrapper = new Wrapper;
+  FilterPolicyWrapper* wrapper = new FilterPolicyWrapper;
   wrapper->rep_ = NewBloomFilterPolicy(bits_per_key, original_format);
+  wrapper->full_name_ = wrapper->rep_->Name();
+  if (original_format) {
+    wrapper->full_name_ += ".BlockBloom";
+  } else {
+    wrapper->full_name_ += ".FullBloom";
+  }
   wrapper->state_ = nullptr;
   wrapper->delete_filter_ = nullptr;
-  wrapper->destructor_ = &Wrapper::DoNothing;
+  wrapper->destructor_ = &FilterPolicyWrapper::DoNothing;
   return wrapper;
 }
 
@@ -3896,6 +3909,19 @@ crocksdb_filterpolicy_t* crocksdb_filterpolicy_create_bloom_full(
 crocksdb_filterpolicy_t* crocksdb_filterpolicy_create_bloom(
     double bits_per_key) {
   return crocksdb_filterpolicy_create_bloom_format(bits_per_key, true);
+}
+
+crocksdb_filterpolicy_t* crocksdb_filterpolicy_create_ribbon(
+    double bloom_equivalent_bits_per_key, int bloom_before_level) {
+  FilterPolicyWrapper* wrapper = new FilterPolicyWrapper;
+  wrapper->rep_ =
+      NewRibbonFilterPolicy(bloom_equivalent_bits_per_key, bloom_before_level);
+  wrapper->full_name_ = wrapper->rep_->Name();
+  wrapper->full_name_ += ".Ribbon";
+  wrapper->state_ = nullptr;
+  wrapper->delete_filter_ = nullptr;
+  wrapper->destructor_ = &FilterPolicyWrapper::DoNothing;
+  return wrapper;
 }
 
 crocksdb_mergeoperator_t* crocksdb_mergeoperator_create(

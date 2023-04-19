@@ -429,19 +429,13 @@ unsafe impl Send for WriteBufferManager {}
 unsafe impl Sync for WriteBufferManager {}
 
 impl WriteBufferManager {
-    pub fn new(
-        flush_size: usize,
-        stall_ratio: f32,
-        flush_oldest_first: bool,
-        flush_deadline: std::time::Duration,
-    ) -> Self {
+    pub fn new(flush_size: usize, stall_ratio: f32, flush_oldest_first: bool) -> Self {
         unsafe {
             Self {
                 inner: crocksdb_ffi::crocksdb_write_buffer_manager_create(
                     flush_size,
                     stall_ratio,
                     flush_oldest_first,
-                    flush_deadline.as_secs(),
                 ),
             }
         }
@@ -459,10 +453,8 @@ impl WriteBufferManager {
         }
     }
 
-    pub fn set_flush_deadline(&self, d: std::time::Duration) {
-        unsafe {
-            crocksdb_ffi::crocksdb_write_buffer_manager_set_flush_deadline(self.inner, d.as_secs());
-        }
+    pub fn memory_usage(&self) -> usize {
+        unsafe { crocksdb_ffi::crocksdb_write_buffer_manager_memory_usage(self.inner) }
     }
 }
 

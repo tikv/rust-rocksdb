@@ -3883,7 +3883,7 @@ mod test {
         .unwrap();
         db2.put_opt(b"2", b"v", &wopts).unwrap();
         let db3 = DB::open_cf(
-            opts,
+            opts.clone(),
             root_path.join("3").to_str().unwrap(),
             cfs.iter().map(|cf| *cf).zip(cfs_opts).collect(),
         )
@@ -3896,5 +3896,8 @@ mod test {
         db3.merge_instances(&mopts, &[&db1, &db2]).unwrap();
         assert_eq!(db3.get(b"1").unwrap().unwrap(), b"v");
         assert_eq!(db3.get(b"2").unwrap().unwrap(), b"v");
+        let wbm = opts.get_write_buffer_manager().unwrap();
+        wbm.set_flush_size(10);
+        wbm.set_flush_oldest_first(false);
     }
 }

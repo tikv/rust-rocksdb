@@ -463,6 +463,10 @@ impl WriteBufferManager {
         }
     }
 
+    pub fn flush_size(&self) -> usize {
+        unsafe { crocksdb_ffi::crocksdb_write_buffer_manager_flush_size(self.inner) }
+    }
+
     pub fn set_flush_oldest_first(&self, f: bool) {
         unsafe {
             crocksdb_ffi::crocksdb_write_buffer_manager_set_flush_oldest_first(self.inner, f);

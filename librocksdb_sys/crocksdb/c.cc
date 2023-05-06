@@ -3691,6 +3691,11 @@ void crocksdb_write_buffer_manager_set_flush_size(
   wbm->rep->SetFlushSize(flush_size);
 }
 
+size_t crocksdb_write_buffer_manager_flush_size(
+    crocksdb_write_buffer_manager_t* wbm) {
+  return wbm->rep->flush_size();
+}
+
 void crocksdb_write_buffer_manager_set_flush_oldest_first(
     crocksdb_write_buffer_manager_t* wbm, unsigned char flush_oldest_first) {
   wbm->rep->SetFlushOldestFirst(flush_oldest_first);

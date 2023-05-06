@@ -1004,6 +1004,7 @@ extern "C" {
         wbm: *mut DBWriteBufferManager,
         flush_size: size_t,
     );
+    pub fn crocksdb_write_buffer_manager_flush_size(wbm: *mut DBWriteBufferManager) -> usize;
     pub fn crocksdb_write_buffer_manager_set_flush_oldest_first(
         wbm: *mut DBWriteBufferManager,
         flush_oldest_first: bool,

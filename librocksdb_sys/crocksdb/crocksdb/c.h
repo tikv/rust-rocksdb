@@ -545,6 +545,10 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_approximate_memtable_stats_cf(
     const char* range_limit_key, size_t range_limit_key_len, uint64_t* count,
     uint64_t* size);
 
+extern C_ROCKSDB_LIBRARY_API void crocksdb_approximate_active_memtable_stats_cf(
+    const crocksdb_t* db, const crocksdb_column_family_handle_t* cf,
+    uint64_t* memory_bytes, uint64_t* oldest_key_time);
+
 extern C_ROCKSDB_LIBRARY_API void crocksdb_compact_range(crocksdb_t* db,
                                                          const char* start_key,
                                                          size_t start_key_len,

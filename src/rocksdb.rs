@@ -36,6 +36,7 @@ use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::str::from_utf8;
 use std::sync::Arc;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use std::{fs, ptr, slice};
 
 #[cfg(feature = "encryption")]
@@ -1415,6 +1416,28 @@ impl DB {
             );
         }
         (count, size)
+    }
+
+    // Return the approximate number of size and age of the cf's active memtable.
+    pub fn get_approximate_active_memtable_stats_cf(
+        &self,
+        cf: &CFHandle,
+    ) -> Option<(u64, SystemTime)> {
+        let (mut memory_bytes, mut oldest_key_time) = (0, u64::MAX);
+        unsafe {
+            crocksdb_ffi::crocksdb_approximate_active_memtable_stats_cf(
+                self.inner,
+                cf.inner,
+                &mut memory_bytes,
+                &mut oldest_key_time,
+            );
+        }
+        if oldest_key_time < u64::MAX {
+            let age = UNIX_EPOCH + Duration::from_secs(oldest_key_time);
+            Some((memory_bytes, age))
+        } else {
+            None
+        }
     }
 
     pub fn compact_range(&self, start_key: Option<&[u8]>, end_key: Option<&[u8]>) {

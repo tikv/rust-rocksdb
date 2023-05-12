@@ -1460,6 +1460,13 @@ void crocksdb_approximate_memtable_stats_cf(
   db->rep->GetApproximateMemTableStats(cf->rep, range, count, size);
 }
 
+void crocksdb_approximate_active_memtable_stats_cf(
+    const crocksdb_t* db, const crocksdb_column_family_handle_t* cf,
+    uint64_t* memory_bytes, uint64_t* oldest_key_time) {
+  db->rep->GetApproximateActiveMemTableStats(cf->rep, memory_bytes,
+                                             oldest_key_time);
+}
+
 void crocksdb_delete_file(crocksdb_t* db, const char* name, char** errptr) {
   SaveError(errptr, db->rep->DeleteFile(name));
 }

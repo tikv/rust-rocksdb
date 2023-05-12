@@ -1602,6 +1602,12 @@ extern "C" {
         count: *mut u64,
         size: *mut u64,
     );
+    pub fn crocksdb_approximate_active_memtable_stats_cf(
+        db: *const DBInstance,
+        cf: *const DBCFHandle,
+        memory_bytes: *mut u64,
+        oldest_key_time: *mut u64,
+    );
     pub fn crocksdb_compactoptions_create() -> *mut DBCompactOptions;
     pub fn crocksdb_compactoptions_destroy(opt: *mut DBCompactOptions);
     pub fn crocksdb_compactoptions_set_exclusive_manual_compaction(

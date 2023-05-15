@@ -1540,6 +1540,7 @@ extern "C" {
     pub fn crocksdb_flushoptions_destroy(opt: *mut DBFlushOptions);
     pub fn crocksdb_flushoptions_set_wait(opt: *mut DBFlushOptions, whether_wait: bool);
     pub fn crocksdb_flushoptions_set_allow_write_stall(opt: *mut DBFlushOptions, allow: bool);
+    pub fn crocksdb_flushoptions_set_expected_oldest_key_time(opt: *mut DBFlushOptions, time: u64);
 
     pub fn crocksdb_flush(
         db: *mut DBInstance,

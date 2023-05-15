@@ -38,6 +38,7 @@ use std::ffi::{CStr, CString};
 use std::path::Path;
 use std::ptr;
 use std::sync::Arc;
+use std::time::{SystemTime, UNIX_EPOCH};
 use table_filter::{destroy_table_filter, table_filter, TableFilter};
 use table_properties_collector_factory::{
     new_table_properties_collector_factory, TablePropertiesCollectorFactory,
@@ -2151,6 +2152,13 @@ impl FlushOptions {
     pub fn set_allow_write_stall(&mut self, allow: bool) {
         unsafe {
             crocksdb_ffi::crocksdb_flushoptions_set_allow_write_stall(self.inner, allow);
+        }
+    }
+
+    pub fn set_expected_oldest_key_time(&mut self, time: SystemTime) {
+        let time = time.duration_since(UNIX_EPOCH).unwrap().as_secs();
+        unsafe {
+            crocksdb_ffi::crocksdb_flushoptions_set_expected_oldest_key_time(self.inner, time);
         }
     }
 }

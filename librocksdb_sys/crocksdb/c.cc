@@ -4202,6 +4202,11 @@ void crocksdb_flushoptions_set_allow_write_stall(crocksdb_flushoptions_t* opt,
   opt->rep.allow_write_stall = v;
 }
 
+void crocksdb_flushoptions_set_expected_oldest_key_time(
+    crocksdb_flushoptions_t* opt, uint64_t v) {
+  opt->rep.expected_oldest_key_time = v;
+}
+
 crocksdb_memory_allocator_t* crocksdb_jemalloc_nodump_allocator_create(
     char** errptr) {
   crocksdb_memory_allocator_t* allocator = new crocksdb_memory_allocator_t;

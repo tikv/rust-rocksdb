@@ -1263,10 +1263,13 @@ impl DB {
 
     /// Flush all memtable data for specified cf.
     /// If wait, the flush will wait until the flush is done.
-    pub fn flush_cf(&self, cf: &CFHandle, wait: bool) -> Result<(), String> {
+    pub fn flush_cf(&self, cf: &CFHandle, wait: bool, expected_oldest_key_time: Option<SystemTime>) -> Result<(), String> {
         unsafe {
             let mut opts = FlushOptions::new();
             opts.set_wait(wait);
+            if let Some(t) = expected_oldest_key_time {
+                opts.set_expected_oldest_key_time(t);
+            }
             ffi_try!(crocksdb_flush_cf(self.inner, cf.inner, opts.inner));
             Ok(())
         }
@@ -3389,7 +3392,7 @@ mod test {
             db.put_cf(cf_handle, format!("k_{}", i).as_bytes(), b"v")
                 .unwrap();
         }
-        db.flush_cf(cf_handle, true).unwrap();
+        db.flush_cf(cf_handle, true, None).unwrap();
 
         let total_sst_files_size = db
             .get_property_int_cf(cf_handle, "rocksdb.total-sst-files-size")

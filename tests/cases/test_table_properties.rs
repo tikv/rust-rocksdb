@@ -202,7 +202,7 @@ fn test_table_properties_collector_factory() {
     for &(ref k, _) in &samples[0..2] {
         db.delete_cf(cf, k).unwrap();
     }
-    db.flush_cf(cf, true).unwrap();
+    db.flush_cf(cf, true, None).unwrap();
     let collection = db.get_properties_of_all_tables_cf(cf).unwrap();
     check_collection(&collection, 2, 6, 4, 0, 2);
 

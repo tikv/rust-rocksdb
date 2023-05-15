@@ -557,8 +557,8 @@ mod tests {
         // put data
         db.put_cf(cfh_wf, b"k", b"v").unwrap();
         db.put_cf(cfh_of, b"k", b"v").unwrap();
-        db.flush_cf(cfh_wf, true).unwrap();
-        db.flush_cf(cfh_of, true).unwrap();
+        db.flush_cf(cfh_wf, true, None).unwrap();
+        db.flush_cf(cfh_of, true, None).unwrap();
 
         // assert
         assert!(db.get_cf(cfh_wf, b"k").unwrap().is_none());

@@ -423,9 +423,9 @@ pub enum DBBottommostLevelCompaction {
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 #[repr(u32)]
 pub enum DBRateLimiterMode {
-    ReadOnly = 1,
-    WriteOnly = 2,
-    AllIo = 3,
+    ReadOnly = 0,
+    WriteOnly = 1,
+    AllIo = 2,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -465,13 +465,13 @@ pub enum ChecksumType {
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 #[repr(u32)]
 pub enum DBBackgroundErrorReason {
-    Flush = 1,
-    Compaction = 2,
-    WriteCallback = 3,
-    MemTable = 4,
-    ManifestWrite = 5,
-    FlushNoWAL = 6,
-    ManifestWriteNoWAL = 7,
+    Flush = 0,
+    Compaction = 1,
+    WriteCallback = 2,
+    MemTable = 3,
+    ManifestWrite = 4,
+    FlushNoWAL = 5,
+    ManifestWriteNoWAL = 6,
 }
 
 #[cfg(feature = "encryption")]

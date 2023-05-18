@@ -12,7 +12,7 @@
 // limitations under the License.
 
 use crocksdb_ffi::{self, DBEntryType, DBTablePropertiesCollector, DBUserCollectedProperties};
-use libc::{c_char, c_int, c_void, size_t};
+use libc::{c_char, c_void, size_t};
 use std::collections::HashMap;
 use std::ffi::CString;
 use std::mem;
@@ -66,7 +66,7 @@ pub extern "C" fn add<T: TablePropertiesCollector>(
     key_len: size_t,
     value: *const u8,
     value_len: size_t,
-    entry_type: c_int,
+    entry_type: u32,
     seq: u64,
     file_size: u64,
 ) {

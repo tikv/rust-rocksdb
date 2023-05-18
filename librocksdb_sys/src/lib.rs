@@ -192,6 +192,8 @@ pub struct DBWriteBatchIterator(c_void);
 #[repr(C)]
 pub struct DBFileSystemInspectorInstance(c_void);
 
+// @needs_manual_sync
+// This is repr(C) because we need to access C array of conditions.
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 #[repr(C)]
 pub enum WriteStallCondition {
@@ -227,8 +229,9 @@ pub unsafe fn new_lru_cache(opt: *mut DBLRUCacheOptions) -> *mut DBCache {
     crocksdb_cache_create_lru(opt)
 }
 
+// @needs_manual_sync
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-#[repr(C)]
+#[repr(u32)]
 pub enum DBEntryType {
     Put = 0,
     Delete = 1,
@@ -236,11 +239,12 @@ pub enum DBEntryType {
     Merge = 3,
     RangeDeletion = 4,
     BlobIndex = 5,
-    Other = 6,
+    DeleteWithTimestamp = 6,
+    Other = 7,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-#[repr(C)]
+#[repr(u32)]
 pub enum DBCompressionType {
     No = 0,
     Snappy = 1,
@@ -255,7 +259,7 @@ pub enum DBCompressionType {
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-#[repr(C)]
+#[repr(u32)]
 pub enum DBCompactionStyle {
     Level = 0,
     Universal = 1,
@@ -264,14 +268,7 @@ pub enum DBCompactionStyle {
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-#[repr(C)]
-pub enum DBUniversalCompactionStyle {
-    SimilarSize = 0,
-    TotalSize = 1,
-}
-
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
-#[repr(C)]
+#[repr(u32)]
 pub enum DBRecoveryMode {
     TolerateCorruptedTailRecords = 0,
     AbsoluteConsistency = 1,
@@ -280,7 +277,7 @@ pub enum DBRecoveryMode {
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-#[repr(C)]
+#[repr(u32)]
 pub enum CompactionPriority {
     // In Level-based compaction, it Determines which file from a level to be
     // picked to merge to the next level. We suggest people try
@@ -299,8 +296,9 @@ pub enum CompactionPriority {
     MinOverlappingRatio = 3,
 }
 
+// @needs_manual_sync
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-#[repr(C)]
+#[repr(u32)]
 pub enum CompactionReason {
     Unknown,
     // [Level] number of L0 files > level0_file_num_compaction_trigger
@@ -333,6 +331,12 @@ pub enum CompactionReason {
     Flush,
     // Compaction caused by external sst file ingestion
     ExternalSstIngestion,
+    // Compaction due to SST file being too old
+    PeriodicCompaction,
+    // Compaction in order to move files to temperature
+    ChangeTemperature,
+    // Compaction scheduled to force garbage collection of blob files
+    ForcedBlobGC,
     // total number of compaction reasons, new reasons must be added above this.
     NumOfReasons,
 }
@@ -344,7 +348,7 @@ impl fmt::Display for CompactionReason {
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-#[repr(C)]
+#[repr(u32)]
 pub enum DBInfoLogLevel {
     Debug = 0,
     Info = 1,
@@ -356,6 +360,7 @@ pub enum DBInfoLogLevel {
 }
 
 // @needs_manual_sync
+// This is repr(C) because it is originally defined as a C enum.
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 #[repr(C)]
 pub enum DBTableU64Property {
@@ -386,6 +391,7 @@ pub enum DBTableU64Property {
 }
 
 // @needs_manual_sync
+// This is repr(C) because it is originally defined as a C enum.
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 #[repr(C)]
 pub enum DBTableStrProperty {
@@ -403,7 +409,7 @@ pub enum DBTableStrProperty {
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-#[repr(C)]
+#[repr(u32)]
 pub enum DBBottommostLevelCompaction {
     // Skip bottommost level compaction
     Skip = 0,
@@ -415,15 +421,15 @@ pub enum DBBottommostLevelCompaction {
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-#[repr(C)]
+#[repr(u32)]
 pub enum DBRateLimiterMode {
-    ReadOnly = 1,
-    WriteOnly = 2,
-    AllIo = 3,
+    ReadOnly = 0,
+    WriteOnly = 1,
+    AllIo = 2,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-#[repr(C)]
+#[repr(u32)]
 pub enum DBTitanDBBlobRunMode {
     Normal = 0,
     ReadOnly = 1,
@@ -431,7 +437,7 @@ pub enum DBTitanDBBlobRunMode {
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-#[repr(C)]
+#[repr(u32)]
 pub enum IndexType {
     BinarySearch = 0,
     HashSearch = 1,
@@ -439,14 +445,14 @@ pub enum IndexType {
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-#[repr(C)]
+#[repr(u32)]
 pub enum PrepopulateBlockCache {
     Disabled = 0,
     FlushOnly = 1,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-#[repr(C)]
+#[repr(u32)]
 pub enum ChecksumType {
     NoChecksum = 0,
     CRC32c = 1,
@@ -455,18 +461,22 @@ pub enum ChecksumType {
     XXH3 = 4,
 }
 
+// @needs_manual_sync
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-#[repr(C)]
+#[repr(u32)]
 pub enum DBBackgroundErrorReason {
-    Flush = 1,
-    Compaction = 2,
-    WriteCallback = 3,
-    MemTable = 4,
+    Flush = 0,
+    Compaction = 1,
+    WriteCallback = 2,
+    MemTable = 3,
+    ManifestWrite = 4,
+    FlushNoWAL = 5,
+    ManifestWriteNoWAL = 6,
 }
 
 #[cfg(feature = "encryption")]
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-#[repr(C)]
+#[repr(u32)]
 pub enum DBEncryptionMethod {
     Unknown = 0,
     Plaintext = 1,
@@ -476,8 +486,9 @@ pub enum DBEncryptionMethod {
     Sm4Ctr = 5,
 }
 
+// @needs_manual_sync
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-#[repr(C)]
+#[repr(u32)]
 pub enum DBValueType {
     TypeDeletion = 0x0,
     TypeValue = 0x1,
@@ -490,6 +501,18 @@ pub enum DBValueType {
     TypeRangeDeletion = 0xF,             // meta block
     TypeColumnFamilyBlobIndex = 0x10,    // Blob DB only
     TypeBlobIndex = 0x11,                // Blob DB only
+    // When the prepared record is also persisted in db, we use a different
+    // record. This is to ensure that the WAL that is generated by a WritePolicy
+    // is not mistakenly read by another, which would result into data
+    // inconsistency.
+    TypeBeginPersistedPrepareXID = 0x12, // WAL only.
+    // Similar to kTypeBeginPersistedPrepareXID, this is to ensure that WAL
+    // generated by WriteUnprepared write policy is not mistakenly read by
+    // another.
+    TypeBeginUnprepareXID = 0x13, // WAL only.
+    TypeDeletionWithTimestamp = 0x14,
+    TypeCommitXIDAndTimestamp = 0x15, // WAL only
+
     MaxValue = 0x7F,
 }
 
@@ -501,14 +524,15 @@ impl fmt::Display for DBEncryptionMethod {
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-#[repr(C)]
+#[repr(u32)]
 pub enum DBSstPartitionerResult {
     NotRequired = 0,
     Required = 1,
 }
 
+// @needs_manual_sync
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-#[repr(C)]
+#[repr(u32)]
 pub enum CompactionFilterValueType {
     Value = 0,
     MergeOperand = 1,
@@ -516,7 +540,7 @@ pub enum CompactionFilterValueType {
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-#[repr(C)]
+#[repr(u32)]
 pub enum CompactionFilterDecision {
     Keep = 0,
     Remove = 1,
@@ -524,8 +548,9 @@ pub enum CompactionFilterDecision {
     RemoveAndSkipUntil = 3,
 }
 
+// @needs_manual_sync
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-#[repr(C)]
+#[repr(u32)]
 pub enum DBTableFileCreationReason {
     Flush = 0,
     Compaction = 1,
@@ -2259,7 +2284,7 @@ extern "C" {
             size_t,
             *const u8,
             size_t,
-            c_int,
+            u32,
             u64,
             u64,
         ),

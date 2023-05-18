@@ -1263,7 +1263,12 @@ impl DB {
 
     /// Flush all memtable data for specified cf.
     /// If wait, the flush will wait until the flush is done.
-    pub fn flush_cf(&self, cf: &CFHandle, wait: bool, expected_oldest_key_time: Option<SystemTime>) -> Result<(), String> {
+    pub fn flush_cf(
+        &self,
+        cf: &CFHandle,
+        wait: bool,
+        expected_oldest_key_time: Option<SystemTime>,
+    ) -> Result<(), String> {
         unsafe {
             let mut opts = FlushOptions::new();
             opts.set_wait(wait);

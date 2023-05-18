@@ -5295,11 +5295,11 @@ size_t crocksdb_get_supported_compression_number() {
   return rocksdb::GetSupportedCompressions().size();
 }
 
-void crocksdb_get_supported_compression(int* v, size_t l) {
+void crocksdb_get_supported_compression(uint32_t* v, size_t l) {
   auto compressions = rocksdb::GetSupportedCompressions();
   assert(compressions.size() == l);
   for (size_t i = 0; i < compressions.size(); i++) {
-    v[i] = static_cast<int>(compressions[i]);
+    v[i] = static_cast<uint32_t>(compressions[i]);
   }
 }
 

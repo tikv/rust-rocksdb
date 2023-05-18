@@ -2113,7 +2113,7 @@ extern C_ROCKSDB_LIBRARY_API const char* crocksdb_pinnableslice_value(
     const crocksdb_pinnableslice_t* t, size_t* vlen);
 
 extern C_ROCKSDB_LIBRARY_API size_t crocksdb_get_supported_compression_number();
-extern C_ROCKSDB_LIBRARY_API void crocksdb_get_supported_compression(int*,
+extern C_ROCKSDB_LIBRARY_API void crocksdb_get_supported_compression(uint32_t*,
                                                                      size_t);
 
 /* Table Properties */

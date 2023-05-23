@@ -47,7 +47,7 @@ fn test_prefix_extractor_compatibility() {
         db.put_opt(b"k1-0", b"a", &wopts).unwrap();
         db.put_opt(b"k1-1", b"b", &wopts).unwrap();
         db.put_opt(b"k1-2", b"c", &wopts).unwrap();
-        db.flush(true /* sync */).unwrap(); // flush memtable to sst file.
+        db.flush(true /* wait */, false).unwrap(); // flush memtable to sst file.
     }
 
     // open db with prefix extractor, and insert data
@@ -79,7 +79,7 @@ fn test_prefix_extractor_compatibility() {
         db.put_opt(b"k1-3", b"a", &wopts).unwrap();
         db.put_opt(b"k1-4", b"b", &wopts).unwrap();
         db.put_opt(b"k1-5", b"c", &wopts).unwrap();
-        db.flush(true /* sync */).unwrap(); // flush memtable to sst file.
+        db.flush(true /* wait */, false).unwrap(); // flush memtable to sst file.
 
         // memtable with prefix bloom.
         db.put_opt(b"k1-6", b"a", &wopts).unwrap();

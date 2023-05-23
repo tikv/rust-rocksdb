@@ -1368,7 +1368,7 @@ fn test_delete_range_sst_files() {
         db.put(k, v).unwrap();
         assert_eq!(v, &*db.get(k).unwrap().unwrap());
     }
-    db.flush(true).unwrap();
+    db.flush(true, false).unwrap();
 
     let samples_b = vec![
         (b"key3", b"value5"),
@@ -1380,7 +1380,7 @@ fn test_delete_range_sst_files() {
         db.put(k, v).unwrap();
         assert_eq!(v, &*db.get(k).unwrap().unwrap());
     }
-    db.flush(true).unwrap();
+    db.flush(true, false).unwrap();
     assert_eq!(db.get(b"key3").unwrap().unwrap(), b"value5");
 
     db.delete_range(b"key1", b"key1").unwrap();

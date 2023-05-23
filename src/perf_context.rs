@@ -708,7 +708,7 @@ mod test {
         for i in 0..n {
             let k = &[i as u8];
             db.put_opt(k, k, &wopts).unwrap();
-            db.flush(true).unwrap();
+            db.flush(true, false).unwrap();
             assert_eq!(db.get(k).unwrap().unwrap(), k);
         }
 

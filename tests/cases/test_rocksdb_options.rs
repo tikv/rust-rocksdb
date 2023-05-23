@@ -269,7 +269,7 @@ fn test_create_info_log() {
 
     for i in 0..200 {
         db.put(format!("k_{}", i).as_bytes(), b"v").unwrap();
-        db.flush(true).unwrap();
+        db.flush(true, false).unwrap();
     }
 
     drop(db);
@@ -477,7 +477,7 @@ fn test_get_block_cache_usage() {
     for i in 0..200 {
         db.put(format!("k_{}", i).as_bytes(), b"v").unwrap();
     }
-    db.flush(true).unwrap();
+    db.flush(true, false).unwrap();
     for i in 0..200 {
         db.get(format!("k_{}", i).as_bytes()).unwrap();
     }
@@ -549,7 +549,7 @@ fn test_compact_options() {
     let db = DB::open_default(path.path().to_str().unwrap()).unwrap();
     db.put(b"k1", b"v1").unwrap();
     db.put(b"k2", b"v2").unwrap();
-    db.flush(true).unwrap();
+    db.flush(true, false).unwrap();
 
     let mut compact_opts = CompactOptions::new();
     compact_opts.set_exclusive_manual_compaction(false);
@@ -819,7 +819,7 @@ fn test_block_based_options() {
     // we should use a bigger enough value (> `bytes_per_bit`) to make
     // sure the statistics will not be 0.
     db.put(b"a", b"abcdef").unwrap();
-    db.flush(true).unwrap();
+    db.flush(true, false).unwrap();
     db.get(b"a").unwrap();
     assert_ne!(
         statistics.get_ticker_count(TickerType::ReadAmpTotalReadBytes),
@@ -869,7 +869,7 @@ fn test_vector_memtable_factory_options() {
     db.put(b"k2", b"v2").unwrap();
     assert_eq!(db.get(b"k1").unwrap().unwrap(), b"v1");
     assert_eq!(db.get(b"k2").unwrap().unwrap(), b"v2");
-    db.flush(true).unwrap();
+    db.flush(true, false).unwrap();
 
     let mut iter = db.iter();
     iter.seek(SeekKey::Start).unwrap();
@@ -915,7 +915,7 @@ fn test_compact_on_deletion() {
 
     let cf = db.cf_handle("default").unwrap();
     db.put(b"key0", b"value").unwrap();
-    db.flush(true).unwrap();
+    db.flush(true, false).unwrap();
     let mut opt = CompactOptions::new();
     opt.set_change_level(true);
     opt.set_target_level(1);
@@ -931,7 +931,7 @@ fn test_compact_on_deletion() {
             db.put(format!("key{}", i).as_ref(), b"value").unwrap();
         }
     }
-    db.flush(true).unwrap();
+    db.flush(true, false).unwrap();
     let max_retry = 1000;
     let level0_prop = format!("rocksdb.num-files-at-level{}", 0);
     for _ in 0..max_retry {

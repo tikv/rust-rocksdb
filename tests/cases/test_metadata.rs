@@ -35,7 +35,7 @@ fn test_metadata() {
     let num_files = 5;
     for i in 0..num_files {
         db.put(&[i], &[i]).unwrap();
-        db.flush(true).unwrap();
+        db.flush(true, false).unwrap();
     }
 
     let live_files = db.get_live_files();
@@ -106,7 +106,7 @@ fn test_compact_files() {
     for i in 0..num_files {
         let b = &[i as u8];
         db.put(b, b).unwrap();
-        db.flush(true).unwrap();
+        db.flush(true, false).unwrap();
     }
     let input_files = get_files_cf(&db, cf_handle, 0);
     assert_eq!(input_files.len(), num_files);

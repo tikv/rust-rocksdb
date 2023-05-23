@@ -25,7 +25,7 @@ fn test_lifetimes() {
         db.put(k, v).unwrap();
         assert_eq!(v.as_slice(), &*db.get(k).unwrap().unwrap());
     }
-    db.flush(true).unwrap();
+    db.flush(true, false).unwrap();
 
     let collection = db.get_properties_of_all_tables_rc().unwrap();
 

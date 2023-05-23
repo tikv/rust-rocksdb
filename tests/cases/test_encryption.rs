@@ -59,7 +59,7 @@ fn test_ctr_encrypted_env_impl(encrypted_env: Arc<Env>) {
     }
 
     // flush to sst file
-    db.flush(true).unwrap();
+    db.flush(true, false).unwrap();
 
     // check value in db
     for &(ref k, ref v) in &samples {

@@ -37,7 +37,7 @@ fn test_compact_range() {
     }
 
     // flush memtable to sst file
-    db.flush(true).unwrap();
+    db.flush(true, false).unwrap();
     let old_size = db.get_approximate_sizes(&[Range::new(b"k0", b"k6")])[0];
 
     // delete all and compact whole range
@@ -71,7 +71,7 @@ fn test_compact_range_change_level() {
     ];
     for &(ref k, ref v) in &samples {
         db.put(k, v).unwrap();
-        db.flush(true).unwrap();
+        db.flush(true, false).unwrap();
     }
 
     let compact_level = 1;
@@ -92,7 +92,7 @@ fn test_compact_range_bottommost_level_compaction() {
 
     let db = DB::open(opts, path.path().to_str().unwrap()).unwrap();
     db.put(&[0], &[0]).unwrap();
-    db.flush(true).unwrap();
+    db.flush(true, false).unwrap();
 
     // Compact to bottommost level
     let cf_handle = db.cf_handle("default").unwrap();

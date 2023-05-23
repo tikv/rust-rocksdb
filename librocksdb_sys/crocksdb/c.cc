@@ -4167,6 +4167,11 @@ void crocksdb_flushoptions_set_expected_oldest_key_time(
   opt->rep.expected_oldest_key_time = v;
 }
 
+void crocksdb_flushoptions_set_check_if_compaction_disabled(
+    crocksdb_flushoptions_t* opt, unsigned char v) {
+  opt->rep.check_if_compaction_disabled = v;
+}
+
 crocksdb_memory_allocator_t* crocksdb_jemalloc_nodump_allocator_create(
     char** errptr) {
   crocksdb_memory_allocator_t* allocator = new crocksdb_memory_allocator_t;

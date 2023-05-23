@@ -1701,6 +1701,9 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_flushoptions_set_allow_write_stall(
 extern C_ROCKSDB_LIBRARY_API void
 crocksdb_flushoptions_set_expected_oldest_key_time(crocksdb_flushoptions_t*,
                                                    uint64_t);
+extern C_ROCKSDB_LIBRARY_API void
+crocksdb_flushoptions_set_check_if_compaction_disabled(crocksdb_flushoptions_t*,
+                                                       unsigned char);
 
 /* Memory allocator */
 

@@ -179,7 +179,9 @@ fn test_event_listener_stall_conditions_changed() {
             format!("{:04}", i).as_bytes(),
         )
         .unwrap();
-        db.flush_cf(test_cf, true, None).unwrap();
+        let mut opts = FlushOptions::default();
+        opts.set_wait(true);
+        db.flush_cf(test_cf, &opts).unwrap();
     }
     let flush_cnt = counter.flush.load(Ordering::SeqCst);
     assert_ne!(flush_cnt, 0);

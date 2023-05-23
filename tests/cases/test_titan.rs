@@ -242,7 +242,9 @@ fn generate_file_bottom_level(db: &DB, handle: &CFHandle, range: ops::Range<u32>
         let v = format!("value{}", i);
         db.put_cf(handle, k.as_bytes(), v.as_bytes()).unwrap();
     }
-    db.flush_cf(handle, true, None).unwrap();
+    let mut opts = FlushOptions::default();
+    opts.set_wait(true);
+    db.flush_cf(handle, &opts).unwrap();
 
     let opts = db.get_options_cf(handle);
     let mut compact_opts = CompactOptions::new();

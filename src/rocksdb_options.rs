@@ -2134,15 +2134,17 @@ pub struct FlushOptions {
     pub(crate) inner: *mut DBFlushOptions,
 }
 
-impl FlushOptions {
-    pub fn new() -> FlushOptions {
+impl Default for FlushOptions {
+    fn default() -> Self {
         unsafe {
-            FlushOptions {
+            Self {
                 inner: crocksdb_ffi::crocksdb_flushoptions_create(),
             }
         }
     }
+}
 
+impl FlushOptions {
     pub fn set_wait(&mut self, wait: bool) {
         unsafe {
             crocksdb_ffi::crocksdb_flushoptions_set_wait(self.inner, wait);
@@ -2159,6 +2161,12 @@ impl FlushOptions {
         let time = time.duration_since(UNIX_EPOCH).unwrap().as_secs();
         unsafe {
             crocksdb_ffi::crocksdb_flushoptions_set_expected_oldest_key_time(self.inner, time);
+        }
+    }
+
+    pub fn set_check_if_compaction_disabled(&mut self, check: bool) {
+        unsafe {
+            crocksdb_ffi::crocksdb_flushoptions_set_check_if_compaction_disabled(self.inner, check);
         }
     }
 }

@@ -1266,15 +1266,9 @@ impl DB {
     pub fn flush_cf(
         &self,
         cf: &CFHandle,
-        wait: bool,
-        expected_oldest_key_time: Option<SystemTime>,
+        opts: &FlushOptions,
     ) -> Result<(), String> {
         unsafe {
-            let mut opts = FlushOptions::new();
-            opts.set_wait(wait);
-            if let Some(t) = expected_oldest_key_time {
-                opts.set_expected_oldest_key_time(t);
-            }
             ffi_try!(crocksdb_flush_cf(self.inner, cf.inner, opts.inner));
             Ok(())
         }
@@ -1286,11 +1280,9 @@ impl DB {
     /// If atomic flush is enabled, flush_cfs will flush all column families
     /// specified in `cfs` up to the latest sequence number at the time
     /// when flush is requested.
-    pub fn flush_cfs(&self, cfs: &[&CFHandle], wait: bool) -> Result<(), String> {
+    pub fn flush_cfs(&self, cfs: &[&CFHandle], opts: &FlushOptions) -> Result<(), String> {
         unsafe {
             let cfs: Vec<*mut _> = cfs.iter().map(|cf| cf.inner).collect();
-            let mut opts = FlushOptions::new();
-            opts.set_wait(wait);
             ffi_try!(crocksdb_flush_cfs(
                 self.inner,
                 cfs.as_ptr(),
@@ -3397,7 +3389,9 @@ mod test {
             db.put_cf(cf_handle, format!("k_{}", i).as_bytes(), b"v")
                 .unwrap();
         }
-        db.flush_cf(cf_handle, true, None).unwrap();
+        let mut opts = FlushOptions::default();
+        opts.set_wait(true);
+        db.flush_cf(cf_handle, &opts).unwrap();
 
         let total_sst_files_size = db
             .get_property_int_cf(cf_handle, "rocksdb.total-sst-files-size")
@@ -3589,7 +3583,9 @@ mod test {
             options.disable_wal(true);
             db.write_opt(&wb, &options).unwrap();
             let handles: Vec<_> = cfs.iter().map(|name| db.cf_handle(name).unwrap()).collect();
-            db.flush_cfs(&handles, true).unwrap();
+            let mut opts = FlushOptions::default();
+            opts.set_wait(true);
+            db.flush_cfs(&handles, &opts).unwrap();
         }
 
         let opts = DBOptions::new();

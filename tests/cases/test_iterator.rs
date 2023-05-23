@@ -197,12 +197,14 @@ fn test_send_iterator() {
     handle.join().unwrap();
 
     let db = Arc::new(DB::open_default(path.path().to_str().unwrap()).unwrap());
-    db.flush(true, false).unwrap();
+    let mut fopts = FlushOptions::default();
+    fopts.set_wait(true);
+    db.flush(&fopts).unwrap();
 
     let snap = Snapshot::new(db.clone());
     let iter = snap.iter_opt_clone(ReadOptions::new());
     db.put(b"k1", b"v2").unwrap();
-    db.flush(true, false).unwrap();
+    db.flush(&fopts).unwrap();
     db.compact_range(None, None);
 
     let (tx, handle) = make_checker(iter);
@@ -319,12 +321,14 @@ fn test_total_order_seek() {
     db.put_opt(b"k1-2", b"b", &wopts).unwrap();
     db.put_opt(b"k1-3", b"c", &wopts).unwrap();
     db.put_opt(b"k2-1", b"a", &wopts).unwrap();
-    db.flush(true /* wait */, false).unwrap(); // flush memtable to sst file.
+    let mut fopts = FlushOptions::default();
+    fopts.set_wait(true);
+    db.flush(&fopts).unwrap(); // flush memtable to sst file.
 
     // sst2
     db.put_opt(b"k2-2", b"b", &wopts).unwrap();
     db.put_opt(b"k2-3", b"c", &wopts).unwrap();
-    db.flush(true /* wait */, false).unwrap(); // flush memtable to sst file.
+    db.flush(&fopts).unwrap(); // flush memtable to sst file.
 
     // memtable
     db.put_opt(b"k3-1", b"a", &wopts).unwrap();
@@ -398,7 +402,9 @@ fn test_fixed_suffix_seek() {
     db.put(b"k-eghe-5", b"a").unwrap();
     db.put(b"k-24yfae-6", b"a").unwrap();
     db.put(b"k-h1fwd-7", b"a").unwrap();
-    db.flush(true, false).unwrap();
+    let mut fopts = FlushOptions::default();
+    fopts.set_wait(true);
+    db.flush(&fopts).unwrap();
 
     let mut iter = db.iter();
     iter.seek(SeekKey::Key(b"k-24yfae-8")).unwrap();
@@ -447,11 +453,13 @@ fn test_iter_sequence_number() {
     .unwrap();
 
     db.put(b"key1", b"value11").unwrap();
-    db.flush(false, false).unwrap();
+    let mut fopts = FlushOptions::default();
+    fopts.set_wait(true);
+    db.flush(&fopts).unwrap();
     db.put(b"key1", b"value22").unwrap();
-    db.flush(false, false).unwrap();
+    db.flush(&fopts).unwrap();
     db.put(b"key2", b"value21").unwrap();
-    db.flush(false, false).unwrap();
+    db.flush(&fopts).unwrap();
     db.put(b"key2", b"value22").unwrap();
 
     let mut iter = db.iter();

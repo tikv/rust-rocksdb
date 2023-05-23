@@ -1252,10 +1252,8 @@ impl DB {
 
     /// Flush all memtable data.
     /// If wait, the flush will wait until the flush is done.
-    pub fn flush(&self, wait: bool) -> Result<(), String> {
+    pub fn flush(&self, opts: &FlushOptions) -> Result<(), String> {
         unsafe {
-            let mut opts = FlushOptions::new();
-            opts.set_wait(wait);
             ffi_try!(crocksdb_flush(self.inner, opts.inner));
             Ok(())
         }
@@ -3009,7 +3007,7 @@ mod test {
     use write_batch::WriteBatchRef;
 
     use super::*;
-    use crate::{tempdir_with_prefix, ConcurrentTaskLimiter};
+    use crate::{tempdir_with_prefix, ConcurrentTaskLimiter, FlushOptions};
 
     #[test]
     fn external() {
@@ -3144,9 +3142,11 @@ mod test {
             )
             .expect("");
         }
-        db.flush(true).expect("");
+        let mut fopts = FlushOptions::default();
+        fopts.set_wait(true);
+        db.flush(&fopts).expect("");
         assert!(db.get(b"0001").expect("").is_some());
-        db.flush(true).expect("");
+        db.flush(&fopts).expect("");
         let sizes = db.get_approximate_sizes(&[
             Range::new(b"0000", b"2000"),
             Range::new(b"2000", b"4000"),
@@ -3166,12 +3166,14 @@ mod test {
         let path = tempdir_with_prefix("_rust_rocksdb_propertytest");
         let db = DB::open_default(path.path().to_str().unwrap()).unwrap();
         db.put(b"a1", b"v1").unwrap();
-        db.flush(true).unwrap();
+        let mut fopts = FlushOptions::default();
+        fopts.set_wait(true);
+        db.flush(&fopts).unwrap();
         let prop_name = "rocksdb.total-sst-files-size";
         let st1 = db.get_property_int(prop_name).unwrap();
         assert!(st1 > 0);
         db.put(b"a2", b"v2").unwrap();
-        db.flush(true).unwrap();
+        db.flush(&fopts).unwrap();
         let st2 = db.get_property_int(prop_name).unwrap();
         assert!(st2 > st1);
     }
@@ -3310,7 +3312,9 @@ mod test {
             .spawn(move || {
                 db1.put(b"k1", b"v1").unwrap();
                 db1.put(b"k2", b"v2").unwrap();
-                db1.flush(true).unwrap();
+                let mut fopts = FlushOptions::default();
+                fopts.set_wait(true);
+                db1.flush(&fopts).unwrap();
                 db1.compact_range(None, None);
             })
             .unwrap();
@@ -3362,7 +3366,9 @@ mod test {
         for i in 0..200 {
             db.put(format!("k_{}", i).as_bytes(), b"v").unwrap();
         }
-        db.flush(true).unwrap();
+        let mut fopts = FlushOptions::default();
+        fopts.set_wait(true);
+        db.flush(&fopts).unwrap();
         for i in 0..200 {
             db.get(format!("k_{}", i).as_bytes()).unwrap();
         }
@@ -3385,9 +3391,9 @@ mod test {
             db.put_cf(cf_handle, format!("k_{}", i).as_bytes(), b"v")
                 .unwrap();
         }
-        let mut opts = FlushOptions::default();
-        opts.set_wait(true);
-        db.flush_cf(cf_handle, &opts).unwrap();
+        let mut fopts = FlushOptions::default();
+        fopts.set_wait(true);
+        db.flush_cf(cf_handle, &fopts).unwrap();
 
         let total_sst_files_size = db
             .get_property_int_cf(cf_handle, "rocksdb.total-sst-files-size")
@@ -3431,7 +3437,9 @@ mod test {
             db.put(k, v).unwrap();
             assert_eq!(v.as_slice(), &*db.get(k).unwrap().unwrap());
         }
-        db.flush(true).unwrap();
+        let mut fopts = FlushOptions::default();
+        fopts.set_wait(true);
+        db.flush(&fopts).unwrap();
         let key_versions = db.get_all_key_versions(b"key2", b"key4").unwrap();
         assert_eq!(key_versions[1].key, "key3");
         assert_eq!(key_versions[1].value, "value3");
@@ -3579,9 +3587,9 @@ mod test {
             options.disable_wal(true);
             db.write_opt(&wb, &options).unwrap();
             let handles: Vec<_> = cfs.iter().map(|name| db.cf_handle(name).unwrap()).collect();
-            let mut opts = FlushOptions::default();
-            opts.set_wait(true);
-            db.flush_cfs(&handles, &opts).unwrap();
+            let mut fopts = FlushOptions::default();
+            fopts.set_wait(true);
+            db.flush_cfs(&handles, &fopts).unwrap();
         }
 
         let opts = DBOptions::new();
@@ -3810,7 +3818,9 @@ mod test {
             }
         }
         {
-            db.flush(true).unwrap();
+            let mut fopts = FlushOptions::default();
+            fopts.set_wait(true);
+            db.flush(&fopts).unwrap();
         }
         assert_eq!(
             1,

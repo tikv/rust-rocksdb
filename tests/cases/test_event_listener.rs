@@ -179,9 +179,9 @@ fn test_event_listener_stall_conditions_changed() {
             format!("{:04}", i).as_bytes(),
         )
         .unwrap();
-        let mut opts = FlushOptions::default();
-        opts.set_wait(true);
-        db.flush_cf(test_cf, &opts).unwrap();
+        let mut fopts = FlushOptions::default();
+        fopts.set_wait(true);
+        db.flush_cf(test_cf, &fopts).unwrap();
     }
     let flush_cnt = counter.flush.load(Ordering::SeqCst);
     assert_ne!(flush_cnt, 0);
@@ -214,7 +214,9 @@ fn test_event_listener_basic() {
         )
         .unwrap();
     }
-    db.flush(true).unwrap();
+    let mut fopts = FlushOptions::default();
+    fopts.set_wait(true);
+    db.flush(&fopts).unwrap();
     assert_ne!(counter.flush.load(Ordering::SeqCst), 0);
 
     for i in 1..8000 {
@@ -224,7 +226,7 @@ fn test_event_listener_basic() {
         )
         .unwrap();
     }
-    db.flush(true).unwrap();
+    db.flush(&fopts).unwrap();
     let flush_cnt = counter.flush.load(Ordering::SeqCst);
     assert_ne!(flush_cnt, 0);
     assert_eq!(counter.compaction.load(Ordering::SeqCst), 0);
@@ -293,9 +295,11 @@ fn test_event_listener_background_error() {
     opts.create_if_missing(true);
     let db = DB::open(opts, path_str).unwrap();
 
+    let mut fopts = FlushOptions::default();
+    fopts.set_wait(true);
     for i in 1..10 {
         db.put(format!("{:04}", i).as_bytes(), b"value").unwrap();
-        db.flush(false).unwrap();
+        db.flush(&fopts).unwrap();
     }
     assert_eq!(counter.background_error.load(Ordering::SeqCst), 0);
 }
@@ -325,7 +329,9 @@ fn test_event_listener_status_reset() {
     for i in 1..5 {
         db.put(format!("{:04}", i).as_bytes(), b"value").unwrap();
     }
-    db.flush(true).unwrap();
+    let mut fopts = FlushOptions::default();
+    fopts.set_wait(true);
+    db.flush(&fopts).unwrap();
 
     disturb_sst_file(&db, path.path());
 
@@ -333,7 +339,7 @@ fn test_event_listener_status_reset() {
         db.put(format!("{:04}", i).as_bytes(), b"value").unwrap();
     }
     compact_files_to_bottom(&db);
-    db.flush(true).unwrap();
+    db.flush(&fopts).unwrap();
     assert_eq!(counter.load(Ordering::SeqCst), 1);
 }
 

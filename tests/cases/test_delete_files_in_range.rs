@@ -43,9 +43,9 @@ fn generate_file_bottom_level(db: &DB, handle: &CFHandle, range: ops::Range<u32>
         let v = format!("value{}", i);
         db.put_cf(handle, k.as_bytes(), v.as_bytes()).unwrap();
     }
-    let mut opts = FlushOptions::default();
-    opts.set_wait(true);
-    db.flush_cf(handle, &opts).unwrap();
+    let mut fopts = FlushOptions::default();
+    fopts.set_wait(true);
+    db.flush_cf(handle, &fopts).unwrap();
 
     let opts = db.get_options_cf(handle);
     let mut compact_opts = CompactOptions::new();
@@ -121,6 +121,8 @@ fn test_delete_files_in_range_with_delete_range() {
 
     // Flush 5 files in level 0.
     // File i will contain keys i and i+1.
+    let mut fopts = FlushOptions::default();
+    fopts.set_wait(true);
     for i in 0..5 {
         let k1 = format!("{}", i);
         let k2 = format!("{}", i + 1);
@@ -128,13 +130,13 @@ fn test_delete_files_in_range_with_delete_range() {
         rand::thread_rng().fill_bytes(&mut v);
         db.put(k1.as_bytes(), v.as_slice()).unwrap();
         db.put(k2.as_bytes(), v.as_slice()).unwrap();
-        db.flush(true).unwrap();
+        db.flush(&fopts).unwrap();
     }
 
     // Hold a snapshot to prevent the following delete range from dropping keys above.
     let snapshot = db.snapshot();
     db.delete_range(b"0", b"6").unwrap();
-    db.flush(true).unwrap();
+    db.flush(&fopts).unwrap();
     // After this, we will have 3 files in level 1.
     // File i will contain keys i and i+1, and the delete range [0, 6).
     db.compact_range(None, None);
@@ -153,7 +155,7 @@ fn test_delete_files_in_range_with_delete_range() {
         rand::thread_rng().fill_bytes(&mut v);
         db.put(k1.as_bytes(), v.as_slice()).unwrap();
         db.put(k2.as_bytes(), v.as_slice()).unwrap();
-        db.flush(true).unwrap();
+        db.flush(&fopts).unwrap();
     }
 
     // After this, the delete range [0, 6) will drop all entries before it, so

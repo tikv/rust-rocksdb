@@ -12,8 +12,8 @@
 // limitations under the License.
 
 use rocksdb::{
-    ColumnFamilyOptions, CompactOptions, DBBottommostLevelCompaction, DBOptions, Range, Writable,
-    DB,
+    ColumnFamilyOptions, CompactOptions, DBBottommostLevelCompaction, DBOptions, FlushOptions,
+    Range, Writable, DB,
 };
 
 use super::tempdir_with_prefix;
@@ -37,7 +37,9 @@ fn test_compact_range() {
     }
 
     // flush memtable to sst file
-    db.flush(true, false).unwrap();
+    let mut fopts = FlushOptions::default();
+    fopts.set_wait(true);
+    db.flush(&fopts).unwrap();
     let old_size = db.get_approximate_sizes(&[Range::new(b"k0", b"k6")])[0];
 
     // delete all and compact whole range
@@ -69,9 +71,11 @@ fn test_compact_range_change_level() {
         (b"k4".to_vec(), b"value--------4".to_vec()),
         (b"k5".to_vec(), b"value--------5".to_vec()),
     ];
+    let mut fopts = FlushOptions::default();
+    fopts.set_wait(true);
     for &(ref k, ref v) in &samples {
         db.put(k, v).unwrap();
-        db.flush(true, false).unwrap();
+        db.flush(&fopts).unwrap();
     }
 
     let compact_level = 1;
@@ -92,7 +96,9 @@ fn test_compact_range_bottommost_level_compaction() {
 
     let db = DB::open(opts, path.path().to_str().unwrap()).unwrap();
     db.put(&[0], &[0]).unwrap();
-    db.flush(true, false).unwrap();
+    let mut fopts = FlushOptions::default();
+    fopts.set_wait(true);
+    db.flush(&fopts).unwrap();
 
     // Compact to bottommost level
     let cf_handle = db.cf_handle("default").unwrap();

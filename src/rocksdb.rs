@@ -1263,11 +1263,7 @@ impl DB {
 
     /// Flush all memtable data for specified cf.
     /// If wait, the flush will wait until the flush is done.
-    pub fn flush_cf(
-        &self,
-        cf: &CFHandle,
-        opts: &FlushOptions,
-    ) -> Result<(), String> {
+    pub fn flush_cf(&self, cf: &CFHandle, opts: &FlushOptions) -> Result<(), String> {
         unsafe {
             ffi_try!(crocksdb_flush_cf(self.inner, cf.inner, opts.inner));
             Ok(())

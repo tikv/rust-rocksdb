@@ -945,3 +945,17 @@ fn test_compact_on_deletion() {
     assert_eq!(db.get_property_int(&level0_prop).unwrap(), 0);
     assert_eq!(db.get_property_int(&level1_prop).unwrap(), 1);
 }
+
+#[test]
+fn test_ttl_compaction_options() {
+    let path = tempdir_with_prefix("_rust_rocksdb_ttl_compaction_options");
+    let path_str = path.path().to_str().unwrap();
+    let mut opts = DBOptions::new();
+    opts.create_if_missing(true);
+    let mut cf_opts = ColumnFamilyOptions::new();
+    cf_opts.set_ttl(3600);
+    cf_opts.set_periodic_compaction_seconds(7200);
+    let db = DB::open_cf(opts, path_str, vec![("default", cf_opts)]).unwrap();
+    assert_eq!(db.get_options().get_ttl(), 3600);
+    assert_eq!(db.get_options().get_periodic_compaction_seconds(), 7200);
+}

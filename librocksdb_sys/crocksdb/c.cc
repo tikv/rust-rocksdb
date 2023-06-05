@@ -3321,10 +3321,73 @@ unsigned char crocksdb_options_get_force_consistency_checks(
   return opt->rep.force_consistency_checks;
 }
 
-char* crocksdb_options_statistics_get_string(crocksdb_options_t* opt) {
-  if (opt->rep.statistics) {
-    rocksdb::Statistics* statistics = opt->rep.statistics.get();
-    return strdup(statistics->ToString().c_str());
+void crocksdb_options_set_ttl(crocksdb_options_t* opt, uint64_t ttl) {
+  opt->rep.ttl = ttl;
+}
+
+uint64_t crocksdb_options_get_ttl(const crocksdb_options_t* opt) {
+  return opt->rep.ttl;
+}
+
+void crocksdb_options_set_periodic_compaction_seconds(crocksdb_options_t* opt,
+                                                      uint64_t seconds) {
+  opt->rep.periodic_compaction_seconds = seconds;
+}
+
+uint64_t crocksdb_options_get_periodic_compaction_seconds(
+    const crocksdb_options_t* opt) {
+  return opt->rep.periodic_compaction_seconds;
+}
+
+void crocksdb_options_set_statistics(crocksdb_options_t* opt,
+                                     crocksdb_statistics_t* statistics) {
+  opt->rep.statistics = statistics->rep;
+}
+crocksdb_statistics_t* crocksdb_options_get_statistics(
+    crocksdb_options_t* opt) {
+  crocksdb_statistics_t* statistics = new crocksdb_statistics_t;
+  statistics->rep = opt->rep.statistics;
+  return statistics;
+}
+
+crocksdb_statistics_t* crocksdb_statistics_create() {
+  crocksdb_statistics_t* statistics = new crocksdb_statistics_t;
+  statistics->rep = rocksdb::CreateDBStatistics();
+  return statistics;
+}
+
+crocksdb_statistics_t* crocksdb_titan_statistics_create() {
+  crocksdb_statistics_t* statistics = new crocksdb_statistics_t;
+  statistics->rep = rocksdb::titandb::CreateDBStatistics();
+  return statistics;
+}
+
+crocksdb_statistics_t* crocksdb_empty_statistics_create() {
+  crocksdb_statistics_t* statistics = new crocksdb_statistics_t;
+  statistics->rep = nullptr;
+  return statistics;
+}
+
+void crocksdb_statistics_destroy(crocksdb_statistics_t* statistics) {
+  if (statistics->rep) {
+    statistics->rep.reset();
+  }
+  delete statistics;
+}
+
+unsigned char crocksdb_statistics_is_empty(crocksdb_statistics_t* statistics) {
+  return statistics->rep == nullptr;
+}
+
+void crocksdb_statistics_reset(crocksdb_statistics_t* statistics) {
+  if (statistics->rep) {
+    statistics->rep->Reset();
+  }
+}
+
+char* crocksdb_statistics_to_string(crocksdb_statistics_t* statistics) {
+  if (statistics->rep) {
+    return strdup(statistics->rep->ToString().c_str());
   }
   return nullptr;
 }

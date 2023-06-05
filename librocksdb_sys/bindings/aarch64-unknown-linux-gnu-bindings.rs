@@ -2464,7 +2464,6 @@ extern "C" {
         arg2: libc::c_uchar,
     );
 }
-
 extern "C" {
     pub fn crocksdb_ratelimiter_create(
         rate_bytes_per_sec: i64,

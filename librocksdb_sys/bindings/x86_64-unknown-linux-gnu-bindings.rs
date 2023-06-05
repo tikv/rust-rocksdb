@@ -2866,22 +2866,24 @@ extern "C" {
 }
 
 extern "C" {
-    pub fn crocksdb_options_set_ttl(opt: *mut crocksdb_optionts_t, ttl_sec: uint64_t);
+    pub fn crocksdb_options_set_ttl(arg1: *mut crocksdb_optionts_t, arg2: u64);
 }
 
 extern "C" {
-    pub fn crocksdb_options_get_ttl(opt: *mut crocksdb_optionts_t) -> u64;
+    pub fn crocksdb_options_get_ttl(arg1: *const crocksdb_optionts_t) -> u64;
 }
 
 extern "C" {
     pub fn crocksdb_options_set_periodic_compaction_seconds(
-        opt: *mut crocksdb_optionts_t,
-        sec: uint64_t,
+        arg1: *mut crocksdb_optionts_t,
+        arg2: u64,
     );
 }
 
 extern "C" {
-    pub fn crocksdb_options_get_periodic_compaction_seconds(opt: *mut crocksdb_optionts_t) -> u64;
+    pub fn crocksdb_options_get_periodic_compaction_seconds(
+        arg1: *const crocksdb_optionts_t,
+    ) -> u64;
 }
 
 extern "C" {

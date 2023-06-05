@@ -2045,7 +2045,7 @@ impl ColumnFamilyOptions {
         }
     }
 
-    pub fn set_ttl(&self, ttl_secs: u64) {
+    pub fn set_ttl(&mut self, ttl_secs: u64) {
         unsafe {
             crocksdb_ffi::crocksdb_options_set_ttl(self.inner, ttl_secs);
         }
@@ -2055,7 +2055,7 @@ impl ColumnFamilyOptions {
         unsafe { crocksdb_ffi::crocksdb_options_get_ttl(self.inner) }
     }
 
-    pub fn set_periodic_compaction_seconds(&self, secs: u64) {
+    pub fn set_periodic_compaction_seconds(&mut self, secs: u64) {
         unsafe {
             crocksdb_ffi::crocksdb_options_set_periodic_compaction_seconds(self.inner, secs);
         }

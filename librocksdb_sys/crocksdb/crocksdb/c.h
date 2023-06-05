@@ -1455,13 +1455,13 @@ crocksdb_options_get_force_consistency_checks(crocksdb_options_t*);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_ttl(
     crocksdb_options_t* opt, uint64_t ttl);
 extern C_ROCKSDB_LIBRARY_API uint64_t
-crocksdb_options_get_ttl(crocksdb_options_t* opt);
+crocksdb_options_get_ttl(const crocksdb_options_t* opt);
 
 extern C_ROCKSDB_LIBRARY_API void
 crocksdb_options_set_periodic_compaction_seconds(crocksdb_options_t* opt,
                                                  uint64_t seconds);
 extern C_ROCKSDB_LIBRARY_API uint64_t
-crocksdb_options_get_periodic_compaction_seconds(crocksdb_options_t* opt);
+crocksdb_options_get_periodic_compaction_seconds(const crocksdb_options_t* opt);
 
 /* RateLimiter */
 extern C_ROCKSDB_LIBRARY_API crocksdb_ratelimiter_t*

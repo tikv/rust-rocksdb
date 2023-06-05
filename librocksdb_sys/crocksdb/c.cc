@@ -3401,7 +3401,7 @@ void crocksdb_options_set_ttl(crocksdb_options_t* opt, uint64_t ttl) {
   opt->rep.ttl = ttl;
 }
 
-uint64_t crocksdb_options_get_ttl(crocksdb_options_t* opt) {
+uint64_t crocksdb_options_get_ttl(const crocksdb_options_t* opt) {
   return opt->rep.ttl;
 }
 
@@ -3411,7 +3411,7 @@ void crocksdb_options_set_periodic_compaction_seconds(crocksdb_options_t* opt,
 }
 
 uint64_t crocksdb_options_get_periodic_compaction_seconds(
-    crocksdb_options_t* opt) {
+    const crocksdb_options_t* opt) {
   return opt->rep.periodic_compaction_seconds
 }
 

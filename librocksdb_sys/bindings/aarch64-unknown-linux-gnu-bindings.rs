@@ -2466,27 +2466,6 @@ extern "C" {
 }
 
 extern "C" {
-    pub fn crocksdb_options_set_ttl(arg1: *mut crocksdb_optionts_t, arg2: u64);
-}
-
-extern "C" {
-    pub fn crocksdb_options_get_ttl(arg1: *const crocksdb_optionts_t) -> u64;
-}
-
-extern "C" {
-    pub fn crocksdb_options_set_periodic_compaction_seconds(
-        arg1: *mut crocksdb_optionts_t,
-        arg2: u64,
-    );
-}
-
-extern "C" {
-    pub fn crocksdb_options_get_periodic_compaction_seconds(
-        arg1: *const crocksdb_optionts_t,
-    ) -> u64;
-}
-
-extern "C" {
     pub fn crocksdb_ratelimiter_create(
         rate_bytes_per_sec: i64,
         refill_period_us: i64,

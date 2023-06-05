@@ -2464,6 +2464,18 @@ extern "C" {
         arg2: libc::c_uchar,
     );
 }
+
+extern "C" {
+    pub fn crocksdb_options_set_ttl(opt: *mut crocksdb_optionts_t, ttl_sec: uint64_t);
+}
+
+extern "C" {
+    pub fn crocksdb_options_set_periodic_compaction_seconds(
+        opt: *mut crocksdb_optionts_t,
+        sec: uint64_t,
+    );
+}
+
 extern "C" {
     pub fn crocksdb_ratelimiter_create(
         rate_bytes_per_sec: i64,

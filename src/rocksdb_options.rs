@@ -2044,6 +2044,17 @@ impl ColumnFamilyOptions {
             );
         }
     }
+
+    pub fn set_ttl(&self, ttl_secs: u64) {
+        unsafe {
+            crocksdb_ffi::crocksdb_options_set_ttl(self.inner, ttl_secs);
+        }
+    }
+    pub fn set_periodic_compaction_seconds(&self, secs: u64) {
+        unsafe {
+            crocksdb_ffi::crocksdb_options_set_periodic_compaction_seconds(self.inner, secs);
+        }
+    }
 }
 
 // ColumnFamilyDescriptor is a pair of column family's name and options.

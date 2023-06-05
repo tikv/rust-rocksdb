@@ -1452,6 +1452,12 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_force_consistency_checks(
 extern C_ROCKSDB_LIBRARY_API unsigned char
 crocksdb_options_get_force_consistency_checks(crocksdb_options_t*);
 
+extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_ttl(
+    crocksdb_options_t* opt, uint64_t ttl);
+extern C_ROCKSDB_LIBRARY_API void
+crocksdb_options_set_periodic_compaction_seconds(crocksdb_options_t* opt,
+                                                 uint64_t seconds);
+
 /* RateLimiter */
 extern C_ROCKSDB_LIBRARY_API crocksdb_ratelimiter_t*
 crocksdb_ratelimiter_create(int64_t rate_bytes_per_sec,

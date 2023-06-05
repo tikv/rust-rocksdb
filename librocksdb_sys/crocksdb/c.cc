@@ -3397,6 +3397,15 @@ unsigned char crocksdb_options_get_force_consistency_checks(
   return opt->rep.force_consistency_checks;
 }
 
+void crocksdb_options_set_ttl(crocksdb_options_t* opt, uint64_t ttl) {
+  opt->rep.ttl = ttl;
+}
+
+void crocksdb_options_set_periodic_compaction_seconds(crocksdb_options_t* opt,
+                                                      uint64_t seconds) {
+  opt->rep.periodic_compaction_seconds = seconds;
+}
+
 void crocksdb_options_set_statistics(crocksdb_options_t* opt,
                                      crocksdb_statistics_t* statistics) {
   opt->rep.statistics = statistics->rep;

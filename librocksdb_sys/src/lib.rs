@@ -974,7 +974,9 @@ extern "C" {
     );
     pub fn crocksdb_options_get_block_cache_capacity(options: *const Options) -> usize;
     pub fn crocksdb_options_set_ttl(options: *const Options, ttl_secs: u64);
+    pub fn crocksdb_options_get_ttl(options: *const Options) -> u64;
     pub fn crocksdb_options_set_periodic_compaction_seconds(options: *const Options, secs: u64);
+    pub fn crocksdb_options_get_periodic_compaction_seconds(options: *const Options) -> u64;
 
     pub fn crocksdb_load_latest_options(
         dbpath: *const c_char,

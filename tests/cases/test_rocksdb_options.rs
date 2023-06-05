@@ -954,5 +954,7 @@ fn test_ttl_compaction_options() {
     let mut cf_opts = ColumnFamilyOptions::new();
     cf_opts.set_ttl(3600);
     cf_opts.set_periodic_compaction_seconds(7200);
-    DB::open_cf(opts, path_str, vec![("default", cf_opts)]).unwrap();
+    let db = DB::open_cf(opts, path_str, vec![("default", cf_opts)]).unwrap();
+    assert_eq!(db.get_options().get_ttl(), 3600);
+    assert_eq!(db.get_options().get_periodic_compaction_seconds(), 7200);
 }

@@ -2870,10 +2870,18 @@ extern "C" {
 }
 
 extern "C" {
+    pub fn crocksdb_options_get_ttl(opt: *mut crocksdb_optionts_t) -> u64;
+}
+
+extern "C" {
     pub fn crocksdb_options_set_periodic_compaction_seconds(
         opt: *mut crocksdb_optionts_t,
         sec: uint64_t,
     );
+}
+
+extern "C" {
+    pub fn crocksdb_options_get_periodic_compaction_seconds(opt: *mut crocksdb_optionts_t) -> u64;
 }
 
 extern "C" {

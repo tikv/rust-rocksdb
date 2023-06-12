@@ -22,8 +22,8 @@ use rocksdb::crocksdb_ffi::{
 };
 use rocksdb::{
     BlockBasedOptions, Cache, ColumnFamilyOptions, CompactOptions, DBOptions, Env,
-    FifoCompactionOptions, IndexType, LRUCacheOptions, RateLimiter, ReadOptions, SeekKey,
-    SliceTransform, Statistics, Writable, WriteOptions, DB,
+    FifoCompactionOptions, FlushOptions, IndexType, LRUCacheOptions, RateLimiter, ReadOptions,
+    SeekKey, SliceTransform, Statistics, Writable, WriteOptions, DB,
 };
 
 use super::tempdir_with_prefix;
@@ -267,9 +267,11 @@ fn test_create_info_log() {
 
     thread::sleep(Duration::from_secs(2));
 
+    let mut fopts = FlushOptions::default();
+    fopts.set_wait(true);
     for i in 0..200 {
         db.put(format!("k_{}", i).as_bytes(), b"v").unwrap();
-        db.flush(true, false).unwrap();
+        db.flush(&fopts).unwrap();
     }
 
     drop(db);
@@ -477,7 +479,9 @@ fn test_get_block_cache_usage() {
     for i in 0..200 {
         db.put(format!("k_{}", i).as_bytes(), b"v").unwrap();
     }
-    db.flush(true, false).unwrap();
+    let mut fopts = FlushOptions::default();
+    fopts.set_wait(true);
+    db.flush(&fopts).unwrap();
     for i in 0..200 {
         db.get(format!("k_{}", i).as_bytes()).unwrap();
     }
@@ -549,7 +553,9 @@ fn test_compact_options() {
     let db = DB::open_default(path.path().to_str().unwrap()).unwrap();
     db.put(b"k1", b"v1").unwrap();
     db.put(b"k2", b"v2").unwrap();
-    db.flush(true, false).unwrap();
+    let mut fopts = FlushOptions::default();
+    fopts.set_wait(true);
+    db.flush(&fopts).unwrap();
 
     let mut compact_opts = CompactOptions::new();
     compact_opts.set_exclusive_manual_compaction(false);
@@ -819,7 +825,9 @@ fn test_block_based_options() {
     // we should use a bigger enough value (> `bytes_per_bit`) to make
     // sure the statistics will not be 0.
     db.put(b"a", b"abcdef").unwrap();
-    db.flush(true, false).unwrap();
+    let mut fopts = FlushOptions::default();
+    fopts.set_wait(true);
+    db.flush(&fopts).unwrap();
     db.get(b"a").unwrap();
     assert_ne!(
         statistics.get_ticker_count(TickerType::ReadAmpTotalReadBytes),
@@ -869,7 +877,9 @@ fn test_vector_memtable_factory_options() {
     db.put(b"k2", b"v2").unwrap();
     assert_eq!(db.get(b"k1").unwrap().unwrap(), b"v1");
     assert_eq!(db.get(b"k2").unwrap().unwrap(), b"v2");
-    db.flush(true, false).unwrap();
+    let mut fopts = FlushOptions::default();
+    fopts.set_wait(true);
+    db.flush(&fopts).unwrap();
 
     let mut iter = db.iter();
     iter.seek(SeekKey::Start).unwrap();
@@ -915,7 +925,9 @@ fn test_compact_on_deletion() {
 
     let cf = db.cf_handle("default").unwrap();
     db.put(b"key0", b"value").unwrap();
-    db.flush(true, false).unwrap();
+    let mut fopts = FlushOptions::default();
+    fopts.set_wait(true);
+    db.flush(&fopts).unwrap();
     let mut opt = CompactOptions::new();
     opt.set_change_level(true);
     opt.set_target_level(1);
@@ -931,7 +943,9 @@ fn test_compact_on_deletion() {
             db.put(format!("key{}", i).as_ref(), b"value").unwrap();
         }
     }
-    db.flush(true, false).unwrap();
+    let mut fopts = FlushOptions::default();
+    fopts.set_wait(true);
+    db.flush(&fopts).unwrap();
     let max_retry = 1000;
     let level0_prop = format!("rocksdb.num-files-at-level{}", 0);
     for _ in 0..max_retry {
@@ -943,4 +957,18 @@ fn test_compact_on_deletion() {
     }
     assert_eq!(db.get_property_int(&level0_prop).unwrap(), 0);
     assert_eq!(db.get_property_int(&level1_prop).unwrap(), 1);
+}
+
+#[test]
+fn test_ttl_compaction_options() {
+    let path = tempdir_with_prefix("_rust_rocksdb_ttl_compaction_options");
+    let path_str = path.path().to_str().unwrap();
+    let mut opts = DBOptions::new();
+    opts.create_if_missing(true);
+    let mut cf_opts = ColumnFamilyOptions::new();
+    cf_opts.set_ttl(3600);
+    cf_opts.set_periodic_compaction_seconds(7200);
+    let db = DB::open_cf(opts, path_str, vec![("default", cf_opts)]).unwrap();
+    assert_eq!(db.get_options().get_ttl(), 3600);
+    assert_eq!(db.get_options().get_periodic_compaction_seconds(), 7200);
 }

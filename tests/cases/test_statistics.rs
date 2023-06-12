@@ -29,7 +29,9 @@ fn test_db_statistics() {
     db.put_opt(b"k0", b"a", &wopts).unwrap();
     db.put_opt(b"k1", b"b", &wopts).unwrap();
     db.put_opt(b"k2", b"c", &wopts).unwrap();
-    db.flush(true /* wait */, false).unwrap(); // flush memtable to sst file.
+    let mut fopts = FlushOptions::default();
+    fopts.set_wait(true);
+    db.flush(&fopts).unwrap(); // flush memtable to sst file.
     assert_eq!(db.get(b"k0").unwrap().unwrap(), b"a");
     assert_eq!(db.get(b"k1").unwrap().unwrap(), b"b");
     assert_eq!(db.get(b"k2").unwrap().unwrap(), b"c");
@@ -62,7 +64,9 @@ fn test_disable_db_statistics() {
     db.put_opt(b"k0", b"a", &wopts).unwrap();
     db.put_opt(b"k1", b"b", &wopts).unwrap();
     db.put_opt(b"k2", b"c", &wopts).unwrap();
-    db.flush(true /* wait */, false).unwrap(); // flush memtable to sst file.
+    let mut fopts = FlushOptions::default();
+    fopts.set_wait(true);
+    db.flush(&fopts).unwrap(); // flush memtable to sst file.
     assert_eq!(db.get(b"k0").unwrap().unwrap(), b"a");
     assert_eq!(db.get(b"k1").unwrap().unwrap(), b"b");
     assert_eq!(db.get(b"k2").unwrap().unwrap(), b"c");
@@ -94,7 +98,9 @@ fn test_shared_db_statistics() {
     db.put_opt(b"k0", b"a", &wopts).unwrap();
     db.put_opt(b"k1", b"b", &wopts).unwrap();
     db.put_opt(b"k2", b"c", &wopts).unwrap();
-    db.flush(true /* wait */, false).unwrap(); // flush memtable to sst file.
+    let mut fopts = FlushOptions::default();
+    fopts.set_wait(true);
+    db.flush(&fopts).unwrap(); // flush memtable to sst file.
 
     assert_eq!(db.get(b"k0").unwrap().unwrap(), b"a");
     assert_eq!(db.get(b"k1").unwrap().unwrap(), b"b");

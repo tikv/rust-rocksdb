@@ -631,7 +631,7 @@ impl IOStatsContext {
 #[cfg(test)]
 mod test {
     use rocksdb::{SeekKey, Writable, DB};
-    use rocksdb_options::{DBOptions, WriteOptions};
+    use rocksdb_options::{DBOptions, FlushOptions, WriteOptions};
 
     use super::*;
     use crate::tempdir_with_prefix;
@@ -704,11 +704,13 @@ mod test {
 
         let mut wopts = WriteOptions::new();
         wopts.set_sync(true);
+        let mut fopts = FlushOptions::default();
+        fopts.set_wait(true);
         let n = 10;
         for i in 0..n {
             let k = &[i as u8];
             db.put_opt(k, k, &wopts).unwrap();
-            db.flush(true, false).unwrap();
+            db.flush(&fopts).unwrap();
             assert_eq!(db.get(k).unwrap().unwrap(), k);
         }
 

@@ -1465,6 +1465,13 @@ void crocksdb_approximate_memtable_stats_cf(
   db->rep->GetApproximateMemTableStats(cf->rep, range, count, size);
 }
 
+void crocksdb_approximate_active_memtable_stats_cf(
+    const crocksdb_t* db, const crocksdb_column_family_handle_t* cf,
+    uint64_t* memory_bytes, uint64_t* oldest_key_time) {
+  db->rep->GetApproximateActiveMemTableStats(cf->rep, memory_bytes,
+                                             oldest_key_time);
+}
+
 void crocksdb_delete_file(crocksdb_t* db, const char* name, char** errptr) {
   SaveError(errptr, db->rep->DeleteFile(name));
 }
@@ -3397,6 +3404,24 @@ unsigned char crocksdb_options_get_force_consistency_checks(
   return opt->rep.force_consistency_checks;
 }
 
+void crocksdb_options_set_ttl(crocksdb_options_t* opt, uint64_t ttl) {
+  opt->rep.ttl = ttl;
+}
+
+uint64_t crocksdb_options_get_ttl(const crocksdb_options_t* opt) {
+  return opt->rep.ttl;
+}
+
+void crocksdb_options_set_periodic_compaction_seconds(crocksdb_options_t* opt,
+                                                      uint64_t seconds) {
+  opt->rep.periodic_compaction_seconds = seconds;
+}
+
+uint64_t crocksdb_options_get_periodic_compaction_seconds(
+    const crocksdb_options_t* opt) {
+  return opt->rep.periodic_compaction_seconds;
+}
+
 void crocksdb_options_set_statistics(crocksdb_options_t* opt,
                                      crocksdb_statistics_t* statistics) {
   opt->rep.statistics = statistics->rep;
@@ -3649,6 +3674,11 @@ crocksdb_write_buffer_manager_t* crocksdb_write_buffer_manager_create(
 void crocksdb_write_buffer_manager_set_flush_size(
     crocksdb_write_buffer_manager_t* wbm, size_t flush_size) {
   wbm->rep->SetFlushSize(flush_size);
+}
+
+size_t crocksdb_write_buffer_manager_flush_size(
+    crocksdb_write_buffer_manager_t* wbm) {
+  return wbm->rep->flush_size();
 }
 
 void crocksdb_write_buffer_manager_set_flush_oldest_first(
@@ -4148,6 +4178,16 @@ void crocksdb_flushoptions_set_wait(crocksdb_flushoptions_t* opt,
 void crocksdb_flushoptions_set_allow_write_stall(crocksdb_flushoptions_t* opt,
                                                  unsigned char v) {
   opt->rep.allow_write_stall = v;
+}
+
+void crocksdb_flushoptions_set_expected_oldest_key_time(
+    crocksdb_flushoptions_t* opt, uint64_t v) {
+  opt->rep.expected_oldest_key_time = v;
+}
+
+void crocksdb_flushoptions_set_check_if_compaction_disabled(
+    crocksdb_flushoptions_t* opt, unsigned char v) {
+  opt->rep.check_if_compaction_disabled = v;
 }
 
 crocksdb_memory_allocator_t* crocksdb_jemalloc_nodump_allocator_create(
@@ -5229,11 +5269,11 @@ size_t crocksdb_get_supported_compression_number() {
   return rocksdb::GetSupportedCompressions().size();
 }
 
-void crocksdb_get_supported_compression(int32_t* v, size_t l) {
+void crocksdb_get_supported_compression(uint32_t* v, size_t l) {
   auto compressions = rocksdb::GetSupportedCompressions();
   assert(compressions.size() == l);
   for (size_t i = 0; i < compressions.size(); i++) {
-    v[i] = static_cast<int32_t>(compressions[i]);
+    v[i] = static_cast<uint32_t>(compressions[i]);
   }
 }
 

@@ -1,4 +1,4 @@
-use rocksdb::{ColumnFamilyOptions, DBOptions, Writable, DB};
+use rocksdb::{ColumnFamilyOptions, DBOptions, FlushOptions, Writable, DB};
 
 use super::tempdir_with_prefix;
 
@@ -25,7 +25,9 @@ fn test_lifetimes() {
         db.put(k, v).unwrap();
         assert_eq!(v.as_slice(), &*db.get(k).unwrap().unwrap());
     }
-    db.flush(true, false).unwrap();
+    let mut fopts = FlushOptions::default();
+    fopts.set_wait(true);
+    db.flush(&fopts).unwrap();
 
     let collection = db.get_properties_of_all_tables_rc().unwrap();
 

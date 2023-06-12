@@ -36,6 +36,7 @@ use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::str::from_utf8;
 use std::sync::Arc;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use std::{fs, ptr, slice};
 
 #[cfg(feature = "encryption")]
@@ -1251,12 +1252,8 @@ impl DB {
 
     /// Flush all memtable data.
     /// If wait, the flush will wait until the flush is done.
-    /// If allow_write_stall, flush immediately regardless write stall.
-    pub fn flush(&self, wait: bool, allow_write_stall: bool) -> Result<(), String> {
+    pub fn flush(&self, opts: &FlushOptions) -> Result<(), String> {
         unsafe {
-            let mut opts = FlushOptions::new();
-            opts.set_wait(wait);
-            opts.set_allow_write_stall(allow_write_stall);
             ffi_try!(crocksdb_flush(self.inner, opts.inner));
             Ok(())
         }
@@ -1264,17 +1261,8 @@ impl DB {
 
     /// Flush all memtable data for specified cf.
     /// If wait, the flush will wait until the flush is done.
-    /// If allow_write_stall, flush immediately regardless write stall.
-    pub fn flush_cf(
-        &self,
-        cf: &CFHandle,
-        wait: bool,
-        allow_write_stall: bool,
-    ) -> Result<(), String> {
+    pub fn flush_cf(&self, cf: &CFHandle, opts: &FlushOptions) -> Result<(), String> {
         unsafe {
-            let mut opts = FlushOptions::new();
-            opts.set_wait(wait);
-            opts.set_allow_write_stall(allow_write_stall);
             ffi_try!(crocksdb_flush_cf(self.inner, cf.inner, opts.inner));
             Ok(())
         }
@@ -1286,19 +1274,9 @@ impl DB {
     /// If atomic flush is enabled, flush_cfs will flush all column families
     /// specified in `cfs` up to the latest sequence number at the time
     /// when flush is requested.
-    /// If wait, the flush will wait until the flush is done.
-    /// If allow_write_stall, flush immediately regardless write stall.
-    pub fn flush_cfs(
-        &self,
-        cfs: &[&CFHandle],
-        wait: bool,
-        allow_write_stall: bool,
-    ) -> Result<(), String> {
+    pub fn flush_cfs(&self, cfs: &[&CFHandle], opts: &FlushOptions) -> Result<(), String> {
         unsafe {
             let cfs: Vec<*mut _> = cfs.iter().map(|cf| cf.inner).collect();
-            let mut opts = FlushOptions::new();
-            opts.set_wait(wait);
-            opts.set_allow_write_stall(allow_write_stall);
             ffi_try!(crocksdb_flush_cfs(
                 self.inner,
                 cfs.as_ptr(),
@@ -1432,6 +1410,28 @@ impl DB {
             );
         }
         (count, size)
+    }
+
+    // Return the approximate number of size and age of the cf's active memtable.
+    pub fn get_approximate_active_memtable_stats_cf(
+        &self,
+        cf: &CFHandle,
+    ) -> Option<(u64, SystemTime)> {
+        let (mut memory_bytes, mut oldest_key_time) = (0, u64::MAX);
+        unsafe {
+            crocksdb_ffi::crocksdb_approximate_active_memtable_stats_cf(
+                self.inner,
+                cf.inner,
+                &mut memory_bytes,
+                &mut oldest_key_time,
+            );
+        }
+        if oldest_key_time < u64::MAX {
+            let age = UNIX_EPOCH + Duration::from_secs(oldest_key_time);
+            Some((memory_bytes, age))
+        } else {
+            None
+        }
     }
 
     pub fn compact_range(&self, start_key: Option<&[u8]>, end_key: Option<&[u8]>) {
@@ -3007,7 +3007,7 @@ mod test {
     use write_batch::WriteBatchRef;
 
     use super::*;
-    use crate::{tempdir_with_prefix, ConcurrentTaskLimiter};
+    use crate::{tempdir_with_prefix, ConcurrentTaskLimiter, FlushOptions};
 
     #[test]
     fn external() {
@@ -3142,9 +3142,11 @@ mod test {
             )
             .expect("");
         }
-        db.flush(true, false).expect("");
+        let mut fopts = FlushOptions::default();
+        fopts.set_wait(true);
+        db.flush(&fopts).expect("");
         assert!(db.get(b"0001").expect("").is_some());
-        db.flush(true, false).expect("");
+        db.flush(&fopts).expect("");
         let sizes = db.get_approximate_sizes(&[
             Range::new(b"0000", b"2000"),
             Range::new(b"2000", b"4000"),
@@ -3164,12 +3166,14 @@ mod test {
         let path = tempdir_with_prefix("_rust_rocksdb_propertytest");
         let db = DB::open_default(path.path().to_str().unwrap()).unwrap();
         db.put(b"a1", b"v1").unwrap();
-        db.flush(true, false).unwrap();
+        let mut fopts = FlushOptions::default();
+        fopts.set_wait(true);
+        db.flush(&fopts).unwrap();
         let prop_name = "rocksdb.total-sst-files-size";
         let st1 = db.get_property_int(prop_name).unwrap();
         assert!(st1 > 0);
         db.put(b"a2", b"v2").unwrap();
-        db.flush(true, false).unwrap();
+        db.flush(&fopts).unwrap();
         let st2 = db.get_property_int(prop_name).unwrap();
         assert!(st2 > st1);
     }
@@ -3308,7 +3312,9 @@ mod test {
             .spawn(move || {
                 db1.put(b"k1", b"v1").unwrap();
                 db1.put(b"k2", b"v2").unwrap();
-                db1.flush(true, false).unwrap();
+                let mut fopts = FlushOptions::default();
+                fopts.set_wait(true);
+                db1.flush(&fopts).unwrap();
                 db1.compact_range(None, None);
             })
             .unwrap();
@@ -3360,7 +3366,9 @@ mod test {
         for i in 0..200 {
             db.put(format!("k_{}", i).as_bytes(), b"v").unwrap();
         }
-        db.flush(true, false).unwrap();
+        let mut fopts = FlushOptions::default();
+        fopts.set_wait(true);
+        db.flush(&fopts).unwrap();
         for i in 0..200 {
             db.get(format!("k_{}", i).as_bytes()).unwrap();
         }
@@ -3383,7 +3391,9 @@ mod test {
             db.put_cf(cf_handle, format!("k_{}", i).as_bytes(), b"v")
                 .unwrap();
         }
-        db.flush_cf(cf_handle, true, false).unwrap();
+        let mut fopts = FlushOptions::default();
+        fopts.set_wait(true);
+        db.flush_cf(cf_handle, &fopts).unwrap();
 
         let total_sst_files_size = db
             .get_property_int_cf(cf_handle, "rocksdb.total-sst-files-size")
@@ -3427,7 +3437,9 @@ mod test {
             db.put(k, v).unwrap();
             assert_eq!(v.as_slice(), &*db.get(k).unwrap().unwrap());
         }
-        db.flush(true, false).unwrap();
+        let mut fopts = FlushOptions::default();
+        fopts.set_wait(true);
+        db.flush(&fopts).unwrap();
         let key_versions = db.get_all_key_versions(b"key2", b"key4").unwrap();
         assert_eq!(key_versions[1].key, "key3");
         assert_eq!(key_versions[1].value, "value3");
@@ -3575,7 +3587,9 @@ mod test {
             options.disable_wal(true);
             db.write_opt(&wb, &options).unwrap();
             let handles: Vec<_> = cfs.iter().map(|name| db.cf_handle(name).unwrap()).collect();
-            db.flush_cfs(&handles, true, false).unwrap();
+            let mut fopts = FlushOptions::default();
+            fopts.set_wait(true);
+            db.flush_cfs(&handles, &fopts).unwrap();
         }
 
         let opts = DBOptions::new();
@@ -3804,7 +3818,9 @@ mod test {
             }
         }
         {
-            db.flush(true, false).unwrap();
+            let mut fopts = FlushOptions::default();
+            fopts.set_wait(true);
+            db.flush(&fopts).unwrap();
         }
         assert_eq!(
             1,

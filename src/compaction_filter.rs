@@ -347,7 +347,7 @@ mod tests {
 
     use crate::{
         ColumnFamilyOptions, CompactionFilter, CompactionFilterContext, CompactionFilterFactory,
-        DBOptions, Writable, DB,
+        DBOptions, FlushOptions, Writable, DB,
     };
 
     struct NoopFilter;
@@ -557,8 +557,10 @@ mod tests {
         // put data
         db.put_cf(cfh_wf, b"k", b"v").unwrap();
         db.put_cf(cfh_of, b"k", b"v").unwrap();
-        db.flush_cf(cfh_wf, true, false).unwrap();
-        db.flush_cf(cfh_of, true, false).unwrap();
+        let mut fopts = FlushOptions::default();
+        fopts.set_wait(true);
+        db.flush_cf(cfh_wf, &fopts).unwrap();
+        db.flush_cf(cfh_of, &fopts).unwrap();
 
         // assert
         assert!(db.get_cf(cfh_wf, b"k").unwrap().is_none());

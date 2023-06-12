@@ -12,7 +12,8 @@
 // limitations under the License.
 
 use rocksdb::{
-    CFHandle, ColumnFamilyOptions, CompactionOptions, DBCompressionType, DBOptions, Writable, DB,
+    CFHandle, ColumnFamilyOptions, CompactionOptions, DBCompressionType, DBOptions, FlushOptions,
+    Writable, DB,
 };
 
 use super::tempdir_with_prefix;
@@ -33,9 +34,11 @@ fn test_metadata() {
     let cf_handle = db.cf_handle("default").unwrap();
 
     let num_files = 5;
+    let mut fopts = FlushOptions::default();
+    fopts.set_wait(true);
     for i in 0..num_files {
         db.put(&[i], &[i]).unwrap();
-        db.flush(true, false).unwrap();
+        db.flush(&fopts).unwrap();
     }
 
     let live_files = db.get_live_files();
@@ -103,10 +106,12 @@ fn test_compact_files() {
     opts.set_output_file_size_limit(output_file_size as usize);
 
     let num_files = 5;
+    let mut fopts = FlushOptions::default();
+    fopts.set_wait(true);
     for i in 0..num_files {
         let b = &[i as u8];
         db.put(b, b).unwrap();
-        db.flush(true, false).unwrap();
+        db.flush(&fopts).unwrap();
     }
     let input_files = get_files_cf(&db, cf_handle, 0);
     assert_eq!(input_files.len(), num_files);

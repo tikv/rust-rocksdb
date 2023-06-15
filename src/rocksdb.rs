@@ -2804,6 +2804,10 @@ impl Env {
             crocksdb_ffi::crocksdb_env_set_high_priority_background_threads(self.inner, n);
         }
     }
+
+    pub fn get_high_priority_background_threads(&self) -> i32 {
+        unsafe { crocksdb_ffi::crocksdb_env_get_high_priority_background_threads(self.inner) }
+    }
 }
 
 impl Drop for Env {
@@ -3864,7 +3868,9 @@ mod test {
         env.set_background_threads(4);
         env.set_background_threads(0);
         env.set_high_priority_background_threads(4);
+        assert_eq!(env.get_high_priority_background_threads(), 4);
         env.set_high_priority_background_threads(0);
+        assert_eq!(env.get_high_priority_background_threads(), 0);
     }
 
     #[test]

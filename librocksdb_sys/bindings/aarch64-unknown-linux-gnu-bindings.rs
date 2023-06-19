@@ -2966,11 +2966,6 @@ extern "C" {
     );
 }
 extern "C" {
-    pub fn crocksdb_env_get_high_priority_background_threads(
-        env: *mut crocksdb_env_t,
-    ) -> libc::c_int;
-}
-extern "C" {
     pub fn crocksdb_env_join_all_threads(env: *mut crocksdb_env_t);
 }
 extern "C" {

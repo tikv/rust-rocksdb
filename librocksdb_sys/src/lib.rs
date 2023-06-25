@@ -1836,6 +1836,7 @@ extern "C" {
     pub fn crocksdb_env_destroy(env: *mut DBEnv);
     pub fn crocksdb_env_set_background_threads(env: *mut DBEnv, n: c_int);
     pub fn crocksdb_env_set_high_priority_background_threads(env: *mut DBEnv, n: c_int);
+    pub fn crocksdb_env_get_high_priority_background_threads(env: *mut DBEnv) -> c_int;
 
     // EnvOptions
     pub fn crocksdb_envoptions_create() -> *mut EnvOptions;

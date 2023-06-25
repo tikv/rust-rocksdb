@@ -4318,6 +4318,10 @@ void crocksdb_env_set_high_priority_background_threads(crocksdb_env_t* env,
   env->rep->SetBackgroundThreads(n, Env::HIGH);
 }
 
+int crocksdb_env_get_high_priority_background_threads(crocksdb_env_t* env) {
+  return env->rep->GetBackgroundThreads(Env::HIGH);
+}
+
 void crocksdb_env_join_all_threads(crocksdb_env_t* env) {
   env->rep->WaitForJoin();
 }

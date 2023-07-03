@@ -503,6 +503,12 @@ impl ConcurrentTaskLimiter {
             }
         }
     }
+
+    pub fn set_limit(&self, limit: u32) {
+        unsafe {
+            crocksdb_ffi::crocksdb_concurrent_task_limiter_set_limit(self.inner, limit);
+        }
+    }
 }
 
 impl Drop for ConcurrentTaskLimiter {
@@ -1537,6 +1543,16 @@ impl ColumnFamilyOptions {
     pub fn set_compaction_thread_limiter(&mut self, limiter: &ConcurrentTaskLimiter) {
         unsafe {
             crocksdb_ffi::crocksdb_options_set_compaction_thread_limiter(self.inner, limiter.inner);
+        }
+    }
+
+    pub fn get_compaction_thread_limiter(&mut self) -> Option<ConcurrentTaskLimiter> {
+        let limiter =
+            unsafe { crocksdb_ffi::crocksdb_options_get_compaction_thread_limiter(self.inner) };
+        if limiter.is_null() {
+            None
+        } else {
+            Some(ConcurrentTaskLimiter { inner: limiter })
         }
     }
 

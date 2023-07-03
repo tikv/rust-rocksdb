@@ -3887,12 +3887,18 @@ mod test {
         let mut opts = DBOptions::new();
         opts.create_if_missing(true);
         opts.create_missing_column_families(true);
-        let _db = DB::open_cf(
+        let db = DB::open_cf(
             opts,
             path.path().to_str().unwrap(),
             cfs.iter().map(|cf| *cf).zip(cfs_opts).collect(),
         )
         .unwrap();
+        for cf in cfs {
+            let cf_opts = db.get_options_cf(db.cf_handle(cf).unwrap());
+            let limiter = cf_opts.get_compaction_thread_limiter().unwrap();
+            limiter.set_limit(10);
+            limiter.set_limit(0);
+        }
     }
 
     #[test]

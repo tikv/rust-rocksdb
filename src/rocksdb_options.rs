@@ -1546,7 +1546,7 @@ impl ColumnFamilyOptions {
         }
     }
 
-    pub fn get_compaction_thread_limiter(&mut self) -> Option<ConcurrentTaskLimiter> {
+    pub fn get_compaction_thread_limiter(&self) -> Option<ConcurrentTaskLimiter> {
         let limiter =
             unsafe { crocksdb_ffi::crocksdb_options_get_compaction_thread_limiter(self.inner) };
         if limiter.is_null() {

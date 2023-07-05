@@ -433,7 +433,7 @@ impl<D: Deref<Target = DB>> Snapshot<D> {
 
     /// Get the snapshot's sequence number.
     pub fn get_sequence_number(&self) -> u64 {
-        unsafe { crocksdb_ffi::crocksdb_get_snapshot_sequence_number(self.snap.get_inner()) }
+        unsafe { self.snap.get_sequence_number() }
     }
 }
 

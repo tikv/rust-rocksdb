@@ -538,6 +538,11 @@ impl UnsafeSnap {
     pub unsafe fn get_inner(&self) -> *const DBSnapshot {
         self.inner
     }
+
+    /// Get the snapshot's sequence number.
+    pub unsafe fn get_sequence_number(&self) -> u64 {
+        crocksdb_ffi::crocksdb_get_snapshot_sequence_number(self.get_inner())
+    }
 }
 
 pub struct ReadOptions {

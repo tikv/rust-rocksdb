@@ -757,6 +757,9 @@ extern "C" {
         options: *mut Options,
         wbm: *mut DBConcurrentTaskLimiter,
     );
+    pub fn crocksdb_options_get_compaction_thread_limiter(
+        options: *mut Options,
+    ) -> *mut DBConcurrentTaskLimiter;
     pub fn crocksdb_options_set_compaction_filter(
         options: *mut Options,
         filter: *mut DBCompactionFilter,
@@ -1046,6 +1049,10 @@ extern "C" {
         name: *const c_char,
         limit: u32,
     ) -> *mut DBConcurrentTaskLimiter;
+    pub fn crocksdb_concurrent_task_limiter_set_limit(
+        limiter: *mut DBConcurrentTaskLimiter,
+        limit: u32,
+    );
     pub fn crocksdb_concurrent_task_limiter_destroy(limiter: *mut DBConcurrentTaskLimiter);
 
     pub fn crocksdb_options_set_soft_pending_compaction_bytes_limit(options: *mut Options, v: u64);

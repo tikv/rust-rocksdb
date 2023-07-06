@@ -2729,6 +2729,17 @@ void crocksdb_options_set_compaction_thread_limiter(
   opt->rep.compaction_thread_limiter = limiter->rep;
 }
 
+crocksdb_concurrent_task_limiter_t*
+crocksdb_options_get_compaction_thread_limiter(crocksdb_options_t* opt) {
+  if (opt->rep.compaction_thread_limiter != nullptr) {
+    crocksdb_concurrent_task_limiter_t* limiter =
+        new crocksdb_concurrent_task_limiter_t;
+    limiter->rep = opt->rep.compaction_thread_limiter;
+    return limiter;
+  }
+  return nullptr;
+}
+
 crocksdb_logger_t* crocksdb_logger_create(void* rep, void (*destructor_)(void*),
                                           crocksdb_logger_logv_cb logv) {
   crocksdb_logger_t* logger = new crocksdb_logger_t;
@@ -3702,6 +3713,11 @@ crocksdb_concurrent_task_limiter_t* crocksdb_concurrent_task_limiter_create(
       new crocksdb_concurrent_task_limiter_t;
   limiter->rep.reset(NewConcurrentTaskLimiter(name, limit));
   return limiter;
+}
+
+void crocksdb_concurrent_task_limiter_set_limit(
+    crocksdb_concurrent_task_limiter_t* limiter, uint32_t limit) {
+  limiter->rep->SetMaxOutstandingTask(limit);
 }
 
 void crocksdb_concurrent_task_limiter_destroy(

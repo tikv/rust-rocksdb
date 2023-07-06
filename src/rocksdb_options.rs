@@ -503,6 +503,12 @@ impl ConcurrentTaskLimiter {
             }
         }
     }
+
+    pub fn set_limit(&self, limit: u32) {
+        unsafe {
+            crocksdb_ffi::crocksdb_concurrent_task_limiter_set_limit(self.inner, limit);
+        }
+    }
 }
 
 impl Drop for ConcurrentTaskLimiter {
@@ -531,6 +537,11 @@ impl UnsafeSnap {
 
     pub unsafe fn get_inner(&self) -> *const DBSnapshot {
         self.inner
+    }
+
+    /// Get the snapshot's sequence number.
+    pub unsafe fn get_sequence_number(&self) -> u64 {
+        crocksdb_ffi::crocksdb_get_snapshot_sequence_number(self.get_inner())
     }
 }
 
@@ -1537,6 +1548,16 @@ impl ColumnFamilyOptions {
     pub fn set_compaction_thread_limiter(&mut self, limiter: &ConcurrentTaskLimiter) {
         unsafe {
             crocksdb_ffi::crocksdb_options_set_compaction_thread_limiter(self.inner, limiter.inner);
+        }
+    }
+
+    pub fn get_compaction_thread_limiter(&self) -> Option<ConcurrentTaskLimiter> {
+        let limiter =
+            unsafe { crocksdb_ffi::crocksdb_options_get_compaction_thread_limiter(self.inner) };
+        if limiter.is_null() {
+            None
+        } else {
+            Some(ConcurrentTaskLimiter { inner: limiter })
         }
     }
 

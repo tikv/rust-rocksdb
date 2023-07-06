@@ -1079,6 +1079,8 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_write_buffer_manager(
 extern C_ROCKSDB_LIBRARY_API void
 crocksdb_options_set_compaction_thread_limiter(
     crocksdb_options_t*, crocksdb_concurrent_task_limiter_t*);
+extern C_ROCKSDB_LIBRARY_API crocksdb_concurrent_task_limiter_t*
+crocksdb_options_get_compaction_thread_limiter(crocksdb_options_t*);
 extern C_ROCKSDB_LIBRARY_API crocksdb_logger_t* crocksdb_logger_create(
     void* rep, void (*destructor_)(void*), crocksdb_logger_logv_cb logv);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_info_log(
@@ -1438,6 +1440,8 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_write_buffer_manager_destroy(
 
 extern C_ROCKSDB_LIBRARY_API crocksdb_concurrent_task_limiter_t*
 crocksdb_concurrent_task_limiter_create(const char* name, uint32_t limit);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_concurrent_task_limiter_set_limit(
+    crocksdb_concurrent_task_limiter_t* limiter, uint32_t limit);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_concurrent_task_limiter_destroy(
     crocksdb_concurrent_task_limiter_t* limiter);
 

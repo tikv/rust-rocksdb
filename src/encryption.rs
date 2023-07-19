@@ -58,7 +58,7 @@ impl FileEncryptionInfo {
 pub trait EncryptionKeyManager: Sync + Send {
     fn get_file(&self, fname: &str) -> Result<FileEncryptionInfo>;
     fn new_file(&self, fname: &str) -> Result<FileEncryptionInfo>;
-    fn delete_file(&self, fname: &str) -> Result<()>;
+    fn delete_file(&self, fname: &str, physical_fname: Option<&str>) -> Result<()>;
     fn link_file(&self, src_fname: &str, dst_fname: &str) -> Result<()>;
 }
 
@@ -130,6 +130,7 @@ extern "C" fn encryption_key_manager_new_file<T: EncryptionKeyManager>(
 extern "C" fn encryption_key_manager_delete_file<T: EncryptionKeyManager>(
     ctx: *mut c_void,
     fname: *const c_char,
+    physical_fname: *const c_char,
 ) -> *const c_char {
     let key_manager = unsafe { &*(ctx as *mut T) };
     let fname = match unsafe { CStr::from_ptr(fname).to_str() } {
@@ -141,7 +142,20 @@ extern "C" fn encryption_key_manager_delete_file<T: EncryptionKeyManager>(
             ));
         }
     };
-    match key_manager.delete_file(fname) {
+    let physical_fname = if !physical_fname.is_null() {
+        match unsafe { CStr::from_ptr(physical_fname).to_str() } {
+            Ok(ret) => Some(ret),
+            Err(err) => {
+                return copy_error(format!(
+                    "Encryption key manager encounter non-utf8 file name: {}",
+                    err
+                ));
+            }
+        }
+    } else {
+        None
+    };
+    match key_manager.delete_file(fname, physical_fname) {
         Ok(()) => ptr::null(),
         Err(err) => copy_error(format!(
             "Encryption key manager delete file failure: {}",
@@ -225,9 +239,10 @@ impl EncryptionKeyManager for DBEncryptionKeyManager {
         let ret: Result<FileEncryptionInfo>;
         unsafe {
             let file_info = crocksdb_ffi::crocksdb_file_encryption_info_create();
+            let fname_str = CString::new(fname).unwrap();
             let err = crocksdb_ffi::crocksdb_encryption_key_manager_get_file(
                 self.inner,
-                CString::new(fname).unwrap().as_ptr(),
+                fname_str.as_ptr(),
                 file_info,
             );
             if err == ptr::null() {
@@ -264,9 +279,10 @@ impl EncryptionKeyManager for DBEncryptionKeyManager {
         let ret: Result<FileEncryptionInfo>;
         unsafe {
             let file_info = crocksdb_ffi::crocksdb_file_encryption_info_create();
+            let fname_str = CString::new(fname).unwrap();
             let err = crocksdb_ffi::crocksdb_encryption_key_manager_new_file(
                 self.inner,
-                CString::new(fname).unwrap().as_ptr(),
+                fname_str.as_ptr(),
                 file_info,
             );
             if err == ptr::null() {
@@ -296,14 +312,24 @@ impl EncryptionKeyManager for DBEncryptionKeyManager {
         ret
     }
 
-    fn delete_file(&self, fname: &str) -> Result<()> {
+    fn delete_file(&self, fname: &str, physical_fname: Option<&str>) -> Result<()> {
         use std::io::{Error, ErrorKind};
         let ret: Result<()>;
         unsafe {
-            let err = crocksdb_ffi::crocksdb_encryption_key_manager_delete_file(
-                self.inner,
-                CString::new(fname).unwrap().as_ptr(),
-            );
+            let fname_str = CString::new(fname).unwrap();
+            let err = if let Some(physical) = physical_fname {
+                let physical_str = CString::new(physical).unwrap();
+                crocksdb_ffi::crocksdb_encryption_key_manager_delete_file_ext(
+                    self.inner,
+                    fname_str.as_ptr(),
+                    physical_str.as_ptr(),
+                )
+            } else {
+                crocksdb_ffi::crocksdb_encryption_key_manager_delete_file(
+                    self.inner,
+                    fname_str.as_ptr(),
+                )
+            };
             if err == ptr::null() {
                 ret = Ok(());
             } else {
@@ -321,10 +347,12 @@ impl EncryptionKeyManager for DBEncryptionKeyManager {
         use std::io::{Error, ErrorKind};
         let ret: Result<()>;
         unsafe {
+            let src_str = CString::new(src_fname).unwrap();
+            let dst_str = CString::new(dst_fname).unwrap();
             let err = crocksdb_ffi::crocksdb_encryption_key_manager_link_file(
                 self.inner,
-                CString::new(src_fname).unwrap().as_ptr(),
-                CString::new(dst_fname).unwrap().as_ptr(),
+                src_str.as_ptr(),
+                dst_str.as_ptr(),
             );
             if err == ptr::null() {
                 ret = Ok(());
@@ -405,7 +433,7 @@ mod test {
             }
         }
 
-        fn delete_file(&self, fname: &str) -> Result<()> {
+        fn delete_file(&self, fname: &str, _physical_fname: Option<&str>) -> Result<()> {
             let key_manager = self.lock().unwrap();
             key_manager
                 .delete_file_called
@@ -528,7 +556,7 @@ mod test {
             ..Default::default()
         }));
         let db_key_manager = DBEncryptionKeyManager::new(key_manager.clone());
-        assert!(db_key_manager.delete_file("delete_file_path").is_ok());
+        assert!(db_key_manager.delete_file("delete_file_path", None).is_ok());
         let record = key_manager.lock().unwrap();
         assert_eq!(0, record.get_file_called.load(Ordering::SeqCst));
         assert_eq!(0, record.new_file_called.load(Ordering::SeqCst));
@@ -541,7 +569,9 @@ mod test {
     fn delete_file_error() {
         let key_manager = Arc::new(Mutex::new(TestEncryptionKeyManager::default()));
         let db_key_manager = DBEncryptionKeyManager::new(key_manager.clone());
-        assert!(db_key_manager.delete_file("delete_file_path").is_err());
+        assert!(db_key_manager
+            .delete_file("delete_file_path", None)
+            .is_err());
         let record = key_manager.lock().unwrap();
         assert_eq!(0, record.get_file_called.load(Ordering::SeqCst));
         assert_eq!(0, record.new_file_called.load(Ordering::SeqCst));

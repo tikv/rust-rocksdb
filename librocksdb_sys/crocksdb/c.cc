@@ -2734,6 +2734,17 @@ void crocksdb_options_set_compaction_thread_limiter(
   opt->rep.compaction_thread_limiter = limiter->rep;
 }
 
+crocksdb_concurrent_task_limiter_t*
+crocksdb_options_get_compaction_thread_limiter(crocksdb_options_t* opt) {
+  if (opt->rep.compaction_thread_limiter != nullptr) {
+    crocksdb_concurrent_task_limiter_t* limiter =
+        new crocksdb_concurrent_task_limiter_t;
+    limiter->rep = opt->rep.compaction_thread_limiter;
+    return limiter;
+  }
+  return nullptr;
+}
+
 crocksdb_logger_t* crocksdb_logger_create(void* rep, void (*destructor_)(void*),
                                           crocksdb_logger_logv_cb logv) {
   crocksdb_logger_t* logger = new crocksdb_logger_t;
@@ -3709,6 +3720,11 @@ crocksdb_concurrent_task_limiter_t* crocksdb_concurrent_task_limiter_create(
   return limiter;
 }
 
+void crocksdb_concurrent_task_limiter_set_limit(
+    crocksdb_concurrent_task_limiter_t* limiter, uint32_t limit) {
+  limiter->rep->SetMaxOutstandingTask(limit);
+}
+
 void crocksdb_concurrent_task_limiter_destroy(
     crocksdb_concurrent_task_limiter_t* limiter) {
   delete limiter;
@@ -4499,7 +4515,7 @@ struct crocksdb_encryption_key_manager_impl_t : public KeyManager {
   }
 
   Status DeleteFile(const std::string& fname) override {
-    const char* ret = delete_file(state, fname.c_str());
+    const char* ret = delete_file(state, fname.c_str(), nullptr);
     Status s;
     if (ret != nullptr) {
       s = Status::Corruption(std::string(ret));
@@ -4511,6 +4527,17 @@ struct crocksdb_encryption_key_manager_impl_t : public KeyManager {
   Status LinkFile(const std::string& src_fname,
                   const std::string& dst_fname) override {
     const char* ret = link_file(state, src_fname.c_str(), dst_fname.c_str());
+    Status s;
+    if (ret != nullptr) {
+      s = Status::Corruption(std::string(ret));
+      delete ret;
+    }
+    return s;
+  }
+
+  Status DeleteFileExt(const std::string& fname,
+                       const std::string& physical_fname) override {
+    const char* ret = delete_file(state, fname.c_str(), physical_fname.c_str());
     Status s;
     if (ret != nullptr) {
       s = Status::Corruption(std::string(ret));
@@ -4589,6 +4616,19 @@ const char* crocksdb_encryption_key_manager_link_file(
   assert(src_fname != nullptr);
   assert(dst_fname != nullptr);
   Status s = key_manager->rep->LinkFile(src_fname, dst_fname);
+  if (!s.ok()) {
+    return strdup(s.ToString().c_str());
+  }
+  return nullptr;
+}
+
+const char* crocksdb_encryption_key_manager_delete_file_ext(
+    crocksdb_encryption_key_manager_t* key_manager, const char* fname,
+    const char* physical_fname) {
+  assert(key_manager != nullptr && key_manager->rep != nullptr);
+  assert(fname != nullptr);
+  assert(physical_fname != nullptr);
+  Status s = key_manager->rep->DeleteFileExt(fname, physical_fname);
   if (!s.ok()) {
     return strdup(s.ToString().c_str());
   }

@@ -1081,6 +1081,8 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_lock_write_buffer_manager
 extern C_ROCKSDB_LIBRARY_API void
 crocksdb_options_set_compaction_thread_limiter(
     crocksdb_options_t*, crocksdb_concurrent_task_limiter_t*);
+extern C_ROCKSDB_LIBRARY_API crocksdb_concurrent_task_limiter_t*
+crocksdb_options_get_compaction_thread_limiter(crocksdb_options_t*);
 extern C_ROCKSDB_LIBRARY_API crocksdb_logger_t* crocksdb_logger_create(
     void* rep, void (*destructor_)(void*), crocksdb_logger_logv_cb logv);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_info_log(
@@ -1440,6 +1442,8 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_write_buffer_manager_destroy(
 
 extern C_ROCKSDB_LIBRARY_API crocksdb_concurrent_task_limiter_t*
 crocksdb_concurrent_task_limiter_create(const char* name, uint32_t limit);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_concurrent_task_limiter_set_limit(
+    crocksdb_concurrent_task_limiter_t* limiter, uint32_t limit);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_concurrent_task_limiter_destroy(
     crocksdb_concurrent_task_limiter_t* limiter);
 
@@ -1814,7 +1818,7 @@ typedef const char* (*crocksdb_encryption_key_manager_get_file_cb)(
 typedef const char* (*crocksdb_encryption_key_manager_new_file_cb)(
     void* state, const char* fname, crocksdb_file_encryption_info_t* file_info);
 typedef const char* (*crocksdb_encryption_key_manager_delete_file_cb)(
-    void* state, const char* fname);
+    void* state, const char* fname, const char* physical_fname);
 typedef const char* (*crocksdb_encryption_key_manager_link_file_cb)(
     void* state, const char* src_fname, const char* dst_fname);
 
@@ -1838,6 +1842,10 @@ crocksdb_encryption_key_manager_new_file(
 extern C_ROCKSDB_LIBRARY_API const char*
 crocksdb_encryption_key_manager_delete_file(
     crocksdb_encryption_key_manager_t* key_manager, const char* fname);
+extern C_ROCKSDB_LIBRARY_API const char*
+crocksdb_encryption_key_manager_delete_file_ext(
+    crocksdb_encryption_key_manager_t* key_manager, const char* fname,
+    const char* physical_fname);
 extern C_ROCKSDB_LIBRARY_API const char*
 crocksdb_encryption_key_manager_link_file(
     crocksdb_encryption_key_manager_t* key_manager, const char* src_fname,

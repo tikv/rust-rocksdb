@@ -3903,6 +3903,7 @@ mod test {
         let cfs_opts = vec![ColumnFamilyOptions::new(); 2];
         let mut opts = DBOptions::new();
         opts.set_write_buffer_manager(&crate::WriteBufferManager::new(0, 0.0, true));
+        opts.set_lock_write_buffer_manager(&crate::WriteBufferManager::new(0, 0.0, true));
         opts.create_if_missing(true);
         opts.create_missing_column_families(true);
         let mut wopts = WriteOptions::new();

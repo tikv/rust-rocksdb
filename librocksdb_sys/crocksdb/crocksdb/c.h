@@ -1076,6 +1076,8 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_env(crocksdb_options_t*,
                                                            crocksdb_env_t*);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_write_buffer_manager(
     crocksdb_options_t*, crocksdb_write_buffer_manager_t*);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_lock_write_buffer_manager(
+    crocksdb_options_t*, crocksdb_write_buffer_manager_t*);
 extern C_ROCKSDB_LIBRARY_API void
 crocksdb_options_set_compaction_thread_limiter(
     crocksdb_options_t*, crocksdb_concurrent_task_limiter_t*);

@@ -1130,6 +1130,12 @@ impl DBOptions {
         }
     }
 
+    pub fn set_lock_write_buffer_manager(&mut self, wbm: &WriteBufferManager) {
+        unsafe {
+            crocksdb_ffi::crocksdb_options_set_lock_write_buffer_manager(self.inner, wbm.inner);
+        }
+    }
+
     pub fn set_statistics(&mut self, s: &Statistics) {
         unsafe {
             crocksdb_ffi::crocksdb_options_set_statistics(self.inner, s.inner);

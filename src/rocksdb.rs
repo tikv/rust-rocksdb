@@ -3905,8 +3905,8 @@ mod test {
     fn test_xxx() {
         let path_dir = tempdir_with_prefix("_test_merge_instance");
         let root_path = path_dir.path();
-        let cfs = ["default", "lock"];
-        let cfs_opts = vec![ColumnFamilyOptions::new(); 2];
+        let cfs = ["default", "lock", "write"];
+        let cfs_opts = vec![ColumnFamilyOptions::new(); 3];
         let mut opts = DBOptions::new();
         opts.set_write_buffer_manager(&crate::WriteBufferManager::new(0, 0.0, true));
         opts.set_lock_write_buffer_manager(&crate::WriteBufferManager::new(100000, 0.0, true));

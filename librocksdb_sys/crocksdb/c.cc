@@ -3548,15 +3548,20 @@ crocksdb_ratelimiter_t* crocksdb_options_get_ratelimiter(
   return nullptr;
 }
 
-crocksdb_write_buffer_manager_t* crocksdb_options_get_write_buffer_manager(
-    crocksdb_options_t* opt) {
-  if (opt->rep.write_buffer_manager != nullptr) {
-    crocksdb_write_buffer_manager_t* manager =
-        new crocksdb_write_buffer_manager_t;
-    manager->rep = opt->rep.write_buffer_manager;
-    return manager;
+void crocksdb_options_get_write_buffer_manager(
+    crocksdb_options_t* opt, crocksdb_write_buffer_manager_t*** managers, size_t* manager_len) {
+  if (!opt->rep.write_buffer_manager.empty()) {
+    *manager_len = opt->rep.write_buffer_manager.size();
+    (*managers) = (crocksdb_write_buffer_manager_t**)malloc(
+        sizeof(crocksdb_write_buffer_manager_t*) *
+        (*manager_len));
+    for (size_t i = 0; i < opt->rep.write_buffer_manager.size(); i++) {
+      crocksdb_write_buffer_manager_t* manager =
+          new crocksdb_write_buffer_manager_t;
+      manager->rep = opt->rep.write_buffer_manager[i];
+      (*managers)[i] = manager;
+    }
   }
-  return nullptr;
 }
 
 void crocksdb_options_set_vector_memtable_factory(crocksdb_options_t* opt,

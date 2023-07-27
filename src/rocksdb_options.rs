@@ -18,6 +18,7 @@ use compaction_filter::{
     CompactionFilterFactory, CompactionFilterHandle,
 };
 use comparator::{self, compare_callback, ComparatorCallback};
+use core::slice;
 use crocksdb_ffi::{
     self, ChecksumType, DBBlockBasedTableOptions, DBBottommostLevelCompaction, DBCompactOptions,
     DBCompactionOptions, DBCompressionType, DBConcurrentTaskLimiter, DBFifoCompactionOptions,
@@ -1141,9 +1142,13 @@ impl DBOptions {
         }
     }
 
-    pub fn set_lock_write_buffer_manager(&mut self, wbm: &WriteBufferManager) {
+    pub fn set_lock_write_buffer_manager(&mut self, wbm: &[WriteBufferManager]) {
         unsafe {
-            crocksdb_ffi::crocksdb_options_set_lock_write_buffer_manager(self.inner, wbm.inner);
+            crocksdb_ffi::crocksdb_options_set_lock_write_buffer_manager(
+                self.inner,
+                wbm.as_ptr(),
+                wbm.len(),
+            );
         }
     }
 
@@ -1245,13 +1250,27 @@ impl DBOptions {
         }
     }
 
-    pub fn get_write_buffer_manager(&self) -> Option<WriteBufferManager> {
-        let manager =
-            unsafe { crocksdb_ffi::crocksdb_options_get_write_buffer_manager(self.inner) };
-        if manager.is_null() {
-            None
-        } else {
-            Some(WriteBufferManager { inner: manager })
+    pub fn get_write_buffer_manager(&self) -> Option<Vec<WriteBufferManager>> {
+        let raw_managers: *mut *mut DBWriteBufferManager = ptr::null_mut();
+        let mut managers_len: size_t = 0;
+        unsafe {
+            crocksdb_ffi::crocksdb_options_get_write_buffer_manager(
+                self.inner,
+                &raw_managers,
+                &mut managers_len,
+            );
+            if managers_len == 0 {
+                None
+            } else {
+                let managers_list = slice::from_raw_parts(raw_managers, managers_len);
+                let managers = managers_list
+                    .iter()
+                    .map(|m| WriteBufferManager { inner: m })
+                    .collect();
+
+                libc::free(raw_managers as *mut c_void);
+                Some(managers)
+            }
         }
     }
 

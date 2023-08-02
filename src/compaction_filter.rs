@@ -81,7 +81,11 @@ pub trait CompactionFilter {
         value: &[u8],
         value_type: CompactionFilterValueType,
     ) -> CompactionFilterDecision {
-        self.featured_filter(level, key, seqno, value, value_type)
+        if value_type != CompactionFilterValueType::Deletion {
+            self.featured_filter(level, key, seqno, value, value_type)
+        } else {
+            CompactionFilterDecision::Keep
+        }
     }
 }
 

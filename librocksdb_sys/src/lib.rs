@@ -537,6 +537,7 @@ pub enum CompactionFilterValueType {
     Value = 0,
     MergeOperand = 1,
     BlobIndex = 2,
+    Deletion = 3,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]

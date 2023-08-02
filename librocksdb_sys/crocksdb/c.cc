@@ -443,10 +443,11 @@ struct crocksdb_compactionfilter_t : public CompactionFilter {
 
   virtual ~crocksdb_compactionfilter_t() { (*destructor_)(state_); }
 
-  virtual Decision FilterV3(int level, const Slice& key, uint64_t seqno,
-                            ValueType value_type, const Slice& existing_value,
-                            std::string* new_value,
-                            std::string* skip_until) const override {
+  virtual Decision UnsafeFilter(int level, const Slice& key, uint64_t seqno,
+                                ValueType value_type,
+                                const Slice& existing_value,
+                                std::string* new_value,
+                                std::string* skip_until) const override {
     char* c_new_value = nullptr;
     char* c_skip_until = nullptr;
     size_t new_value_length, skip_until_length = 0;

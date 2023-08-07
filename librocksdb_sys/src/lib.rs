@@ -2817,6 +2817,18 @@ extern "C" {
         largest_key: *const c_char,
         key_len: size_t,
     );
+    pub fn crocksdb_sst_partitioner_context_next_level_segment(
+        context: *mut DBSstPartitionerContext,
+        index: c_int,
+        smallest_key: *mut *const c_char,
+        smallest_key_len: *mut size_t,
+        largest_key: *mut *const c_char,
+        largest_key_len: *mut size_t,
+        size: *mut size_t,
+    );
+    pub fn crocksdb_sst_partitioner_context_next_level_segment_count(
+        context: *mut DBSstPartitionerContext,
+    ) -> c_int;
 
     pub fn crocksdb_sst_partitioner_factory_create(
         underlying: *mut c_void,

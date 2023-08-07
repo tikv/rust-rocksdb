@@ -6572,12 +6572,12 @@ int crocksdb_sst_partitioner_context_output_level(
   return context->rep->output_level;
 }
 
-int crocksdb_sst_partitioner_next_level_segment_count(
+int crocksdb_sst_partitioner_context_next_level_segment_count(
     crocksdb_sst_partitioner_context_t* context) {
   return context->rep->OutputNextLevelSegmentCount();
 }
 
-void crocksdb_sst_partitioner_next_level_segment(
+void crocksdb_sst_partitioner_context_next_level_segment(
     crocksdb_sst_partitioner_context_t* context, int index,
     const char** smallest_key, size_t* smallest_key_len, const char** largest_key,
     size_t* largest_key_len, int* size) {

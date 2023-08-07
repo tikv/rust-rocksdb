@@ -22,6 +22,14 @@ pub struct SstPartitionerContext<'a> {
     pub output_level: i32,
     pub smallest_key: &'a [u8],
     pub largest_key: &'a [u8],
+    pub next_level_segments: Vec<Segment<'a>>,
+}
+
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct Segment<'a> {
+    pub smallest_key: &'a [u8],
+    pub largest_key: &'a [u8],
+    pub segment_size: usize,
 }
 
 pub trait SstPartitioner {
@@ -103,6 +111,9 @@ extern "C" fn sst_partitioner_factory_create_partitioner<F: SstPartitionerFactor
     context: *mut DBSstPartitionerContext,
 ) -> *mut DBSstPartitioner {
     let factory = unsafe { &*(ctx as *mut F) };
+    let segment_size =
+        unsafe { crocksdb_ffi::crocksdb_sst_partitioner_context_next_level_segment_count(context) };
+    let mut segments = Vec::with_capacity(segment_size as usize);
     let context = unsafe {
         let mut smallest_key_len: usize = 0;
         let smallest_key = crocksdb_ffi::crocksdb_sst_partitioner_context_smallest_key(
@@ -114,6 +125,27 @@ extern "C" fn sst_partitioner_factory_create_partitioner<F: SstPartitionerFactor
             context,
             &mut largest_key_len,
         ) as *const u8;
+        for i in 0..segment_size {
+            let mut start_key_len = 0usize;
+            let mut end_key_len = 0usize;
+            let mut start_key = std::ptr::null();
+            let mut end_key = std::ptr::null();
+            let mut size = 0usize;
+            crocksdb_ffi::crocksdb_sst_partitioner_context_next_level_segment(
+                context,
+                i,
+                &mut start_key as _,
+                &mut start_key_len as _,
+                &mut end_key as _,
+                &mut end_key_len as _,
+                &mut size as _,
+            );
+            segments.push(Segment {
+                smallest_key: slice::from_raw_parts(start_key as *const u8, start_key_len),
+                largest_key: slice::from_raw_parts(end_key as *const u8, end_key_len),
+                segment_size: size,
+            })
+        }
         SstPartitionerContext {
             is_full_compaction: crocksdb_ffi::crocksdb_sst_partitioner_context_is_full_compaction(
                 context,
@@ -123,6 +155,7 @@ extern "C" fn sst_partitioner_factory_create_partitioner<F: SstPartitionerFactor
             output_level: crocksdb_ffi::crocksdb_sst_partitioner_context_output_level(context),
             smallest_key: slice::from_raw_parts(smallest_key, smallest_key_len),
             largest_key: slice::from_raw_parts(largest_key, largest_key_len),
+            next_level_segments: segments,
         }
     };
     match factory.create_partitioner(&context) {

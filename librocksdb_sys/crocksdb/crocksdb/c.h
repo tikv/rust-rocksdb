@@ -2588,10 +2588,10 @@ extern C_ROCKSDB_LIBRARY_API const char*
 crocksdb_sst_partitioner_context_largest_key(
     crocksdb_sst_partitioner_context_t* context, size_t* key_len);
 extern C_ROCKSDB_LIBRARY_API int
-crocksdb_sst_partitioner_next_level_segment_count(
+crocksdb_sst_partitioner_context_next_level_segment_count(
     crocksdb_sst_partitioner_context_t* context);
 extern C_ROCKSDB_LIBRARY_API void 
-crocksdb_sst_partitioner_next_level_segment(
+crocksdb_sst_partitioner_context_next_level_segment(
     crocksdb_sst_partitioner_context_t* context, int index,
     const char** smallest_key, size_t* smallest_key_len,
     const char** largest_key, size_t* largest_key_len,

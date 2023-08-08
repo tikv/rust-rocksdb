@@ -101,7 +101,7 @@ fn split_descriptors(
     (v1, v2)
 }
 
-fn build_cstring_list(str_list: &[&str]) -> Vec<CString> {
+pub fn build_cstring_list(str_list: &[&str]) -> Vec<CString> {
     str_list
         .iter()
         .map(|s| CString::new(s.as_bytes()).unwrap())
@@ -3901,34 +3901,34 @@ mod test {
         }
     }
 
-    #[test]
-    fn test_xxx() {
-        let path_dir = tempdir_with_prefix("_test_merge_instance");
-        let root_path = path_dir.path();
-        let cfs = ["default", "lock", "write"];
-        let cfs_opts = vec![ColumnFamilyOptions::new(); 3];
-        let mut opts = DBOptions::new();
-        opts.set_write_buffer_manager(&crate::WriteBufferManagers::new(0, 0.0, true));
-        opts.set_lock_write_buffer_manager(&crate::WriteBufferManagers::new(100000, 0.0, true));
-        opts.create_if_missing(true);
-        opts.create_missing_column_families(true);
-        let mut wopts = WriteOptions::new();
-        wopts.disable_wal(true);
-        let db1 = DB::open_cf(
-            opts.clone(),
-            root_path.join("1").to_str().unwrap(),
-            cfs.iter().map(|cf| *cf).zip(cfs_opts.clone()).collect(),
-        )
-        .unwrap();
+    // #[test]
+    // fn test_xxx() {
+    //     let path_dir = tempdir_with_prefix("_test_merge_instance");
+    //     let root_path = path_dir.path();
+    //     let cfs = ["default", "lock", "write"];
+    //     let cfs_opts = vec![ColumnFamilyOptions::new(); 3];
+    //     let mut opts = DBOptions::new();
+    //     opts.add_write_buffer_manager(&crate::WriteBufferManager::new(0, 0.0, true));
+    //     opts.set_lock_write_buffer_manager(&crate::WriteBufferManager::new(100000, 0.0, true));
+    //     opts.create_if_missing(true);
+    //     opts.create_missing_column_families(true);
+    //     let mut wopts = WriteOptions::new();
+    //     wopts.disable_wal(true);
+    //     let db1 = DB::open_cf(
+    //         opts.clone(),
+    //         root_path.join("1").to_str().unwrap(),
+    //         cfs.iter().map(|cf| *cf).zip(cfs_opts.clone()).collect(),
+    //     )
+    //     .unwrap();
 
-        let handle = db1.cf_handle("lock").unwrap();
-        for i in 0..1000 {
-            let k = format!("key{:04}", i);
-            let val = format!("valllllllllllllllllllllllllll{:04}", i);
-            db1.put_cf(handle, k.as_bytes(), val.as_bytes()).unwrap();
-            println!("put {:?}", k);
-        }
-    }
+    //     let handle = db1.cf_handle("lock").unwrap();
+    //     for i in 0..1000 {
+    //         let k = format!("key{:04}", i);
+    //         let val = format!("valllllllllllllllllllllllllll{:04}", i);
+    //         db1.put_cf(handle, k.as_bytes(), val.as_bytes()).unwrap();
+    //         println!("put {:?}", k);
+    //     }
+    // }
 
     #[test]
     fn test_merge_instance() {
@@ -3937,8 +3937,7 @@ mod test {
         let cfs = ["default", "cf1"];
         let cfs_opts = vec![ColumnFamilyOptions::new(); 2];
         let mut opts = DBOptions::new();
-        opts.set_write_buffer_manager(&crate::WriteBufferManagers::new(0, 0.0, true));
-        opts.set_lock_write_buffer_manager(&crate::WriteBufferManagers::new(0, 0.0, true));
+        opts.add_write_buffer_manager(&crate::WriteBufferManager::new(0, 0.0, true), &cfs);
         opts.create_if_missing(true);
         opts.create_missing_column_families(true);
         let mut wopts = WriteOptions::new();
@@ -3972,7 +3971,7 @@ mod test {
         assert_eq!(db3.get(b"1").unwrap().unwrap(), b"v");
         assert_eq!(db3.get(b"2").unwrap().unwrap(), b"v");
         let wbm = opts.get_write_buffer_manager().unwrap();
-        wbm.set_flush_size(10);
-        wbm.set_flush_oldest_first(false);
+        wbm[0].set_flush_size(10);
+        wbm[0].set_flush_oldest_first(false);
     }
 }

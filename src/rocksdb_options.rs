@@ -47,6 +47,8 @@ use table_properties_collector_factory::{
 use titan::TitanDBOptions;
 use TablePropertiesCollector;
 
+use crate::rocksdb::build_cstring_list;
+
 #[derive(Default, Debug)]
 pub struct HistogramData {
     pub median: f64,
@@ -439,14 +441,14 @@ impl Drop for Statistics {
     }
 }
 
-pub struct WriteBufferManagers {
-    pub(crate) inner: *mut *mut DBWriteBufferManager,
+pub struct WriteBufferManager {
+    pub(crate) inner: *mut DBWriteBufferManager,
 }
 
-unsafe impl Send for WriteBufferManagers {}
-unsafe impl Sync for WriteBufferManagers {}
+unsafe impl Send for WriteBufferManager {}
+unsafe impl Sync for WriteBufferManager {}
 
-impl WriteBufferManagers {
+impl WriteBufferManager {
     pub fn new(flush_size: usize, stall_ratio: f32, flush_oldest_first: bool) -> Self {
         unsafe {
             Self {
@@ -480,7 +482,7 @@ impl WriteBufferManagers {
     }
 }
 
-impl Drop for WriteBufferManagers {
+impl Drop for WriteBufferManager {
     fn drop(&mut self) {
         unsafe {
             crocksdb_ffi::crocksdb_write_buffer_manager_destroy(self.inner);
@@ -1136,9 +1138,15 @@ impl DBOptions {
         }
     }
 
-    pub fn set_write_buffer_manager(&mut self, wbm: &WriteBufferManagers) {
+    pub fn add_write_buffer_manager(&mut self, wbm: &WriteBufferManager, cfs: &[&str]) {
+        let cstrings = build_cstring_list(cfs);
+        let cf_names: Vec<*const _> = cstrings.iter().map(|cs| cs.as_ptr()).collect();
+        let cf_len = cf_names.len() as c_int;
+        let db_cf_ptrs = cf_names.as_ptr();
         unsafe {
-            crocksdb_ffi::crocksdb_options_set_write_buffer_managers(self.inner, wbm.inner);
+            crocksdb_ffi::crocksdb_options_add_write_buffer_manager(
+                self.inner, wbm.inner, db_cf_ptrs, cf_len,
+            );
         }
     }
 
@@ -1240,7 +1248,7 @@ impl DBOptions {
         }
     }
 
-    pub fn get_write_buffer_manager(&self) -> Option<Vec<WriteBufferManagers>> {
+    pub fn get_write_buffer_manager(&self) -> Option<Vec<WriteBufferManager>> {
         let raw_managers: *mut *mut DBWriteBufferManager = ptr::null_mut();
         let mut managers_len: size_t = 0;
         unsafe {
@@ -1255,7 +1263,7 @@ impl DBOptions {
                 let managers_list = slice::from_raw_parts(raw_managers, managers_len);
                 let managers = managers_list
                     .iter()
-                    .map(|m| WriteBufferManagers { inner: m })
+                    .map(|&m| WriteBufferManager { inner: m })
                     .collect();
 
                 libc::free(raw_managers as *mut c_void);

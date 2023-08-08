@@ -749,9 +749,11 @@ extern "C" {
         memtable_memory_budget: c_int,
     );
     pub fn crocksdb_options_set_env(options: *mut Options, env: *mut DBEnv);
-    pub fn crocksdb_options_set_write_buffer_managers(
+    pub fn crocksdb_options_add_write_buffer_manager(
         options: *mut Options,
-        wbm: *mut *mut DBWriteBufferManager,
+        wbm: *mut DBWriteBufferManager,
+        column_family_names: *const *const c_char,
+        num_column_families: c_int,
     );
     pub fn crocksdb_options_set_compaction_thread_limiter(
         options: *mut Options,
@@ -967,7 +969,7 @@ extern "C" {
     pub fn crocksdb_options_get_ratelimiter(options: *mut Options) -> *mut DBRateLimiter;
     pub fn crocksdb_options_get_write_buffer_manager(
         options: *mut Options,
-        managers: *mut *mut *mut DBWriteBufferManager,
+        managers: *const *mut *mut DBWriteBufferManager,
         manager_len: *mut usize,
     );
     pub fn crocksdb_options_set_info_log(options: *mut Options, logger: *mut DBLogger);

@@ -3908,8 +3908,8 @@ mod test {
         let cfs = ["default", "lock", "write"];
         let cfs_opts = vec![ColumnFamilyOptions::new(); 3];
         let mut opts = DBOptions::new();
-        opts.set_write_buffer_manager(&crate::WriteBufferManager::new(0, 0.0, true));
-        opts.set_lock_write_buffer_manager(&crate::WriteBufferManager::new(100000, 0.0, true));
+        opts.set_write_buffer_manager(&crate::WriteBufferManagers::new(0, 0.0, true));
+        opts.set_lock_write_buffer_manager(&crate::WriteBufferManagers::new(100000, 0.0, true));
         opts.create_if_missing(true);
         opts.create_missing_column_families(true);
         let mut wopts = WriteOptions::new();
@@ -3937,8 +3937,8 @@ mod test {
         let cfs = ["default", "cf1"];
         let cfs_opts = vec![ColumnFamilyOptions::new(); 2];
         let mut opts = DBOptions::new();
-        opts.set_write_buffer_manager(&crate::WriteBufferManager::new(0, 0.0, true));
-        opts.set_lock_write_buffer_manager(&crate::WriteBufferManager::new(0, 0.0, true));
+        opts.set_write_buffer_manager(&crate::WriteBufferManagers::new(0, 0.0, true));
+        opts.set_lock_write_buffer_manager(&crate::WriteBufferManagers::new(0, 0.0, true));
         opts.create_if_missing(true);
         opts.create_missing_column_families(true);
         let mut wopts = WriteOptions::new();

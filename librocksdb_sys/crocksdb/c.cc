@@ -2719,14 +2719,13 @@ void crocksdb_options_set_env(crocksdb_options_t* opt, crocksdb_env_t* env) {
   opt->rep.env = (env ? env->rep : nullptr);
 }
 
-void crocksdb_options_set_write_buffer_manager(
-    crocksdb_options_t* opt, crocksdb_write_buffer_manager_t* wbm) {
-  opt->rep.write_buffer_manager = wbm->rep;
-}
-
-void crocksdb_options_set_lock_write_buffer_manager(
-    crocksdb_options_t* opt, crocksdb_write_buffer_manager_t* wbm) {
-  opt->rep.lock_write_buffer_manager = wbm->rep;
+void crocksdb_options_set_write_buffer_managers(
+    crocksdb_options_t* opt, crocksdb_write_buffer_manager_t** raw_wbms, int raw_wbms_len) {
+  std::vector<std::shared_ptr<WriteBufferManager>> wbms;
+  for (int i = 0; i < raw_wbms_len; ++i) {
+    wbms.emplace_back(raw_wbms[i]);
+  }
+  opt->rep.write_buffer_manager = wbms;
 }
 
 void crocksdb_options_set_compaction_thread_limiter(

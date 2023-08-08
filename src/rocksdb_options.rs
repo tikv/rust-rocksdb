@@ -439,14 +439,14 @@ impl Drop for Statistics {
     }
 }
 
-pub struct WriteBufferManager {
-    pub(crate) inner: *mut DBWriteBufferManager,
+pub struct WriteBufferManagers {
+    pub(crate) inner: *mut *mut DBWriteBufferManager,
 }
 
-unsafe impl Send for WriteBufferManager {}
-unsafe impl Sync for WriteBufferManager {}
+unsafe impl Send for WriteBufferManagers {}
+unsafe impl Sync for WriteBufferManagers {}
 
-impl WriteBufferManager {
+impl WriteBufferManagers {
     pub fn new(flush_size: usize, stall_ratio: f32, flush_oldest_first: bool) -> Self {
         unsafe {
             Self {
@@ -480,7 +480,7 @@ impl WriteBufferManager {
     }
 }
 
-impl Drop for WriteBufferManager {
+impl Drop for WriteBufferManagers {
     fn drop(&mut self) {
         unsafe {
             crocksdb_ffi::crocksdb_write_buffer_manager_destroy(self.inner);
@@ -1136,19 +1136,9 @@ impl DBOptions {
         }
     }
 
-    pub fn set_write_buffer_manager(&mut self, wbm: &WriteBufferManager) {
+    pub fn set_write_buffer_manager(&mut self, wbm: &WriteBufferManagers) {
         unsafe {
-            crocksdb_ffi::crocksdb_options_set_write_buffer_manager(self.inner, wbm.inner);
-        }
-    }
-
-    pub fn set_lock_write_buffer_manager(&mut self, wbm: &[WriteBufferManager]) {
-        unsafe {
-            crocksdb_ffi::crocksdb_options_set_lock_write_buffer_manager(
-                self.inner,
-                wbm.as_ptr(),
-                wbm.len(),
-            );
+            crocksdb_ffi::crocksdb_options_set_write_buffer_managers(self.inner, wbm.inner);
         }
     }
 
@@ -1250,7 +1240,7 @@ impl DBOptions {
         }
     }
 
-    pub fn get_write_buffer_manager(&self) -> Option<Vec<WriteBufferManager>> {
+    pub fn get_write_buffer_manager(&self) -> Option<Vec<WriteBufferManagers>> {
         let raw_managers: *mut *mut DBWriteBufferManager = ptr::null_mut();
         let mut managers_len: size_t = 0;
         unsafe {
@@ -1265,7 +1255,7 @@ impl DBOptions {
                 let managers_list = slice::from_raw_parts(raw_managers, managers_len);
                 let managers = managers_list
                     .iter()
-                    .map(|m| WriteBufferManager { inner: m })
+                    .map(|m| WriteBufferManagers { inner: m })
                     .collect();
 
                 libc::free(raw_managers as *mut c_void);

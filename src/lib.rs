@@ -67,7 +67,7 @@ pub use rocksdb_options::{
     BlockBasedOptions, CColumnFamilyDescriptor, ColumnFamilyOptions, CompactOptions,
     CompactionOptions, ConcurrentTaskLimiter, DBOptions, EnvOptions, FifoCompactionOptions,
     FlushOptions, HistogramData, IngestExternalFileOptions, LRUCacheOptions, MergeInstanceOptions,
-    RateLimiter, ReadOptions, RestoreOptions, Statistics, WriteBufferManager, WriteOptions,
+    RateLimiter, ReadOptions, RestoreOptions, Statistics, WriteBufferManagers, WriteOptions,
 };
 pub use slice_transform::SliceTransform;
 pub use sst_partitioner::{

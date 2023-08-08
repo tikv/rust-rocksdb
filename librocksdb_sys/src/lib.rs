@@ -749,14 +749,9 @@ extern "C" {
         memtable_memory_budget: c_int,
     );
     pub fn crocksdb_options_set_env(options: *mut Options, env: *mut DBEnv);
-    pub fn crocksdb_options_set_write_buffer_manager(
+    pub fn crocksdb_options_set_write_buffer_managers(
         options: *mut Options,
-        wbm: *mut DBWriteBufferManager,
-    );
-    pub fn crocksdb_options_set_lock_write_buffer_manager(
-        options: *mut Options,
-        wbm: *mut DBWriteBufferManager,
-        wbm_len: usize,
+        wbm: *mut *mut DBWriteBufferManager,
     );
     pub fn crocksdb_options_set_compaction_thread_limiter(
         options: *mut Options,

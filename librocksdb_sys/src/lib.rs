@@ -1701,6 +1701,14 @@ extern "C" {
         limit_key: *const u8,
         limit_key_len: size_t,
     );
+    pub fn crocksdb_check_in_range(
+        db: *mut DBInstance,
+        start_key: *const u8,
+        start_key_len: size_t,
+        limit_key: *const u8,
+        limit_key_len: size_t,
+        err: *mut *mut c_char,
+    );
     pub fn crocksdb_delete_file(db: *mut DBInstance, name: *const c_char, err: *mut *mut c_char);
     pub fn crocksdb_delete_files_in_range(
         db: *mut DBInstance,

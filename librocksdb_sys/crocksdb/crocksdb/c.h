@@ -539,6 +539,10 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_compact_range_cf_opt(
     crocksdb_compactoptions_t* opt, const char* start_key, size_t start_key_len,
     const char* limit_key, size_t limit_key_len);
 
+extern C_ROCKSDB_LIBRARY_API void crocksdb_check_in_range(
+    crocksdb_t* db, const char* start_key, size_t start_key_len,
+    const char* limit_key, size_t limit_key_len, char** errptr);
+
 extern C_ROCKSDB_LIBRARY_API void crocksdb_delete_file(crocksdb_t* db,
                                                        const char* name,
                                                        char** errptr);

@@ -1529,6 +1529,16 @@ void crocksdb_compact_range_cf_opt(
       (limit_key ? (b = Slice(limit_key, limit_key_len), &b) : nullptr));
 }
 
+void crocksdb_check_in_range(crocksdb_t* db, const char* start_key,
+                             size_t start_key_len, const char* limit_key,
+                             size_t limit_key_len, char** errptr) {
+  Slice a, b;
+  db->rep->CheckInRange(
+      // Pass nullptr Slice if corresponding "const char*" is nullptr
+      (start_key ? (a = Slice(start_key, start_key_len), &a) : nullptr),
+      (limit_key ? (b = Slice(limit_key, limit_key_len), &b) : nullptr));
+}
+
 void crocksdb_flush(crocksdb_t* db, const crocksdb_flushoptions_t* options,
                     char** errptr) {
   SaveError(errptr, db->rep->Flush(options->rep));

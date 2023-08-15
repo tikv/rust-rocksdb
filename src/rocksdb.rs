@@ -1477,6 +1477,21 @@ impl DB {
         }
     }
 
+    pub fn check_in_range(
+        &self,
+        start_key: Option<&[u8]>,
+        end_key: Option<&[u8]>,
+    ) -> Result<(), String> {
+        unsafe {
+            let (start, s_len) = start_key.map_or((ptr::null(), 0), |k| (k.as_ptr(), k.len()));
+            let (end, e_len) = end_key.map_or((ptr::null(), 0), |k| (k.as_ptr(), k.len()));
+            ffi_try!(crocksdb_check_in_range(
+                self.inner, start, s_len, end, e_len
+            ));
+            Ok(())
+        }
+    }
+
     pub fn delete_file(&self, path: &str) -> Result<(), String> {
         unsafe {
             let file_path = CString::new(path).unwrap();

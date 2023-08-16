@@ -3339,59 +3339,6 @@ uint64_t crocksdb_options_get_periodic_compaction_seconds(
   return opt->rep.periodic_compaction_seconds;
 }
 
-void crocksdb_options_set_statistics(crocksdb_options_t* opt,
-                                     crocksdb_statistics_t* statistics) {
-  opt->rep.statistics = statistics->rep;
-}
-crocksdb_statistics_t* crocksdb_options_get_statistics(
-    crocksdb_options_t* opt) {
-  crocksdb_statistics_t* statistics = new crocksdb_statistics_t;
-  statistics->rep = opt->rep.statistics;
-  return statistics;
-}
-
-crocksdb_statistics_t* crocksdb_statistics_create() {
-  crocksdb_statistics_t* statistics = new crocksdb_statistics_t;
-  statistics->rep = rocksdb::CreateDBStatistics();
-  return statistics;
-}
-
-crocksdb_statistics_t* crocksdb_titan_statistics_create() {
-  crocksdb_statistics_t* statistics = new crocksdb_statistics_t;
-  statistics->rep = rocksdb::titandb::CreateDBStatistics();
-  return statistics;
-}
-
-crocksdb_statistics_t* crocksdb_empty_statistics_create() {
-  crocksdb_statistics_t* statistics = new crocksdb_statistics_t;
-  statistics->rep = nullptr;
-  return statistics;
-}
-
-void crocksdb_statistics_destroy(crocksdb_statistics_t* statistics) {
-  if (statistics->rep) {
-    statistics->rep.reset();
-  }
-  delete statistics;
-}
-
-unsigned char crocksdb_statistics_is_empty(crocksdb_statistics_t* statistics) {
-  return statistics->rep == nullptr;
-}
-
-void crocksdb_statistics_reset(crocksdb_statistics_t* statistics) {
-  if (statistics->rep) {
-    statistics->rep->Reset();
-  }
-}
-
-char* crocksdb_statistics_to_string(crocksdb_statistics_t* statistics) {
-  if (statistics->rep) {
-    return strdup(statistics->rep->ToString().c_str());
-  }
-  return nullptr;
-}
-
 uint64_t crocksdb_options_statistics_get_ticker_count(crocksdb_options_t* opt,
                                                       uint32_t ticker_type) {
   if (opt->rep.statistics) {

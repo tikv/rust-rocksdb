@@ -3321,6 +3321,14 @@ unsigned char crocksdb_options_get_force_consistency_checks(
   return opt->rep.force_consistency_checks;
 }
 
+char* crocksdb_options_statistics_get_string(crocksdb_options_t* opt) {
+  if (opt->rep.statistics) {
+    rocksdb::Statistics* statistics = opt->rep.statistics.get();
+    return strdup(statistics->ToString().c_str());
+  }
+  return nullptr;
+}
+
 void crocksdb_options_set_ttl(crocksdb_options_t* opt, uint64_t ttl) {
   opt->rep.ttl = ttl;
 }

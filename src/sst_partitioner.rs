@@ -107,8 +107,13 @@ extern "C" fn sst_partitioner_factory_create_partitioner<F: SstPartitionerFactor
     let factory = unsafe { &*(ctx as *mut F) };
     let segment_size =
         unsafe { crocksdb_ffi::crocksdb_sst_partitioner_context_next_level_segment_count(context) };
-    let mut next_level_boundaries = Vec::with_capacity(segment_size as usize);
-    let mut next_level_sizes = Vec::with_capacity((segment_size - 1) as usize);
+    let boundary_size = if segment_size == 0 {
+        0
+    } else {
+        segment_size + 1
+    };
+    let mut next_level_boundaries = Vec::with_capacity(boundary_size as usize);
+    let mut next_level_sizes = Vec::with_capacity(segment_size as usize);
     let context = unsafe {
         let mut smallest_key_len: usize = 0;
         let smallest_key = crocksdb_ffi::crocksdb_sst_partitioner_context_smallest_key(

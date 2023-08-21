@@ -69,6 +69,24 @@ pub trait CompactionFilter {
             _ => CompactionFilterDecision::Keep,
         }
     }
+
+    /// This API accepts deletion marks. Deletion marks can only be filtered if
+    /// the consistency of the key doesn't matter.
+    /// This override `featured_filter` and `filter`.
+    fn unsafe_filter(
+        &mut self,
+        level: usize,
+        key: &[u8],
+        seqno: u64,
+        value: &[u8],
+        value_type: CompactionFilterValueType,
+    ) -> CompactionFilterDecision {
+        if value_type != CompactionFilterValueType::Deletion {
+            self.featured_filter(level, key, seqno, value, value_type)
+        } else {
+            CompactionFilterDecision::Keep
+        }
+    }
 }
 
 #[repr(C)]
@@ -110,7 +128,7 @@ extern "C" fn filter<C: CompactionFilter>(
         let filter = &mut (*(filter as *mut CompactionFilterProxy<C>)).filter;
         let key = slice::from_raw_parts(key, key_len);
         let value = slice::from_raw_parts(value, value_len);
-        match filter.featured_filter(level as usize, key, seqno, value, value_type) {
+        match filter.unsafe_filter(level as usize, key, seqno, value, value_type) {
             CompactionFilterDecision::Keep => RawCompactionFilterDecision::Keep,
             CompactionFilterDecision::Remove => RawCompactionFilterDecision::Remove,
             CompactionFilterDecision::ChangeValue(new_v) => {

@@ -3884,8 +3884,8 @@ mod test {
         env.set_background_threads(0);
         env.set_high_priority_background_threads(4);
         assert_eq!(env.get_high_priority_background_threads(), 4);
-        env.set_high_priority_background_threads(0);
-        assert_eq!(env.get_high_priority_background_threads(), 0);
+        env.set_high_priority_background_threads(1);
+        assert_eq!(env.get_high_priority_background_threads(), 1);
     }
 
     #[test]

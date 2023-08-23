@@ -3935,6 +3935,8 @@ mod test {
         )
         .unwrap();
         db1.put_opt(b"1", b"v", &wopts).unwrap();
+        db1.check_in_range(Some(b"1"), Some(b"2")).unwrap();
+        db1.check_in_range(Some(b"2"), Some(b"3")).unwrap_err();
         let db2 = DB::open_cf(
             opts.clone(),
             root_path.join("2").to_str().unwrap(),
@@ -3942,6 +3944,7 @@ mod test {
         )
         .unwrap();
         db2.put_opt(b"2", b"v", &wopts).unwrap();
+        db2.check_in_range(Some(b"2"), Some(b"3")).unwrap();
         let db3 = DB::open_cf(
             opts.clone(),
             root_path.join("3").to_str().unwrap(),
@@ -3954,6 +3957,8 @@ mod test {
             ..Default::default()
         };
         db3.merge_instances(&mopts, &[&db1, &db2]).unwrap();
+        db3.check_in_range(Some(b"2"), Some(b"3")).unwrap_err();
+        db3.check_in_range(Some(b"1"), Some(b"3")).unwrap();
         assert_eq!(db3.get(b"1").unwrap().unwrap(), b"v");
         assert_eq!(db3.get(b"2").unwrap().unwrap(), b"v");
         let wbm = opts.get_write_buffer_manager().unwrap();

@@ -216,5 +216,9 @@ fn build_rocksdb() -> Build {
         "cargo:rerun-if-changed={}",
         cur_dir.join("crocksdb").display()
     );
+    println!(
+        "cargo:rerun-if-changed={}",
+        cur_dir.join("rocksdb").display()
+    );
     build
 }

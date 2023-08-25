@@ -2737,6 +2737,11 @@ void crocksdb_options_set_write_buffer_manager(
   opt->rep.write_buffer_manager = wbm->rep;
 }
 
+void crocksdb_options_set_cf_write_buffer_manager(
+    crocksdb_options_t* opt, crocksdb_write_buffer_manager_t* wbm) {
+  opt->rep.cf_write_buffer_manager = wbm->rep;
+}
+
 void crocksdb_options_set_compaction_thread_limiter(
     crocksdb_options_t* opt, crocksdb_concurrent_task_limiter_t* limiter) {
   opt->rep.compaction_thread_limiter = limiter->rep;
@@ -3562,6 +3567,17 @@ crocksdb_write_buffer_manager_t* crocksdb_options_get_write_buffer_manager(
     crocksdb_write_buffer_manager_t* manager =
         new crocksdb_write_buffer_manager_t;
     manager->rep = opt->rep.write_buffer_manager;
+    return manager;
+  }
+  return nullptr;
+}
+
+crocksdb_write_buffer_manager_t* crocksdb_options_get_cf_write_buffer_manager(
+    crocksdb_options_t* opt) {
+  if (opt->rep.cf_write_buffer_manager != nullptr) {
+    crocksdb_write_buffer_manager_t* manager =
+        new crocksdb_write_buffer_manager_t;
+    manager->rep = opt->rep.cf_write_buffer_manager;
     return manager;
   }
   return nullptr;

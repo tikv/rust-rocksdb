@@ -754,6 +754,10 @@ extern "C" {
         options: *mut Options,
         wbm: *mut DBWriteBufferManager,
     );
+    pub fn crocksdb_options_set_cf_write_buffer_manager(
+        options: *mut Options,
+        wbm: *mut DBWriteBufferManager,
+    );
     pub fn crocksdb_options_set_compaction_thread_limiter(
         options: *mut Options,
         wbm: *mut DBConcurrentTaskLimiter,
@@ -967,6 +971,9 @@ extern "C" {
     pub fn crocksdb_options_set_ratelimiter(options: *mut Options, limiter: *mut DBRateLimiter);
     pub fn crocksdb_options_get_ratelimiter(options: *mut Options) -> *mut DBRateLimiter;
     pub fn crocksdb_options_get_write_buffer_manager(
+        options: *mut Options,
+    ) -> *mut DBWriteBufferManager;
+    pub fn crocksdb_options_get_cf_write_buffer_manager(
         options: *mut Options,
     ) -> *mut DBWriteBufferManager;
     pub fn crocksdb_options_set_info_log(options: *mut Options, logger: *mut DBLogger);

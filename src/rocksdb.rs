@@ -3965,4 +3965,28 @@ mod test {
         wbm.set_flush_size(10);
         wbm.set_flush_oldest_first(false);
     }
+
+    #[test]
+    fn test_set_cf_write_buffer_manager() {
+        let path_dir = tempdir_with_prefix("_set_cf_write_buffer_manager");
+        let root_path = path_dir.path();
+        let wbm1 = crate::WriteBufferManager::new(5, 0.0, true);
+        let wbm2 = crate::WriteBufferManager::new(10, 0.0, true);
+        let cfs = ["default", "cf1"];
+        let mut cfs_opts = vec![ColumnFamilyOptions::new(), ColumnFamilyOptions::new()];
+        cfs_opts[0].set_write_buffer_manager(&wbm1);
+        cfs_opts[1].set_write_buffer_manager(&wbm2);
+
+        let mut opts = DBOptions::new();
+        opts.set_write_buffer_manager(&crate::WriteBufferManager::new(0, 0.0, true));
+        opts.create_if_missing(true);
+        opts.create_missing_column_families(true);
+        let _ = DB::open_cf(
+            opts.clone(),
+            root_path.join("1").to_str().unwrap(),
+            cfs.iter().map(|cf| *cf).zip(cfs_opts.clone()).collect(),
+        );
+        assert_eq!(cfs_opts[0].get_write_buffer_manager().unwrap().flush_size(), 5);
+        assert_eq!(cfs_opts[1].get_write_buffer_manager().unwrap().flush_size(), 10);
+    }
 }

@@ -3986,7 +3986,13 @@ mod test {
             root_path.join("1").to_str().unwrap(),
             cfs.iter().map(|cf| *cf).zip(cfs_opts.clone()).collect(),
         );
-        assert_eq!(cfs_opts[0].get_write_buffer_manager().unwrap().flush_size(), 5);
-        assert_eq!(cfs_opts[1].get_write_buffer_manager().unwrap().flush_size(), 10);
+        assert_eq!(
+            cfs_opts[0].get_write_buffer_manager().unwrap().flush_size(),
+            5
+        );
+        assert_eq!(
+            cfs_opts[1].get_write_buffer_manager().unwrap().flush_size(),
+            10
+        );
     }
 }

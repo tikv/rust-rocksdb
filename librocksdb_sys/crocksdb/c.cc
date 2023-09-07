@@ -6580,8 +6580,8 @@ int crocksdb_sst_partitioner_context_next_level_segment_count(
 
 void crocksdb_sst_partitioner_context_next_level_segment(
     crocksdb_sst_partitioner_context_t* context, int index,
-    const char** smallest_key, size_t* smallest_key_len, const char** largest_key,
-    size_t* largest_key_len, int* size) {
+    const char** smallest_key, size_t* smallest_key_len,
+    const char** largest_key, size_t* largest_key_len, int* size) {
   Slice small, large;
   context->rep->OutputNextLevelSegment(index, &small, &large, size);
   *smallest_key = small.data();

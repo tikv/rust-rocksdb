@@ -6631,18 +6631,6 @@ void crocksdb_sst_partitioner_context_push_bounary_and_size(
                                                           boundary_key_len);
 }
 
-void crocksdb_sst_partitioner_context_next_level_segment(
-    crocksdb_sst_partitioner_context_t* context, int index,
-    const char** smallest_key, size_t* smallest_key_len,
-    const char** largest_key, size_t* largest_key_len, int* size) {
-  Slice small, large;
-  context->rep->OutputNextLevelSegment(index, &small, &large, size);
-  *smallest_key = small.data();
-  *smallest_key_len = small.size();
-  *largest_key = large.data();
-  *largest_key_len = large.size();
-}
-
 const char* crocksdb_sst_partitioner_context_smallest_key(
     crocksdb_sst_partitioner_context_t* context, size_t* key_len) {
   auto& smallest_key = context->rep->smallest_user_key;

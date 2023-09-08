@@ -6578,6 +6578,31 @@ int crocksdb_sst_partitioner_context_next_level_segment_count(
   return context->rep->OutputNextLevelSegmentCount();
 }
 
+size_t crocksdb_sst_partitioner_context_get_next_level_size(
+    crocksdb_sst_partitioner_context_t* context, int index) {
+  return context->rep->output_next_level_size[index];
+}
+
+void crocksdb_sst_partitioner_context_get_next_level_boundary(
+    crocksdb_sst_partitioner_context_t* context, int index, const char** key,
+    size_t* key_len) {
+  const auto s = context->rep->output_next_level_boundaries[index];
+  *key = s.data();
+  *key_len = s.size();
+}
+
+void crocksdb_sst_partitioner_context_push_bounary_and_size(
+    crocksdb_sst_partitioner_context_t* context, const char* boundary_key,
+    size_t boundary_key_len, size_t size) {
+  if (!context->rep->output_next_level_boundaries.empty()) {
+    // The first boundary means the left-bondary, which isn't a segment.
+    // Its size should be ignored.
+    context->rep->output_next_level_size.push_back(size);
+  }
+  context->rep->output_next_level_boundaries.emplace_back(boundary_key,
+                                                          boundary_key_len);
+}
+
 void crocksdb_sst_partitioner_context_next_level_segment(
     crocksdb_sst_partitioner_context_t* context, int index,
     const char** smallest_key, size_t* smallest_key_len,

@@ -2818,14 +2818,21 @@ extern "C" {
         largest_key: *const c_char,
         key_len: size_t,
     );
-    pub fn crocksdb_sst_partitioner_context_next_level_segment(
+    pub fn crocksdb_sst_partitioner_context_get_next_level_boundary(
         context: *mut DBSstPartitionerContext,
         index: c_int,
-        smallest_key: *mut *const c_char,
-        smallest_key_len: *mut size_t,
-        largest_key: *mut *const c_char,
-        largest_key_len: *mut size_t,
-        size: *mut size_t,
+        key: *mut *const c_char,
+        key_len: *mut size_t,
+    );
+    pub fn crocksdb_sst_partitioner_context_get_next_level_size(
+        context: *mut DBSstPartitionerContext,
+        index: c_int,
+    ) -> size_t;
+    pub fn crocksdb_sst_partitioner_context_push_bounary_and_size(
+        context: *mut DBSstPartitionerContext,
+        boundary_key: *const c_char,
+        boundary_key_len: size_t,
+        size: size_t,
     );
     pub fn crocksdb_sst_partitioner_context_next_level_segment_count(
         context: *mut DBSstPartitionerContext,

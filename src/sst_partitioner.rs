@@ -125,26 +125,35 @@ extern "C" fn sst_partitioner_factory_create_partitioner<F: SstPartitionerFactor
             context,
             &mut largest_key_len,
         ) as *const u8;
-        for i in 0..segment_size {
-            let mut start_key_len = 0usize;
-            let mut end_key_len = 0usize;
-            let mut start_key = std::ptr::null();
-            let mut end_key = std::ptr::null();
-            let mut size = 0usize;
-            crocksdb_ffi::crocksdb_sst_partitioner_context_next_level_segment(
+        if segment_size > 0 {
+            let mut first_boundary_key = std::ptr::null();
+            let mut first_boundary_key_len = 0usize;
+            crocksdb_ffi::crocksdb_sst_partitioner_context_get_next_level_boundary(
                 context,
-                i,
-                &mut start_key as _,
-                &mut start_key_len as _,
-                &mut end_key as _,
-                &mut end_key_len as _,
-                &mut size as _,
+                0,
+                &mut first_boundary_key,
+                &mut first_boundary_key_len as _,
             );
-            if i == 0 {
-                next_level_boundaries
-                    .push(slice::from_raw_parts(start_key as *const u8, start_key_len));
-            }
-            next_level_boundaries.push(slice::from_raw_parts(end_key as *const u8, end_key_len));
+            next_level_boundaries.push(slice::from_raw_parts(
+                first_boundary_key as *const u8,
+                first_boundary_key_len,
+            ))
+        }
+        for i in 0..segment_size {
+            let mut boundary_key_len = 0usize;
+            let mut boundary_key = std::ptr::null();
+            crocksdb_ffi::crocksdb_sst_partitioner_context_get_next_level_boundary(
+                context,
+                i + 1,
+                &mut boundary_key as _,
+                &mut boundary_key_len as _,
+            );
+            let size =
+                crocksdb_ffi::crocksdb_sst_partitioner_context_get_next_level_size(context, i);
+            next_level_boundaries.push(slice::from_raw_parts(
+                boundary_key as *const u8,
+                boundary_key_len,
+            ));
             next_level_sizes.push(size);
         }
         SstPartitionerContext {
@@ -223,6 +232,9 @@ mod test {
         pub output_level: Option<i32>,
         pub smallest_key: Option<Vec<u8>>,
         pub largest_key: Option<Vec<u8>>,
+
+        pub next_level_boundaries: Vec<Vec<u8>>,
+        pub next_level_sizes: Vec<usize>,
     }
 
     impl Default for TestState {
@@ -246,6 +258,8 @@ mod test {
                 output_level: None,
                 smallest_key: None,
                 largest_key: None,
+                next_level_boundaries: vec![],
+                next_level_sizes: vec![],
             }
         }
     }
@@ -308,6 +322,12 @@ mod test {
             s.output_level = Some(context.output_level);
             s.smallest_key = Some(context.smallest_key.to_vec());
             s.largest_key = Some(context.largest_key.to_vec());
+            s.next_level_boundaries = context
+                .next_level_boundaries
+                .iter()
+                .map(|v| v.to_vec())
+                .collect();
+            s.next_level_sizes = context.next_level_sizes.clone();
 
             Some(TestSstPartitioner {
                 state: self.state.clone(),
@@ -340,6 +360,12 @@ mod test {
         const OUTPUT_LEVEL: i32 = 3;
         const SMALLEST_KEY: &[u8] = b"aaaa";
         const LARGEST_KEY: &[u8] = b"bbbb";
+        const BOUNDARIES_AND_SIZES: [(&[u8], usize); 4] = [
+            (b"aaaa", 0usize),
+            (b"aaab", 42usize),
+            (b"aaba", 96usize),
+            (b"bbbb", 256usize),
+        ];
 
         let s = Arc::new(Mutex::new(TestState::default()));
         let factory = new_sst_partitioner_factory(TestSstPartitionerFactory { state: s.clone() });
@@ -364,6 +390,14 @@ mod test {
                 LARGEST_KEY.as_ptr() as *const c_char,
                 LARGEST_KEY.len(),
             );
+            for (boundary_key, size) in BOUNDARIES_AND_SIZES {
+                crocksdb_ffi::crocksdb_sst_partitioner_context_push_bounary_and_size(
+                    context,
+                    boundary_key.as_ptr() as *const i8,
+                    boundary_key.len(),
+                    size,
+                );
+            }
         }
         let partitioner = unsafe {
             crocksdb_ffi::crocksdb_sst_partitioner_factory_create_partitioner(factory, context)
@@ -376,6 +410,21 @@ mod test {
             assert_eq!(OUTPUT_LEVEL, sl.output_level.unwrap());
             assert_eq!(SMALLEST_KEY, sl.smallest_key.as_ref().unwrap().as_slice());
             assert_eq!(LARGEST_KEY, sl.largest_key.as_ref().unwrap().as_slice());
+            assert_eq!(
+                BOUNDARIES_AND_SIZES
+                    .iter()
+                    .map(|x| x.0)
+                    .collect::<Vec<&'static [u8]>>(),
+                sl.next_level_boundaries
+            );
+            assert_eq!(
+                BOUNDARIES_AND_SIZES
+                    .iter()
+                    .skip(1)
+                    .map(|x| x.1)
+                    .collect::<Vec<usize>>(),
+                sl.next_level_sizes
+            );
         }
         unsafe {
             crocksdb_ffi::crocksdb_sst_partitioner_destroy(partitioner);

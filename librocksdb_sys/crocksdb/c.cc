@@ -1529,6 +1529,18 @@ void crocksdb_compact_range_cf_opt(
       (limit_key ? (b = Slice(limit_key, limit_key_len), &b) : nullptr));
 }
 
+void crocksdb_check_in_range(crocksdb_t* db, const char* start_key,
+                             size_t start_key_len, const char* limit_key,
+                             size_t limit_key_len, char** errptr) {
+  Slice a, b;
+  SaveError(
+      errptr,
+      db->rep->CheckInRange(
+          // Pass nullptr Slice if corresponding "const char*" is nullptr
+          (start_key ? (a = Slice(start_key, start_key_len), &a) : nullptr),
+          (limit_key ? (b = Slice(limit_key, limit_key_len), &b) : nullptr)));
+}
+
 void crocksdb_flush(crocksdb_t* db, const crocksdb_flushoptions_t* options,
                     char** errptr) {
   SaveError(errptr, db->rep->Flush(options->rep));
@@ -2725,6 +2737,11 @@ void crocksdb_options_set_write_buffer_manager(
   opt->rep.write_buffer_manager = wbm->rep;
 }
 
+void crocksdb_options_set_cf_write_buffer_manager(
+    crocksdb_options_t* opt, crocksdb_write_buffer_manager_t* wbm) {
+  opt->rep.cf_write_buffer_manager = wbm->rep;
+}
+
 void crocksdb_options_set_compaction_thread_limiter(
     crocksdb_options_t* opt, crocksdb_concurrent_task_limiter_t* limiter) {
   opt->rep.compaction_thread_limiter = limiter->rep;
@@ -3550,6 +3567,17 @@ crocksdb_write_buffer_manager_t* crocksdb_options_get_write_buffer_manager(
     crocksdb_write_buffer_manager_t* manager =
         new crocksdb_write_buffer_manager_t;
     manager->rep = opt->rep.write_buffer_manager;
+    return manager;
+  }
+  return nullptr;
+}
+
+crocksdb_write_buffer_manager_t* crocksdb_options_get_cf_write_buffer_manager(
+    crocksdb_options_t* opt) {
+  if (opt->rep.cf_write_buffer_manager != nullptr) {
+    crocksdb_write_buffer_manager_t* manager =
+        new crocksdb_write_buffer_manager_t;
+    manager->rep = opt->rep.cf_write_buffer_manager;
     return manager;
   }
   return nullptr;

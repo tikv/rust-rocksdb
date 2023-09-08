@@ -754,6 +754,10 @@ extern "C" {
         options: *mut Options,
         wbm: *mut DBWriteBufferManager,
     );
+    pub fn crocksdb_options_set_cf_write_buffer_manager(
+        options: *mut Options,
+        wbm: *mut DBWriteBufferManager,
+    );
     pub fn crocksdb_options_set_compaction_thread_limiter(
         options: *mut Options,
         wbm: *mut DBConcurrentTaskLimiter,
@@ -967,6 +971,9 @@ extern "C" {
     pub fn crocksdb_options_set_ratelimiter(options: *mut Options, limiter: *mut DBRateLimiter);
     pub fn crocksdb_options_get_ratelimiter(options: *mut Options) -> *mut DBRateLimiter;
     pub fn crocksdb_options_get_write_buffer_manager(
+        options: *mut Options,
+    ) -> *mut DBWriteBufferManager;
+    pub fn crocksdb_options_get_cf_write_buffer_manager(
         options: *mut Options,
     ) -> *mut DBWriteBufferManager;
     pub fn crocksdb_options_set_info_log(options: *mut Options, logger: *mut DBLogger);
@@ -1700,6 +1707,14 @@ extern "C" {
         start_key_len: size_t,
         limit_key: *const u8,
         limit_key_len: size_t,
+    );
+    pub fn crocksdb_check_in_range(
+        db: *mut DBInstance,
+        start_key: *const u8,
+        start_key_len: size_t,
+        limit_key: *const u8,
+        limit_key_len: size_t,
+        err: *mut *mut c_char,
     );
     pub fn crocksdb_delete_file(db: *mut DBInstance, name: *const c_char, err: *mut *mut c_char);
     pub fn crocksdb_delete_files_in_range(

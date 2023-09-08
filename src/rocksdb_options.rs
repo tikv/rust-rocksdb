@@ -2090,6 +2090,22 @@ impl ColumnFamilyOptions {
     pub fn get_periodic_compaction_seconds(&self) -> u64 {
         unsafe { crocksdb_ffi::crocksdb_options_get_periodic_compaction_seconds(self.inner) }
     }
+
+    pub fn set_write_buffer_manager(&mut self, wbm: &WriteBufferManager) {
+        unsafe {
+            crocksdb_ffi::crocksdb_options_set_cf_write_buffer_manager(self.inner, wbm.inner);
+        }
+    }
+
+    pub fn get_write_buffer_manager(&mut self) -> Option<WriteBufferManager> {
+        let manager =
+            unsafe { crocksdb_ffi::crocksdb_options_get_cf_write_buffer_manager(self.inner) };
+        if manager.is_null() {
+            None
+        } else {
+            Some(WriteBufferManager { inner: manager })
+        }
+    }
 }
 
 // ColumnFamilyDescriptor is a pair of column family's name and options.

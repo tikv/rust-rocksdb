@@ -9,7 +9,7 @@ pub struct Checkpointer {
 }
 
 impl Checkpointer {
-    /// Creates new checkpoint object for specific DB.
+    /// Creates new checkpoint object for specific DB. t
     pub(crate) fn new(
         db: *mut librocksdb_sys::DBInstance,
         is_titan: bool,

@@ -2833,6 +2833,25 @@ extern "C" {
         largest_key: *const c_char,
         key_len: size_t,
     );
+    pub fn crocksdb_sst_partitioner_context_get_next_level_boundary(
+        context: *mut DBSstPartitionerContext,
+        index: c_int,
+        key: *mut *const c_char,
+        key_len: *mut size_t,
+    );
+    pub fn crocksdb_sst_partitioner_context_get_next_level_size(
+        context: *mut DBSstPartitionerContext,
+        index: c_int,
+    ) -> size_t;
+    pub fn crocksdb_sst_partitioner_context_push_bounary_and_size(
+        context: *mut DBSstPartitionerContext,
+        boundary_key: *const c_char,
+        boundary_key_len: size_t,
+        size: size_t,
+    );
+    pub fn crocksdb_sst_partitioner_context_next_level_segment_count(
+        context: *mut DBSstPartitionerContext,
+    ) -> c_int;
 
     pub fn crocksdb_sst_partitioner_factory_create(
         underlying: *mut c_void,

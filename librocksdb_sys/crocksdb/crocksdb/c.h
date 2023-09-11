@@ -2595,6 +2595,20 @@ crocksdb_sst_partitioner_context_smallest_key(
 extern C_ROCKSDB_LIBRARY_API const char*
 crocksdb_sst_partitioner_context_largest_key(
     crocksdb_sst_partitioner_context_t* context, size_t* key_len);
+extern C_ROCKSDB_LIBRARY_API int
+crocksdb_sst_partitioner_context_next_level_segment_count(
+    crocksdb_sst_partitioner_context_t* context);
+extern C_ROCKSDB_LIBRARY_API void
+crocksdb_sst_partitioner_context_get_next_level_boundary(
+    crocksdb_sst_partitioner_context_t* context, int index, const char** key,
+    size_t* key_len);
+extern C_ROCKSDB_LIBRARY_API size_t
+crocksdb_sst_partitioner_context_get_next_level_size(
+    crocksdb_sst_partitioner_context_t* context, int index);
+extern C_ROCKSDB_LIBRARY_API void
+crocksdb_sst_partitioner_context_push_bounary_and_size(
+    crocksdb_sst_partitioner_context_t* context, const char* boundary_key,
+    size_t boundary_key_len, size_t size);
 extern C_ROCKSDB_LIBRARY_API void
 crocksdb_sst_partitioner_context_set_is_full_compaction(
     crocksdb_sst_partitioner_context_t* context,

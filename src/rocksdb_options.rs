@@ -2097,7 +2097,7 @@ impl ColumnFamilyOptions {
         }
     }
 
-    pub fn get_write_buffer_manager(&mut self) -> Option<WriteBufferManager> {
+    pub fn get_write_buffer_manager(&self) -> Option<WriteBufferManager> {
         let manager =
             unsafe { crocksdb_ffi::crocksdb_options_get_cf_write_buffer_manager(self.inner) };
         if manager.is_null() {

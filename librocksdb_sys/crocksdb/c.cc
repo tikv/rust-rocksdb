@@ -3648,11 +3648,13 @@ crocksdb_ratelimiter_t* crocksdb_ratelimiter_create_with_auto_tuned(
 crocksdb_ratelimiter_t*
 crocksdb_writeampbasedratelimiter_create_with_auto_tuned(
     int64_t rate_bytes_per_sec, int64_t refill_period_us, int32_t fairness,
-    uint32_t mode, unsigned char auto_tuned) {
+    uint32_t mode, unsigned char auto_tuned, int tune_per_secs,
+    size_t smooth_window_size, size_t recent_window_size) {
   crocksdb_ratelimiter_t* rate_limiter = new crocksdb_ratelimiter_t;
   RateLimiter::Mode m = static_cast<RateLimiter::Mode>(mode);
   rate_limiter->rep = std::shared_ptr<RateLimiter>(NewWriteAmpBasedRateLimiter(
-      rate_bytes_per_sec, refill_period_us, fairness, m, auto_tuned));
+      rate_bytes_per_sec, refill_period_us, fairness, m, auto_tuned,
+      tune_per_secs, smooth_window_size, recent_window_size));
   return rate_limiter;
 }
 

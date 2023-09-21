@@ -1016,6 +1016,9 @@ extern "C" {
         fairness: i32,
         mode: DBRateLimiterMode,
         auto_tuned: bool,
+        tune_per_sec: i32,
+        smooth_window_size: usize,
+        recent_window_size: usize,
     ) -> *mut DBRateLimiter;
     pub fn crocksdb_ratelimiter_destroy(limiter: *mut DBRateLimiter);
     pub fn crocksdb_ratelimiter_set_bytes_per_second(

@@ -186,6 +186,9 @@ fn test_set_writeampbasedratelimiter_with_auto_tuned() {
         10,
         DBRateLimiterMode::AllIo,
         true,
+        1,
+        300,
+        30
     );
     opts.set_rate_limiter(&rate_limiter);
     let db = DB::open(opts, path.path().to_str().unwrap()).unwrap();

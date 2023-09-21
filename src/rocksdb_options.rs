@@ -269,6 +269,9 @@ impl RateLimiter {
         fairness: i32,
         mode: DBRateLimiterMode,
         auto_tuned: bool,
+        tune_per_secs: i32,
+        smooth_window_size: usize,
+        recent_window_size: usize,
     ) -> RateLimiter {
         let limiter = unsafe {
             crocksdb_ffi::crocksdb_writeampbasedratelimiter_create_with_auto_tuned(
@@ -277,6 +280,9 @@ impl RateLimiter {
                 fairness,
                 mode,
                 auto_tuned,
+                tune_per_secs,
+                smooth_window_size,
+                recent_window_size,
             )
         };
         RateLimiter { inner: limiter }

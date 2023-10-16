@@ -393,7 +393,7 @@ mod test {
             for (boundary_key, size) in BOUNDARIES_AND_SIZES {
                 crocksdb_ffi::crocksdb_sst_partitioner_context_push_bounary_and_size(
                     context,
-                    boundary_key.as_ptr() as *const i8,
+                    boundary_key.as_ptr() as *const c_char,
                     boundary_key.len(),
                     size,
                 );

@@ -130,7 +130,6 @@ fn build_rocksdb() -> Build {
     let mut cfg = Config::new("rocksdb");
     if cfg!(feature = "encryption") {
         cfg.register_dep("OPENSSL").define("WITH_OPENSSL", "ON");
-        println!("cargo:rustc-link-lib=static=crypto");
     }
     if cfg!(feature = "jemalloc") && NO_JEMALLOC_TARGETS.iter().all(|i| !target.contains(i)) {
         cfg.register_dep("JEMALLOC").define("WITH_JEMALLOC", "ON");

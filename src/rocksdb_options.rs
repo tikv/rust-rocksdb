@@ -2315,6 +2315,15 @@ impl IngestExternalFileOptions {
             );
         }
     }
+
+    pub fn set_verify_checksums_before_ingest(&mut self, whether_verify: bool) {
+        unsafe {
+            crocksdb_ffi::crocksdb_ingestexternalfileoptions_set_verify_checksums_before_ingest(
+                self.inner,
+                whether_verify,
+            );
+        }
+    }
 }
 
 impl Drop for IngestExternalFileOptions {

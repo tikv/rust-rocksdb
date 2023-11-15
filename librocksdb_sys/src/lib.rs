@@ -1913,6 +1913,10 @@ extern "C" {
         opt: *mut IngestExternalFileOptions,
         write_global_seqno: bool,
     );
+    pub fn crocksdb_ingestexternalfileoptions_set_verify_checksums_before_ingest(
+        opt: *mut IngestExternalFileOptions,
+        verify_checksums_before_ingest: bool,
+    );
     pub fn crocksdb_ingestexternalfileoptions_destroy(opt: *mut IngestExternalFileOptions);
 
     // KeyManagedEncryptedEnv

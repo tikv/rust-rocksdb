@@ -4943,6 +4943,12 @@ void crocksdb_ingestexternalfileoptions_set_write_global_seqno(
   opt->rep.write_global_seqno = write_global_seqno;
 }
 
+void crocksdb_ingestexternalfileoptions_set_verify_checksums_before_ingest(
+    crocksdb_ingestexternalfileoptions_t* opt,
+    unsigned char verify_checksums_before_ingest) {
+  opt->rep.verify_checksums_before_ingest = verify_checksums_before_ingest;
+}
+
 void crocksdb_ingestexternalfileoptions_destroy(
     crocksdb_ingestexternalfileoptions_t* opt) {
   delete opt;

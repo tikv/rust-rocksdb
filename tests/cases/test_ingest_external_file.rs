@@ -117,6 +117,8 @@ fn test_ingest_external_file() {
         &[(b"k1", b"v1"), (b"k2", b"v2")],
     );
     let mut ingest_opt = IngestExternalFileOptions::new();
+    ingest_opt.set_write_global_seqno(false);
+    ingest_opt.set_verify_checksums_before_ingest(true);
     db.ingest_external_file(&ingest_opt, &[test_sstfile_str])
         .unwrap();
     assert!(test_sstfile.exists());

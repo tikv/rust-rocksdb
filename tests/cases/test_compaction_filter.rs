@@ -14,6 +14,9 @@
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, RwLock};
 
+use rocksdb::CompactionFilterDecision;
+use rocksdb::CompactionFilterValueType;
+use rocksdb::TitanDBOptions;
 use rocksdb::{ColumnFamilyOptions, CompactionFilter, DBOptions, Writable, DB};
 
 use super::tempdir_with_prefix;
@@ -24,19 +27,19 @@ struct Filter {
 }
 
 impl CompactionFilter for Filter {
-    fn filter(
+    fn unsafe_filter(
         &mut self,
         _: usize,
         key: &[u8],
+        _: u64,
         value: &[u8],
-        _: &mut Vec<u8>,
-        _: &mut bool,
-    ) -> bool {
+        _: CompactionFilterValueType,
+    ) -> CompactionFilterDecision {
         self.filtered_kvs
             .write()
             .unwrap()
             .push((key.to_vec(), value.to_vec()));
-        true
+        CompactionFilterDecision::Remove
     }
 }
 
@@ -48,6 +51,15 @@ impl Drop for Filter {
 
 #[test]
 fn test_compaction_filter() {
+    test_compaction_filter_impl(false);
+}
+
+#[test]
+fn test_compaction_filter_with_titan() {
+    test_compaction_filter_impl(true);
+}
+
+fn test_compaction_filter_impl(titan: bool) {
     let path = tempdir_with_prefix("_rust_rocksdb_writebacktest");
     let drop_called = Arc::new(AtomicBool::new(false));
     let filtered_kvs = Arc::new(RwLock::new(vec![]));
@@ -66,6 +78,11 @@ fn test_compaction_filter() {
 
     let mut opts = DBOptions::new();
     opts.create_if_missing(true);
+    if titan {
+        let mut tdb_opts = TitanDBOptions::new();
+        tdb_opts.set_min_blob_size(0);
+        opts.set_titandb_options(&tdb_opts);
+    }
     {
         let db = DB::open_cf(
             opts,

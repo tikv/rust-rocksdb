@@ -361,6 +361,8 @@ mod tests {
     use std::sync::mpsc::{self, SyncSender};
     use std::time::Duration;
 
+    use crate::CompactionFilterDecision;
+    use crate::CompactionFilterValueType;
     use librocksdb_sys::DBTableFileCreationReason;
 
     use crate::{
@@ -417,8 +419,15 @@ mod tests {
 
     struct FlushFilter;
     impl CompactionFilter for FlushFilter {
-        fn filter(&mut self, _: usize, _: &[u8], _: &[u8], _: &mut Vec<u8>, _: &mut bool) -> bool {
-            true
+        fn unsafe_filter(
+            &mut self,
+            _: usize,
+            _: &[u8],
+            _: u64,
+            _: &[u8],
+            _: CompactionFilterValueType,
+        ) -> CompactionFilterDecision {
+            CompactionFilterDecision::Remove
         }
     }
 

@@ -11,7 +11,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crocksdb_ffi::{self, DBIOStatsContext, DBPerfContext};
+use crocksdb_ffi::{self, DBIOStatsContext, DBPerfContext, DBPerfFlags};
+
+use std::{
+    ops::{BitOr, BitOrAssign},
+    ptr::NonNull,
+};
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum PerfLevel {
@@ -50,6 +55,180 @@ pub fn set_perf_level(level: PerfLevel) {
     };
     unsafe {
         crocksdb_ffi::crocksdb_set_perf_level(v);
+    }
+}
+
+pub struct PerfFlags {
+    inner: NonNull<DBPerfFlags>,
+}
+
+unsafe impl Send for PerfFlags {}
+
+unsafe impl Sync for PerfFlags {}
+
+impl PerfFlags {
+    pub fn new() -> PerfFlags {
+        unsafe {
+            let inner = crocksdb_ffi::crocksdb_create_perf_flags();
+            PerfFlags {
+                inner: NonNull::new_unchecked(inner),
+            }
+        }
+    }
+}
+
+impl Drop for PerfFlags {
+    fn drop(&mut self) {
+        unsafe {
+            crocksdb_ffi::crocksdb_destroy_perf_flags(self.inner.as_ptr());
+        }
+    }
+}
+
+impl Default for PerfFlags {
+    fn default() -> PerfFlags {
+        PerfFlags::new()
+    }
+}
+
+// Generated from librocksdb_sys/src/generate.py and copied here to implement
+// operator traits.
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[repr(u32)]
+pub enum PerfFlag {
+    UserKeyComparisonCount = 0,
+    BlockCacheHitCount,
+    BlockReadCount,
+    BlockReadByte,
+    BlockReadTime,
+    BlockCacheIndexHitCount,
+    IndexBlockReadCount,
+    BlockCacheFilterHitCount,
+    FilterBlockReadCount,
+    CompressionDictBlockReadCount,
+    SecondaryCacheHitCount,
+    BlockChecksumTime,
+    BlockDecompressTime,
+    GetReadBytes,
+    MultigetReadBytes,
+    IterReadBytes,
+    InternalKeySkippedCount,
+    InternalDeleteSkippedCount,
+    InternalRecentSkippedCount,
+    InternalMergeCount,
+    GetSnapshotTime,
+    GetFromMemtableTime,
+    GetFromMemtableCount,
+    GetPostProcessTime,
+    GetFromOutputFilesTime,
+    SeekOnMemtableTime,
+    SeekOnMemtableCount,
+    NextOnMemtableCount,
+    PrevOnMemtableCount,
+    SeekChildSeekTime,
+    SeekChildSeekCount,
+    SeekMinHeapTime,
+    SeekMaxHeapTime,
+    SeekInternalSeekTime,
+    FindNextUserEntryTime,
+    WriteWalTime,
+    WriteMemtableTime,
+    WriteDelayTime,
+    WriteSchedulingFlushesCompactionsTime,
+    WritePreAndPostProcessTime,
+    WriteThreadWaitNanos,
+    DbMutexLockNanos,
+    DbConditionWaitNanos,
+    MergeOperatorTimeNanos,
+    ReadIndexBlockNanos,
+    ReadFilterBlockNanos,
+    NewTableBlockIterNanos,
+    NewTableIteratorNanos,
+    BlockSeekNanos,
+    FindTableNanos,
+    BloomMemtableHitCount,
+    BloomMemtableMissCount,
+    BloomSstHitCount,
+    BloomSstMissCount,
+    KeyLockWaitTime,
+    KeyLockWaitCount,
+    EnvNewSequentialFileNanos,
+    EnvNewRandomAccessFileNanos,
+    EnvNewWritableFileNanos,
+    EnvReuseWritableFileNanos,
+    EnvNewRandomRwFileNanos,
+    EnvNewDirectoryNanos,
+    EnvFileExistsNanos,
+    EnvGetChildrenNanos,
+    EnvGetChildrenFileAttributesNanos,
+    EnvDeleteFileNanos,
+    EnvCreateDirNanos,
+    EnvCreateDirIfMissingNanos,
+    EnvDeleteDirNanos,
+    EnvGetFileSizeNanos,
+    EnvGetFileModificationTimeNanos,
+    EnvRenameFileNanos,
+    EnvLinkFileNanos,
+    EnvLockFileNanos,
+    EnvUnlockFileNanos,
+    EnvNewLoggerNanos,
+    GetCpuNanos,
+    IterNextCpuNanos,
+    IterPrevCpuNanos,
+    IterSeekCpuNanos,
+    EncryptDataNanos,
+    DecryptDataNanos,
+    GetFromTableNanos,
+    UserKeyReturnCount,
+    BlockCacheMissCount,
+    BloomFilterFullPositive,
+    BloomFilterUseful,
+    BloomFilterFullTruePositive,
+    BytesRead,
+    BytesWritten,
+    OpenNanos,
+    AllocateNanos,
+    WriteNanos,
+    ReadNanos,
+    RangeSyncNanos,
+    PrepareWriteNanos,
+    FsyncNanos,
+    LoggerNanos,
+    CpuReadNanos,
+    CpuWriteNanos,
+}
+
+impl BitOrAssign<PerfFlag> for PerfFlags {
+    fn bitor_assign(&mut self, rhs: PerfFlag) {
+        unsafe {
+            crocksdb_ffi::crocksdb_perf_flags_set(self.inner.as_ptr(), rhs as u32);
+        }
+    }
+}
+
+impl BitOr<PerfFlag> for PerfFlags {
+    type Output = PerfFlags;
+
+    fn bitor(mut self, rhs: PerfFlag) -> PerfFlags {
+        self |= rhs;
+        self
+    }
+}
+
+impl BitOr<PerfFlag> for PerfFlag {
+    type Output = PerfFlags;
+
+    fn bitor(self, rhs: PerfFlag) -> PerfFlags {
+        let mut flags = PerfFlags::default();
+        flags |= self;
+        flags |= rhs;
+        flags
+    }
+}
+
+pub fn set_perf_flags(flags: &PerfFlags) {
+    unsafe {
+        crocksdb_ffi::crocksdb_set_perf_flags(flags.inner.as_ptr());
     }
 }
 
@@ -452,7 +631,7 @@ impl IOStatsContext {
 #[cfg(test)]
 mod test {
     use rocksdb::{SeekKey, Writable, DB};
-    use rocksdb_options::{DBOptions, WriteOptions};
+    use rocksdb_options::{DBOptions, FlushOptions, WriteOptions};
 
     use super::*;
     use crate::tempdir_with_prefix;
@@ -525,11 +704,13 @@ mod test {
 
         let mut wopts = WriteOptions::new();
         wopts.set_sync(true);
+        let mut fopts = FlushOptions::default();
+        fopts.set_wait(true);
         let n = 10;
         for i in 0..n {
             let k = &[i as u8];
             db.put_opt(k, k, &wopts).unwrap();
-            db.flush(true).unwrap();
+            db.flush(&fopts).unwrap();
             assert_eq!(db.get(k).unwrap().unwrap(), k);
         }
 
@@ -541,5 +722,47 @@ mod test {
         assert!(ctx.fsync_nanos() > 0);
         assert!(ctx.prepare_write_nanos() > 0);
         assert!(ctx.logger_nanos() > 0);
+    }
+
+    #[test]
+    fn test_perf_flags() {
+        let temp_dir = tempdir_with_prefix("test_perf_flags");
+        let mut opts = DBOptions::new();
+        opts.create_if_missing(true);
+        let db = DB::open(opts, temp_dir.path().to_str().unwrap()).unwrap();
+
+        let n = 10;
+        for i in 0..n {
+            let k = &[i as u8];
+            db.put(k, k).unwrap();
+            if i % 2 == 0 {
+                db.delete(k).unwrap();
+            }
+        }
+
+        set_perf_level(PerfLevel::Disable);
+        set_perf_flags(&(PerfFlag::InternalKeySkippedCount | PerfFlag::InternalDeleteSkippedCount));
+        let mut ctx = PerfContext::get();
+
+        let mut iter = db.iter();
+        assert!(iter.seek(SeekKey::Start).unwrap());
+        while iter.next().unwrap() {}
+        assert_eq!(ctx.internal_key_skipped_count(), n);
+        assert_eq!(ctx.internal_delete_skipped_count(), n / 2);
+        assert_eq!(ctx.seek_internal_seek_time(), 0);
+
+        ctx.reset();
+        assert_eq!(ctx.internal_key_skipped_count(), 0);
+        assert_eq!(ctx.internal_delete_skipped_count(), 0);
+
+        set_perf_flags(&(PerfFlag::InternalKeySkippedCount | PerfFlag::SeekInternalSeekTime));
+        let mut iter = db.iter();
+        assert!(iter.seek(SeekKey::End).unwrap());
+        while iter.valid().unwrap() {
+            iter.prev().unwrap();
+        }
+        assert_eq!(ctx.internal_key_skipped_count(), n + n / 2);
+        assert_eq!(ctx.internal_delete_skipped_count(), 0);
+        assert_ne!(ctx.seek_internal_seek_time(), 0);
     }
 }

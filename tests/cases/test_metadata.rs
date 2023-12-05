@@ -12,7 +12,8 @@
 // limitations under the License.
 
 use rocksdb::{
-    CFHandle, ColumnFamilyOptions, CompactionOptions, DBCompressionType, DBOptions, Writable, DB,
+    CFHandle, ColumnFamilyOptions, CompactionOptions, DBCompressionType, DBOptions, FlushOptions,
+    Writable, DB,
 };
 
 use super::tempdir_with_prefix;
@@ -33,9 +34,20 @@ fn test_metadata() {
     let cf_handle = db.cf_handle("default").unwrap();
 
     let num_files = 5;
+    let mut fopts = FlushOptions::default();
+    fopts.set_wait(true);
     for i in 0..num_files {
         db.put(&[i], &[i]).unwrap();
-        db.flush(true).unwrap();
+        db.flush(&fopts).unwrap();
+    }
+
+    let live_files = db.get_live_files();
+    let files_count = live_files.get_files_count();
+    assert_eq!(files_count as u8, num_files);
+    for i in 0..files_count as i32 {
+        assert!(live_files.get_name(i).len() > 0);
+        assert_eq!(live_files.get_smallestkey(i), [num_files - 1 - i as u8]);
+        assert_eq!(live_files.get_largestkey(i), [num_files - 1 - i as u8]);
     }
 
     let cf_meta = db.get_column_family_meta_data(cf_handle);
@@ -94,10 +106,12 @@ fn test_compact_files() {
     opts.set_output_file_size_limit(output_file_size as usize);
 
     let num_files = 5;
+    let mut fopts = FlushOptions::default();
+    fopts.set_wait(true);
     for i in 0..num_files {
         let b = &[i as u8];
         db.put(b, b).unwrap();
-        db.flush(true).unwrap();
+        db.flush(&fopts).unwrap();
     }
     let input_files = get_files_cf(&db, cf_handle, 0);
     assert_eq!(input_files.len(), num_files);

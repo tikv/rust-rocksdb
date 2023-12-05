@@ -21,7 +21,7 @@ extern crate tempfile;
 use std::ffi::CStr;
 use std::fmt;
 
-use libc::{c_char, c_double, c_int, c_uchar, c_void, size_t};
+use libc::{c_char, c_double, c_float, c_int, c_uchar, c_void, size_t};
 
 // FFI-safe opaque types.
 //
@@ -43,6 +43,8 @@ use libc::{c_char, c_double, c_int, c_uchar, c_void, size_t};
 // [1]: https://doc.rust-lang.org/nomicon/ffi.html#representing-opaque-structs
 // [2]: https://doc.rust-lang.org/nightly/src/core/ffi.rs.html#28
 
+#[repr(C)]
+pub struct DBLivefiles(c_void);
 #[repr(C)]
 pub struct Options(c_void);
 #[repr(C)]
@@ -74,6 +76,8 @@ pub struct DBCFHandle(c_void);
 #[repr(C)]
 pub struct DBWriteBatch(c_void);
 #[repr(C)]
+pub struct DBPostWriteCallback(c_void);
+#[repr(C)]
 pub struct DBComparator(c_void);
 #[repr(C)]
 pub struct DBFlushOptions(c_void);
@@ -83,7 +87,8 @@ pub struct DBCompactionFilter(c_void);
 pub struct DBCompactionFilterFactory(c_void);
 #[repr(C)]
 pub struct DBCompactionFilterContext(c_void);
-
+#[repr(C)]
+pub struct DBCheckpoint(c_void);
 #[repr(C)]
 pub struct EnvOptions(c_void);
 #[repr(C)]
@@ -103,6 +108,10 @@ pub struct DBSliceTransform(c_void);
 #[repr(C)]
 pub struct DBRateLimiter(c_void);
 #[repr(C)]
+pub struct DBWriteBufferManager(c_void);
+#[repr(C)]
+pub struct DBStatistics(c_void);
+#[repr(C)]
 pub struct DBLogger(c_void);
 #[repr(C)]
 pub struct DBCompactOptions(c_void);
@@ -110,6 +119,8 @@ pub struct DBCompactOptions(c_void);
 pub struct DBFifoCompactionOptions(c_void);
 #[repr(C)]
 pub struct DBPinnableSlice(c_void);
+#[repr(C)]
+pub struct DBConcurrentTaskLimiter(c_void);
 #[repr(C)]
 pub struct DBUserCollectedProperties(c_void);
 #[repr(C)]
@@ -149,11 +160,15 @@ pub struct DBSstFileMetaData(c_void);
 #[repr(C)]
 pub struct DBCompactionOptions(c_void);
 #[repr(C)]
+pub struct DBPerfFlags(c_void);
+#[repr(C)]
 pub struct DBPerfContext(c_void);
 #[repr(C)]
 pub struct DBIOStatsContext(c_void);
 #[repr(C)]
 pub struct DBWriteStallInfo(c_void);
+#[repr(C)]
+pub struct DBMemTableInfo(c_void);
 #[repr(C)]
 pub struct DBStatusPtr(c_void);
 #[repr(C)]
@@ -177,6 +192,8 @@ pub struct DBWriteBatchIterator(c_void);
 #[repr(C)]
 pub struct DBFileSystemInspectorInstance(c_void);
 
+// @needs_manual_sync
+// This is repr(C) because we need to access C array of conditions.
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 #[repr(C)]
 pub enum WriteStallCondition {
@@ -201,7 +218,7 @@ pub struct DBTitanBlobIndex {
     pub blob_size: u64,
 }
 
-pub fn new_bloom_filter(bits: c_int) -> *mut DBFilterPolicy {
+pub fn new_bloom_filter(bits: c_double) -> *mut DBFilterPolicy {
     unsafe { crocksdb_filterpolicy_create_bloom(bits) }
 }
 
@@ -212,8 +229,9 @@ pub unsafe fn new_lru_cache(opt: *mut DBLRUCacheOptions) -> *mut DBCache {
     crocksdb_cache_create_lru(opt)
 }
 
+// @needs_manual_sync
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-#[repr(C)]
+#[repr(u32)]
 pub enum DBEntryType {
     Put = 0,
     Delete = 1,
@@ -221,11 +239,12 @@ pub enum DBEntryType {
     Merge = 3,
     RangeDeletion = 4,
     BlobIndex = 5,
-    Other = 6,
+    DeleteWithTimestamp = 6,
+    Other = 7,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-#[repr(C)]
+#[repr(u32)]
 pub enum DBCompressionType {
     No = 0,
     Snappy = 1,
@@ -240,7 +259,7 @@ pub enum DBCompressionType {
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-#[repr(C)]
+#[repr(u32)]
 pub enum DBCompactionStyle {
     Level = 0,
     Universal = 1,
@@ -249,14 +268,7 @@ pub enum DBCompactionStyle {
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-#[repr(C)]
-pub enum DBUniversalCompactionStyle {
-    SimilarSize = 0,
-    TotalSize = 1,
-}
-
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
-#[repr(C)]
+#[repr(u32)]
 pub enum DBRecoveryMode {
     TolerateCorruptedTailRecords = 0,
     AbsoluteConsistency = 1,
@@ -265,7 +277,7 @@ pub enum DBRecoveryMode {
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-#[repr(C)]
+#[repr(u32)]
 pub enum CompactionPriority {
     // In Level-based compaction, it Determines which file from a level to be
     // picked to merge to the next level. We suggest people try
@@ -284,8 +296,9 @@ pub enum CompactionPriority {
     MinOverlappingRatio = 3,
 }
 
+// @needs_manual_sync
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-#[repr(C)]
+#[repr(u32)]
 pub enum CompactionReason {
     Unknown,
     // [Level] number of L0 files > level0_file_num_compaction_trigger
@@ -318,6 +331,12 @@ pub enum CompactionReason {
     Flush,
     // Compaction caused by external sst file ingestion
     ExternalSstIngestion,
+    // Compaction due to SST file being too old
+    PeriodicCompaction,
+    // Compaction in order to move files to temperature
+    ChangeTemperature,
+    // Compaction scheduled to force garbage collection of blob files
+    ForcedBlobGC,
     // total number of compaction reasons, new reasons must be added above this.
     NumOfReasons,
 }
@@ -329,7 +348,7 @@ impl fmt::Display for CompactionReason {
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-#[repr(C)]
+#[repr(u32)]
 pub enum DBInfoLogLevel {
     Debug = 0,
     Info = 1,
@@ -340,9 +359,11 @@ pub enum DBInfoLogLevel {
     NumInfoLog = 6,
 }
 
+// @needs_manual_sync
+// This is repr(C) because it is originally defined as a C enum.
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 #[repr(C)]
-pub enum DBTableProperty {
+pub enum DBTableU64Property {
     DataSize = 1,
     IndexSize = 2,
     FilterSize = 3,
@@ -353,17 +374,42 @@ pub enum DBTableProperty {
     FormatVersion = 8,
     FixedKeyLen = 9,
     ColumnFamilyId = 10,
-    ColumnFamilyName = 11,
-    FilterPolicyName = 12,
-    ComparatorName = 13,
-    MergeOperatorName = 14,
-    PrefixExtractorName = 15,
-    PropertyCollectorsNames = 16,
-    CompressionName = 17,
+    OriginalFileNumber = 11,
+    IndexPartitions = 12,
+    TopLevelIndexSize = 13,
+    IndexKeyIsUserKey = 14,
+    IndexValueIsDeltaEncoded = 15,
+    NumFilterEntries = 16,
+    NumDeletions = 17,
+    NumMergeOperands = 18,
+    NumRangeDeletions = 19,
+    CreationTime = 20,
+    OldestKeyTime = 21,
+    FileCreationTime = 22,
+    SlowCompressionEstimatedDataSize = 23,
+    FastCompressionEstimatedDataSize = 24,
+}
+
+// @needs_manual_sync
+// This is repr(C) because it is originally defined as a C enum.
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[repr(C)]
+pub enum DBTableStrProperty {
+    DbId = 1,
+    DbSessionId = 2,
+    DbHostId = 3,
+    FilterPolicyName = 4,
+    ColumnFamilyName = 5,
+    ComparatorName = 6,
+    MergeOperatorName = 7,
+    PrefixExtractorName = 8,
+    PropertyCollectorsNames = 9,
+    CompressionName = 10,
+    CompressionOptions = 11,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-#[repr(C)]
+#[repr(u32)]
 pub enum DBBottommostLevelCompaction {
     // Skip bottommost level compaction
     Skip = 0,
@@ -375,15 +421,15 @@ pub enum DBBottommostLevelCompaction {
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-#[repr(C)]
+#[repr(u32)]
 pub enum DBRateLimiterMode {
-    ReadOnly = 1,
-    WriteOnly = 2,
-    AllIo = 3,
+    ReadOnly = 0,
+    WriteOnly = 1,
+    AllIo = 2,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-#[repr(C)]
+#[repr(u32)]
 pub enum DBTitanDBBlobRunMode {
     Normal = 0,
     ReadOnly = 1,
@@ -391,7 +437,7 @@ pub enum DBTitanDBBlobRunMode {
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-#[repr(C)]
+#[repr(u32)]
 pub enum IndexType {
     BinarySearch = 0,
     HashSearch = 1,
@@ -399,27 +445,50 @@ pub enum IndexType {
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-#[repr(C)]
+#[repr(u32)]
+pub enum PrepopulateBlockCache {
+    Disabled = 0,
+    FlushOnly = 1,
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[repr(u32)]
+pub enum ChecksumType {
+    NoChecksum = 0,
+    CRC32c = 1,
+    XxHash = 2,
+    XxHash64 = 3,
+    XXH3 = 4,
+}
+
+// @needs_manual_sync
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[repr(u32)]
 pub enum DBBackgroundErrorReason {
-    Flush = 1,
-    Compaction = 2,
-    WriteCallback = 3,
-    MemTable = 4,
+    Flush = 0,
+    Compaction = 1,
+    WriteCallback = 2,
+    MemTable = 3,
+    ManifestWrite = 4,
+    FlushNoWAL = 5,
+    ManifestWriteNoWAL = 6,
 }
 
 #[cfg(feature = "encryption")]
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-#[repr(C)]
+#[repr(u32)]
 pub enum DBEncryptionMethod {
     Unknown = 0,
     Plaintext = 1,
     Aes128Ctr = 2,
     Aes192Ctr = 3,
     Aes256Ctr = 4,
+    Sm4Ctr = 5,
 }
 
+// @needs_manual_sync
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-#[repr(C)]
+#[repr(u32)]
 pub enum DBValueType {
     TypeDeletion = 0x0,
     TypeValue = 0x1,
@@ -432,6 +501,18 @@ pub enum DBValueType {
     TypeRangeDeletion = 0xF,             // meta block
     TypeColumnFamilyBlobIndex = 0x10,    // Blob DB only
     TypeBlobIndex = 0x11,                // Blob DB only
+    // When the prepared record is also persisted in db, we use a different
+    // record. This is to ensure that the WAL that is generated by a WritePolicy
+    // is not mistakenly read by another, which would result into data
+    // inconsistency.
+    TypeBeginPersistedPrepareXID = 0x12, // WAL only.
+    // Similar to kTypeBeginPersistedPrepareXID, this is to ensure that WAL
+    // generated by WriteUnprepared write policy is not mistakenly read by
+    // another.
+    TypeBeginUnprepareXID = 0x13, // WAL only.
+    TypeDeletionWithTimestamp = 0x14,
+    TypeCommitXIDAndTimestamp = 0x15, // WAL only
+
     MaxValue = 0x7F,
 }
 
@@ -443,22 +524,24 @@ impl fmt::Display for DBEncryptionMethod {
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-#[repr(C)]
+#[repr(u32)]
 pub enum DBSstPartitionerResult {
     NotRequired = 0,
     Required = 1,
 }
 
+// @needs_manual_sync
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-#[repr(C)]
+#[repr(u32)]
 pub enum CompactionFilterValueType {
     Value = 0,
     MergeOperand = 1,
     BlobIndex = 2,
+    Deletion = 3,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-#[repr(C)]
+#[repr(u32)]
 pub enum CompactionFilterDecision {
     Keep = 0,
     Remove = 1,
@@ -466,8 +549,9 @@ pub enum CompactionFilterDecision {
     RemoveAndSkipUntil = 3,
 }
 
+// @needs_manual_sync
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-#[repr(C)]
+#[repr(u32)]
 pub enum DBTableFileCreationReason {
     Flush = 0,
     Compaction = 1,
@@ -511,6 +595,7 @@ macro_rules! ffi_try {
 // instead...
 extern "C" {
     pub fn crocksdb_status_ptr_get_error(status: *mut DBStatusPtr, err: *mut *mut c_char);
+    pub fn crocksdb_resume(db: *mut DBInstance, err: *mut *mut c_char);
     pub fn crocksdb_get_db_options(db: *mut DBInstance) -> *mut Options;
     pub fn crocksdb_set_db_options(
         db: *mut DBInstance,
@@ -595,6 +680,10 @@ extern "C" {
         block_options: *mut DBBlockBasedTableOptions,
         v: c_uchar,
     );
+    pub fn crocksdb_block_based_options_set_optimize_filters_for_memory(
+        block_options: *mut DBBlockBasedTableOptions,
+        v: c_uchar,
+    );
     pub fn crocksdb_block_based_options_set_partition_filters(
         block_options: *mut DBBlockBasedTableOptions,
         v: c_uchar,
@@ -631,6 +720,18 @@ extern "C" {
         ck_options: *mut DBBlockBasedTableOptions,
         doit: bool,
     );
+    pub fn crocksdb_block_based_options_set_format_version(
+        ck_options: *mut DBBlockBasedTableOptions,
+        v: c_int,
+    );
+    pub fn crocksdb_block_based_options_set_prepopulate_block_cache(
+        ck_options: *mut DBBlockBasedTableOptions,
+        v: PrepopulateBlockCache,
+    );
+    pub fn crocksdb_block_based_options_set_checksum(
+        ck_options: *mut DBBlockBasedTableOptions,
+        v: ChecksumType,
+    );
     pub fn crocksdb_options_set_block_based_table_factory(
         options: *mut Options,
         block_options: *mut DBBlockBasedTableOptions,
@@ -649,6 +750,21 @@ extern "C" {
         memtable_memory_budget: c_int,
     );
     pub fn crocksdb_options_set_env(options: *mut Options, env: *mut DBEnv);
+    pub fn crocksdb_options_set_write_buffer_manager(
+        options: *mut Options,
+        wbm: *mut DBWriteBufferManager,
+    );
+    pub fn crocksdb_options_set_cf_write_buffer_manager(
+        options: *mut Options,
+        wbm: *mut DBWriteBufferManager,
+    );
+    pub fn crocksdb_options_set_compaction_thread_limiter(
+        options: *mut Options,
+        wbm: *mut DBConcurrentTaskLimiter,
+    );
+    pub fn crocksdb_options_get_compaction_thread_limiter(
+        options: *mut Options,
+    ) -> *mut DBConcurrentTaskLimiter;
     pub fn crocksdb_options_set_compaction_filter(
         options: *mut Options,
         filter: *mut DBCompactionFilter,
@@ -733,6 +849,7 @@ extern "C" {
         strategy: c_int,
         max_dict_bytes: c_int,
         zstd_max_train_bytes: c_int,
+        parallel_threads: c_int,
     );
     pub fn crocksdb_options_set_bottommost_compression_options(
         options: *mut Options,
@@ -741,6 +858,7 @@ extern "C" {
         strategy: c_int,
         max_dict_bytes: c_int,
         zstd_max_train_bytes: c_int,
+        parallel_threads: c_int,
     );
     pub fn crocksdb_options_set_compression_per_level(
         options: *mut Options,
@@ -760,6 +878,11 @@ extern "C" {
         max_bg_compactions: c_int,
     );
     pub fn crocksdb_options_get_max_background_compactions(options: *const Options) -> c_int;
+    pub fn crocksdb_options_set_base_background_compactions(
+        options: *mut Options,
+        base_bg_compactions: c_int,
+    );
+    pub fn crocksdb_options_get_base_background_compactions(options: *const Options) -> c_int;
     pub fn crocksdb_options_set_max_background_flushes(
         options: *mut Options,
         max_bg_flushes: c_int,
@@ -767,28 +890,39 @@ extern "C" {
     pub fn crocksdb_options_get_max_background_flushes(options: *const Options) -> c_int;
     pub fn crocksdb_options_set_disable_auto_compactions(options: *mut Options, v: c_int);
     pub fn crocksdb_options_get_disable_auto_compactions(options: *const Options) -> c_int;
+    pub fn crocksdb_options_set_disable_write_stall(options: *mut Options, v: bool);
+    pub fn crocksdb_options_get_disable_write_stall(options: *const Options) -> bool;
     pub fn crocksdb_options_set_report_bg_io_stats(options: *mut Options, v: c_int);
     pub fn crocksdb_options_set_compaction_readahead_size(options: *mut Options, v: size_t);
     pub fn crocksdb_options_set_wal_recovery_mode(options: *mut Options, mode: DBRecoveryMode);
     pub fn crocksdb_options_set_max_subcompactions(options: *mut Options, v: u32);
     pub fn crocksdb_options_set_wal_bytes_per_sync(options: *mut Options, v: u64);
-    pub fn crocksdb_options_enable_statistics(options: *mut Options, v: bool);
-    pub fn crocksdb_options_reset_statistics(options: *mut Options);
-    pub fn crocksdb_options_statistics_get_string(options: *mut Options) -> *const c_char;
-    pub fn crocksdb_options_statistics_get_ticker_count(
-        options: *mut Options,
+
+    pub fn crocksdb_options_set_statistics(options: *mut Options, statistics: *mut DBStatistics);
+    pub fn crocksdb_options_get_statistics(options: *mut Options) -> *mut DBStatistics;
+
+    pub fn crocksdb_statistics_create() -> *mut DBStatistics;
+    pub fn crocksdb_titan_statistics_create() -> *mut DBStatistics;
+    pub fn crocksdb_empty_statistics_create() -> *mut DBStatistics;
+    pub fn crocksdb_statistics_destroy(statistics: *mut DBStatistics);
+
+    pub fn crocksdb_statistics_is_empty(statistics: *mut DBStatistics) -> bool;
+    pub fn crocksdb_statistics_reset(statistics: *mut DBStatistics);
+    pub fn crocksdb_statistics_to_string(statistics: *mut DBStatistics) -> *const c_char;
+    pub fn crocksdb_statistics_get_ticker_count(
+        statistics: *mut DBStatistics,
         ticker_type: DBStatisticsTickerType,
     ) -> u64;
-    pub fn crocksdb_options_statistics_get_and_reset_ticker_count(
-        options: *mut Options,
+    pub fn crocksdb_statistics_get_and_reset_ticker_count(
+        statistics: *mut DBStatistics,
         ticker_type: DBStatisticsTickerType,
     ) -> u64;
-    pub fn crocksdb_options_statistics_get_histogram_string(
-        options: *mut Options,
+    pub fn crocksdb_statistics_get_histogram_string(
+        statistics: *mut DBStatistics,
         hist_type: DBStatisticsHistogramType,
     ) -> *const c_char;
-    pub fn crocksdb_options_statistics_get_histogram(
-        options: *mut Options,
+    pub fn crocksdb_statistics_get_histogram(
+        statistics: *mut DBStatistics,
         hist_type: DBStatisticsHistogramType,
         median: *mut c_double,
         percentile95: *mut c_double,
@@ -797,7 +931,9 @@ extern "C" {
         standard_deviation: *mut c_double,
         max: *mut c_double,
     ) -> bool;
+
     pub fn crocksdb_options_set_stats_dump_period_sec(options: *mut Options, v: usize);
+    pub fn crocksdb_options_set_stats_persist_period_sec(options: *mut Options, v: u32);
     pub fn crocksdb_options_set_num_levels(options: *mut Options, v: c_int);
     pub fn crocksdb_options_get_num_levels(options: *mut Options) -> c_int;
     pub fn crocksdb_options_set_db_log_dir(options: *mut Options, path: *const c_char);
@@ -834,6 +970,12 @@ extern "C" {
     pub fn crocksdb_options_get_force_consistency_checks(options: *mut Options) -> bool;
     pub fn crocksdb_options_set_ratelimiter(options: *mut Options, limiter: *mut DBRateLimiter);
     pub fn crocksdb_options_get_ratelimiter(options: *mut Options) -> *mut DBRateLimiter;
+    pub fn crocksdb_options_get_write_buffer_manager(
+        options: *mut Options,
+    ) -> *mut DBWriteBufferManager;
+    pub fn crocksdb_options_get_cf_write_buffer_manager(
+        options: *mut Options,
+    ) -> *mut DBWriteBufferManager;
     pub fn crocksdb_options_set_info_log(options: *mut Options, logger: *mut DBLogger);
     pub fn crocksdb_options_get_block_cache_usage(options: *const Options) -> usize;
     pub fn crocksdb_options_set_block_cache_capacity(
@@ -842,6 +984,11 @@ extern "C" {
         err: *mut *mut c_char,
     );
     pub fn crocksdb_options_get_block_cache_capacity(options: *const Options) -> usize;
+    pub fn crocksdb_options_set_ttl(options: *mut Options, ttl_secs: u64);
+    pub fn crocksdb_options_get_ttl(options: *const Options) -> u64;
+    pub fn crocksdb_options_set_periodic_compaction_seconds(options: *mut Options, secs: u64);
+    pub fn crocksdb_options_get_periodic_compaction_seconds(options: *const Options) -> u64;
+
     pub fn crocksdb_load_latest_options(
         dbpath: *const c_char,
         env: *mut DBEnv,
@@ -869,6 +1016,9 @@ extern "C" {
         fairness: i32,
         mode: DBRateLimiterMode,
         auto_tuned: bool,
+        tune_per_sec: i32,
+        smooth_window_size: usize,
+        recent_window_size: usize,
     ) -> *mut DBRateLimiter;
     pub fn crocksdb_ratelimiter_destroy(limiter: *mut DBRateLimiter);
     pub fn crocksdb_ratelimiter_set_bytes_per_second(
@@ -888,6 +1038,34 @@ extern "C" {
         limiter: *mut DBRateLimiter,
         pri: c_uchar,
     ) -> i64;
+
+    pub fn crocksdb_write_buffer_manager_create(
+        flush_size: size_t,
+        stall_ratio: c_float,
+        flush_oldest_first: bool,
+    ) -> *mut DBWriteBufferManager;
+    pub fn crocksdb_write_buffer_manager_set_flush_size(
+        wbm: *mut DBWriteBufferManager,
+        flush_size: size_t,
+    );
+    pub fn crocksdb_write_buffer_manager_flush_size(wbm: *mut DBWriteBufferManager) -> usize;
+    pub fn crocksdb_write_buffer_manager_set_flush_oldest_first(
+        wbm: *mut DBWriteBufferManager,
+        flush_oldest_first: bool,
+    );
+    pub fn crocksdb_write_buffer_manager_memory_usage(wbm: *mut DBWriteBufferManager) -> usize;
+    pub fn crocksdb_write_buffer_manager_destroy(wbm: *mut DBWriteBufferManager);
+
+    pub fn crocksdb_concurrent_task_limiter_create(
+        name: *const c_char,
+        limit: u32,
+    ) -> *mut DBConcurrentTaskLimiter;
+    pub fn crocksdb_concurrent_task_limiter_set_limit(
+        limiter: *mut DBConcurrentTaskLimiter,
+        limit: u32,
+    );
+    pub fn crocksdb_concurrent_task_limiter_destroy(limiter: *mut DBConcurrentTaskLimiter);
+
     pub fn crocksdb_options_set_soft_pending_compaction_bytes_limit(options: *mut Options, v: u64);
     pub fn crocksdb_options_get_soft_pending_compaction_bytes_limit(options: *mut Options) -> u64;
     pub fn crocksdb_options_set_hard_pending_compaction_bytes_limit(options: *mut Options, v: u64);
@@ -905,6 +1083,8 @@ extern "C" {
     pub fn crocksdb_options_get_path_target_size(options: *mut Options, idx: size_t) -> u64;
     pub fn crocksdb_options_set_vector_memtable_factory(options: *mut Options, reserved_bytes: u64);
     pub fn crocksdb_options_set_atomic_flush(option: *mut Options, enable: bool);
+    pub fn crocksdb_options_avoid_flush_during_recovery(option: *mut Options, avoid: bool);
+    pub fn crocksdb_options_avoid_flush_during_shutdown(option: *mut Options, avoid: bool);
     pub fn crocksdb_options_get_sst_partitioner_factory(
         option: *mut Options,
     ) -> *mut DBSstPartitionerFactory;
@@ -912,8 +1092,12 @@ extern "C" {
         option: *mut Options,
         factory: *mut DBSstPartitionerFactory,
     );
-    pub fn crocksdb_filterpolicy_create_bloom_full(bits_per_key: c_int) -> *mut DBFilterPolicy;
-    pub fn crocksdb_filterpolicy_create_bloom(bits_per_key: c_int) -> *mut DBFilterPolicy;
+    pub fn crocksdb_filterpolicy_create_bloom_full(bits_per_key: c_double) -> *mut DBFilterPolicy;
+    pub fn crocksdb_filterpolicy_create_bloom(bits_per_key: c_double) -> *mut DBFilterPolicy;
+    pub fn crocksdb_filterpolicy_create_ribbon(
+        bits_per_key: c_double,
+        bloom_before_level: c_int,
+    ) -> *mut DBFilterPolicy;
     pub fn crocksdb_open(
         options: *mut Options,
         path: *const c_char,
@@ -931,6 +1115,15 @@ extern "C" {
         error_if_log_file_exist: bool,
         err: *mut *mut c_char,
     ) -> *mut DBInstance;
+    pub fn crocksdb_merge_disjoint_instances(
+        db: *mut DBInstance,
+        merge_memtable: bool,
+        allow_source_write: bool,
+        max_preload_files: c_int,
+        instances: *const *mut DBInstance,
+        num_instances: size_t,
+        err: *mut *mut c_char,
+    ) -> *mut DBInstance;
     pub fn crocksdb_writeoptions_create() -> *mut DBWriteOptions;
     pub fn crocksdb_writeoptions_destroy(writeopts: *mut DBWriteOptions);
     pub fn crocksdb_writeoptions_set_sync(writeopts: *mut DBWriteOptions, v: bool);
@@ -941,6 +1134,10 @@ extern "C" {
     );
     pub fn crocksdb_writeoptions_set_no_slowdown(writeopts: *mut DBWriteOptions, v: bool);
     pub fn crocksdb_writeoptions_set_low_pri(writeopts: *mut DBWriteOptions, v: bool);
+    pub fn crocksdb_writeoptions_set_memtable_insert_hint_per_batch(
+        writeopts: *mut DBWriteOptions,
+        v: bool,
+    );
     pub fn crocksdb_put(
         db: *mut DBInstance,
         writeopts: *mut DBWriteOptions,
@@ -964,6 +1161,8 @@ extern "C" {
     pub fn crocksdb_readoptions_destroy(readopts: *mut DBReadOptions);
     pub fn crocksdb_readoptions_set_verify_checksums(readopts: *mut DBReadOptions, v: bool);
     pub fn crocksdb_readoptions_set_fill_cache(readopts: *mut DBReadOptions, v: bool);
+    pub fn crocksdb_readoptions_set_auto_prefix_mode(readopts: *mut DBReadOptions, v: bool);
+    pub fn crocksdb_readoptions_set_adaptive_readahead(readopts: *mut DBReadOptions, v: bool);
     pub fn crocksdb_readoptions_set_snapshot(
         readopts: *mut DBReadOptions,
         snapshot: *const DBSnapshot,
@@ -1074,6 +1273,8 @@ extern "C" {
     pub fn crocksdb_close(db: *mut DBInstance);
     pub fn crocksdb_pause_bg_work(db: *mut DBInstance);
     pub fn crocksdb_continue_bg_work(db: *mut DBInstance);
+    pub fn crocksdb_disable_manual_compaction(db: *mut DBInstance);
+    pub fn crocksdb_enable_manual_compaction(db: *mut DBInstance);
     pub fn crocksdb_destroy_db(options: *const Options, path: *const c_char, err: *mut *mut c_char);
     pub fn crocksdb_repair_db(options: *const Options, path: *const c_char, err: *mut *mut c_char);
     // Merge
@@ -1148,11 +1349,27 @@ extern "C" {
         batch: *mut DBWriteBatch,
         err: *mut *mut c_char,
     );
+    pub fn crocksdb_write_callback(
+        db: *mut DBInstance,
+        writeopts: *const DBWriteOptions,
+        batch: *mut DBWriteBatch,
+        callback: *mut DBPostWriteCallback,
+        err: *mut *mut c_char,
+    );
+
     pub fn crocksdb_write_multi_batch(
         db: *mut DBInstance,
         writeopts: *const DBWriteOptions,
         batch: *const *mut DBWriteBatch,
         batchlen: size_t,
+        err: *mut *mut c_char,
+    );
+    pub fn crocksdb_write_multi_batch_callback(
+        db: *mut DBInstance,
+        writeopts: *const DBWriteOptions,
+        batch: *const *mut DBWriteBatch,
+        batchlen: size_t,
+        callback: *mut DBPostWriteCallback,
         err: *mut *mut c_char,
     );
     pub fn crocksdb_writebatch_create() -> *mut DBWriteBatch;
@@ -1371,6 +1588,11 @@ extern "C" {
     pub fn crocksdb_flushoptions_destroy(opt: *mut DBFlushOptions);
     pub fn crocksdb_flushoptions_set_wait(opt: *mut DBFlushOptions, whether_wait: bool);
     pub fn crocksdb_flushoptions_set_allow_write_stall(opt: *mut DBFlushOptions, allow: bool);
+    pub fn crocksdb_flushoptions_set_expected_oldest_key_time(opt: *mut DBFlushOptions, time: u64);
+    pub fn crocksdb_flushoptions_set_check_if_compaction_disabled(
+        opt: *mut DBFlushOptions,
+        check: bool,
+    );
 
     pub fn crocksdb_flush(
         db: *mut DBInstance,
@@ -1433,6 +1655,12 @@ extern "C" {
         count: *mut u64,
         size: *mut u64,
     );
+    pub fn crocksdb_approximate_active_memtable_stats_cf(
+        db: *const DBInstance,
+        cf: *const DBCFHandle,
+        memory_bytes: *mut u64,
+        oldest_key_time: *mut u64,
+    );
     pub fn crocksdb_compactoptions_create() -> *mut DBCompactOptions;
     pub fn crocksdb_compactoptions_destroy(opt: *mut DBCompactOptions);
     pub fn crocksdb_compactoptions_set_exclusive_manual_compaction(
@@ -1483,6 +1711,15 @@ extern "C" {
         limit_key: *const u8,
         limit_key_len: size_t,
     );
+    pub fn crocksdb_check_in_range(
+        db: *mut DBInstance,
+        start_key: *const u8,
+        start_key_len: size_t,
+        limit_key: *const u8,
+        limit_key_len: size_t,
+        err: *mut *mut c_char,
+    );
+    pub fn crocksdb_delete_file(db: *mut DBInstance, name: *const c_char, err: *mut *mut c_char);
     pub fn crocksdb_delete_files_in_range(
         db: *mut DBInstance,
         range_start_key: *const u8,
@@ -1579,6 +1816,17 @@ extern "C" {
         context: *const DBCompactionFilterContext,
         offset: usize,
     ) -> *const DBTableProperties;
+    pub fn crocksdb_compactionfiltercontext_start_key(
+        context: *const DBCompactionFilterContext,
+        key_len: *mut size_t,
+    ) -> *const c_char;
+    pub fn crocksdb_compactionfiltercontext_end_key(
+        context: *const DBCompactionFilterContext,
+        key_len: *mut size_t,
+    ) -> *const c_char;
+    pub fn crocksdb_compactionfiltercontext_reason(
+        context: *const DBCompactionFilterContext,
+    ) -> DBTableFileCreationReason;
 
     // Compaction filter factory
     pub fn crocksdb_compactionfilterfactory_create(
@@ -1606,7 +1854,15 @@ extern "C" {
     ) -> *mut DBEnv;
     pub fn crocksdb_env_file_exists(env: *mut DBEnv, path: *const c_char, err: *mut *mut c_char);
     pub fn crocksdb_env_delete_file(env: *mut DBEnv, path: *const c_char, err: *mut *mut c_char);
+    pub fn crocksdb_env_is_db_locked(
+        env: *mut DBEnv,
+        path: *const c_char,
+        err: *mut *mut c_char,
+    ) -> bool;
     pub fn crocksdb_env_destroy(env: *mut DBEnv);
+    pub fn crocksdb_env_set_background_threads(env: *mut DBEnv, n: c_int);
+    pub fn crocksdb_env_set_high_priority_background_threads(env: *mut DBEnv, n: c_int);
+    pub fn crocksdb_env_get_high_priority_background_threads(env: *mut DBEnv) -> c_int;
 
     // EnvOptions
     pub fn crocksdb_envoptions_create() -> *mut EnvOptions;
@@ -1656,6 +1912,10 @@ extern "C" {
     pub fn crocksdb_ingestexternalfileoptions_set_write_global_seqno(
         opt: *mut IngestExternalFileOptions,
         write_global_seqno: bool,
+    );
+    pub fn crocksdb_ingestexternalfileoptions_set_verify_checksums_before_ingest(
+        opt: *mut IngestExternalFileOptions,
+        verify_checksums_before_ingest: bool,
     );
     pub fn crocksdb_ingestexternalfileoptions_destroy(opt: *mut IngestExternalFileOptions);
 
@@ -1710,7 +1970,7 @@ extern "C" {
             *const c_char,
             *mut DBFileEncryptionInfo,
         ) -> *const c_char,
-        delete_file: extern "C" fn(*mut c_void, *const c_char) -> *const c_char,
+        delete_file: extern "C" fn(*mut c_void, *const c_char, *const c_char) -> *const c_char,
         link_file: extern "C" fn(*mut c_void, *const c_char, *const c_char) -> *const c_char,
     ) -> *mut DBEncryptionKeyManagerInstance;
     #[cfg(feature = "encryption")]
@@ -1739,6 +1999,12 @@ extern "C" {
         key_manager: *mut DBEncryptionKeyManagerInstance,
         src_fname: *const c_char,
         dst_fname: *const c_char,
+    ) -> *const c_char;
+    #[cfg(feature = "encryption")]
+    pub fn crocksdb_encryption_key_manager_delete_file_ext(
+        key_manager: *mut DBEncryptionKeyManagerInstance,
+        fname: *const c_char,
+        physical_fname: *const c_char,
     ) -> *const c_char;
 
     #[cfg(feature = "encryption")]
@@ -1999,12 +2265,12 @@ extern "C" {
 
     pub fn crocksdb_table_properties_get_u64(
         props: *const DBTableProperties,
-        prop: DBTableProperty,
+        prop: DBTableU64Property,
     ) -> u64;
 
     pub fn crocksdb_table_properties_get_str(
         props: *const DBTableProperties,
-        prop: DBTableProperty,
+        prop: DBTableStrProperty,
         slen: *mut size_t,
     ) -> *const u8;
 
@@ -2064,7 +2330,7 @@ extern "C" {
             size_t,
             *const u8,
             size_t,
-            c_int,
+            u32,
             u64,
             u64,
         ),
@@ -2134,6 +2400,10 @@ extern "C" {
     ) -> *const DBTableProperties;
     pub fn crocksdb_flushjobinfo_triggered_writes_slowdown(info: *const DBFlushJobInfo) -> bool;
     pub fn crocksdb_flushjobinfo_triggered_writes_stop(info: *const DBFlushJobInfo) -> bool;
+    pub fn crocksdb_flushjobinfo_largest_seqno(info: *const DBFlushJobInfo) -> u64;
+    pub fn crocksdb_flushjobinfo_smallest_seqno(info: *const DBFlushJobInfo) -> u64;
+
+    pub fn crocksdb_reset_status(ptr: *mut DBStatusPtr);
 
     pub fn crocksdb_compactionjobinfo_status(
         info: *const DBCompactionJobInfo,
@@ -2169,6 +2439,7 @@ extern "C" {
     pub fn crocksdb_compactionjobinfo_output_records(info: *const DBCompactionJobInfo) -> u64;
     pub fn crocksdb_compactionjobinfo_total_input_bytes(info: *const DBCompactionJobInfo) -> u64;
     pub fn crocksdb_compactionjobinfo_total_output_bytes(info: *const DBCompactionJobInfo) -> u64;
+    pub fn crocksdb_compactionjobinfo_num_input_files(info: *const DBCompactionJobInfo) -> size_t;
     pub fn crocksdb_compactionjobinfo_num_input_files_at_output_level(
         info: *const DBCompactionJobInfo,
     ) -> size_t;
@@ -2214,6 +2485,16 @@ extern "C" {
     pub fn crocksdb_writestallinfo_cur(info: *const DBWriteStallInfo)
         -> *const WriteStallCondition;
 
+    pub fn crocksdb_memtableinfo_cf_name(
+        info: *const DBMemTableInfo,
+        size: *mut size_t,
+    ) -> *const c_char;
+    pub fn crocksdb_memtableinfo_first_seqno(info: *const DBMemTableInfo) -> u64;
+    pub fn crocksdb_memtableinfo_earliest_seqno(info: *const DBMemTableInfo) -> u64;
+    pub fn crocksdb_memtableinfo_largest_seqno(info: *const DBMemTableInfo) -> u64;
+    pub fn crocksdb_memtableinfo_num_entries(info: *const DBMemTableInfo) -> u64;
+    pub fn crocksdb_memtableinfo_num_deletes(info: *const DBMemTableInfo) -> u64;
+
     pub fn crocksdb_eventlistener_create(
         state: *mut c_void,
         destructor: extern "C" fn(*mut c_void),
@@ -2226,9 +2507,18 @@ extern "C" {
         ingest: extern "C" fn(*mut c_void, *mut DBInstance, *const DBIngestionInfo),
         bg_error: extern "C" fn(*mut c_void, DBBackgroundErrorReason, *mut DBStatusPtr),
         stall_conditions: extern "C" fn(*mut c_void, *const DBWriteStallInfo),
+        memtable_sealed: extern "C" fn(*mut c_void, *const DBMemTableInfo),
     ) -> *mut DBEventListener;
     pub fn crocksdb_eventlistener_destroy(et: *mut DBEventListener);
     pub fn crocksdb_options_add_eventlistener(opt: *mut Options, et: *mut DBEventListener);
+
+    pub fn crocksdb_post_write_callback_init(
+        buf: *mut c_void,
+        buf_len: usize,
+        state: *mut c_void,
+        post_write_callback: extern "C" fn(*mut c_void, u64),
+    ) -> *mut DBPostWriteCallback;
+
     // Get All Key Versions
     pub fn crocksdb_keyversions_destroy(kvs: *mut DBKeyVersions);
 
@@ -2246,6 +2536,20 @@ extern "C" {
     pub fn crocksdb_keyversions_key(kvs: *mut DBKeyVersions, index: usize) -> *const c_char;
 
     pub fn crocksdb_keyversions_value(kvs: *mut DBKeyVersions, index: usize) -> *const c_char;
+
+    pub fn crocksdb_checkpoint_object_create(
+        db: *mut DBInstance,
+        errptr: *mut *mut c_char,
+    ) -> *mut DBCheckpoint;
+
+    pub fn crocksdb_checkpoint_create(
+        check_point: *mut DBCheckpoint,
+        check_point_dir: *const c_char,
+        log_size_for_flush: u64,
+        errptr: *mut *mut c_char,
+    );
+
+    pub fn crocksdb_checkpoint_object_destroy(check_point: *mut DBCheckpoint);
 
     pub fn crocksdb_keyversions_seq(kvs: *mut DBKeyVersions, index: usize) -> u64;
 
@@ -2292,6 +2596,22 @@ extern "C" {
         len: *mut size_t,
     ) -> *const c_char;
 
+    pub fn crocksdb_livefiles(db: *mut DBInstance) -> *mut DBLivefiles;
+    pub fn crocksdb_livefiles_count(lf: *const DBLivefiles) -> size_t;
+    pub fn crocksdb_livefiles_size(lf: *const DBLivefiles, index: i32) -> size_t;
+    pub fn crocksdb_livefiles_name(lf: *const DBLivefiles, index: i32) -> *const c_char;
+    pub fn crocksdb_livefiles_smallestkey(
+        lf: *const DBLivefiles,
+        index: i32,
+        size: *mut size_t,
+    ) -> *const c_char;
+    pub fn crocksdb_livefiles_largestkey(
+        lf: *const DBLivefiles,
+        index: i32,
+        size: *mut size_t,
+    ) -> *const c_char;
+    pub fn crocksdb_livefiles_destroy(lf: *mut DBLivefiles);
+
     pub fn crocksdb_compaction_options_create() -> *mut DBCompactionOptions;
     pub fn crocksdb_compaction_options_destroy(opts: *mut DBCompactionOptions);
     pub fn crocksdb_compaction_options_set_compression(
@@ -2319,6 +2639,10 @@ extern "C" {
 
     pub fn crocksdb_get_perf_level() -> c_int;
     pub fn crocksdb_set_perf_level(level: c_int);
+    pub fn crocksdb_create_perf_flags() -> *mut DBPerfFlags;
+    pub fn crocksdb_perf_flags_set(flags: *mut DBPerfFlags, flag: u32);
+    pub fn crocksdb_destroy_perf_flags(flag: *mut DBPerfFlags);
+    pub fn crocksdb_set_perf_flags(flags: *const DBPerfFlags);
     pub fn crocksdb_get_perf_context() -> *mut DBPerfContext;
     pub fn crocksdb_perf_context_reset(ctx: *mut DBPerfContext);
     pub fn crocksdb_perf_context_user_key_comparison_count(ctx: *mut DBPerfContext) -> u64;
@@ -2516,6 +2840,25 @@ extern "C" {
         largest_key: *const c_char,
         key_len: size_t,
     );
+    pub fn crocksdb_sst_partitioner_context_get_next_level_boundary(
+        context: *mut DBSstPartitionerContext,
+        index: c_int,
+        key: *mut *const c_char,
+        key_len: *mut size_t,
+    );
+    pub fn crocksdb_sst_partitioner_context_get_next_level_size(
+        context: *mut DBSstPartitionerContext,
+        index: c_int,
+    ) -> size_t;
+    pub fn crocksdb_sst_partitioner_context_push_bounary_and_size(
+        context: *mut DBSstPartitionerContext,
+        boundary_key: *const c_char,
+        boundary_key_len: size_t,
+        size: size_t,
+    );
+    pub fn crocksdb_sst_partitioner_context_next_level_segment_count(
+        context: *mut DBSstPartitionerContext,
+    ) -> c_int;
 
     pub fn crocksdb_sst_partitioner_factory_create(
         underlying: *mut c_void,
@@ -2580,7 +2923,6 @@ extern "C" {
     pub fn ctitandb_options_set_min_blob_size(opts: *mut DBTitanDBOptions, size: u64);
     pub fn ctitandb_options_blob_file_compression(opts: *mut DBTitanDBOptions)
         -> DBCompressionType;
-    pub fn ctitandb_options_set_gc_merge_rewrite(opts: *mut DBTitanDBOptions, enable: bool);
     pub fn ctitandb_options_set_blob_file_compression(
         opts: *mut DBTitanDBOptions,
         t: DBCompressionType,
@@ -2627,7 +2969,6 @@ extern "C" {
     pub fn ctitandb_options_get_blob_cache_capacity(options: *const DBTitanDBOptions) -> usize;
 
     pub fn ctitandb_options_set_discardable_ratio(opts: *mut DBTitanDBOptions, ratio: f64);
-    pub fn ctitandb_options_set_sample_ratio(opts: *mut DBTitanDBOptions, ratio: f64);
     pub fn ctitandb_options_set_merge_small_file_threshold(opts: *mut DBTitanDBOptions, size: u64);
     pub fn ctitandb_options_set_blob_run_mode(opts: *mut DBTitanDBOptions, t: DBTitanDBBlobRunMode);
 
@@ -2707,6 +3048,21 @@ extern "C" {
         include_end: bool,
         errptr: *mut *mut c_char,
     );
+
+    pub fn ctitandb_checkpoint_object_create(
+        db: *mut DBInstance,
+        errptr: *mut *mut c_char,
+    ) -> *mut DBCheckpoint;
+
+    pub fn ctitandb_checkpoint_create(
+        checkpoint: *mut DBCheckpoint,
+        basedb_checkpoint_dir: *const c_char,
+        titan_checkpoint_dir: *const c_char,
+        log_size_for_flush: u64,
+        errptr: *mut *mut c_char,
+    );
+
+    pub fn ctitandb_checkpoint_object_destroy(check_point: *mut DBCheckpoint);
 }
 
 #[cfg(test)]
@@ -2717,7 +3073,7 @@ mod test {
     use std::{fs, ptr, slice};
 
     fn tempdir_with_prefix(prefix: &str) -> tempfile::TempDir {
-        tempfile::Builder::new().prefix(prefix).tempdir().expect()
+        tempfile::Builder::new().prefix(prefix).tempdir().expect("")
     }
 
     #[test]

@@ -16,6 +16,8 @@
 // FIXME: we should remove this line after we add safe doc to all the unsafe functions
 // see: https://rust-lang.github.io/rust-clippy/master/index.html#missing_safety_doc
 #![allow(clippy::missing_safety_doc)]
+#![allow(clippy::new_without_default)]
+#![allow(clippy::type_complexity)]
 
 extern crate core;
 extern crate libc;
@@ -27,31 +29,35 @@ extern crate tempfile;
 #[macro_use]
 extern crate lazy_static;
 
+pub use checkpoint::Checkpointer;
 pub use compaction_filter::{
-    new_compaction_filter, new_compaction_filter_factory, new_compaction_filter_raw,
-    CompactionFilter, CompactionFilterContext, CompactionFilterDecision, CompactionFilterFactory,
+    new_compaction_filter, new_compaction_filter_factory, CompactionFilter,
+    CompactionFilterContext, CompactionFilterDecision, CompactionFilterFactory,
     CompactionFilterFactoryHandle, CompactionFilterHandle, CompactionFilterValueType,
     DBCompactionFilter,
 };
 #[cfg(feature = "encryption")]
 pub use encryption::{DBEncryptionMethod, EncryptionKeyManager, FileEncryptionInfo};
 pub use event_listener::{
-    CompactionJobInfo, EventListener, FlushJobInfo, IngestionInfo, SubcompactionJobInfo,
-    WriteStallInfo,
+    CompactionJobInfo, EventListener, FlushJobInfo, IngestionInfo, MemTableInfo, MutableStatus,
+    SubcompactionJobInfo, WriteStallInfo,
 };
 pub use file_system::FileSystemInspector;
 pub use librocksdb_sys::{
-    self as crocksdb_ffi, new_bloom_filter, CompactionPriority, CompactionReason,
+    self as crocksdb_ffi, new_bloom_filter, ChecksumType, CompactionPriority, CompactionReason,
     DBBackgroundErrorReason, DBBottommostLevelCompaction, DBCompactionStyle, DBCompressionType,
     DBEntryType, DBInfoLogLevel, DBRateLimiterMode, DBRecoveryMode,
     DBSstPartitionerResult as SstPartitionerResult, DBStatisticsHistogramType,
     DBStatisticsTickerType, DBStatusPtr, DBTableFileCreationReason, DBTitanDBBlobRunMode,
-    DBValueType, IndexType, WriteStallCondition,
+    DBValueType, IndexType, PrepopulateBlockCache, WriteStallCondition,
 };
 pub use logger::Logger;
 pub use merge_operator::MergeOperands;
 pub use metadata::{ColumnFamilyMetaData, LevelMetaData, SstFileMetaData};
-pub use perf_context::{get_perf_level, set_perf_level, IOStatsContext, PerfContext, PerfLevel};
+pub use perf_context::{
+    get_perf_level, set_perf_flags, set_perf_level, IOStatsContext, PerfContext, PerfFlag,
+    PerfFlags, PerfLevel,
+};
 pub use rocksdb::{
     load_latest_options, run_ldb_tool, run_sst_dump_tool, set_external_sst_file_global_seq_no,
     BackupEngine, CFHandle, Cache, DBIterator, DBVector, Env, ExternalSstFileInfo, MapProperty,
@@ -59,9 +65,9 @@ pub use rocksdb::{
 };
 pub use rocksdb_options::{
     BlockBasedOptions, CColumnFamilyDescriptor, ColumnFamilyOptions, CompactOptions,
-    CompactionOptions, DBOptions, EnvOptions, FifoCompactionOptions, HistogramData,
-    IngestExternalFileOptions, LRUCacheOptions, RateLimiter, ReadOptions, RestoreOptions,
-    WriteOptions,
+    CompactionOptions, ConcurrentTaskLimiter, DBOptions, EnvOptions, FifoCompactionOptions,
+    FlushOptions, HistogramData, IngestExternalFileOptions, LRUCacheOptions, MergeInstanceOptions,
+    RateLimiter, ReadOptions, RestoreOptions, Statistics, WriteBufferManager, WriteOptions,
 };
 pub use slice_transform::SliceTransform;
 pub use sst_partitioner::{
@@ -80,6 +86,7 @@ pub use write_batch::{WriteBatch, WriteBatchIter, WriteBatchRef};
 #[allow(deprecated)]
 pub use rocksdb::Kv;
 
+mod checkpoint;
 mod compaction_filter;
 pub mod comparator;
 #[cfg(feature = "encryption")]

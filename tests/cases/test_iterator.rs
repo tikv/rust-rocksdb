@@ -197,12 +197,14 @@ fn test_send_iterator() {
     handle.join().unwrap();
 
     let db = Arc::new(DB::open_default(path.path().to_str().unwrap()).unwrap());
-    db.flush(true).unwrap();
+    let mut fopts = FlushOptions::default();
+    fopts.set_wait(true);
+    db.flush(&fopts).unwrap();
 
     let snap = Snapshot::new(db.clone());
     let iter = snap.iter_opt_clone(ReadOptions::new());
     db.put(b"k1", b"v2").unwrap();
-    db.flush(true).unwrap();
+    db.flush(&fopts).unwrap();
     db.compact_range(None, None);
 
     let (tx, handle) = make_checker(iter);
@@ -288,16 +290,16 @@ fn read_with_upper_bound() {
 fn test_total_order_seek() {
     let path = tempdir_with_prefix("_rust_rocksdb_total_order_seek");
     let mut bbto = BlockBasedOptions::new();
-    bbto.set_bloom_filter(10, false);
+    bbto.set_bloom_filter(10.0, false);
     bbto.set_whole_key_filtering(false);
     let mut cf_opts = ColumnFamilyOptions::new();
     let mut opts = DBOptions::new();
     opts.create_if_missing(true);
     cf_opts.set_block_based_table_factory(&bbto);
     cf_opts
-        .set_prefix_extractor(
+        .set_prefix_extractor::<&str, FixedPrefixTransform>(
             "FixedPrefixTransform",
-            Box::new(FixedPrefixTransform { prefix_len: 2 }),
+            FixedPrefixTransform { prefix_len: 2 },
         )
         .unwrap();
     // also create prefix bloom for memtable
@@ -319,12 +321,14 @@ fn test_total_order_seek() {
     db.put_opt(b"k1-2", b"b", &wopts).unwrap();
     db.put_opt(b"k1-3", b"c", &wopts).unwrap();
     db.put_opt(b"k2-1", b"a", &wopts).unwrap();
-    db.flush(true /* sync */).unwrap(); // flush memtable to sst file.
+    let mut fopts = FlushOptions::default();
+    fopts.set_wait(true);
+    db.flush(&fopts).unwrap(); // flush memtable to sst file.
 
     // sst2
     db.put_opt(b"k2-2", b"b", &wopts).unwrap();
     db.put_opt(b"k2-3", b"c", &wopts).unwrap();
-    db.flush(true /* sync */).unwrap(); // flush memtable to sst file.
+    db.flush(&fopts).unwrap(); // flush memtable to sst file.
 
     // memtable
     db.put_opt(b"k3-1", b"a", &wopts).unwrap();
@@ -376,16 +380,16 @@ fn test_total_order_seek() {
 fn test_fixed_suffix_seek() {
     let path = tempdir_with_prefix("_rust_rocksdb_fixed_suffix_seek");
     let mut bbto = BlockBasedOptions::new();
-    bbto.set_bloom_filter(10, false);
+    bbto.set_bloom_filter(10.0, false);
     bbto.set_whole_key_filtering(false);
     let mut opts = DBOptions::new();
     let mut cf_opts = ColumnFamilyOptions::new();
     opts.create_if_missing(true);
     cf_opts.set_block_based_table_factory(&bbto);
     cf_opts
-        .set_prefix_extractor(
+        .set_prefix_extractor::<&str, FixedSuffixTransform>(
             "FixedSuffixTransform",
-            Box::new(FixedSuffixTransform { suffix_len: 2 }),
+            FixedSuffixTransform { suffix_len: 2 },
         )
         .unwrap();
 
@@ -398,7 +402,9 @@ fn test_fixed_suffix_seek() {
     db.put(b"k-eghe-5", b"a").unwrap();
     db.put(b"k-24yfae-6", b"a").unwrap();
     db.put(b"k-h1fwd-7", b"a").unwrap();
-    db.flush(true).unwrap();
+    let mut fopts = FlushOptions::default();
+    fopts.set_wait(true);
+    db.flush(&fopts).unwrap();
 
     let mut iter = db.iter();
     iter.seek(SeekKey::Key(b"k-24yfae-8")).unwrap();
@@ -428,7 +434,7 @@ fn test_iter_sequence_number() {
         }
     }
     let (tx, rx) = mpsc::sync_channel(8);
-    let filter = Box::new(TestCompactionFilter(tx));
+    let filter = TestCompactionFilter(tx);
 
     let path = tempdir_with_prefix("_rust_rocksdb_sequence_number");
     let mut opts = DBOptions::new();
@@ -436,7 +442,9 @@ fn test_iter_sequence_number() {
     let mut cf_opts = ColumnFamilyOptions::new();
     cf_opts.set_disable_auto_compactions(true);
     cf_opts.set_num_levels(7);
-    cf_opts.set_compaction_filter("test", filter).unwrap();
+    cf_opts
+        .set_compaction_filter::<&str, TestCompactionFilter>("test", filter)
+        .unwrap();
     let db = DB::open_cf(
         opts,
         path.path().to_str().unwrap(),
@@ -445,11 +453,13 @@ fn test_iter_sequence_number() {
     .unwrap();
 
     db.put(b"key1", b"value11").unwrap();
-    db.flush(false).unwrap();
+    let mut fopts = FlushOptions::default();
+    fopts.set_wait(true);
+    db.flush(&fopts).unwrap();
     db.put(b"key1", b"value22").unwrap();
-    db.flush(false).unwrap();
+    db.flush(&fopts).unwrap();
     db.put(b"key2", b"value21").unwrap();
-    db.flush(false).unwrap();
+    db.flush(&fopts).unwrap();
     db.put(b"key2", b"value22").unwrap();
 
     let mut iter = db.iter();

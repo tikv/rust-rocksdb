@@ -11,6 +11,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::io::Write;
+use std::path::Path;
 use std::sync::atomic::*;
 use std::sync::Arc;
 
@@ -39,6 +41,18 @@ impl Drop for EventCounter {
 }
 
 impl EventListener for EventCounter {
+    fn on_memtable_sealed(&self, info: &MemTableInfo) {
+        assert!(!info.cf_name().is_empty());
+        assert_ne!(info.largest_seqno(), 0);
+        assert!(info.earliest_seqno() <= info.largest_seqno());
+    }
+
+    fn on_flush_begin(&self, info: &FlushJobInfo) {
+        assert!(!info.cf_name().is_empty());
+        assert_ne!(info.largest_seqno(), 0);
+        assert!(info.smallest_seqno() <= info.largest_seqno());
+    }
+
     fn on_flush_completed(&self, info: &FlushJobInfo) {
         assert!(!info.cf_name().is_empty());
         assert!(info.file_path().exists());
@@ -131,7 +145,7 @@ struct BackgroundErrorCounter {
 }
 
 impl EventListener for BackgroundErrorCounter {
-    fn on_background_error(&self, _: DBBackgroundErrorReason, _: Result<(), String>) {
+    fn on_background_error(&self, _: DBBackgroundErrorReason, _: MutableStatus) {
         self.background_error.fetch_add(1, Ordering::SeqCst);
     }
 }
@@ -165,7 +179,9 @@ fn test_event_listener_stall_conditions_changed() {
             format!("{:04}", i).as_bytes(),
         )
         .unwrap();
-        db.flush_cf(test_cf, true).unwrap();
+        let mut fopts = FlushOptions::default();
+        fopts.set_wait(true);
+        db.flush_cf(test_cf, &fopts).unwrap();
     }
     let flush_cnt = counter.flush.load(Ordering::SeqCst);
     assert_ne!(flush_cnt, 0);
@@ -198,7 +214,9 @@ fn test_event_listener_basic() {
         )
         .unwrap();
     }
-    db.flush(true).unwrap();
+    let mut fopts = FlushOptions::default();
+    fopts.set_wait(true);
+    db.flush(&fopts).unwrap();
     assert_ne!(counter.flush.load(Ordering::SeqCst), 0);
 
     for i in 1..8000 {
@@ -208,7 +226,7 @@ fn test_event_listener_basic() {
         )
         .unwrap();
     }
-    db.flush(true).unwrap();
+    db.flush(&fopts).unwrap();
     let flush_cnt = counter.flush.load(Ordering::SeqCst);
     assert_ne!(flush_cnt, 0);
     assert_eq!(counter.compaction.load(Ordering::SeqCst), 0);
@@ -257,6 +275,11 @@ fn test_event_listener_ingestion() {
     assert_eq!(db.get(b"k1").unwrap().unwrap(), b"v1");
     assert_eq!(db.get(b"k2").unwrap().unwrap(), b"v2");
     assert_ne!(counter.ingestion.load(Ordering::SeqCst), 0);
+    let files = db.get_live_files();
+    assert!(test_sstfile.exists());
+    assert!(db.delete_file(&files.get_name(0)).is_ok());
+    assert!(db.get(b"k1").unwrap().is_none());
+    assert!(db.get(b"k2").unwrap().is_none());
 }
 
 #[test]
@@ -272,9 +295,69 @@ fn test_event_listener_background_error() {
     opts.create_if_missing(true);
     let db = DB::open(opts, path_str).unwrap();
 
+    let mut fopts = FlushOptions::default();
+    fopts.set_wait(true);
     for i in 1..10 {
         db.put(format!("{:04}", i).as_bytes(), b"value").unwrap();
-        db.flush(false).unwrap();
+        db.flush(&fopts).unwrap();
     }
     assert_eq!(counter.background_error.load(Ordering::SeqCst), 0);
+}
+
+#[derive(Default, Clone)]
+struct BackgroundErrorCleaner(Arc<AtomicUsize>);
+
+impl EventListener for BackgroundErrorCleaner {
+    fn on_background_error(&self, _: DBBackgroundErrorReason, s: MutableStatus) {
+        s.reset();
+        self.0.fetch_add(1, Ordering::SeqCst);
+    }
+}
+
+#[test]
+fn test_event_listener_status_reset() {
+    let path = tempdir_with_prefix("_test_event_listener_status_reset");
+    let path_str = path.path().to_str().unwrap();
+
+    let mut opts = DBOptions::new();
+    let cleaner = BackgroundErrorCleaner::default();
+    let counter = cleaner.0.clone();
+    opts.add_event_listener(cleaner.clone());
+    opts.create_if_missing(true);
+    let db = DB::open(opts, path_str).unwrap();
+
+    for i in 1..5 {
+        db.put(format!("{:04}", i).as_bytes(), b"value").unwrap();
+    }
+    let mut fopts = FlushOptions::default();
+    fopts.set_wait(true);
+    db.flush(&fopts).unwrap();
+
+    disturb_sst_file(&db, path.path());
+
+    for i in 1..5 {
+        db.put(format!("{:04}", i).as_bytes(), b"value").unwrap();
+    }
+    compact_files_to_bottom(&db);
+    db.flush(&fopts).unwrap();
+    assert_eq!(counter.load(Ordering::SeqCst), 1);
+}
+
+fn disturb_sst_file(db: &DB, path: &Path) {
+    let files = db.get_live_files();
+    let mut file_name = files.get_name(0);
+    file_name.remove(0);
+
+    let sst_path = path.to_path_buf().join(file_name);
+
+    let mut file = std::fs::File::create(sst_path).unwrap();
+    file.write(b"surprise").unwrap();
+    file.sync_all().unwrap();
+}
+
+fn compact_files_to_bottom(db: &DB) {
+    let mut opt = CompactionOptions::new();
+    opt.set_max_subcompactions(1);
+    // output_level should be from 0 to 6.
+    db.compact_range(None, None);
 }

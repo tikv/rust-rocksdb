@@ -12,7 +12,7 @@ use std::ptr;
 use std::slice;
 
 pub struct TitanDBOptions {
-    pub inner: *mut DBTitanDBOptions,
+    pub(crate) inner: *mut DBTitanDBOptions,
 }
 
 impl TitanDBOptions {
@@ -155,12 +155,6 @@ impl TitanDBOptions {
         }
     }
 
-    pub fn set_sample_ratio(&mut self, ratio: f64) {
-        unsafe {
-            crocksdb_ffi::ctitandb_options_set_sample_ratio(self.inner, ratio);
-        }
-    }
-
     pub fn set_merge_small_file_threshold(&mut self, size: u64) {
         unsafe {
             crocksdb_ffi::ctitandb_options_set_merge_small_file_threshold(self.inner, size);
@@ -170,12 +164,6 @@ impl TitanDBOptions {
     pub fn set_blob_run_mode(&mut self, t: DBTitanDBBlobRunMode) {
         unsafe {
             crocksdb_ffi::ctitandb_options_set_blob_run_mode(self.inner, t);
-        }
-    }
-
-    pub fn set_gc_merge_rewrite(&mut self, enable: bool) {
-        unsafe {
-            crocksdb_ffi::ctitandb_options_set_gc_merge_rewrite(self.inner, enable);
         }
     }
 }

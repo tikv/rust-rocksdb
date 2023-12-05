@@ -18,9 +18,9 @@ use rand::Rng;
 use rocksdb::{
     CFHandle, ColumnFamilyOptions, CompactOptions, DBBottommostLevelCompaction, DBCompressionType,
     DBEntryType, DBOptions, DBStatisticsHistogramType as HistogramType,
-    DBStatisticsTickerType as TickerType, Range, ReadOptions, SeekKey, TablePropertiesCollector,
-    TablePropertiesCollectorFactory, TitanBlobIndex, TitanDBOptions, UserCollectedProperties,
-    Writable, WriteOptions, DB,
+    DBStatisticsTickerType as TickerType, FlushOptions, Range, ReadOptions, SeekKey, Statistics,
+    TablePropertiesCollector, TablePropertiesCollectorFactory, TitanBlobIndex, TitanDBOptions,
+    UserCollectedProperties, Writable, WriteOptions, DB,
 };
 
 use super::tempdir_with_prefix;
@@ -81,9 +81,9 @@ impl TablePropertiesCollector for TitanCollector {
 #[derive(Default)]
 struct TitanCollectorFactory {}
 
-impl TablePropertiesCollectorFactory for TitanCollectorFactory {
-    fn create_table_properties_collector(&mut self, _: u32) -> Box<dyn TablePropertiesCollector> {
-        Box::new(TitanCollector::default())
+impl TablePropertiesCollectorFactory<TitanCollector> for TitanCollectorFactory {
+    fn create_table_properties_collector(&mut self, _: u32) -> TitanCollector {
+        TitanCollector::default()
     }
 }
 
@@ -122,8 +122,10 @@ fn test_titandb() {
     let mut cf_opts = ColumnFamilyOptions::new();
     let f = TitanCollectorFactory::default();
     cf_opts.set_titandb_options(&tdb_opts);
-    cf_opts.add_table_properties_collector_factory("titan-collector", Box::new(f));
-
+    cf_opts.add_table_properties_collector_factory::<TitanCollector, TitanCollectorFactory>(
+        "titan-collector",
+        f,
+    );
     let mut db = DB::open_cf(
         opts,
         path.path().to_str().unwrap(),
@@ -132,13 +134,15 @@ fn test_titandb() {
     .unwrap();
 
     let n = 10;
+    let mut fopts = FlushOptions::default();
+    fopts.set_wait(true);
     for i in 0..n {
         for size in 0..max_value_size {
             let k = (i * n + size) as u8;
             let v = vec![k; (size + 1) as usize];
             db.put(&[k], &v).unwrap();
         }
-        db.flush(true).unwrap();
+        db.flush(&fopts).unwrap();
     }
 
     let mut cf_opts = ColumnFamilyOptions::new();
@@ -240,7 +244,9 @@ fn generate_file_bottom_level(db: &DB, handle: &CFHandle, range: ops::Range<u32>
         let v = format!("value{}", i);
         db.put_cf(handle, k.as_bytes(), v.as_bytes()).unwrap();
     }
-    db.flush_cf(handle, true).unwrap();
+    let mut fopts = FlushOptions::default();
+    fopts.set_wait(true);
+    db.flush_cf(handle, &fopts).unwrap();
 
     let opts = db.get_options_cf(handle);
     let mut compact_opts = CompactOptions::new();
@@ -263,7 +269,10 @@ fn test_titan_delete_files_in_ranges() {
     opts.set_titandb_options(&tdb_opts);
     let mut cf_opts = ColumnFamilyOptions::new();
     let f = TitanCollectorFactory::default();
-    cf_opts.add_table_properties_collector_factory("titan-collector", Box::new(f));
+    cf_opts.add_table_properties_collector_factory::<TitanCollector, TitanCollectorFactory>(
+        "titan-collector",
+        f,
+    );
     cf_opts.set_titandb_options(&tdb_opts);
 
     let db = DB::open_cf(
@@ -341,7 +350,9 @@ fn test_get_blob_cache_usage() {
     for i in 0..200 {
         db.put(format!("k_{}", i).as_bytes(), b"v").unwrap();
     }
-    db.flush(true).unwrap();
+    let mut fopts = FlushOptions::default();
+    fopts.set_wait(true);
+    db.flush(&fopts).unwrap();
     for i in 0..200 {
         db.get(format!("k_{}", i).as_bytes()).unwrap();
     }
@@ -386,7 +397,8 @@ fn test_titan_statistics() {
     tdb_opts.set_min_blob_size(0);
     let mut opts = DBOptions::new();
     opts.set_titandb_options(&tdb_opts);
-    opts.enable_statistics(true);
+    let statistics = Statistics::new_titan();
+    opts.set_statistics(&statistics);
     opts.create_if_missing(true);
     let mut cf_opts = ColumnFamilyOptions::new();
     cf_opts.set_titandb_options(&tdb_opts);
@@ -402,28 +414,30 @@ fn test_titan_statistics() {
     db.put_opt(b"k0", b"a", &wopts).unwrap();
     db.put_opt(b"k1", b"b", &wopts).unwrap();
     db.put_opt(b"k2", b"c", &wopts).unwrap();
-    db.flush(true /* sync */).unwrap(); // flush memtable to sst file.
+    let mut fopts = FlushOptions::default();
+    fopts.set_wait(true);
+    db.flush(&fopts).unwrap(); // flush memtable to sst file.
     assert_eq!(db.get(b"k0").unwrap().unwrap(), b"a");
     assert_eq!(db.get(b"k1").unwrap().unwrap(), b"b");
     assert_eq!(db.get(b"k2").unwrap().unwrap(), b"c");
 
-    assert!(db.get_statistics_ticker_count(TickerType::TitanNumGet) > 0);
-    assert!(db.get_and_reset_statistics_ticker_count(TickerType::TitanNumGet) > 0);
-    assert_eq!(db.get_statistics_ticker_count(TickerType::TitanNumGet), 0);
-    assert!(db
-        .get_statistics_histogram_string(HistogramType::TitanGetMicros)
+    assert!(statistics.get_ticker_count(TickerType::TitanNumGet) > 0);
+    assert!(statistics.get_and_reset_ticker_count(TickerType::TitanNumGet) > 0);
+    assert_eq!(statistics.get_ticker_count(TickerType::TitanNumGet), 0);
+    assert!(statistics
+        .get_histogram_string(HistogramType::TitanGetMicros)
         .is_some());
-    assert!(db
-        .get_statistics_histogram(HistogramType::TitanGetMicros)
+    assert!(statistics
+        .get_histogram(HistogramType::TitanGetMicros)
         .is_some());
 
-    let get_micros = db
-        .get_statistics_histogram(HistogramType::TitanGetMicros)
+    let get_micros = statistics
+        .get_histogram(HistogramType::TitanGetMicros)
         .unwrap();
     assert!(get_micros.max > 0.0);
-    db.reset_statistics();
-    let get_micros = db
-        .get_statistics_histogram(HistogramType::TitanGetMicros)
+    statistics.reset();
+    let get_micros = statistics
+        .get_histogram(HistogramType::TitanGetMicros)
         .unwrap();
     assert_eq!(
         db.get_property_int("rocksdb.titandb.num-discardable-ratio-le0-file")

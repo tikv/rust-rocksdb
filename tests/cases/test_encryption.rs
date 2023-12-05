@@ -13,7 +13,7 @@
 
 use std::sync::Arc;
 
-use rocksdb::{DBOptions, Env, Writable, DB};
+use rocksdb::{DBOptions, Env, FlushOptions, Writable, DB};
 
 use super::tempdir_with_prefix;
 
@@ -59,7 +59,9 @@ fn test_ctr_encrypted_env_impl(encrypted_env: Arc<Env>) {
     }
 
     // flush to sst file
-    db.flush(true).unwrap();
+    let mut fopts = FlushOptions::default();
+    fopts.set_wait(true);
+    db.flush(&fopts).unwrap();
 
     // check value in db
     for &(ref k, ref v) in &samples {

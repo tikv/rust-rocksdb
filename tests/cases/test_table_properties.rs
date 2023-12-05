@@ -15,8 +15,8 @@ use std::collections::HashMap;
 use std::fmt;
 
 use rocksdb::{
-    ColumnFamilyOptions, DBEntryType, DBOptions, Range, ReadOptions, SeekKey, TableFilter,
-    TableProperties, TablePropertiesCollection, TablePropertiesCollector,
+    ColumnFamilyOptions, DBEntryType, DBOptions, FlushOptions, Range, ReadOptions, SeekKey,
+    TableFilter, TableProperties, TablePropertiesCollection, TablePropertiesCollector,
     TablePropertiesCollectorFactory, UserCollectedProperties, Writable, DB,
 };
 
@@ -132,9 +132,9 @@ impl ExampleFactory {
     }
 }
 
-impl TablePropertiesCollectorFactory for ExampleFactory {
-    fn create_table_properties_collector(&mut self, _: u32) -> Box<dyn TablePropertiesCollector> {
-        Box::new(ExampleCollector::new())
+impl TablePropertiesCollectorFactory<ExampleCollector> for ExampleFactory {
+    fn create_table_properties_collector(&mut self, _: u32) -> ExampleCollector {
+        ExampleCollector::new()
     }
 }
 
@@ -168,7 +168,10 @@ fn test_table_properties_collector_factory() {
     let mut opts = DBOptions::new();
     let mut cf_opts = ColumnFamilyOptions::new();
     opts.create_if_missing(true);
-    cf_opts.add_table_properties_collector_factory("example-collector", Box::new(f));
+    cf_opts.add_table_properties_collector_factory::<ExampleCollector, ExampleFactory>(
+        "example-collector",
+        f,
+    );
 
     let path = tempdir_with_prefix("_rust_rocksdb_collectortest");
     let db = DB::open_cf(
@@ -190,7 +193,9 @@ fn test_table_properties_collector_factory() {
         db.put(k, v).unwrap();
         assert_eq!(v.as_slice(), &*db.get(k).unwrap().unwrap());
     }
-    db.flush(true).unwrap();
+    let mut fopts = FlushOptions::default();
+    fopts.set_wait(true);
+    db.flush(&fopts).unwrap();
     let collection = db.get_properties_of_all_tables().unwrap();
     check_collection(&collection, 1, 4, 4, 0, 0);
 
@@ -199,7 +204,7 @@ fn test_table_properties_collector_factory() {
     for &(ref k, _) in &samples[0..2] {
         db.delete_cf(cf, k).unwrap();
     }
-    db.flush_cf(cf, true).unwrap();
+    db.flush_cf(cf, &fopts).unwrap();
     let collection = db.get_properties_of_all_tables_cf(cf).unwrap();
     check_collection(&collection, 2, 6, 4, 0, 2);
 
@@ -242,8 +247,10 @@ fn test_table_properties_with_table_filter() {
     let mut opts = DBOptions::new();
     let mut cf_opts = ColumnFamilyOptions::new();
     opts.create_if_missing(true);
-    cf_opts.add_table_properties_collector_factory("example-collector", Box::new(f));
-
+    cf_opts.add_table_properties_collector_factory::<ExampleCollector, ExampleFactory>(
+        "example-collector",
+        f,
+    );
     let path = tempdir_with_prefix("_rust_rocksdb_collector_with_table_filter");
     let db = DB::open_cf(
         opts,
@@ -263,7 +270,9 @@ fn test_table_properties_with_table_filter() {
         db.put(k, v).unwrap();
         assert_eq!(v.as_slice(), &*db.get(k).unwrap().unwrap());
     }
-    db.flush(true).unwrap();
+    let mut fopts = FlushOptions::default();
+    fopts.set_wait(true);
+    db.flush(&fopts).unwrap();
 
     // Generate a sst with 2 entries
     let samples = vec![
@@ -274,12 +283,12 @@ fn test_table_properties_with_table_filter() {
         db.put(k, v).unwrap();
         assert_eq!(v.as_slice(), &*db.get(k).unwrap().unwrap());
     }
-    db.flush(true).unwrap();
+    db.flush(&fopts).unwrap();
 
     // Scan with table filter
     let f = BigTableFilter::new(2);
     let mut ropts = ReadOptions::new();
-    ropts.set_table_filter(Box::new(f));
+    ropts.set_table_filter::<BigTableFilter>(f);
     let mut iter = db.iter_opt(ropts);
     let key = b"key";
     let key5 = b"key5";

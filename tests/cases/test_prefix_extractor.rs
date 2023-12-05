@@ -35,6 +35,8 @@ fn test_prefix_extractor_compatibility() {
     let keys = vec![
         b"k1-0", b"k1-1", b"k1-2", b"k1-3", b"k1-4", b"k1-5", b"k1-6", b"k1-7", b"k1-8",
     ];
+    let mut fopts = FlushOptions::default();
+    fopts.set_wait(true);
 
     // create db with no prefix extractor, and insert data
     {
@@ -47,22 +49,22 @@ fn test_prefix_extractor_compatibility() {
         db.put_opt(b"k1-0", b"a", &wopts).unwrap();
         db.put_opt(b"k1-1", b"b", &wopts).unwrap();
         db.put_opt(b"k1-2", b"c", &wopts).unwrap();
-        db.flush(true /* sync */).unwrap(); // flush memtable to sst file.
+        db.flush(&fopts).unwrap(); // flush memtable to sst file.
     }
 
     // open db with prefix extractor, and insert data
     {
         let mut bbto = BlockBasedOptions::new();
-        bbto.set_bloom_filter(10, false);
+        bbto.set_bloom_filter(10.0, false);
         bbto.set_whole_key_filtering(false);
         let mut opts = DBOptions::new();
         let mut cf_opts = ColumnFamilyOptions::new();
         opts.create_if_missing(false);
         cf_opts.set_block_based_table_factory(&bbto);
         cf_opts
-            .set_prefix_extractor(
+            .set_prefix_extractor::<&str, FixedPrefixTransform>(
                 "FixedPrefixTransform",
-                Box::new(FixedPrefixTransform { prefix_len: 2 }),
+                FixedPrefixTransform { prefix_len: 2 },
             )
             .unwrap();
         // also create prefix bloom for memtable
@@ -79,7 +81,7 @@ fn test_prefix_extractor_compatibility() {
         db.put_opt(b"k1-3", b"a", &wopts).unwrap();
         db.put_opt(b"k1-4", b"b", &wopts).unwrap();
         db.put_opt(b"k1-5", b"c", &wopts).unwrap();
-        db.flush(true /* sync */).unwrap(); // flush memtable to sst file.
+        db.flush(&fopts).unwrap(); // flush memtable to sst file.
 
         // memtable with prefix bloom.
         db.put_opt(b"k1-6", b"a", &wopts).unwrap();

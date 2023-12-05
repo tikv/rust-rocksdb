@@ -67,13 +67,10 @@ fn main() {
 
 fn concat_merge(_: &[u8], existing_val: Option<&[u8]>, operands: &mut MergeOperands) -> Vec<u8> {
     let mut result: Vec<u8> = Vec::with_capacity(operands.size_hint().0);
-    match existing_val {
-        Some(v) => {
-            for e in v {
-                result.push(*e)
-            }
+    if let Some(v) = existing_val {
+        for e in v {
+            result.push(*e)
         }
-        None => (),
     }
     for op in operands {
         for e in op {
@@ -114,7 +111,9 @@ fn custom_merge() {
 mod tests {
     use rocksdb::DBCompactionStyle;
     use rocksdb::DBRecoveryMode;
-    use rocksdb::{BlockBasedOptions, ColumnFamilyOptions, DBCompressionType, DBOptions, DB};
+    use rocksdb::{
+        BlockBasedOptions, ColumnFamilyOptions, DBCompressionType, DBOptions, Statistics, DB,
+    };
 
     #[allow(dead_code)]
     fn tuned_for_somebody_elses_disk(
@@ -149,13 +148,13 @@ mod tests {
         opts.set_max_background_jobs(4);
         cf_opts.set_report_bg_io_stats(true);
         opts.set_wal_recovery_mode(DBRecoveryMode::PointInTime);
-        opts.enable_statistics(true);
+        opts.set_statistics(&Statistics::new());
         opts.set_stats_dump_period_sec(60);
         cf_opts.compression_per_level(&per_level_compression);
         blockopts.set_block_size(524288);
         blockopts.set_no_block_cache(true);
         blockopts.set_cache_index_and_filter_blocks(true);
-        blockopts.set_bloom_filter(10, false);
+        blockopts.set_bloom_filter(10.0, false);
         cf_opts.set_block_based_table_factory(blockopts);
         cf_opts.set_disable_auto_compactions(true);
         cf_opts.set_max_compaction_bytes(1073741824 * 25);

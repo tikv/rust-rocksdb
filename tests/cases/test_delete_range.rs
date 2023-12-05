@@ -639,11 +639,11 @@ fn test_delete_range_prefix_bloom_case_1() {
     let mut cf_opts = ColumnFamilyOptions::new();
     // Prefix extractor(trim the timestamp at tail) for write cf.
     cf_opts
-        .set_prefix_extractor(
+        .set_prefix_extractor::<&str, FixedSuffixSliceTransform>(
             "FixedSuffixSliceTransform",
-            Box::new(FixedSuffixSliceTransform::new(3)),
+            FixedSuffixSliceTransform::new(3),
         )
-        .unwrap_or_else(|err| panic!(format!("{:?}", err)));
+        .unwrap_or_else(|err| panic!("{:?}", err));
     // Create prefix bloom filter for memtable.
     cf_opts.set_memtable_prefix_bloom_size_ratio(0.1 as f64);
     let cf = "default";
@@ -714,11 +714,11 @@ fn test_delete_range_prefix_bloom_case_2() {
     let mut cf_opts = ColumnFamilyOptions::new();
     // Prefix extractor(trim the timestamp at tail) for write cf.
     cf_opts
-        .set_prefix_extractor(
+        .set_prefix_extractor::<&str, FixedSuffixSliceTransform>(
             "FixedSuffixSliceTransform",
-            Box::new(FixedSuffixSliceTransform::new(3)),
+            FixedSuffixSliceTransform::new(3),
         )
-        .unwrap_or_else(|err| panic!(format!("{:?}", err)));
+        .unwrap_or_else(|err| panic!("{:?}", err));
     // Create prefix bloom filter for memtable.
     cf_opts.set_memtable_prefix_bloom_size_ratio(0.1 as f64);
     let cf = "default";
@@ -770,11 +770,11 @@ fn test_delete_range_prefix_bloom_case_2() {
     let mut cf_opts = ColumnFamilyOptions::new();
     // Prefix extractor(trim the timestamp at tail) for write cf.
     cf_opts
-        .set_prefix_extractor(
+        .set_prefix_extractor::<&str, FixedSuffixSliceTransform>(
             "FixedSuffixSliceTransform",
-            Box::new(FixedSuffixSliceTransform::new(3)),
+            FixedSuffixSliceTransform::new(3),
         )
-        .unwrap_or_else(|err| panic!(format!("{:?}", err)));
+        .unwrap_or_else(|err| panic!("{:?}", err));
     // Create prefix bloom filter for memtable.
     cf_opts.set_memtable_prefix_bloom_size_ratio(0.1 as f64);
     let cf = "default";
@@ -807,11 +807,11 @@ fn test_delete_range_prefix_bloom_case_3() {
     let mut cf_opts = ColumnFamilyOptions::new();
     // Prefix extractor(trim the timestamp at tail) for write cf.
     cf_opts
-        .set_prefix_extractor(
+        .set_prefix_extractor::<&str, FixedSuffixSliceTransform>(
             "FixedSuffixSliceTransform",
-            Box::new(FixedSuffixSliceTransform::new(3)),
+            FixedSuffixSliceTransform::new(3),
         )
-        .unwrap_or_else(|err| panic!(format!("{:?}", err)));
+        .unwrap_or_else(|err| panic!("{:?}", err));
     // Create prefix bloom filter for memtable.
     cf_opts.set_memtable_prefix_bloom_size_ratio(0.1 as f64);
     let cf = "default";
@@ -852,11 +852,11 @@ fn test_delete_range_prefix_bloom_case_3() {
     let mut cf_opts = ColumnFamilyOptions::new();
     // Prefix extractor(trim the timestamp at tail) for write cf.
     cf_opts
-        .set_prefix_extractor(
+        .set_prefix_extractor::<&str, FixedSuffixSliceTransform>(
             "FixedSuffixSliceTransform",
-            Box::new(FixedSuffixSliceTransform::new(3)),
+            FixedSuffixSliceTransform::new(3),
         )
-        .unwrap_or_else(|err| panic!(format!("{:?}", err)));
+        .unwrap_or_else(|err| panic!("{:?}", err));
     // Create prefix bloom filter for memtable.
     cf_opts.set_memtable_prefix_bloom_size_ratio(0.1 as f64);
     let cf = "default";
@@ -903,11 +903,11 @@ fn test_delete_range_prefix_bloom_case_4() {
     let mut cf_opts = ColumnFamilyOptions::new();
     // Prefix extractor(trim the timestamp at tail) for write cf.
     cf_opts
-        .set_prefix_extractor(
+        .set_prefix_extractor::<&str, FixedSuffixSliceTransform>(
             "FixedSuffixSliceTransform",
-            Box::new(FixedSuffixSliceTransform::new(3)),
+            FixedSuffixSliceTransform::new(3),
         )
-        .unwrap_or_else(|err| panic!(format!("{:?}", err)));
+        .unwrap_or_else(|err| panic!("{:?}", err));
     // Create prefix bloom filter for memtable.
     cf_opts.set_memtable_prefix_bloom_size_ratio(0.1 as f64);
     let cf = "default";
@@ -948,11 +948,11 @@ fn test_delete_range_prefix_bloom_case_4() {
     let mut cf_opts = ColumnFamilyOptions::new();
     // Prefix extractor(trim the timestamp at tail) for write cf.
     cf_opts
-        .set_prefix_extractor(
+        .set_prefix_extractor::<&str, FixedSuffixSliceTransform>(
             "FixedSuffixSliceTransform",
-            Box::new(FixedSuffixSliceTransform::new(3)),
+            FixedSuffixSliceTransform::new(3),
         )
-        .unwrap_or_else(|err| panic!(format!("{:?}", err)));
+        .unwrap_or_else(|err| panic!("{:?}", err));
     // Create prefix bloom filter for memtable.
     cf_opts.set_memtable_prefix_bloom_size_ratio(0.1 as f64);
     let cf = "default";
@@ -1000,11 +1000,11 @@ fn test_delete_range_prefix_bloom_case_5() {
     let mut cf_opts = ColumnFamilyOptions::new();
     // Prefix extractor(trim the timestamp at tail) for write cf.
     cf_opts
-        .set_prefix_extractor(
+        .set_prefix_extractor::<&str, FixedSuffixSliceTransform>(
             "FixedSuffixSliceTransform",
-            Box::new(FixedSuffixSliceTransform::new(3)),
+            FixedSuffixSliceTransform::new(3),
         )
-        .unwrap_or_else(|err| panic!(format!("{:?}", err)));
+        .unwrap_or_else(|err| panic!("{:?}", err));
     // Create prefix bloom filter for memtable.
     cf_opts.set_memtable_prefix_bloom_size_ratio(0.1 as f64);
     let cf = "default";
@@ -1043,11 +1043,11 @@ fn test_delete_range_prefix_bloom_case_5() {
     let mut cf_opts = ColumnFamilyOptions::new();
     // Prefix extractor(trim the timestamp at tail) for write cf.
     cf_opts
-        .set_prefix_extractor(
+        .set_prefix_extractor::<&str, FixedSuffixSliceTransform>(
             "FixedSuffixSliceTransform",
-            Box::new(FixedSuffixSliceTransform::new(3)),
+            FixedSuffixSliceTransform::new(3),
         )
-        .unwrap_or_else(|err| panic!(format!("{:?}", err)));
+        .unwrap_or_else(|err| panic!("{:?}", err));
     // Create prefix bloom filter for memtable.
     cf_opts.set_memtable_prefix_bloom_size_ratio(0.1 as f64);
     let db2 = DB::open_cf(opts, path_str, vec![(cf, cf_opts)]).unwrap();
@@ -1092,11 +1092,11 @@ fn test_delete_range_prefix_bloom_case_6() {
     let mut cf_opts = ColumnFamilyOptions::new();
     // Prefix extractor(trim the timestamp at tail) for write cf.
     cf_opts
-        .set_prefix_extractor(
+        .set_prefix_extractor::<&str, FixedSuffixSliceTransform>(
             "FixedSuffixSliceTransform",
-            Box::new(FixedSuffixSliceTransform::new(3)),
+            FixedSuffixSliceTransform::new(3),
         )
-        .unwrap_or_else(|err| panic!(format!("{:?}", err)));
+        .unwrap_or_else(|err| panic!("{:?}", err));
     // Create prefix bloom filter for memtable.
     cf_opts.set_memtable_prefix_bloom_size_ratio(0.1 as f64);
     let cf = "default";
@@ -1137,11 +1137,11 @@ fn test_delete_range_prefix_bloom_case_6() {
     let mut cf_opts = ColumnFamilyOptions::new();
     // Prefix extractor(trim the timestamp at tail) for write cf.
     cf_opts
-        .set_prefix_extractor(
+        .set_prefix_extractor::<&str, FixedSuffixSliceTransform>(
             "FixedSuffixSliceTransform",
-            Box::new(FixedSuffixSliceTransform::new(3)),
+            FixedSuffixSliceTransform::new(3),
         )
-        .unwrap_or_else(|err| panic!(format!("{:?}", err)));
+        .unwrap_or_else(|err| panic!("{:?}", err));
     // Create prefix bloom filter for memtable.
     cf_opts.set_memtable_prefix_bloom_size_ratio(0.1 as f64);
     let db2 = DB::open_cf(opts, path_str, vec![(cf, cf_opts)]).unwrap();
@@ -1210,11 +1210,11 @@ fn test_delete_range_prefix_bloom_compact_case() {
     let mut cf_opts = ColumnFamilyOptions::new();
     // Prefix extractor(trim the timestamp at tail) for write cf.
     cf_opts
-        .set_prefix_extractor(
+        .set_prefix_extractor::<&str, FixedSuffixSliceTransform>(
             "FixedSuffixSliceTransform",
-            Box::new(FixedSuffixSliceTransform::new(3)),
+            FixedSuffixSliceTransform::new(3),
         )
-        .unwrap_or_else(|err| panic!(format!("{:?}", err)));
+        .unwrap_or_else(|err| panic!("{:?}", err));
     // Create prefix bloom filter for memtable.
     cf_opts.set_memtable_prefix_bloom_size_ratio(0.1 as f64);
     let cf = "default";
@@ -1255,11 +1255,11 @@ fn test_delete_range_prefix_bloom_compact_case() {
     let mut cf_opts = ColumnFamilyOptions::new();
     // Prefix extractor(trim the timestamp at tail) for write cf.
     cf_opts
-        .set_prefix_extractor(
+        .set_prefix_extractor::<&str, FixedSuffixSliceTransform>(
             "FixedSuffixSliceTransform",
-            Box::new(FixedSuffixSliceTransform::new(3)),
+            FixedSuffixSliceTransform::new(3),
         )
-        .unwrap_or_else(|err| panic!(format!("{:?}", err)));
+        .unwrap_or_else(|err| panic!("{:?}", err));
     // Create prefix bloom filter for memtable.
     cf_opts.set_memtable_prefix_bloom_size_ratio(0.1 as f64);
     let db2 = DB::open_cf(opts, path_str, vec![(cf, cf_opts)]).unwrap();
@@ -1368,7 +1368,9 @@ fn test_delete_range_sst_files() {
         db.put(k, v).unwrap();
         assert_eq!(v, &*db.get(k).unwrap().unwrap());
     }
-    db.flush(true).unwrap();
+    let mut fopts = FlushOptions::default();
+    fopts.set_wait(true);
+    db.flush(&fopts).unwrap();
 
     let samples_b = vec![
         (b"key3", b"value5"),
@@ -1380,7 +1382,7 @@ fn test_delete_range_sst_files() {
         db.put(k, v).unwrap();
         assert_eq!(v, &*db.get(k).unwrap().unwrap());
     }
-    db.flush(true).unwrap();
+    db.flush(&fopts).unwrap();
     assert_eq!(db.get(b"key3").unwrap().unwrap(), b"value5");
 
     db.delete_range(b"key1", b"key1").unwrap();

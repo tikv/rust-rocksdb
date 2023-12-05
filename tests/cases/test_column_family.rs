@@ -13,7 +13,7 @@
 // limitations under the License.
 //
 
-use rocksdb::{ColumnFamilyOptions, DBOptions, MergeOperands, Writable, DB};
+use rocksdb::{ColumnFamilyOptions, DBOptions, Env, MergeOperands, Writable, DB};
 
 use super::tempdir_with_prefix;
 
@@ -48,10 +48,7 @@ pub fn test_column_family() {
                         specifying column
             families"
             ),
-            Err(e) => assert!(e.starts_with(
-                "Invalid argument: You have to open \
-                 all column families."
-            )),
+            Err(e) => assert!(e.starts_with("Invalid argument: Column families not opened")),
         }
     }
 
@@ -158,4 +155,24 @@ pub fn test_column_family_option_use_doubly_skiplist() {
     cf_opts.set_doubly_skiplist();
     let memtable_name = cf_opts.get_memtable_factory_name();
     assert_eq!("DoublySkipListFactory", memtable_name.unwrap());
+}
+
+#[test]
+fn test_db_lock() {
+    let temp = tempdir_with_prefix("_rust_rocksdb_test_open_for_read_only");
+    let path = temp.path().to_str().unwrap();
+    let env = Env::default();
+    assert!(env
+        .is_db_locked(temp.path().join("non-exist").to_str().unwrap())
+        .is_err());
+
+    let mut opts = DBOptions::new();
+    opts.create_if_missing(true);
+    let db = DB::open_default(path).unwrap();
+    assert_eq!(env.is_db_locked(path), Ok(true));
+    drop(db);
+    assert_eq!(env.is_db_locked(path), Ok(false));
+
+    let _r1 = DB::open_for_read_only(opts.clone(), path, false).unwrap();
+    assert_eq!(env.is_db_locked(path), Ok(false));
 }

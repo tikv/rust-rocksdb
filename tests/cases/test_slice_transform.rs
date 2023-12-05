@@ -39,14 +39,17 @@ fn test_slice_transform() {
     let mut cf_opts = ColumnFamilyOptions::new();
 
     let mut block_opts = BlockBasedOptions::new();
-    block_opts.set_bloom_filter(10, false);
+    block_opts.set_bloom_filter(10.0, false);
     block_opts.set_whole_key_filtering(false);
 
     cf_opts.set_block_based_table_factory(&block_opts);
     cf_opts.set_memtable_prefix_bloom_size_ratio(0.25);
 
     cf_opts
-        .set_prefix_extractor("test", Box::new(FixedPostfixTransform { postfix_len: 2 }))
+        .set_prefix_extractor::<&str, FixedPostfixTransform>(
+            "test",
+            FixedPostfixTransform { postfix_len: 2 },
+        )
         .unwrap();
     opts.create_if_missing(true);
 

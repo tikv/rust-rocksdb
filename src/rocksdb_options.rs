@@ -19,31 +19,32 @@ use compaction_filter::{
 };
 use comparator::{self, compare_callback, ComparatorCallback};
 use crocksdb_ffi::{
-    self, DBBlockBasedTableOptions, DBBottommostLevelCompaction, DBCompactOptions,
-    DBCompactionOptions, DBCompressionType, DBFifoCompactionOptions, DBFlushOptions,
-    DBInfoLogLevel, DBInstance, DBLRUCacheOptions, DBRateLimiter, DBRateLimiterMode, DBReadOptions,
-    DBRecoveryMode, DBRestoreOptions, DBSnapshot, DBStatisticsHistogramType,
-    DBStatisticsTickerType, DBTitanDBOptions, DBTitanReadOptions, DBWriteOptions, IndexType,
-    Options,
+    self, ChecksumType, DBBlockBasedTableOptions, DBBottommostLevelCompaction, DBCompactOptions,
+    DBCompactionOptions, DBCompressionType, DBConcurrentTaskLimiter, DBFifoCompactionOptions,
+    DBFlushOptions, DBInfoLogLevel, DBInstance, DBLRUCacheOptions, DBRateLimiter,
+    DBRateLimiterMode, DBReadOptions, DBRecoveryMode, DBRestoreOptions, DBSnapshot, DBStatistics,
+    DBStatisticsHistogramType, DBStatisticsTickerType, DBTitanDBOptions, DBTitanReadOptions,
+    DBWriteBufferManager, DBWriteOptions, IndexType, Options, PrepopulateBlockCache,
 };
 use event_listener::{new_event_listener, EventListener};
 use libc::{self, c_double, c_int, c_uchar, c_void, size_t};
 use logger::{new_logger, Logger};
 use merge_operator::MergeFn;
 use merge_operator::{self, full_merge_callback, partial_merge_callback, MergeOperatorCallback};
-use rocksdb::Env;
-use rocksdb::{Cache, MemoryAllocator};
+use rocksdb::{Cache, Env, MemoryAllocator};
 use slice_transform::{new_slice_transform, SliceTransform};
 use sst_partitioner::{new_sst_partitioner_factory, SstPartitionerFactory};
 use std::ffi::{CStr, CString};
 use std::path::Path;
 use std::ptr;
 use std::sync::Arc;
+use std::time::{SystemTime, UNIX_EPOCH};
 use table_filter::{destroy_table_filter, table_filter, TableFilter};
 use table_properties_collector_factory::{
     new_table_properties_collector_factory, TablePropertiesCollectorFactory,
 };
 use titan::TitanDBOptions;
+use TablePropertiesCollector;
 
 #[derive(Default, Debug)]
 pub struct HistogramData {
@@ -115,7 +116,7 @@ impl BlockBasedOptions {
         }
     }
 
-    pub fn set_bloom_filter(&mut self, bits_per_key: c_int, block_based: bool) {
+    pub fn set_bloom_filter(&mut self, bits_per_key: c_double, block_based: bool) {
         unsafe {
             let bloom = if block_based {
                 crocksdb_ffi::crocksdb_filterpolicy_create_bloom(bits_per_key)
@@ -124,6 +125,22 @@ impl BlockBasedOptions {
             };
 
             crocksdb_ffi::crocksdb_block_based_options_set_filter_policy(self.inner, bloom);
+        }
+    }
+
+    pub fn set_ribbon_filter(&mut self, bits_per_key: f64, bloom_before_level: i32) {
+        unsafe {
+            let filter =
+                crocksdb_ffi::crocksdb_filterpolicy_create_ribbon(bits_per_key, bloom_before_level);
+            crocksdb_ffi::crocksdb_block_based_options_set_filter_policy(self.inner, filter);
+        }
+    }
+
+    pub fn set_optimize_filters_for_memory(&mut self, v: bool) {
+        unsafe {
+            crocksdb_ffi::crocksdb_block_based_options_set_optimize_filters_for_memory(
+                self.inner, v as u8,
+            );
         }
     }
 
@@ -188,6 +205,24 @@ impl BlockBasedOptions {
             )
         }
     }
+
+    pub fn set_format_version(&mut self, v: u32) {
+        unsafe {
+            crocksdb_ffi::crocksdb_block_based_options_set_format_version(self.inner, v as c_int);
+        }
+    }
+
+    pub fn set_prepopulate_block_cache(&mut self, v: PrepopulateBlockCache) {
+        unsafe {
+            crocksdb_ffi::crocksdb_block_based_options_set_prepopulate_block_cache(self.inner, v);
+        }
+    }
+
+    pub fn set_checksum(&mut self, v: ChecksumType) {
+        unsafe {
+            crocksdb_ffi::crocksdb_block_based_options_set_checksum(self.inner, v);
+        }
+    }
 }
 
 pub struct RateLimiter {
@@ -234,6 +269,9 @@ impl RateLimiter {
         fairness: i32,
         mode: DBRateLimiterMode,
         auto_tuned: bool,
+        tune_per_secs: i32,
+        smooth_window_size: usize,
+        recent_window_size: usize,
     ) -> RateLimiter {
         let limiter = unsafe {
             crocksdb_ffi::crocksdb_writeampbasedratelimiter_create_with_auto_tuned(
@@ -242,6 +280,9 @@ impl RateLimiter {
                 fairness,
                 mode,
                 auto_tuned,
+                tune_per_secs,
+                smooth_window_size,
+                recent_window_size,
             )
         };
         RateLimiter { inner: limiter }
@@ -250,6 +291,12 @@ impl RateLimiter {
     pub fn set_bytes_per_second(&self, bytes_per_sec: i64) {
         unsafe {
             crocksdb_ffi::crocksdb_ratelimiter_set_bytes_per_second(self.inner, bytes_per_sec);
+        }
+    }
+
+    pub fn set_auto_tuned(&self, auto_tuned: bool) {
+        unsafe {
+            crocksdb_ffi::crocksdb_ratelimiter_set_auto_tuned(self.inner, auto_tuned);
         }
     }
 
@@ -274,6 +321,10 @@ impl RateLimiter {
     pub fn get_total_requests(&self, pri: c_uchar) -> i64 {
         unsafe { crocksdb_ffi::crocksdb_ratelimiter_get_total_requests(self.inner, pri) }
     }
+
+    pub fn get_auto_tuned(&self) -> bool {
+        unsafe { crocksdb_ffi::crocksdb_ratelimiter_get_auto_tuned(self.inner) }
+    }
 }
 
 impl Drop for RateLimiter {
@@ -282,8 +333,197 @@ impl Drop for RateLimiter {
     }
 }
 
-const DEFAULT_REFILL_PERIOD_US: i64 = 100 * 1000; // 100ms should work for most cases
-const DEFAULT_FAIRNESS: i32 = 10; // should be good by leaving it at default 10
+pub struct Statistics {
+    pub(crate) inner: *mut DBStatistics,
+}
+
+unsafe impl Send for Statistics {}
+unsafe impl Sync for Statistics {}
+
+impl Statistics {
+    pub fn new() -> Self {
+        unsafe {
+            Self {
+                inner: crocksdb_ffi::crocksdb_statistics_create(),
+            }
+        }
+    }
+
+    pub fn new_titan() -> Self {
+        unsafe {
+            Self {
+                inner: crocksdb_ffi::crocksdb_titan_statistics_create(),
+            }
+        }
+    }
+
+    pub fn new_empty() -> Self {
+        unsafe {
+            Self {
+                inner: crocksdb_ffi::crocksdb_empty_statistics_create(),
+            }
+        }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        unsafe { crocksdb_ffi::crocksdb_statistics_is_empty(self.inner) }
+    }
+
+    pub fn to_string(&self) -> Option<String> {
+        unsafe {
+            let value = crocksdb_ffi::crocksdb_statistics_to_string(self.inner);
+
+            if value.is_null() {
+                return None;
+            }
+
+            // Must valid UTF-8 format.
+            let s = CStr::from_ptr(value).to_str().unwrap().to_owned();
+            libc::free(value as *mut c_void);
+            Some(s)
+        }
+    }
+
+    pub fn reset(&self) {
+        unsafe {
+            crocksdb_ffi::crocksdb_statistics_reset(self.inner);
+        }
+    }
+
+    pub fn get_ticker_count(&self, ticker_type: DBStatisticsTickerType) -> u64 {
+        unsafe { crocksdb_ffi::crocksdb_statistics_get_ticker_count(self.inner, ticker_type) }
+    }
+
+    pub fn get_and_reset_ticker_count(&self, ticker_type: DBStatisticsTickerType) -> u64 {
+        unsafe {
+            crocksdb_ffi::crocksdb_statistics_get_and_reset_ticker_count(self.inner, ticker_type)
+        }
+    }
+
+    pub fn get_histogram_string(&self, hist_type: DBStatisticsHistogramType) -> Option<String> {
+        unsafe {
+            let value =
+                crocksdb_ffi::crocksdb_statistics_get_histogram_string(self.inner, hist_type);
+
+            if value.is_null() {
+                return None;
+            }
+
+            let s = CStr::from_ptr(value).to_str().unwrap().to_owned();
+            libc::free(value as *mut c_void);
+            Some(s)
+        }
+    }
+
+    pub fn get_histogram(&self, hist_type: DBStatisticsHistogramType) -> Option<HistogramData> {
+        unsafe {
+            let mut data = HistogramData::default();
+            let ret = crocksdb_ffi::crocksdb_statistics_get_histogram(
+                self.inner,
+                hist_type,
+                &mut data.median,
+                &mut data.percentile95,
+                &mut data.percentile99,
+                &mut data.average,
+                &mut data.standard_deviation,
+                &mut data.max,
+            );
+            if !ret {
+                return None;
+            }
+            Some(data)
+        }
+    }
+}
+
+impl Drop for Statistics {
+    fn drop(&mut self) {
+        unsafe {
+            crocksdb_ffi::crocksdb_statistics_destroy(self.inner);
+        }
+    }
+}
+
+pub struct WriteBufferManager {
+    pub(crate) inner: *mut DBWriteBufferManager,
+}
+
+unsafe impl Send for WriteBufferManager {}
+unsafe impl Sync for WriteBufferManager {}
+
+impl WriteBufferManager {
+    pub fn new(flush_size: usize, stall_ratio: f32, flush_oldest_first: bool) -> Self {
+        unsafe {
+            Self {
+                inner: crocksdb_ffi::crocksdb_write_buffer_manager_create(
+                    flush_size,
+                    stall_ratio,
+                    flush_oldest_first,
+                ),
+            }
+        }
+    }
+
+    pub fn set_flush_size(&self, s: usize) {
+        unsafe {
+            crocksdb_ffi::crocksdb_write_buffer_manager_set_flush_size(self.inner, s);
+        }
+    }
+
+    pub fn flush_size(&self) -> usize {
+        unsafe { crocksdb_ffi::crocksdb_write_buffer_manager_flush_size(self.inner) }
+    }
+
+    pub fn set_flush_oldest_first(&self, f: bool) {
+        unsafe {
+            crocksdb_ffi::crocksdb_write_buffer_manager_set_flush_oldest_first(self.inner, f);
+        }
+    }
+
+    pub fn memory_usage(&self) -> usize {
+        unsafe { crocksdb_ffi::crocksdb_write_buffer_manager_memory_usage(self.inner) }
+    }
+}
+
+impl Drop for WriteBufferManager {
+    fn drop(&mut self) {
+        unsafe {
+            crocksdb_ffi::crocksdb_write_buffer_manager_destroy(self.inner);
+        }
+    }
+}
+
+pub struct ConcurrentTaskLimiter {
+    pub(crate) inner: *mut DBConcurrentTaskLimiter,
+}
+
+unsafe impl Send for ConcurrentTaskLimiter {}
+unsafe impl Sync for ConcurrentTaskLimiter {}
+
+impl ConcurrentTaskLimiter {
+    pub fn new(name: &str, limit: u32) -> Self {
+        let name = CString::new(name.as_bytes()).unwrap();
+        unsafe {
+            Self {
+                inner: crocksdb_ffi::crocksdb_concurrent_task_limiter_create(name.as_ptr(), limit),
+            }
+        }
+    }
+
+    pub fn set_limit(&self, limit: u32) {
+        unsafe {
+            crocksdb_ffi::crocksdb_concurrent_task_limiter_set_limit(self.inner, limit);
+        }
+    }
+}
+
+impl Drop for ConcurrentTaskLimiter {
+    fn drop(&mut self) {
+        unsafe {
+            crocksdb_ffi::crocksdb_concurrent_task_limiter_destroy(self.inner);
+        }
+    }
+}
 
 /// The UnsafeSnap must be destroyed by db, it maybe be leaked
 /// if not using it properly, hence named as unsafe.
@@ -303,6 +543,11 @@ impl UnsafeSnap {
 
     pub unsafe fn get_inner(&self) -> *const DBSnapshot {
         self.inner
+    }
+
+    /// Get the snapshot's sequence number.
+    pub unsafe fn get_sequence_number(&self) -> u64 {
+        crocksdb_ffi::crocksdb_get_snapshot_sequence_number(self.get_inner())
     }
 }
 
@@ -355,9 +600,21 @@ impl ReadOptions {
         }
     }
 
-    pub fn fill_cache(&mut self, v: bool) {
+    pub fn set_fill_cache(&mut self, v: bool) {
         unsafe {
             crocksdb_ffi::crocksdb_readoptions_set_fill_cache(self.inner, v);
+        }
+    }
+
+    pub fn set_auto_prefix_mode(&mut self, v: bool) {
+        unsafe {
+            crocksdb_ffi::crocksdb_readoptions_set_auto_prefix_mode(self.inner, v);
+        }
+    }
+
+    pub fn set_adaptive_readahead(&mut self, v: bool) {
+        unsafe {
+            crocksdb_ffi::crocksdb_readoptions_set_adaptive_readahead(self.inner, v);
         }
     }
 
@@ -474,22 +731,22 @@ impl ReadOptions {
         }
     }
 
-    pub fn set_table_filter(&mut self, filter: Box<dyn TableFilter>) {
+    pub fn set_table_filter<T: TableFilter>(&mut self, filter: T) {
         unsafe {
             let f = Box::into_raw(Box::new(filter));
             let f = f as *mut c_void;
             crocksdb_ffi::crocksdb_readoptions_set_table_filter(
                 self.inner,
                 f,
-                table_filter,
-                destroy_table_filter,
+                table_filter::<T>,
+                destroy_table_filter::<T>,
             );
         }
     }
 }
 
 pub struct WriteOptions {
-    pub inner: *mut DBWriteOptions,
+    pub(crate) inner: *mut DBWriteOptions,
 }
 
 impl Drop for WriteOptions {
@@ -549,10 +806,16 @@ impl WriteOptions {
             crocksdb_ffi::crocksdb_writeoptions_set_low_pri(self.inner, v);
         }
     }
+
+    pub fn set_memtable_insert_hint_per_batch(&mut self, v: bool) {
+        unsafe {
+            crocksdb_ffi::crocksdb_writeoptions_set_memtable_insert_hint_per_batch(self.inner, v);
+        }
+    }
 }
 
 pub struct CompactOptions {
-    pub inner: *mut DBCompactOptions,
+    pub(crate) inner: *mut DBCompactOptions,
 }
 
 impl CompactOptions {
@@ -610,7 +873,7 @@ impl Drop for CompactOptions {
 }
 
 pub struct CompactionOptions {
-    pub inner: *mut DBCompactionOptions,
+    pub(crate) inner: *mut DBCompactionOptions,
 }
 
 impl CompactionOptions {
@@ -650,9 +913,9 @@ impl Drop for CompactionOptions {
 }
 
 pub struct DBOptions {
-    pub inner: *mut Options,
+    pub(crate) inner: *mut Options,
     env: Option<Arc<Env>>,
-    pub titan_inner: *mut DBTitanDBOptions,
+    pub(crate) titan_inner: *mut DBTitanDBOptions,
 }
 
 impl Drop for DBOptions {
@@ -709,7 +972,7 @@ impl DBOptions {
 
     pub unsafe fn from_raw(inner: *mut Options) -> DBOptions {
         DBOptions {
-            inner: inner,
+            inner,
             env: None,
             titan_inner: ptr::null_mut::<DBTitanDBOptions>(),
         }
@@ -821,7 +1084,7 @@ impl DBOptions {
     }
 
     pub fn get_max_background_jobs(&self) -> i32 {
-        unsafe { crocksdb_ffi::crocksdb_options_get_max_background_jobs(self.inner) as i32 }
+        unsafe { crocksdb_ffi::crocksdb_options_get_max_background_jobs(self.inner) }
     }
 
     pub fn set_max_background_compactions(&mut self, n: c_int) {
@@ -831,7 +1094,17 @@ impl DBOptions {
     }
 
     pub fn get_max_background_compactions(&self) -> i32 {
-        unsafe { crocksdb_ffi::crocksdb_options_get_max_background_compactions(self.inner) as i32 }
+        unsafe { crocksdb_ffi::crocksdb_options_get_max_background_compactions(self.inner) }
+    }
+
+    pub fn set_base_background_compactions(&mut self, n: c_int) {
+        unsafe {
+            crocksdb_ffi::crocksdb_options_set_base_background_compactions(self.inner, n);
+        }
+    }
+
+    pub fn get_base_background_compactions(&self) -> i32 {
+        unsafe { crocksdb_ffi::crocksdb_options_get_base_background_compactions(self.inner) }
     }
 
     pub fn set_max_background_flushes(&mut self, n: c_int) {
@@ -841,7 +1114,7 @@ impl DBOptions {
     }
 
     pub fn get_max_background_flushes(&self) -> i32 {
-        unsafe { crocksdb_ffi::crocksdb_options_get_max_background_flushes(self.inner) as i32 }
+        unsafe { crocksdb_ffi::crocksdb_options_get_max_background_flushes(self.inner) }
     }
 
     pub fn set_max_subcompactions(&mut self, n: u32) {
@@ -868,96 +1141,27 @@ impl DBOptions {
         }
     }
 
-    pub fn enable_statistics(&mut self, v: bool) {
+    pub fn set_write_buffer_manager(&mut self, wbm: &WriteBufferManager) {
         unsafe {
-            crocksdb_ffi::crocksdb_options_enable_statistics(self.inner, v);
+            crocksdb_ffi::crocksdb_options_set_write_buffer_manager(self.inner, wbm.inner);
         }
     }
 
-    pub fn get_statistics_ticker_count(&self, ticker_type: DBStatisticsTickerType) -> u64 {
+    pub fn set_statistics(&mut self, s: &Statistics) {
         unsafe {
-            crocksdb_ffi::crocksdb_options_statistics_get_ticker_count(self.inner, ticker_type)
-        }
-    }
-
-    pub fn get_and_reset_statistics_ticker_count(
-        &self,
-        ticker_type: DBStatisticsTickerType,
-    ) -> u64 {
-        unsafe {
-            crocksdb_ffi::crocksdb_options_statistics_get_and_reset_ticker_count(
-                self.inner,
-                ticker_type,
-            )
-        }
-    }
-
-    pub fn get_statistics_histogram(
-        &self,
-        hist_type: DBStatisticsHistogramType,
-    ) -> Option<HistogramData> {
-        unsafe {
-            let mut data = HistogramData::default();
-            let ret = crocksdb_ffi::crocksdb_options_statistics_get_histogram(
-                self.inner,
-                hist_type,
-                &mut data.median,
-                &mut data.percentile95,
-                &mut data.percentile99,
-                &mut data.average,
-                &mut data.standard_deviation,
-                &mut data.max,
-            );
-            if !ret {
-                return None;
-            }
-            Some(data)
-        }
-    }
-
-    pub fn get_statistics_histogram_string(
-        &self,
-        hist_type: DBStatisticsHistogramType,
-    ) -> Option<String> {
-        unsafe {
-            let value = crocksdb_ffi::crocksdb_options_statistics_get_histogram_string(
-                self.inner, hist_type,
-            );
-
-            if value.is_null() {
-                return None;
-            }
-
-            let s = CStr::from_ptr(value).to_str().unwrap().to_owned();
-            libc::free(value as *mut c_void);
-            Some(s)
-        }
-    }
-
-    pub fn get_statistics(&self) -> Option<String> {
-        unsafe {
-            let value = crocksdb_ffi::crocksdb_options_statistics_get_string(self.inner);
-
-            if value.is_null() {
-                return None;
-            }
-
-            // Must valid UTF-8 format.
-            let s = CStr::from_ptr(value).to_str().unwrap().to_owned();
-            libc::free(value as *mut c_void);
-            Some(s)
-        }
-    }
-
-    pub fn reset_statistics(&self) {
-        unsafe {
-            crocksdb_ffi::crocksdb_options_reset_statistics(self.inner);
+            crocksdb_ffi::crocksdb_options_set_statistics(self.inner, s.inner);
         }
     }
 
     pub fn set_stats_dump_period_sec(&mut self, period: usize) {
         unsafe {
             crocksdb_ffi::crocksdb_options_set_stats_dump_period_sec(self.inner, period);
+        }
+    }
+
+    pub fn set_stats_persist_period_sec(&mut self, n: u32) {
+        unsafe {
+            crocksdb_ffi::crocksdb_options_set_stats_persist_period_sec(self.inner, n);
         }
     }
 
@@ -977,13 +1181,13 @@ impl DBOptions {
 
     pub fn set_wal_ttl_seconds(&mut self, ttl: u64) {
         unsafe {
-            crocksdb_ffi::crocksdb_options_set_wal_ttl_seconds(self.inner, ttl as u64);
+            crocksdb_ffi::crocksdb_options_set_wal_ttl_seconds(self.inner, ttl);
         }
     }
 
     pub fn set_wal_size_limit_mb(&mut self, limit: u64) {
         unsafe {
-            crocksdb_ffi::crocksdb_options_set_wal_size_limit_mb(self.inner, limit as u64);
+            crocksdb_ffi::crocksdb_options_set_wal_size_limit_mb(self.inner, limit);
         }
     }
 
@@ -1026,107 +1230,29 @@ impl DBOptions {
         }
     }
 
-    pub fn set_ratelimiter(&mut self, rate_bytes_per_sec: i64) {
-        let rate_limiter = RateLimiter::new(
-            rate_bytes_per_sec,
-            DEFAULT_REFILL_PERIOD_US,
-            DEFAULT_FAIRNESS,
-        );
+    pub fn set_rate_limiter(&mut self, rate_limiter: &RateLimiter) {
         unsafe {
             crocksdb_ffi::crocksdb_options_set_ratelimiter(self.inner, rate_limiter.inner);
         }
     }
 
-    pub fn set_ratelimiter_with_auto_tuned(
-        &mut self,
-        rate_bytes_per_sec: i64,
-        refill_period_us: i64,
-        mode: DBRateLimiterMode,
-        auto_tuned: bool,
-    ) {
-        let rate_limiter = RateLimiter::new_with_auto_tuned(
-            rate_bytes_per_sec,
-            refill_period_us,
-            DEFAULT_FAIRNESS,
-            mode,
-            auto_tuned,
-        );
-        unsafe {
-            crocksdb_ffi::crocksdb_options_set_ratelimiter(self.inner, rate_limiter.inner);
-        }
-    }
-
-    pub fn set_writeampbasedratelimiter_with_auto_tuned(
-        &mut self,
-        rate_bytes_per_sec: i64,
-        refill_period_us: i64,
-        mode: DBRateLimiterMode,
-        auto_tuned: bool,
-    ) {
-        let rate_limiter = RateLimiter::new_writeampbased_with_auto_tuned(
-            rate_bytes_per_sec,
-            refill_period_us,
-            DEFAULT_FAIRNESS,
-            mode,
-            auto_tuned,
-        );
-        unsafe {
-            crocksdb_ffi::crocksdb_options_set_ratelimiter(self.inner, rate_limiter.inner);
-        }
-    }
-
-    pub fn set_rate_bytes_per_sec(&mut self, rate_bytes_per_sec: i64) -> Result<(), String> {
+    pub fn get_rate_limiter(&self) -> Option<RateLimiter> {
         let limiter = unsafe { crocksdb_ffi::crocksdb_options_get_ratelimiter(self.inner) };
         if limiter.is_null() {
-            return Err("Failed to get rate limiter".to_owned());
+            None
+        } else {
+            Some(RateLimiter { inner: limiter })
         }
-
-        let rate_limiter = RateLimiter { inner: limiter };
-
-        unsafe {
-            crocksdb_ffi::crocksdb_ratelimiter_set_bytes_per_second(
-                rate_limiter.inner,
-                rate_bytes_per_sec,
-            );
-        }
-        Ok(())
     }
 
-    pub fn get_rate_bytes_per_sec(&self) -> Option<i64> {
-        let limiter = unsafe { crocksdb_ffi::crocksdb_options_get_ratelimiter(self.inner) };
-        if limiter.is_null() {
-            return None;
+    pub fn get_write_buffer_manager(&self) -> Option<WriteBufferManager> {
+        let manager =
+            unsafe { crocksdb_ffi::crocksdb_options_get_write_buffer_manager(self.inner) };
+        if manager.is_null() {
+            None
+        } else {
+            Some(WriteBufferManager { inner: manager })
         }
-
-        let rate_limiter = RateLimiter { inner: limiter };
-        let rate =
-            unsafe { crocksdb_ffi::crocksdb_ratelimiter_get_bytes_per_second(rate_limiter.inner) };
-        Some(rate)
-    }
-
-    pub fn set_auto_tuned(&mut self, auto_tuned: bool) -> Result<(), String> {
-        let limiter = unsafe { crocksdb_ffi::crocksdb_options_get_ratelimiter(self.inner) };
-        if limiter.is_null() {
-            return Err("Failed to get rate limiter".to_owned());
-        }
-
-        let rate_limiter = RateLimiter { inner: limiter };
-
-        unsafe {
-            crocksdb_ffi::crocksdb_ratelimiter_set_auto_tuned(rate_limiter.inner, auto_tuned);
-        }
-        Ok(())
-    }
-
-    pub fn get_auto_tuned(&self) -> Option<bool> {
-        let limiter = unsafe { crocksdb_ffi::crocksdb_options_get_ratelimiter(self.inner) };
-        if limiter.is_null() {
-            return None;
-        }
-
-        let rate_limiter = RateLimiter { inner: limiter };
-        let mode = unsafe { crocksdb_ffi::crocksdb_ratelimiter_get_auto_tuned(rate_limiter.inner) };
-        Some(mode)
     }
 
     // Create a info log with `path` and save to options logger field directly.
@@ -1223,6 +1349,18 @@ impl DBOptions {
         }
     }
 
+    pub fn avoid_flush_during_recovery(&self, avoid: bool) {
+        unsafe {
+            crocksdb_ffi::crocksdb_options_avoid_flush_during_recovery(self.inner, avoid);
+        }
+    }
+
+    pub fn avoid_flush_during_shutdown(&self, avoid: bool) {
+        unsafe {
+            crocksdb_ffi::crocksdb_options_avoid_flush_during_shutdown(self.inner, avoid);
+        }
+    }
+
     pub fn get_db_paths_num(&self) -> usize {
         unsafe { crocksdb_ffi::crocksdb_options_get_db_paths_num(self.inner) }
     }
@@ -1269,8 +1407,8 @@ impl DBOptions {
 }
 
 pub struct ColumnFamilyOptions {
-    pub inner: *mut Options,
-    pub titan_inner: *mut DBTitanDBOptions,
+    pub(crate) inner: *mut Options,
+    pub(crate) titan_inner: *mut DBTitanDBOptions,
     env: Option<Arc<Env>>,
     filter: Option<CompactionFilterHandle>,
 }
@@ -1376,20 +1514,17 @@ impl ColumnFamilyOptions {
     /// recent call to GetSnapshot() to filter.
     ///
     /// See also `CompactionFilter`.
-    pub fn set_compaction_filter<S>(
-        &mut self,
-        name: S,
-        filter: Box<dyn CompactionFilter>,
-    ) -> Result<(), String>
+    pub fn set_compaction_filter<S, C>(&mut self, name: S, filter: C) -> Result<(), String>
     where
         S: Into<Vec<u8>>,
+        C: CompactionFilter,
     {
         unsafe {
             let c_name = match CString::new(name) {
                 Ok(s) => s,
                 Err(e) => return Err(format!("failed to convert to cstring: {:?}", e)),
             };
-            let filter = new_compaction_filter(c_name, filter);
+            let filter = new_compaction_filter::<C>(c_name, filter);
             crocksdb_ffi::crocksdb_options_set_compaction_filter(self.inner, filter.inner);
             self.filter = Some(filter);
             Ok(())
@@ -1399,30 +1534,46 @@ impl ColumnFamilyOptions {
     /// Set compaction filter factory.
     ///
     /// See also `CompactionFilterFactory`.
-    pub fn set_compaction_filter_factory<S>(
-        &mut self,
-        name: S,
-        factory: Box<dyn CompactionFilterFactory>,
-    ) -> Result<(), String>
+    pub fn set_compaction_filter_factory<S, C>(&mut self, name: S, factory: C) -> Result<(), String>
     where
         S: Into<Vec<u8>>,
+        C: CompactionFilterFactory,
     {
         let c_name = match CString::new(name) {
             Ok(s) => s,
             Err(e) => return Err(format!("failed to convert to cstring: {:?}", e)),
         };
         unsafe {
-            let factory = new_compaction_filter_factory(c_name, factory)?;
+            let factory = new_compaction_filter_factory::<C>(c_name, factory)?;
             crocksdb_ffi::crocksdb_options_set_compaction_filter_factory(self.inner, factory.inner);
             std::mem::forget(factory); // Deconstructor will be called after `self` is dropped.
             Ok(())
         }
     }
 
-    pub fn add_table_properties_collector_factory(
+    pub fn set_compaction_thread_limiter(&mut self, limiter: &ConcurrentTaskLimiter) {
+        unsafe {
+            crocksdb_ffi::crocksdb_options_set_compaction_thread_limiter(self.inner, limiter.inner);
+        }
+    }
+
+    pub fn get_compaction_thread_limiter(&self) -> Option<ConcurrentTaskLimiter> {
+        let limiter =
+            unsafe { crocksdb_ffi::crocksdb_options_get_compaction_thread_limiter(self.inner) };
+        if limiter.is_null() {
+            None
+        } else {
+            Some(ConcurrentTaskLimiter { inner: limiter })
+        }
+    }
+
+    pub fn add_table_properties_collector_factory<
+        C: TablePropertiesCollector,
+        T: TablePropertiesCollectorFactory<C>,
+    >(
         &mut self,
         fname: &str,
-        factory: Box<dyn TablePropertiesCollectorFactory>,
+        factory: T,
     ) {
         unsafe {
             let f = new_table_properties_collector_factory(fname, factory);
@@ -1447,6 +1598,7 @@ impl ColumnFamilyOptions {
         strategy: i32,
         max_dict_bytes: i32,
         zstd_max_train_bytes: i32,
+        parallel_threads: i32,
     ) {
         unsafe {
             crocksdb_ffi::crocksdb_options_set_compression_options(
@@ -1456,6 +1608,7 @@ impl ColumnFamilyOptions {
                 strategy,
                 max_dict_bytes,
                 zstd_max_train_bytes,
+                parallel_threads,
             )
         }
     }
@@ -1467,6 +1620,7 @@ impl ColumnFamilyOptions {
         strategy: i32,
         max_dict_bytes: i32,
         zstd_max_train_bytes: i32,
+        parallel_threads: i32,
     ) {
         unsafe {
             crocksdb_ffi::crocksdb_options_set_bottommost_compression_options(
@@ -1476,6 +1630,7 @@ impl ColumnFamilyOptions {
                 strategy,
                 max_dict_bytes,
                 zstd_max_train_bytes,
+                parallel_threads,
             )
         }
     }
@@ -1492,8 +1647,7 @@ impl ColumnFamilyOptions {
 
     pub fn get_compression_per_level(&self) -> Vec<DBCompressionType> {
         unsafe {
-            let size =
-                crocksdb_ffi::crocksdb_options_get_compression_level_number(self.inner) as usize;
+            let size = crocksdb_ffi::crocksdb_options_get_compression_level_number(self.inner);
             let mut ret = Vec::with_capacity(size);
             let pret = ret.as_mut_ptr();
             crocksdb_ffi::crocksdb_options_get_compression_per_level(self.inner, pret);
@@ -1509,7 +1663,7 @@ impl ColumnFamilyOptions {
     pub fn add_merge_operator(&mut self, name: &str, merge_fn: MergeFn) {
         let cb = Box::new(MergeOperatorCallback {
             name: CString::new(name.as_bytes()).unwrap(),
-            merge_fn: merge_fn,
+            merge_fn,
         });
         let cb = Box::into_raw(cb) as *mut c_void;
 
@@ -1579,7 +1733,7 @@ impl ColumnFamilyOptions {
     }
 
     pub fn get_write_buffer_size(&self) -> u64 {
-        unsafe { crocksdb_ffi::crocksdb_options_get_write_buffer_size(self.inner) as u64 }
+        unsafe { crocksdb_ffi::crocksdb_options_get_write_buffer_size(self.inner) }
     }
 
     pub fn set_max_bytes_for_level_base(&mut self, size: u64) {
@@ -1589,7 +1743,7 @@ impl ColumnFamilyOptions {
     }
 
     pub fn get_max_bytes_for_level_base(&self) -> u64 {
-        unsafe { crocksdb_ffi::crocksdb_options_get_max_bytes_for_level_base(self.inner) as u64 }
+        unsafe { crocksdb_ffi::crocksdb_options_get_max_bytes_for_level_base(self.inner) }
     }
 
     pub fn set_max_bytes_for_level_multiplier(&mut self, mul: i32) {
@@ -1660,6 +1814,12 @@ impl ColumnFamilyOptions {
     pub fn set_target_file_size_base(&mut self, size: u64) {
         unsafe {
             crocksdb_ffi::crocksdb_options_set_target_file_size_base(self.inner, size);
+        }
+    }
+
+    pub fn set_target_file_size_multiplier(&mut self, multiplier: i32) {
+        unsafe {
+            crocksdb_ffi::crocksdb_options_set_target_file_size_multiplier(self.inner, multiplier)
         }
     }
 
@@ -1741,6 +1901,14 @@ impl ColumnFamilyOptions {
         unsafe { crocksdb_ffi::crocksdb_options_get_disable_auto_compactions(self.inner) == 1 }
     }
 
+    pub fn set_disable_write_stall(&mut self, disable: bool) {
+        unsafe { crocksdb_ffi::crocksdb_options_set_disable_write_stall(self.inner, disable) }
+    }
+
+    pub fn get_disable_write_stall(&self) -> bool {
+        unsafe { crocksdb_ffi::crocksdb_options_get_disable_write_stall(self.inner) }
+    }
+
     pub fn set_block_based_table_factory(&mut self, factory: &BlockBasedOptions) {
         unsafe {
             crocksdb_ffi::crocksdb_options_set_block_based_table_factory(self.inner, factory.inner);
@@ -1767,20 +1935,17 @@ impl ColumnFamilyOptions {
         unsafe { crocksdb_ffi::crocksdb_options_get_num_levels(self.inner) as usize }
     }
 
-    pub fn set_prefix_extractor<S>(
-        &mut self,
-        name: S,
-        transform: Box<dyn SliceTransform>,
-    ) -> Result<(), String>
+    pub fn set_prefix_extractor<S, ST>(&mut self, name: S, transform: ST) -> Result<(), String>
     where
         S: Into<Vec<u8>>,
+        ST: SliceTransform,
     {
         unsafe {
             let c_name = match CString::new(name) {
                 Ok(s) => s,
                 Err(e) => return Err(format!("failed to convert to cstring: {:?}", e)),
             };
-            let transform = new_slice_transform(c_name, transform)?;
+            let transform = new_slice_transform::<ST>(c_name, transform)?;
             crocksdb_ffi::crocksdb_options_set_prefix_extractor(self.inner, transform);
             Ok(())
         }
@@ -1792,20 +1957,21 @@ impl ColumnFamilyOptions {
         }
     }
 
-    pub fn set_memtable_insert_hint_prefix_extractor<S>(
+    pub fn set_memtable_insert_hint_prefix_extractor<S, ST>(
         &mut self,
         name: S,
-        transform: Box<dyn SliceTransform>,
+        transform: ST,
     ) -> Result<(), String>
     where
         S: Into<Vec<u8>>,
+        ST: SliceTransform,
     {
         unsafe {
             let c_name = match CString::new(name) {
                 Ok(s) => s,
                 Err(e) => return Err(format!("failed to convert to cstring: {:?}", e)),
             };
-            let transform = new_slice_transform(c_name, transform)?;
+            let transform = new_slice_transform::<ST>(c_name, transform)?;
             crocksdb_ffi::crocksdb_options_set_memtable_insert_with_hint_prefix_extractor(
                 self.inner, transform,
             );
@@ -1910,6 +2076,42 @@ impl ColumnFamilyOptions {
             );
         }
     }
+
+    pub fn set_ttl(&mut self, ttl_secs: u64) {
+        unsafe {
+            crocksdb_ffi::crocksdb_options_set_ttl(self.inner, ttl_secs);
+        }
+    }
+
+    pub fn get_ttl(&self) -> u64 {
+        unsafe { crocksdb_ffi::crocksdb_options_get_ttl(self.inner) }
+    }
+
+    pub fn set_periodic_compaction_seconds(&mut self, secs: u64) {
+        unsafe {
+            crocksdb_ffi::crocksdb_options_set_periodic_compaction_seconds(self.inner, secs);
+        }
+    }
+
+    pub fn get_periodic_compaction_seconds(&self) -> u64 {
+        unsafe { crocksdb_ffi::crocksdb_options_get_periodic_compaction_seconds(self.inner) }
+    }
+
+    pub fn set_write_buffer_manager(&mut self, wbm: &WriteBufferManager) {
+        unsafe {
+            crocksdb_ffi::crocksdb_options_set_cf_write_buffer_manager(self.inner, wbm.inner);
+        }
+    }
+
+    pub fn get_write_buffer_manager(&self) -> Option<WriteBufferManager> {
+        let manager =
+            unsafe { crocksdb_ffi::crocksdb_options_get_cf_write_buffer_manager(self.inner) };
+        if manager.is_null() {
+            None
+        } else {
+            Some(WriteBufferManager { inner: manager })
+        }
+    }
 }
 
 // ColumnFamilyDescriptor is a pair of column family's name and options.
@@ -1992,18 +2194,20 @@ impl Drop for CColumnFamilyDescriptor {
 }
 
 pub struct FlushOptions {
-    pub inner: *mut DBFlushOptions,
+    pub(crate) inner: *mut DBFlushOptions,
 }
 
-impl FlushOptions {
-    pub fn new() -> FlushOptions {
+impl Default for FlushOptions {
+    fn default() -> Self {
         unsafe {
-            FlushOptions {
+            Self {
                 inner: crocksdb_ffi::crocksdb_flushoptions_create(),
             }
         }
     }
+}
 
+impl FlushOptions {
     pub fn set_wait(&mut self, wait: bool) {
         unsafe {
             crocksdb_ffi::crocksdb_flushoptions_set_wait(self.inner, wait);
@@ -2013,6 +2217,19 @@ impl FlushOptions {
     pub fn set_allow_write_stall(&mut self, allow: bool) {
         unsafe {
             crocksdb_ffi::crocksdb_flushoptions_set_allow_write_stall(self.inner, allow);
+        }
+    }
+
+    pub fn set_expected_oldest_key_time(&mut self, time: SystemTime) {
+        let time = time.duration_since(UNIX_EPOCH).unwrap().as_secs();
+        unsafe {
+            crocksdb_ffi::crocksdb_flushoptions_set_expected_oldest_key_time(self.inner, time);
+        }
+    }
+
+    pub fn set_check_if_compaction_disabled(&mut self, check: bool) {
+        unsafe {
+            crocksdb_ffi::crocksdb_flushoptions_set_check_if_compaction_disabled(self.inner, check);
         }
     }
 }
@@ -2027,7 +2244,7 @@ impl Drop for FlushOptions {
 
 /// IngestExternalFileOptions is used by DB::ingest_external_file
 pub struct IngestExternalFileOptions {
-    pub inner: *mut crocksdb_ffi::IngestExternalFileOptions,
+    pub(crate) inner: *mut crocksdb_ffi::IngestExternalFileOptions,
 }
 
 impl IngestExternalFileOptions {
@@ -2098,6 +2315,15 @@ impl IngestExternalFileOptions {
             );
         }
     }
+
+    pub fn set_verify_checksums_before_ingest(&mut self, whether_verify: bool) {
+        unsafe {
+            crocksdb_ffi::crocksdb_ingestexternalfileoptions_set_verify_checksums_before_ingest(
+                self.inner,
+                whether_verify,
+            );
+        }
+    }
 }
 
 impl Drop for IngestExternalFileOptions {
@@ -2110,7 +2336,7 @@ impl Drop for IngestExternalFileOptions {
 
 /// Options while opening a file to read/write
 pub struct EnvOptions {
-    pub inner: *mut crocksdb_ffi::EnvOptions,
+    pub(crate) inner: *mut crocksdb_ffi::EnvOptions,
 }
 
 impl EnvOptions {
@@ -2132,7 +2358,7 @@ impl Drop for EnvOptions {
 }
 
 pub struct RestoreOptions {
-    pub inner: *mut DBRestoreOptions,
+    pub(crate) inner: *mut DBRestoreOptions,
 }
 
 impl RestoreOptions {
@@ -2146,10 +2372,7 @@ impl RestoreOptions {
 
     pub fn set_keep_log_files(&mut self, flag: bool) {
         unsafe {
-            crocksdb_ffi::crocksdb_restore_options_set_keep_log_files(
-                self.inner,
-                if flag { 1 } else { 0 },
-            )
+            crocksdb_ffi::crocksdb_restore_options_set_keep_log_files(self.inner, flag.into())
         }
     }
 }
@@ -2163,7 +2386,7 @@ impl Drop for RestoreOptions {
 }
 
 pub struct FifoCompactionOptions {
-    pub inner: *mut DBFifoCompactionOptions,
+    pub(crate) inner: *mut DBFifoCompactionOptions,
 }
 
 impl FifoCompactionOptions {
@@ -2203,7 +2426,7 @@ impl Drop for FifoCompactionOptions {
 }
 
 pub struct LRUCacheOptions {
-    pub inner: *mut DBLRUCacheOptions,
+    pub(crate) inner: *mut DBLRUCacheOptions,
 }
 
 impl LRUCacheOptions {
@@ -2263,6 +2486,22 @@ impl Drop for LRUCacheOptions {
     fn drop(&mut self) {
         unsafe {
             crocksdb_ffi::crocksdb_lru_cache_options_destroy(self.inner);
+        }
+    }
+}
+
+pub struct MergeInstanceOptions {
+    pub merge_memtable: bool,
+    pub allow_source_write: bool,
+    pub max_preload_files: i32,
+}
+
+impl Default for MergeInstanceOptions {
+    fn default() -> Self {
+        Self {
+            merge_memtable: false,
+            allow_source_write: true,
+            max_preload_files: 16,
         }
     }
 }

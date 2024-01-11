@@ -23,5 +23,5 @@ cc = "1.0.3"
 cmake = "0.1"
 
 [dependencies.snappy-sys]
-git = "https://github.com/busyjay/rust-snappy.git"
+git = "https://github.com/tikv/rust-snappy.git"
 branch = "static-link"

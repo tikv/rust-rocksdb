@@ -1,7 +1,7 @@
 all: format build test
 
 prepare:
-	curl https://raw.githubusercontent.com/tikv/tikv/master/rust-toolchain > rust-toolchain
+	curl https://raw.githubusercontent.com/tikv/tikv/master/rust-toolchain.toml > rust-toolchain.toml
 
 format: prepare
 	@cargo fmt --all

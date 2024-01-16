@@ -4,6 +4,7 @@ version = "0.1.0"
 authors = ["Jay Lee <busyjaylee@gmail.com>"]
 build = "build.rs"
 links = "rocksdb"
+license = "Apache-2.0"
 
 [dependencies]
 bzip2-sys = { version = "0.1.11+1.0.8", features = ["static"] }

@@ -16,11 +16,11 @@ use std::ops;
 
 use rand::Rng;
 use rocksdb::{
-    CFHandle, ColumnFamilyOptions, CompactOptions, DBBottommostLevelCompaction, DBCompressionType,
-    DBEntryType, DBOptions, DBStatisticsHistogramType as HistogramType,
-    DBStatisticsTickerType as TickerType, FlushOptions, Range, ReadOptions, SeekKey, Statistics,
-    TablePropertiesCollector, TablePropertiesCollectorFactory, TitanBlobIndex, TitanDBOptions,
-    UserCollectedProperties, Writable, WriteOptions, DB,
+    CFHandle, Cache, ColumnFamilyOptions, CompactOptions, DBBottommostLevelCompaction,
+    DBCompressionType, DBEntryType, DBOptions, DBStatisticsHistogramType as HistogramType,
+    DBStatisticsTickerType as TickerType, FlushOptions, LRUCacheOptions, Range, ReadOptions,
+    SeekKey, Statistics, TablePropertiesCollector, TablePropertiesCollectorFactory, TitanBlobIndex,
+    TitanDBOptions, UserCollectedProperties, Writable, WriteOptions, DB,
 };
 
 use super::tempdir_with_prefix;
@@ -328,10 +328,15 @@ fn test_titan_delete_files_in_ranges() {
 fn test_get_blob_cache_usage() {
     let path = tempdir_with_prefix("_rust_rocksdb_set_blob_cache");
     let tdb_path = path.path().join("titandb");
+
+    let mut cache_opts = LRUCacheOptions::new();
+    cache_opts.set_capacity(16 * 1024 * 1024);
+    let cache = Cache::new_lru_cache(cache_opts);
+
     let mut tdb_opts = TitanDBOptions::new();
     tdb_opts.set_dirname(tdb_path.to_str().unwrap());
     tdb_opts.set_min_blob_size(0);
-    tdb_opts.set_blob_cache(16 * 1024 * 1024, -1, false, 0.0);
+    tdb_opts.set_blob_cache(&cache);
 
     let mut opts = DBOptions::new();
     opts.create_if_missing(true);
@@ -364,10 +369,15 @@ fn test_get_blob_cache_usage() {
 fn test_blob_cache_capacity() {
     let path = tempdir_with_prefix("_rust_rocksdb_set_and_get_blob_cache_capacity");
     let tdb_path = path.path().join("titandb");
+
+    let mut cache_opts = LRUCacheOptions::new();
+    cache_opts.set_capacity(16 * 1024 * 1024);
+    let cache = Cache::new_lru_cache(cache_opts);
+
     let mut tdb_opts = TitanDBOptions::new();
     tdb_opts.set_dirname(tdb_path.to_str().unwrap());
     tdb_opts.set_min_blob_size(0);
-    tdb_opts.set_blob_cache(16 * 1024 * 1024, -1, false, 0.0);
+    tdb_opts.set_blob_cache(&cache);
 
     let mut opts = DBOptions::new();
     opts.create_if_missing(true);

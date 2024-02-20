@@ -1382,6 +1382,9 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_atomic_flush(
     crocksdb_options_t* opt, unsigned char enable);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_avoid_flush_during_shutdown(
     crocksdb_options_t* opt, unsigned char avoid);
+extern C_ROCKSDB_LIBRARY_API void
+crocksdb_options_set_track_and_verify_wals_in_manifest(
+    crocksdb_options_t* opt, unsigned char track_wals_in_manifest);
 
 enum {
   compaction_by_compensated_size = 0,

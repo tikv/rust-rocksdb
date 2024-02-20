@@ -958,6 +958,10 @@ extern "C" {
     pub fn crocksdb_options_set_vector_memtable_factory(options: *mut Options, reserved_bytes: u64);
     pub fn crocksdb_options_set_atomic_flush(option: *mut Options, enable: bool);
     pub fn crocksdb_options_avoid_flush_during_shutdown(option: *mut Options, avoid: bool);
+    pub fn crocksdb_options_set_track_and_verify_wals_in_manifest(
+        option: *mut Options,
+        track_wals_in_manifest: bool,
+    );
     pub fn crocksdb_options_get_sst_partitioner_factory(
         option: *mut Options,
     ) -> *mut DBSstPartitionerFactory;

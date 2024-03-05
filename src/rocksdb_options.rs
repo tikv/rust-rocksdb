@@ -2472,6 +2472,15 @@ impl LRUCacheOptions {
         }
     }
 
+    pub fn set_low_pri_pool_ratio(&mut self, low_pri_pool_ratio: c_double) {
+        unsafe {
+            crocksdb_ffi::crocksdb_lru_cache_options_set_low_pri_pool_ratio(
+                self.inner,
+                low_pri_pool_ratio,
+            );
+        }
+    }
+
     pub fn set_memory_allocator(&mut self, allocator: MemoryAllocator) {
         unsafe {
             crocksdb_ffi::crocksdb_lru_cache_options_set_memory_allocator(

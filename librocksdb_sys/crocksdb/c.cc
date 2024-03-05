@@ -4278,6 +4278,11 @@ void crocksdb_lru_cache_options_set_high_pri_pool_ratio(
   opt->rep.high_pri_pool_ratio = high_pri_pool_ratio;
 }
 
+void crocksdb_lru_cache_options_set_low_pri_pool_ratio(
+    crocksdb_lru_cache_options_t* opt, double low_pri_pool_ratio) {
+  opt->rep.low_pri_pool_ratio = low_pri_pool_ratio;
+}
+
 void crocksdb_lru_cache_options_set_memory_allocator(
     crocksdb_lru_cache_options_t* opt, crocksdb_memory_allocator_t* allocator) {
   opt->rep.memory_allocator = allocator->rep;

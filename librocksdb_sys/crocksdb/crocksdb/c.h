@@ -1753,6 +1753,9 @@ extern C_ROCKSDB_LIBRARY_API void
 crocksdb_lru_cache_options_set_high_pri_pool_ratio(
     crocksdb_lru_cache_options_t*, double);
 extern C_ROCKSDB_LIBRARY_API void
+crocksdb_lru_cache_options_set_low_pri_pool_ratio(crocksdb_lru_cache_options_t*,
+                                                  double);
+extern C_ROCKSDB_LIBRARY_API void
 crocksdb_lru_cache_options_set_memory_allocator(crocksdb_lru_cache_options_t*,
                                                 crocksdb_memory_allocator_t*);
 extern C_ROCKSDB_LIBRARY_API crocksdb_cache_t* crocksdb_cache_create_lru(

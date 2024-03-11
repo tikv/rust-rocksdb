@@ -3603,6 +3603,11 @@ void crocksdb_options_avoid_flush_during_shutdown(crocksdb_options_t* opt,
   opt->rep.avoid_flush_during_shutdown = avoid;
 }
 
+void crocksdb_options_set_track_and_verify_wals_in_manifest(
+    crocksdb_options_t* opt, unsigned char track_wals_in_manifest) {
+  opt->rep.track_and_verify_wals_in_manifest = track_wals_in_manifest;
+}
+
 unsigned char crocksdb_load_latest_options(
     const char* dbpath, crocksdb_env_t* env, crocksdb_options_t* db_options,
     crocksdb_column_family_descriptor*** cf_descs, size_t* cf_descs_len,

@@ -1404,6 +1404,14 @@ impl DBOptions {
             Some(CStr::from_ptr(memtable_name).to_str().unwrap())
         }
     }
+
+    pub fn set_track_and_verify_wals_in_manifest(&self, enable: bool) {
+        unsafe {
+            crocksdb_ffi::crocksdb_options_set_track_and_verify_wals_in_manifest(
+                self.inner, enable,
+            );
+        }
+    }
 }
 
 pub struct ColumnFamilyOptions {

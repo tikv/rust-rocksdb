@@ -1428,6 +1428,9 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_options_avoid_flush_during_recovery(
     crocksdb_options_t* opt, unsigned char avoid);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_avoid_flush_during_shutdown(
     crocksdb_options_t* opt, unsigned char avoid);
+extern C_ROCKSDB_LIBRARY_API void
+crocksdb_options_set_track_and_verify_wals_in_manifest(
+    crocksdb_options_t* opt, unsigned char track_wals_in_manifest);
 
 extern C_ROCKSDB_LIBRARY_API crocksdb_write_buffer_manager_t*
 crocksdb_write_buffer_manager_create(size_t flush_size, float stall_ratio,

@@ -647,6 +647,10 @@ extern "C" {
         opt: *mut DBLRUCacheOptions,
         high_pri_pool_ratio: c_double,
     );
+    pub fn crocksdb_lru_cache_options_set_low_pri_pool_ratio(
+        opt: *mut DBLRUCacheOptions,
+        low_pri_pool_ratio: c_double,
+    );
     pub fn crocksdb_lru_cache_options_set_memory_allocator(
         opt: *mut DBLRUCacheOptions,
         allocator: *mut DBMemoryAllocator,
@@ -1085,6 +1089,10 @@ extern "C" {
     pub fn crocksdb_options_set_atomic_flush(option: *mut Options, enable: bool);
     pub fn crocksdb_options_avoid_flush_during_recovery(option: *mut Options, avoid: bool);
     pub fn crocksdb_options_avoid_flush_during_shutdown(option: *mut Options, avoid: bool);
+    pub fn crocksdb_options_set_track_and_verify_wals_in_manifest(
+        option: *mut Options,
+        track_wals_in_manifest: bool,
+    );
     pub fn crocksdb_options_get_sst_partitioner_factory(
         option: *mut Options,
     ) -> *mut DBSstPartitionerFactory;

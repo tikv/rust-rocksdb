@@ -1404,6 +1404,14 @@ impl DBOptions {
             Some(CStr::from_ptr(memtable_name).to_str().unwrap())
         }
     }
+
+    pub fn set_track_and_verify_wals_in_manifest(&self, enable: bool) {
+        unsafe {
+            crocksdb_ffi::crocksdb_options_set_track_and_verify_wals_in_manifest(
+                self.inner, enable,
+            );
+        }
+    }
 }
 
 pub struct ColumnFamilyOptions {
@@ -2468,6 +2476,15 @@ impl LRUCacheOptions {
             crocksdb_ffi::crocksdb_lru_cache_options_set_high_pri_pool_ratio(
                 self.inner,
                 high_pri_pool_ratio,
+            );
+        }
+    }
+
+    pub fn set_low_pri_pool_ratio(&mut self, low_pri_pool_ratio: c_double) {
+        unsafe {
+            crocksdb_ffi::crocksdb_lru_cache_options_set_low_pri_pool_ratio(
+                self.inner,
+                low_pri_pool_ratio,
             );
         }
     }

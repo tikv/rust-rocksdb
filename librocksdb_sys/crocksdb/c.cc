@@ -40,6 +40,7 @@
 #include "rocksdb/rate_limiter.h"
 #include "rocksdb/slice_transform.h"
 #include "rocksdb/sst_dump_tool.h"
+#include "rocksdb/sst_file_manager.h"
 #include "rocksdb/sst_file_reader.h"
 #include "rocksdb/sst_partitioner.h"
 #include "rocksdb/statistics.h"
@@ -147,6 +148,7 @@ using rocksdb::Slice;
 using rocksdb::SliceParts;
 using rocksdb::SliceTransform;
 using rocksdb::Snapshot;
+using rocksdb::SstFileManager;
 using rocksdb::SstFileReader;
 using rocksdb::SstFileWriter;
 using rocksdb::SstPartitioner;
@@ -355,6 +357,9 @@ struct crocksdb_sequential_file_t {
 };
 struct crocksdb_ingestexternalfileoptions_t {
   IngestExternalFileOptions rep;
+};
+struct crocksdb_sstfilemanager_t {
+  shared_ptr<SstFileManager> rep;
 };
 struct crocksdb_sstfilereader_t {
   SstFileReader* rep;
@@ -4768,6 +4773,26 @@ crocksdb_env_t* crocksdb_file_system_inspected_env_create(
   result->encryption_provider = nullptr;
   result->is_default = false;
   return result;
+}
+
+crocksdb_sstfilemanager_t* crocksdb_sstfilemanager_create(crocksdb_env_t* env) {
+  auto manager = new crocksdb_sstfilemanager_t;
+  manager->rep.reset(NewSstFileManager(env->rep));
+  return manager;
+}
+
+void crocksdb_sstfilemanager_destroy(crocksdb_sstfilemanager_t* file_manager) {
+  delete file_manager;
+}
+
+uint64_t crocksdb_sstfilemanager_get_total_size(
+    crocksdb_sstfilemanager_t* file_manager) {
+  return file_manager->rep->GetTotalSize();
+}
+
+void crocksdb_options_set_sstfilemanager(
+    crocksdb_options_t* opt, crocksdb_sstfilemanager_t* file_manager) {
+  opt->rep.sst_file_manager = file_manager->rep;
 }
 
 crocksdb_sstfilereader_t* crocksdb_sstfilereader_create(

@@ -92,6 +92,8 @@ pub struct DBCheckpoint(c_void);
 #[repr(C)]
 pub struct EnvOptions(c_void);
 #[repr(C)]
+pub struct SstFileManager(c_void);
+#[repr(C)]
 pub struct SstFileReader(c_void);
 #[repr(C)]
 pub struct SstFileWriter(c_void);
@@ -2044,6 +2046,15 @@ extern "C" {
         base_env: *mut DBEnv,
         inspector: *mut DBFileSystemInspectorInstance,
     ) -> *mut DBEnv;
+
+    // SstFileManager
+    pub fn crocksdb_sstfilemanager_create(env: *const DBEnv) -> *mut SstFileManager;
+    pub fn crocksdb_sstfilemanager_destroy(file_manager: *mut SstFileManager);
+    pub fn crocksdb_sstfilemanager_get_total_size(file_manager: *const SstFileManager) -> u64;
+    pub fn crocksdb_options_set_sstfilemanager(
+        options: *mut Options,
+        file_manager: *const SstFileManager,
+    );
 
     // SstFileReader
     pub fn crocksdb_sstfilereader_create(io_options: *const Options) -> *mut SstFileReader;

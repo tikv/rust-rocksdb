@@ -1137,6 +1137,8 @@ extern "C" {
     pub fn crocksdb_close(db: *mut DBInstance);
     pub fn crocksdb_pause_bg_work(db: *mut DBInstance);
     pub fn crocksdb_continue_bg_work(db: *mut DBInstance);
+    pub fn crocksdb_disable_manual_compaction(db: *mut DBInstance);
+    pub fn crocksdb_enable_manual_compaction(db: *mut DBInstance);
     pub fn crocksdb_destroy_db(options: *const Options, path: *const c_char, err: *mut *mut c_char);
     pub fn crocksdb_repair_db(options: *const Options, path: *const c_char, err: *mut *mut c_char);
     // Merge

@@ -352,6 +352,11 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_close(crocksdb_t* db);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_pause_bg_work(crocksdb_t* db);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_continue_bg_work(crocksdb_t* db);
 
+extern C_ROCKSDB_LIBRARY_API void crocksdb_disable_manual_compaction(
+    crocksdb_t* db);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_enable_manual_compaction(
+    crocksdb_t* db);
+
 extern C_ROCKSDB_LIBRARY_API void crocksdb_put(
     crocksdb_t* db, const crocksdb_writeoptions_t* options, const char* key,
     size_t keylen, const char* val, size_t vallen, char** errptr);

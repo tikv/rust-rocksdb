@@ -1,7 +1,7 @@
 use std::ffi::CString;
 use std::{ptr, slice, usize};
 
-use crate::table_properties::TableProperties;
+use crate::TablePropertiesCollectionView;
 use crocksdb_ffi::CompactionFilterDecision as RawCompactionFilterDecision;
 pub use crocksdb_ffi::CompactionFilterValueType;
 pub use crocksdb_ffi::DBCompactionFilter;
@@ -203,24 +203,11 @@ impl CompactionFilterContext {
         unsafe { crocksdb_ffi::crocksdb_compactionfiltercontext_is_bottommost_level(ctx) }
     }
 
-    pub fn file_numbers(&self) -> &[u64] {
-        let ctx = &self.0 as *const DBCompactionFilterContext;
-        let (mut buffer, mut len): (*const u64, usize) = (ptr::null_mut(), 0);
-        unsafe {
-            crocksdb_ffi::crocksdb_compactionfiltercontext_file_numbers(
-                ctx,
-                &mut buffer as *mut *const u64,
-                &mut len as *mut usize,
-            );
-            slice::from_raw_parts(buffer, len)
-        }
-    }
-
-    pub fn table_properties(&self, offset: usize) -> &TableProperties {
+    pub fn input_table_properties(&self) -> &TablePropertiesCollectionView {
         let ctx = &self.0 as *const DBCompactionFilterContext;
         unsafe {
-            let raw = crocksdb_ffi::crocksdb_compactionfiltercontext_table_properties(ctx, offset);
-            TableProperties::from_ptr(raw)
+            let raw = crocksdb_ffi::crocksdb_compactionfiltercontext_input_table_properties(ctx);
+            TablePropertiesCollectionView::from_ptr(raw)
         }
     }
 

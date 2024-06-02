@@ -76,7 +76,7 @@ fn main() {
 
     build.cpp(true).file("crocksdb/c.cc");
     if env::var("CARGO_CFG_TARGET_OS").unwrap() != "windows" {
-        build.flag("-std=c++11");
+        build.flag("-std=c++17");
         build.flag("-fno-rtti");
     }
     link_cpp(&mut build);

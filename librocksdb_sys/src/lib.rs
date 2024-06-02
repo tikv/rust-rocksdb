@@ -197,9 +197,9 @@ pub struct DBFileSystemInspectorInstance(c_void);
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 #[repr(C)]
 pub enum WriteStallCondition {
-    Normal = 0,
-    Delayed = 1,
-    Stopped = 2,
+    Delayed = 0,
+    Stopped = 1,
+    Normal = 2,
 }
 
 mod generated;
@@ -680,10 +680,6 @@ extern "C" {
         block_options: *mut DBBlockBasedTableOptions,
         v: IndexType,
     );
-    pub fn crocksdb_block_based_options_set_hash_index_allow_collision(
-        block_options: *mut DBBlockBasedTableOptions,
-        v: c_uchar,
-    );
     pub fn crocksdb_block_based_options_set_optimize_filters_for_memory(
         block_options: *mut DBBlockBasedTableOptions,
         v: c_uchar,
@@ -715,10 +711,6 @@ extern "C" {
     pub fn crocksdb_block_based_options_set_block_cache(
         block_options: *mut DBBlockBasedTableOptions,
         block_cache: *mut DBCache,
-    );
-    pub fn crocksdb_block_based_options_set_block_cache_compressed(
-        block_options: *mut DBBlockBasedTableOptions,
-        block_cache_compressed: *mut DBCache,
     );
     pub fn crocksdb_block_based_options_set_whole_key_filtering(
         ck_options: *mut DBBlockBasedTableOptions,
@@ -882,11 +874,6 @@ extern "C" {
         max_bg_compactions: c_int,
     );
     pub fn crocksdb_options_get_max_background_compactions(options: *const Options) -> c_int;
-    pub fn crocksdb_options_set_base_background_compactions(
-        options: *mut Options,
-        base_bg_compactions: c_int,
-    );
-    pub fn crocksdb_options_get_base_background_compactions(options: *const Options) -> c_int;
     pub fn crocksdb_options_set_max_background_flushes(
         options: *mut Options,
         max_bg_flushes: c_int,
@@ -995,7 +982,6 @@ extern "C" {
 
     pub fn crocksdb_load_latest_options(
         dbpath: *const c_char,
-        env: *mut DBEnv,
         db_options: *const Options,
         cf_descs: *const *mut *mut ColumnFamilyDescriptor,
         cf_descs_len: *mut size_t,
@@ -1815,15 +1801,9 @@ extern "C" {
     pub fn crocksdb_compactionfiltercontext_is_bottommost_level(
         context: *const DBCompactionFilterContext,
     ) -> bool;
-    pub fn crocksdb_compactionfiltercontext_file_numbers(
+    pub fn crocksdb_compactionfiltercontext_input_table_properties(
         context: *const DBCompactionFilterContext,
-        buffer: *mut *const u64,
-        len: *mut usize,
-    );
-    pub fn crocksdb_compactionfiltercontext_table_properties(
-        context: *const DBCompactionFilterContext,
-        offset: usize,
-    ) -> *const DBTableProperties;
+    ) -> *const DBTablePropertiesCollection;
     pub fn crocksdb_compactionfiltercontext_start_key(
         context: *const DBCompactionFilterContext,
         key_len: *mut size_t,

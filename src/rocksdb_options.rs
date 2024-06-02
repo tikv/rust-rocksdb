@@ -144,14 +144,6 @@ impl BlockBasedOptions {
         }
     }
 
-    pub fn set_hash_index_allow_collision(&mut self, v: bool) {
-        unsafe {
-            crocksdb_ffi::crocksdb_block_based_options_set_hash_index_allow_collision(
-                self.inner, v as u8,
-            );
-        }
-    }
-
     pub fn set_partition_filters(&mut self, v: bool) {
         unsafe {
             crocksdb_ffi::crocksdb_block_based_options_set_partition_filters(self.inner, v as u8);
@@ -1095,16 +1087,6 @@ impl DBOptions {
 
     pub fn get_max_background_compactions(&self) -> i32 {
         unsafe { crocksdb_ffi::crocksdb_options_get_max_background_compactions(self.inner) }
-    }
-
-    pub fn set_base_background_compactions(&mut self, n: c_int) {
-        unsafe {
-            crocksdb_ffi::crocksdb_options_set_base_background_compactions(self.inner, n);
-        }
-    }
-
-    pub fn get_base_background_compactions(&self) -> i32 {
-        unsafe { crocksdb_ffi::crocksdb_options_get_base_background_compactions(self.inner) }
     }
 
     pub fn set_max_background_flushes(&mut self, n: c_int) {

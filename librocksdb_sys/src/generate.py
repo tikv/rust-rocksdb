@@ -12,13 +12,13 @@ tasks = [
             (
                 '../rocksdb/include/rocksdb/statistics.h',
                 re.compile(r'enum Tickers .* {'),
-                re.compile(r'\s*\w(_\w)*.*,'),
+                re.compile(r'\s*\w(_\w)*.*'),
                 re.compile(r'};\s*'),
             ),
             (
                 '../libtitan_sys/titan/include/titan/statistics.h',
                 re.compile(r'enum TickerType .* {'),
-                re.compile(r'\s*\w(_\w)*.*,'),
+                re.compile(r'\s*\w(_\w)*.*'),
                 re.compile(r'};\s*'),
             ),
         ],
@@ -29,13 +29,13 @@ tasks = [
             (
                 '../rocksdb/include/rocksdb/statistics.h',
                 re.compile(r'enum Histograms .* {'),
-                re.compile(r'\s*\w(_\w)*.*,'),
+                re.compile(r'\s*\w(_\w)*.*'),
                 re.compile(r'};\s*'),
             ),
             (
                 '../libtitan_sys/titan/include/titan/statistics.h',
                 re.compile(r'enum HistogramType .* {'),
-                re.compile(r'\s*\w(_\w)*.*,'),
+                re.compile(r'\s*\w(_\w)*.*'),
                 re.compile(r'};\s*'),
             ),
         ],
@@ -69,6 +69,8 @@ for task in tasks:
                 break
             if not cpp_entry_pattern.match(line):
                 continue
+            # remove return line
+            line = line.strip()
             tokens = line.split(',')[0].split('=')
             if len(tokens) == 1:
                 name = tokens[0].strip(' ')

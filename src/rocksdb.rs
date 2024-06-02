@@ -2951,7 +2951,6 @@ pub fn set_external_sst_file_global_seq_no(
 
 pub fn load_latest_options(
     dbpath: &str,
-    env: &Env,
     ignore_unknown_options: bool,
 ) -> Result<Option<(DBOptions, Vec<CColumnFamilyDescriptor>)>, String> {
     const ERR_CONVERT_PATH: &str = "Failed to convert path to CString when load latest options";
@@ -2964,7 +2963,6 @@ pub fn load_latest_options(
 
         let ok = ffi_try!(crocksdb_load_latest_options(
             dbpath.as_ptr(),
-            env.inner,
             db_options.inner,
             &raw_cf_descs,
             &mut cf_descs_len,
@@ -3534,27 +3532,23 @@ mod test {
         let cf_name: &str = "cf_dynamic_level_bytes";
 
         // test when options not exist
-        assert!(load_latest_options(dbpath, &Env::default(), false)
-            .unwrap()
-            .is_none());
+        assert!(load_latest_options(dbpath, false).unwrap().is_none());
 
         let mut opts = DBOptions::new();
         opts.create_if_missing(true);
         let mut db = DB::open(opts, dbpath).unwrap();
 
         let mut cf_opts = ColumnFamilyOptions::new();
-        cf_opts.set_level_compaction_dynamic_level_bytes(true);
+        cf_opts.set_level_compaction_dynamic_level_bytes(false);
         db.create_cf((cf_name.clone(), cf_opts)).unwrap();
         let cf_handle = db.cf_handle(cf_name.clone()).unwrap();
         let cf_opts = db.get_options_cf(cf_handle);
-        assert!(cf_opts.get_level_compaction_dynamic_level_bytes());
+        assert!(!cf_opts.get_level_compaction_dynamic_level_bytes());
 
-        let (_, cf_descs) = load_latest_options(dbpath, &Env::default(), false)
-            .unwrap()
-            .unwrap();
+        let (_, cf_descs) = load_latest_options(dbpath, false).unwrap().unwrap();
 
         for cf_desc in cf_descs {
-            if cf_desc.name() == cf_name {
+            if cf_desc.name() != cf_name {
                 assert!(cf_desc.options().get_level_compaction_dynamic_level_bytes());
             } else {
                 assert!(!cf_desc.options().get_level_compaction_dynamic_level_bytes());

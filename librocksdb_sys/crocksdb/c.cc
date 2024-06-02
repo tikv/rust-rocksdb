@@ -48,7 +48,7 @@
 #include "rocksdb/table_properties.h"
 #include "rocksdb/types.h"
 #include "rocksdb/universal_compaction.h"
-#include "rocksdb/utilities/backupable_db.h"
+#include "rocksdb/utilities/backup_engine.h"
 #include "rocksdb/utilities/checkpoint.h"
 #include "rocksdb/utilities/db_ttl.h"
 #include "rocksdb/utilities/debug.h"
@@ -75,8 +75,8 @@
 #endif
 
 using rocksdb::BackgroundErrorReason;
-using rocksdb::BackupableDBOptions;
 using rocksdb::BackupEngine;
+using rocksdb::BackupEngineOptions;
 using rocksdb::BackupInfo;
 using rocksdb::BlockBasedTableOptions;
 using rocksdb::BlockCipher;
@@ -92,6 +92,7 @@ using rocksdb::CompactionOptionsFIFO;
 using rocksdb::CompactRangeOptions;
 using rocksdb::Comparator;
 using rocksdb::CompressionType;
+using rocksdb::ConfigOptions;
 using rocksdb::CuckooTableOptions;
 using rocksdb::DB;
 using rocksdb::DBOptions;
@@ -434,16 +435,16 @@ struct crocksdb_compactionfilter_t : public CompactionFilter {
   void* state_;
   void (*destructor_)(void*);
   uint32_t (*filter_)(void*, int level, const char* key, size_t key_length,
-                      uint64_t seqno, uint32_t value_type,
-                      const char* existing_value, size_t value_length,
-                      char** new_value, size_t* new_value_length,
-                      char** skip_until, size_t* skip_until_length);
+                      uint32_t value_type, const char* existing_value,
+                      size_t value_length, char** new_value,
+                      size_t* new_value_length, char** skip_until,
+                      size_t* skip_until_length);
 
   const char* (*name_)(void*);
 
   virtual ~crocksdb_compactionfilter_t() { (*destructor_)(state_); }
 
-  virtual Decision UnsafeFilter(int level, const Slice& key, uint64_t seqno,
+  virtual Decision UnsafeFilter(int level, const Slice& key,
                                 ValueType value_type,
                                 const Slice& existing_value,
                                 std::string* new_value,
@@ -453,7 +454,7 @@ struct crocksdb_compactionfilter_t : public CompactionFilter {
     size_t new_value_length, skip_until_length = 0;
 
     uint32_t r =
-        (*filter_)(state_, level, key.data(), key.size(), seqno,
+        (*filter_)(state_, level, key.data(), key.size(),
                    static_cast<uint32_t>(value_type), existing_value.data(),
                    existing_value.size(), &c_new_value, &new_value_length,
                    &c_skip_until, &skip_until_length);
@@ -524,41 +525,10 @@ struct crocksdb_filterpolicy_t : public FilterPolicy {
   void* state_;
   void (*destructor_)(void*);
   const char* (*name_)(void*);
-  char* (*create_)(void*, const char* const* key_array,
-                   const size_t* key_length_array, int num_keys,
-                   size_t* filter_length);
-  unsigned char (*key_match_)(void*, const char* key, size_t length,
-                              const char* filter, size_t filter_length);
-  void (*delete_filter_)(void*, const char* filter, size_t filter_length);
 
   virtual ~crocksdb_filterpolicy_t() { (*destructor_)(state_); }
 
   virtual const char* Name() const override { return (*name_)(state_); }
-
-  virtual void CreateFilter(const Slice* keys, int n,
-                            std::string* dst) const override {
-    std::vector<const char*> key_pointers(n);
-    std::vector<size_t> key_sizes(n);
-    for (int i = 0; i < n; i++) {
-      key_pointers[i] = keys[i].data();
-      key_sizes[i] = keys[i].size();
-    }
-    size_t len;
-    char* filter = (*create_)(state_, &key_pointers[0], &key_sizes[0], n, &len);
-    dst->append(filter, len);
-
-    if (delete_filter_ != nullptr) {
-      (*delete_filter_)(state_, filter, len);
-    } else {
-      free(filter);
-    }
-  }
-
-  virtual bool KeyMayMatch(const Slice& key,
-                           const Slice& filter) const override {
-    return (*key_match_)(state_, key.data(), key.size(), filter.data(),
-                         filter.size());
-  }
 };
 
 struct crocksdb_mergeoperator_t : public MergeOperator {
@@ -853,7 +823,7 @@ crocksdb_backup_engine_t* crocksdb_backup_engine_open(
     const crocksdb_options_t* options, const char* path, char** errptr) {
   BackupEngine* be;
   if (SaveError(errptr, BackupEngine::Open(options->rep.env,
-                                           BackupableDBOptions(path), &be))) {
+                                           BackupEngineOptions(path), &be))) {
     return nullptr;
   }
   crocksdb_backup_engine_t* result = new crocksdb_backup_engine_t;
@@ -1189,7 +1159,8 @@ void crocksdb_write_multi_batch(crocksdb_t* db,
   for (size_t i = 0; i < batch_size; i++) {
     ws.push_back(&batches[i]->rep);
   }
-  SaveError(errptr, db->rep->MultiBatchWrite(options->rep, std::move(ws)));
+  SaveError(errptr,
+            db->rep->MultiBatchWrite(options->rep, std::move(ws), nullptr));
 }
 
 void crocksdb_write_multi_batch_callback(
@@ -1670,10 +1641,6 @@ const char* crocksdb_iter_value(const crocksdb_iterator_t* iter, size_t* vlen) {
   return s.data();
 }
 
-bool crocksdb_iter_seqno(const crocksdb_iterator_t* iter, SequenceNumber* no) {
-  return iter->rep->seqno(no);
-}
-
 void crocksdb_iter_get_error(const crocksdb_iterator_t* iter, char** errptr) {
   SaveError(errptr, iter->rep->status());
 }
@@ -2097,14 +2064,6 @@ void crocksdb_block_based_options_set_block_cache(
   }
 }
 
-void crocksdb_block_based_options_set_block_cache_compressed(
-    crocksdb_block_based_table_options_t* options,
-    crocksdb_cache_t* block_cache_compressed) {
-  if (block_cache_compressed) {
-    options->rep.block_cache_compressed = block_cache_compressed->rep;
-  }
-}
-
 void crocksdb_block_based_options_set_whole_key_filtering(
     crocksdb_block_based_table_options_t* options, unsigned char v) {
   options->rep.whole_key_filtering = v;
@@ -2118,11 +2077,6 @@ void crocksdb_block_based_options_set_format_version(
 void crocksdb_block_based_options_set_index_type(
     crocksdb_block_based_table_options_t* options, uint32_t v) {
   options->rep.index_type = static_cast<BlockBasedTableOptions::IndexType>(v);
-}
-
-void crocksdb_block_based_options_set_hash_index_allow_collision(
-    crocksdb_block_based_table_options_t* options, unsigned char v) {
-  options->rep.hash_index_allow_collision = v;
 }
 
 void crocksdb_block_based_options_set_optimize_filters_for_memory(
@@ -3068,11 +3022,6 @@ void crocksdb_options_set_is_fd_close_on_exec(crocksdb_options_t* opt,
   opt->rep.is_fd_close_on_exec = v;
 }
 
-void crocksdb_options_set_skip_log_error_on_recovery(crocksdb_options_t* opt,
-                                                     unsigned char v) {
-  opt->rep.skip_log_error_on_recovery = v;
-}
-
 void crocksdb_options_set_stats_dump_period_sec(crocksdb_options_t* opt,
                                                 unsigned int v) {
   opt->rep.stats_dump_period_sec = v;
@@ -3197,16 +3146,6 @@ int crocksdb_options_get_max_background_compactions(
   return opt->rep.max_background_compactions;
 }
 
-void crocksdb_options_set_base_background_compactions(crocksdb_options_t* opt,
-                                                      int n) {
-  opt->rep.base_background_compactions = n;
-}
-
-int crocksdb_options_get_base_background_compactions(
-    const crocksdb_options_t* opt) {
-  return opt->rep.base_background_compactions;
-}
-
 void crocksdb_options_set_max_background_flushes(crocksdb_options_t* opt,
                                                  int n) {
   opt->rep.max_background_flushes = n;
@@ -3234,14 +3173,6 @@ void crocksdb_options_set_recycle_log_file_num(crocksdb_options_t* opt,
   opt->rep.recycle_log_file_num = v;
 }
 
-void crocksdb_options_set_soft_rate_limit(crocksdb_options_t* opt, double v) {
-  opt->rep.soft_rate_limit = v;
-}
-
-void crocksdb_options_set_hard_rate_limit(crocksdb_options_t* opt, double v) {
-  opt->rep.hard_rate_limit = v;
-}
-
 void crocksdb_options_set_soft_pending_compaction_bytes_limit(
     crocksdb_options_t* opt, size_t v) {
   opt->rep.soft_pending_compaction_bytes_limit = v;
@@ -3260,11 +3191,6 @@ void crocksdb_options_set_hard_pending_compaction_bytes_limit(
 size_t crocksdb_options_get_hard_pending_compaction_bytes_limit(
     crocksdb_options_t* opt) {
   return opt->rep.hard_pending_compaction_bytes_limit;
-}
-
-void crocksdb_options_set_rate_limit_delay_max_milliseconds(
-    crocksdb_options_t* opt, unsigned int v) {
-  opt->rep.rate_limit_delay_max_milliseconds = v;
 }
 
 void crocksdb_options_set_max_manifest_file_size(crocksdb_options_t* opt,
@@ -3613,8 +3539,11 @@ unsigned char crocksdb_load_latest_options(
     crocksdb_column_family_descriptor*** cf_descs, size_t* cf_descs_len,
     unsigned char ignore_unknown_options, char** errptr) {
   std::vector<ColumnFamilyDescriptor> tmp_cf_descs;
-  Status s = rocksdb::LoadLatestOptions(dbpath, env->rep, &db_options->rep,
-                                        &tmp_cf_descs, ignore_unknown_options);
+  ConfigOptions config_options;
+  config_options.ignore_unknown_options = ignore_unknown_options;
+  config_options.env = env->rep;
+  Status s = rocksdb::LoadLatestOptions(config_options, dbpath,
+                                        &db_options->rep, &tmp_cf_descs);
 
   *errptr = nullptr;
   if (s.IsNotFound()) return false;
@@ -3778,10 +3707,10 @@ table_properties_collectors
 crocksdb_compactionfilter_t* crocksdb_compactionfilter_create(
     void* state, void (*destructor)(void*),
     uint32_t (*filter)(void*, int level, const char* key, size_t key_length,
-                       uint64_t seqno, uint32_t value_type,
-                       const char* existing_value, size_t value_length,
-                       char** new_value, size_t* new_value_length,
-                       char** skip_until, size_t* skip_until_length),
+                       uint32_t value_type, const char* existing_value,
+                       size_t value_length, char** new_value,
+                       size_t* new_value_length, char** skip_until,
+                       size_t* skip_until_length),
     const char* (*name)(void*)) {
   crocksdb_compactionfilter_t* result = new crocksdb_compactionfilter_t;
   result->state_ = state;
@@ -3810,36 +3739,17 @@ unsigned char crocksdb_compactionfiltercontext_is_bottommost_level(
   return context->rep.is_bottommost_level;
 }
 
-void crocksdb_compactionfiltercontext_file_numbers(
-    crocksdb_compactionfiltercontext_t* context, const uint64_t** buffer,
-    size_t* len) {
-  *buffer = context->rep.file_numbers.data();
-  *len = context->rep.file_numbers.size();
-}
-
-crocksdb_table_properties_t* crocksdb_compactionfiltercontext_table_properties(
-    crocksdb_compactionfiltercontext_t* context, size_t offset) {
-  return (crocksdb_table_properties_t*)context->rep.table_properties[offset]
-      .get();
-}
-
-const char* crocksdb_compactionfiltercontext_start_key(
-    crocksdb_compactionfiltercontext_t* context, size_t* key_len) {
-  const Slice& result = context->rep.start_key;
-  *key_len = result.size();
-  return result.data();
+crocksdb_table_properties_collection_t*
+crocksdb_compactionfiltercontext_input_table_properties(
+    crocksdb_compactionfiltercontext_t* context) {
+  return (
+      crocksdb_table_properties_collection_t*)(&context->rep
+                                                    .input_table_properties);
 }
 
 uint32_t crocksdb_compactionfiltercontext_reason(
     crocksdb_compactionfiltercontext_t* context) {
   return static_cast<uint32_t>(context->rep.reason);
-}
-
-const char* crocksdb_compactionfiltercontext_end_key(
-    crocksdb_compactionfiltercontext_t* context, size_t* key_len) {
-  const Slice& result = context->rep.end_key;
-  *key_len = result.size();
-  return result.data();
 }
 
 crocksdb_compactionfilterfactory_t* crocksdb_compactionfilterfactory_create(
@@ -3879,25 +3789,6 @@ crocksdb_comparator_t* crocksdb_comparator_create(
 
 void crocksdb_comparator_destroy(crocksdb_comparator_t* cmp) { delete cmp; }
 
-crocksdb_filterpolicy_t* crocksdb_filterpolicy_create(
-    void* state, void (*destructor)(void*),
-    char* (*create_filter)(void*, const char* const* key_array,
-                           const size_t* key_length_array, int num_keys,
-                           size_t* filter_length),
-    unsigned char (*key_may_match)(void*, const char* key, size_t length,
-                                   const char* filter, size_t filter_length),
-    void (*delete_filter)(void*, const char* filter, size_t filter_length),
-    const char* (*name)(void*)) {
-  crocksdb_filterpolicy_t* result = new crocksdb_filterpolicy_t;
-  result->state_ = state;
-  result->destructor_ = destructor;
-  result->create_ = create_filter;
-  result->key_match_ = key_may_match;
-  result->delete_filter_ = delete_filter;
-  result->name_ = name;
-  return result;
-}
-
 void crocksdb_filterpolicy_destroy(crocksdb_filterpolicy_t* filter) {
   delete filter;
 }
@@ -3909,11 +3800,8 @@ struct FilterPolicyWrapper : public crocksdb_filterpolicy_t {
   const FilterPolicy* rep_;
   ~FilterPolicyWrapper() override { delete rep_; }
   const char* Name() const override { return rep_->Name(); }
-  void CreateFilter(const Slice* keys, int n, std::string* dst) const override {
-    return rep_->CreateFilter(keys, n, dst);
-  }
-  bool KeyMayMatch(const Slice& key, const Slice& filter) const override {
-    return rep_->KeyMayMatch(key, filter);
+  const char* CompatibilityName() const override {
+    return rep_->CompatibilityName();
   }
   // No need to override GetFilterBitsBuilder if this one is overridden
   FilterBitsBuilder* GetBuilderWithContext(
@@ -3931,7 +3819,6 @@ crocksdb_filterpolicy_t* crocksdb_filterpolicy_create_bloom_format(
   FilterPolicyWrapper* wrapper = new FilterPolicyWrapper;
   wrapper->rep_ = NewBloomFilterPolicy(bits_per_key, original_format);
   wrapper->state_ = nullptr;
-  wrapper->delete_filter_ = nullptr;
   wrapper->destructor_ = &FilterPolicyWrapper::DoNothing;
   return wrapper;
 }
@@ -3952,7 +3839,6 @@ crocksdb_filterpolicy_t* crocksdb_filterpolicy_create_ribbon(
   wrapper->rep_ =
       NewRibbonFilterPolicy(bloom_equivalent_bits_per_key, bloom_before_level);
   wrapper->state_ = nullptr;
-  wrapper->delete_filter_ = nullptr;
   wrapper->destructor_ = &FilterPolicyWrapper::DoNothing;
   return wrapper;
 }
@@ -5812,7 +5698,7 @@ struct ExternalSstFileModifier {
     auto ioptions = *cfd->ioptions();
     auto table_opt =
         TableReaderOptions(ioptions, desc.options.prefix_extractor,
-                           env_options_, cfd->internal_comparator());
+                           env_options_, cfd->internal_comparator(), 0);
     // Get around global seqno check.
     table_opt.largest_seqno = kMaxSequenceNumber;
     status = ioptions.table_factory->NewTableReader(

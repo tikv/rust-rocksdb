@@ -303,17 +303,6 @@ impl<D> DBIterator<D> {
         }
     }
 
-    pub fn sequence(&self) -> Option<u64> {
-        debug_assert_eq!(self.valid(), Ok(true));
-        unsafe {
-            let mut seqno = 0;
-            if crocksdb_ffi::crocksdb_iter_seqno(self.inner, &mut seqno) {
-                return Some(seqno);
-            }
-            None
-        }
-    }
-
     #[deprecated]
     pub fn kv(&self) -> Option<(Vec<u8>, Vec<u8>)> {
         if self.valid().unwrap() {
@@ -3543,18 +3532,18 @@ mod test {
         let mut db = DB::open(opts, dbpath).unwrap();
 
         let mut cf_opts = ColumnFamilyOptions::new();
-        cf_opts.set_level_compaction_dynamic_level_bytes(true);
+        cf_opts.set_level_compaction_dynamic_level_bytes(false);
         db.create_cf((cf_name.clone(), cf_opts)).unwrap();
         let cf_handle = db.cf_handle(cf_name.clone()).unwrap();
         let cf_opts = db.get_options_cf(cf_handle);
-        assert!(cf_opts.get_level_compaction_dynamic_level_bytes());
+        assert!(!cf_opts.get_level_compaction_dynamic_level_bytes());
 
         let (_, cf_descs) = load_latest_options(dbpath, &Env::default(), false)
             .unwrap()
             .unwrap();
 
         for cf_desc in cf_descs {
-            if cf_desc.name() == cf_name {
+            if cf_desc.name() != cf_name {
                 assert!(cf_desc.options().get_level_compaction_dynamic_level_bytes());
             } else {
                 assert!(!cf_desc.options().get_level_compaction_dynamic_level_bytes());

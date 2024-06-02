@@ -419,17 +419,16 @@ fn test_fixed_suffix_seek() {
 
 #[test]
 fn test_iter_sequence_number() {
-    struct TestCompactionFilter(SyncSender<(Vec<u8>, Vec<u8>, u64)>);
+    struct TestCompactionFilter(SyncSender<(Vec<u8>, Vec<u8>)>);
     impl CompactionFilter for TestCompactionFilter {
         fn featured_filter(
             &mut self,
             _: usize,
             key: &[u8],
-            seqno: u64,
             value: &[u8],
             _: CompactionFilterValueType,
         ) -> CompactionFilterDecision {
-            self.0.send((key.to_vec(), value.to_vec(), seqno)).unwrap();
+            self.0.send((key.to_vec(), value.to_vec())).unwrap();
             CompactionFilterDecision::Keep
         }
     }
@@ -466,12 +465,10 @@ fn test_iter_sequence_number() {
     assert!(iter.seek(SeekKey::Key(b"key1")).unwrap());
     assert_eq!(iter.key(), b"key1");
     assert_eq!(iter.value(), b"value22");
-    assert_eq!(iter.sequence().unwrap(), 2);
 
     assert!(iter.next().unwrap());
     assert_eq!(iter.key(), b"key2");
     assert_eq!(iter.value(), b"value22");
-    assert_eq!(iter.sequence().unwrap(), 4);
 
     let mut compact_opts = CompactOptions::new();
     compact_opts.set_bottommost_level_compaction(DBBottommostLevelCompaction::Force);
@@ -479,13 +476,11 @@ fn test_iter_sequence_number() {
     let cf_default = db.cf_handle("default").unwrap();
     db.compact_range_cf_opt(cf_default, &compact_opts, Some(b"a"), Some(b"z"));
 
-    let (k, v, seqno) = rx.recv().unwrap();
+    let (k, v) = rx.recv().unwrap();
     assert_eq!(k, b"key1");
     assert_eq!(v, b"value22");
-    assert_eq!(seqno, 2);
 
-    let (k, v, seqno) = rx.recv().unwrap();
+    let (k, v) = rx.recv().unwrap();
     assert_eq!(k, b"key2");
     assert_eq!(v, b"value22");
-    assert_eq!(seqno, 4);
 }

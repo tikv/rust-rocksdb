@@ -31,7 +31,6 @@ impl CompactionFilter for Filter {
         &mut self,
         _: usize,
         key: &[u8],
-        _: u64,
         value: &[u8],
         _: CompactionFilterValueType,
     ) -> CompactionFilterDecision {

@@ -1117,6 +1117,14 @@ impl DBOptions {
         }
     }
 
+    pub fn set_wal_compression(&self, c: DBCompressionType) {
+        unsafe { crocksdb_ffi::crocksdb_options_set_wal_compression(self.inner, c) }
+    }
+
+    pub fn get_wal_compression(&self) -> DBCompressionType {
+        unsafe { crocksdb_ffi::crocksdb_options_get_wal_compression(self.inner) }
+    }
+
     pub fn set_delayed_write_rate(&mut self, rate: u64) {
         unsafe {
             crocksdb_ffi::crocksdb_options_set_delayed_write_rate(self.inner, rate);

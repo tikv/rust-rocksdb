@@ -1,9 +1,9 @@
 [submodule "rocksdb"]
 	path = librocksdb_sys/rocksdb
-	url = https://github.com/v01dstar/rocksdb.git
-	branch = 8.10-tikv
+	url = https://github.com/hbisheng/rocksdb.git
+	branch = fix-pri
 
 [submodule "titan"]
 	path = librocksdb_sys/libtitan_sys/titan
-	url = https://github.com/v01dstar/titan.git
-	branch = upgrade-rocksdb
+	url = https://github.com/hbisheng/titan.git
+	branch = fix-pri

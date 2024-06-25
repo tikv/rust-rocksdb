@@ -847,6 +847,11 @@ extern "C" {
         zstd_max_train_bytes: c_int,
         parallel_threads: c_int,
     );
+    pub fn crocksdb_options_set_wal_compression(
+        options: *mut Options,
+        compression_style_no: DBCompressionType,
+    );
+    pub fn crocksdb_options_get_wal_compression(options: *mut Options) -> DBCompressionType;
     pub fn crocksdb_options_set_bottommost_compression_options(
         options: *mut Options,
         window_bits: c_int,

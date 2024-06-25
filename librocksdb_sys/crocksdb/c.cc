@@ -5070,6 +5070,14 @@ void crocksdb_options_set_min_level_to_compress(crocksdb_options_t* opt,
   }
 }
 
+uint32_t crocksdb_options_get_wal_compression(crocksdb_options_t* opt) {
+  return static_cast<uint32_t>(opt->rep.wal_compression);
+}
+
+void crocksdb_options_set_wal_compression(crocksdb_options_t* opt, int compression_type) {
+  opt->rep.wal_compression = static_cast<CompressionType>(compression_type);
+}
+
 size_t crocksdb_livefiles_count(const crocksdb_livefiles_t* lf) {
   return static_cast<int>(lf->rep.size());
 }

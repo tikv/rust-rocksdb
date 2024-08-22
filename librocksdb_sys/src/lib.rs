@@ -847,11 +847,6 @@ extern "C" {
         zstd_max_train_bytes: c_int,
         parallel_threads: c_int,
     );
-    pub fn crocksdb_options_set_wal_compression(
-        options: *mut Options,
-        compression_style_no: DBCompressionType,
-    );
-    pub fn crocksdb_options_get_wal_compression(options: *mut Options) -> DBCompressionType;
     pub fn crocksdb_options_set_bottommost_compression_options(
         options: *mut Options,
         window_bits: c_int,
@@ -936,6 +931,10 @@ extern "C" {
     pub fn crocksdb_options_set_wal_dir(options: *mut Options, path: *const c_char);
     pub fn crocksdb_options_set_wal_ttl_seconds(options: *mut Options, ttl: u64);
     pub fn crocksdb_options_set_wal_size_limit_mb(options: *mut Options, limit: u64);
+    pub fn crocksdb_options_set_wal_compression(
+        options: *mut Options,
+        compression_style_no: DBCompressionType,
+    );
     pub fn crocksdb_options_set_use_direct_reads(options: *mut Options, v: bool);
     pub fn crocksdb_options_set_use_direct_io_for_flush_and_compaction(
         options: *mut Options,

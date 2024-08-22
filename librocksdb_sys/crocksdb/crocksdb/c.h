@@ -1270,6 +1270,8 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_wal_ttl_seconds(
     crocksdb_options_t*, uint64_t);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_wal_size_limit_mb(
     crocksdb_options_t*, uint64_t);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_wal_compression(
+    crocksdb_options_t* opt, int compression_type);
 extern C_ROCKSDB_LIBRARY_API void
 crocksdb_options_set_manifest_preallocation_size(crocksdb_options_t*, size_t);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_allow_mmap_reads(
@@ -1344,11 +1346,6 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_plain_table_factory(
 
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_min_level_to_compress(
     crocksdb_options_t* opt, int level);
-
-extern C_ROCKSDB_LIBRARY_API uint32_t crocksdb_options_get_wal_compression(
-    crocksdb_options_t* opt);
-extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_wal_compression(
-    crocksdb_options_t* opt, int compression_type);
 
 extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_memtable_huge_page_size(
     crocksdb_options_t*, size_t);

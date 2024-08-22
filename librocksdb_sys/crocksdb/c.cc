@@ -3005,6 +3005,10 @@ void crocksdb_options_set_wal_size_limit_mb(crocksdb_options_t* opt,
   opt->rep.WAL_size_limit_MB = limit;
 }
 
+void crocksdb_options_set_wal_compression(crocksdb_options_t* opt, int compression_type) {
+  opt->rep.wal_compression = static_cast<CompressionType>(compression_type);
+}
+
 void crocksdb_options_set_manifest_preallocation_size(crocksdb_options_t* opt,
                                                       size_t v) {
   opt->rep.manifest_preallocation_size = v;
@@ -5068,14 +5072,6 @@ void crocksdb_options_set_min_level_to_compress(crocksdb_options_t* opt,
       opt->rep.compression_per_level[i] = opt->rep.compression;
     }
   }
-}
-
-uint32_t crocksdb_options_get_wal_compression(crocksdb_options_t* opt) {
-  return static_cast<uint32_t>(opt->rep.wal_compression);
-}
-
-void crocksdb_options_set_wal_compression(crocksdb_options_t* opt, int compression_type) {
-  opt->rep.wal_compression = static_cast<CompressionType>(compression_type);
 }
 
 size_t crocksdb_livefiles_count(const crocksdb_livefiles_t* lf) {

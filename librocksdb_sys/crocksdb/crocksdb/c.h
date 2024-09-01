@@ -242,7 +242,7 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_merge_disjoint_instances(
 extern C_ROCKSDB_LIBRARY_API void crocksdb_status_ptr_get_error(
     crocksdb_status_ptr_t*, char** errptr);
 
-extern C_ROCKSDB_LIBRARY_API void rocksdb_resume(crocksdb_t* db, char** errptr);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_resume(crocksdb_t* db, char** errptr);
 
 extern C_ROCKSDB_LIBRARY_API crocksdb_checkpoint_t*
 crocksdb_checkpoint_object_create(crocksdb_t* db, char** errptr);

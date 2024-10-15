@@ -1,7 +1,7 @@
 use std::ffi::CString;
 use std::{ptr, slice, usize};
 
-use crate::table_properties::TableProperties;
+use crate::TablePropertiesCollectionView;
 use crocksdb_ffi::CompactionFilterDecision as RawCompactionFilterDecision;
 pub use crocksdb_ffi::CompactionFilterValueType;
 pub use crocksdb_ffi::DBCompactionFilter;
@@ -49,7 +49,6 @@ pub trait CompactionFilter {
         &mut self,
         level: usize,
         key: &[u8],
-        _seqno: u64,
         value: &[u8],
         value_type: CompactionFilterValueType,
     ) -> CompactionFilterDecision {
@@ -77,12 +76,11 @@ pub trait CompactionFilter {
         &mut self,
         level: usize,
         key: &[u8],
-        seqno: u64,
         value: &[u8],
         value_type: CompactionFilterValueType,
     ) -> CompactionFilterDecision {
         if value_type != CompactionFilterValueType::Deletion {
-            self.featured_filter(level, key, seqno, value, value_type)
+            self.featured_filter(level, key, value, value_type)
         } else {
             CompactionFilterDecision::Keep
         }
@@ -110,7 +108,6 @@ extern "C" fn filter<C: CompactionFilter>(
     level: c_int,
     key: *const u8,
     key_len: size_t,
-    seqno: u64,
     value_type: CompactionFilterValueType,
     value: *const u8,
     value_len: size_t,
@@ -128,7 +125,7 @@ extern "C" fn filter<C: CompactionFilter>(
         let filter = &mut (*(filter as *mut CompactionFilterProxy<C>)).filter;
         let key = slice::from_raw_parts(key, key_len);
         let value = slice::from_raw_parts(value, value_len);
-        match filter.unsafe_filter(level as usize, key, seqno, value, value_type) {
+        match filter.unsafe_filter(level as usize, key, value, value_type) {
             CompactionFilterDecision::Keep => RawCompactionFilterDecision::Keep,
             CompactionFilterDecision::Remove => RawCompactionFilterDecision::Remove,
             CompactionFilterDecision::ChangeValue(new_v) => {
@@ -203,46 +200,11 @@ impl CompactionFilterContext {
         unsafe { crocksdb_ffi::crocksdb_compactionfiltercontext_is_bottommost_level(ctx) }
     }
 
-    pub fn file_numbers(&self) -> &[u64] {
-        let ctx = &self.0 as *const DBCompactionFilterContext;
-        let (mut buffer, mut len): (*const u64, usize) = (ptr::null_mut(), 0);
-        unsafe {
-            crocksdb_ffi::crocksdb_compactionfiltercontext_file_numbers(
-                ctx,
-                &mut buffer as *mut *const u64,
-                &mut len as *mut usize,
-            );
-            slice::from_raw_parts(buffer, len)
-        }
-    }
-
-    pub fn table_properties(&self, offset: usize) -> &TableProperties {
+    pub fn input_table_properties(&self) -> &TablePropertiesCollectionView {
         let ctx = &self.0 as *const DBCompactionFilterContext;
         unsafe {
-            let raw = crocksdb_ffi::crocksdb_compactionfiltercontext_table_properties(ctx, offset);
-            TableProperties::from_ptr(raw)
-        }
-    }
-
-    pub fn start_key(&self) -> &[u8] {
-        let ctx = &self.0 as *const DBCompactionFilterContext;
-        unsafe {
-            let mut start_key_len: usize = 0;
-            let start_key_ptr =
-                crocksdb_ffi::crocksdb_compactionfiltercontext_start_key(ctx, &mut start_key_len)
-                    as *const u8;
-            slice::from_raw_parts(start_key_ptr, start_key_len)
-        }
-    }
-
-    pub fn end_key(&self) -> &[u8] {
-        let ctx = &self.0 as *const DBCompactionFilterContext;
-        unsafe {
-            let mut end_key_len: usize = 0;
-            let end_key_ptr =
-                crocksdb_ffi::crocksdb_compactionfiltercontext_end_key(ctx, &mut end_key_len)
-                    as *const u8;
-            slice::from_raw_parts(end_key_ptr, end_key_len)
+            let raw = crocksdb_ffi::crocksdb_compactionfiltercontext_input_table_properties(ctx);
+            TablePropertiesCollectionView::from_ptr(raw)
         }
     }
 
@@ -357,7 +319,6 @@ pub unsafe fn new_compaction_filter_factory<C: CompactionFilterFactory>(
 #[cfg(test)]
 mod tests {
     use std::ffi::CString;
-    use std::str;
     use std::sync::mpsc::{self, SyncSender};
     use std::time::Duration;
 
@@ -397,24 +358,6 @@ mod tests {
         }
     }
 
-    struct KeyRangeFilter;
-    impl CompactionFilter for KeyRangeFilter {}
-
-    struct KeyRangeFactory(SyncSender<Vec<u8>>);
-    impl CompactionFilterFactory for KeyRangeFactory {
-        type Filter = KeyRangeFilter;
-        fn create_compaction_filter(
-            &self,
-            context: &CompactionFilterContext,
-        ) -> Option<(CString, Self::Filter)> {
-            let start_key = context.start_key();
-            let end_key = context.end_key();
-            self.0.send(start_key.to_owned()).unwrap();
-            self.0.send(end_key.to_owned()).unwrap();
-            Some((CString::new("key_range_filter").unwrap(), KeyRangeFilter))
-        }
-    }
-
     struct FlushFactory {}
 
     struct FlushFilter;
@@ -423,7 +366,6 @@ mod tests {
             &mut self,
             _: usize,
             _: &[u8],
-            _: u64,
             _: &[u8],
             _: CompactionFilterValueType,
         ) -> CompactionFilterDecision {
@@ -516,41 +458,6 @@ mod tests {
         let db = DB::open_cf(db_opts, path, cfds);
         drop(db);
         assert!(rx.recv_timeout(Duration::from_secs(1)).is_ok());
-    }
-
-    #[test]
-    fn test_compaction_filter_factory_context_keys() {
-        let mut cf_opts = ColumnFamilyOptions::default();
-        let name = CString::new("compaction filter factory").unwrap();
-        let (tx, rx) = mpsc::sync_channel(2);
-        let factory = KeyRangeFactory(tx);
-        cf_opts
-            .set_compaction_filter_factory::<CString, KeyRangeFactory>(name, factory)
-            .unwrap();
-        let mut opts = DBOptions::new();
-        opts.create_if_missing(true);
-        let path = tempfile::Builder::new()
-            .prefix("test_factory_context_keys")
-            .tempdir()
-            .unwrap();
-        let mut db = DB::open(opts, path.path().to_str().unwrap()).unwrap();
-        db.create_cf(("test", cf_opts)).unwrap();
-        let cfh = db.cf_handle("test").unwrap();
-        for i in 0..10 {
-            db.put_cf(
-                cfh,
-                format!("key{}", i).as_bytes(),
-                format!("value{}", i).as_bytes(),
-            )
-            .unwrap();
-        }
-        db.compact_range_cf(cfh, None, None);
-        let sk = rx.recv().unwrap();
-        let ek = rx.recv().unwrap();
-        let sk = str::from_utf8(&sk).unwrap();
-        let ek = str::from_utf8(&ek).unwrap();
-        assert_eq!("key0", sk);
-        assert_eq!("key9", ek);
     }
 
     #[test]

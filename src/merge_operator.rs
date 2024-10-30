@@ -51,8 +51,8 @@ pub unsafe extern "C" fn full_merge_callback(
 ) -> *const c_char {
     let cb: &mut MergeOperatorCallback = &mut *(raw_cb as *mut MergeOperatorCallback);
     let operands = &mut MergeOperands::new(operands_list, operands_list_len, num_operands);
-    let key: &[u8] = slice::from_raw_parts(raw_key as *const u8, key_len);
-    let oldval: &[u8] = slice::from_raw_parts(existing_value as *const u8, existing_value_len);
+    let key: &[u8] = from_raw_parts(raw_key as *const u8, key_len);
+    let oldval: &[u8] = from_raw_parts(existing_value as *const u8, existing_value_len);
     let mut result = (cb.merge_fn)(key, Some(oldval), operands);
     result.shrink_to_fit();
     // TODO(tan) investigate zero-copy techniques to improve performance
@@ -77,7 +77,7 @@ pub unsafe extern "C" fn partial_merge_callback(
 ) -> *const c_char {
     let cb: &mut MergeOperatorCallback = &mut *(raw_cb as *mut MergeOperatorCallback);
     let operands = &mut MergeOperands::new(operands_list, operands_list_len, num_operands);
-    let key: &[u8] = slice::from_raw_parts(raw_key as *const u8, key_len);
+    let key: &[u8] = from_raw_parts(raw_key as *const u8, key_len);
     let mut result = (cb.merge_fn)(key, None, operands);
     result.shrink_to_fit();
     // TODO(tan) investigate zero-copy techniques to improve performance
@@ -88,6 +88,14 @@ pub unsafe extern "C" fn partial_merge_callback(
     *success = 1_u8;
     ptr::copy(result.as_ptr(), &mut *buf, result.len());
     buf as *const c_char
+}
+
+unsafe fn from_raw_parts<'a, T>(data: *const T, len: usize) -> &'a [T] {
+    if data.is_null() || len == 0 {
+        &[]
+    } else {
+        slice::from_raw_parts(data, len)
+    }
 }
 
 pub struct MergeOperands {

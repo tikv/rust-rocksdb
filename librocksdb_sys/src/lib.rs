@@ -979,6 +979,8 @@ extern "C" {
     pub fn crocksdb_options_get_ttl(options: *const Options) -> u64;
     pub fn crocksdb_options_set_periodic_compaction_seconds(options: *mut Options, secs: u64);
     pub fn crocksdb_options_get_periodic_compaction_seconds(options: *const Options) -> u64;
+    pub fn crocksdb_options_set_bottommost_file_compaction_delay(options: *mut Options, secs: u32);
+    pub fn crocksdb_options_get_bottommost_file_compaction_delay(options: *const Options) -> u32;
 
     pub fn crocksdb_load_latest_options(
         dbpath: *const c_char,

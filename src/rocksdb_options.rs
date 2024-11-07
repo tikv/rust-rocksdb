@@ -2102,6 +2102,16 @@ impl ColumnFamilyOptions {
             Some(WriteBufferManager { inner: manager })
         }
     }
+
+    pub fn set_bottommost_file_compaction_delay(&mut self, delay: u32) {
+        unsafe {
+            crocksdb_ffi::crocksdb_options_set_bottommost_file_compaction_delay(self.inner, delay);
+        }
+    }
+
+    pub fn get_bottommost_file_compaction_delay(&self) -> u32 {
+        unsafe { crocksdb_ffi::crocksdb_options_get_bottommost_file_compaction_delay(self.inner) }
+    }
 }
 
 // ColumnFamilyDescriptor is a pair of column family's name and options.

@@ -974,3 +974,21 @@ fn test_ttl_compaction_options() {
     assert_eq!(db.get_options().get_ttl(), 3600);
     assert_eq!(db.get_options().get_periodic_compaction_seconds(), 7200);
 }
+
+#[test]
+fn test_bottommost_file_compaction_delay() {
+    let path = tempdir_with_prefix("_rust_rocksdb_bottommost_file_compaction_delay");
+    let path_str = path.path().to_str().unwrap();
+    let mut opts = DBOptions::new();
+    opts.create_if_missing(true);
+    let mut cf_opts = ColumnFamilyOptions::new();
+    cf_opts.set_bottommost_file_compaction_delay(100);
+    let db = DB::open_cf(opts, path_str, vec![("default", cf_opts)]).unwrap();
+    assert_eq!(db.get_options().get_bottommost_file_compaction_delay(), 100);
+
+    let cf = db.cf_handle("default").unwrap();
+
+    db.set_options_cf(cf, &[("bottommost_file_compaction_delay", "200")])
+        .unwrap();
+    assert_eq!(db.get_options().get_bottommost_file_compaction_delay(), 200);
+}

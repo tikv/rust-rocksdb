@@ -3377,6 +3377,16 @@ uint64_t crocksdb_options_get_periodic_compaction_seconds(
   return opt->rep.periodic_compaction_seconds;
 }
 
+void crocksdb_options_set_bottommost_file_compaction_delay(
+    crocksdb_options_t* opt, uint32_t delay) {
+  opt->rep.bottommost_file_compaction_delay = delay;
+}
+
+uint32_t crocksdb_options_get_bottommost_file_compaction_delay(
+    const crocksdb_options_t* opt) {
+  return opt->rep.bottommost_file_compaction_delay;
+}
+
 void crocksdb_options_set_statistics(crocksdb_options_t* opt,
                                      crocksdb_statistics_t* statistics) {
   opt->rep.statistics = statistics->rep;

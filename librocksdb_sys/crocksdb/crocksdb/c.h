@@ -1465,6 +1465,13 @@ crocksdb_options_set_periodic_compaction_seconds(crocksdb_options_t* opt,
 extern C_ROCKSDB_LIBRARY_API uint64_t
 crocksdb_options_get_periodic_compaction_seconds(const crocksdb_options_t* opt);
 
+extern C_ROCKSDB_LIBRARY_API void
+crocksdb_options_set_bottommost_file_compaction_delay(crocksdb_options_t* opt,
+                                                      uint32_t delay);
+extern C_ROCKSDB_LIBRARY_API uint32_t
+crocksdb_options_get_bottommost_file_compaction_delay(
+    const crocksdb_options_t* opt);
+
 /* RateLimiter */
 extern C_ROCKSDB_LIBRARY_API crocksdb_ratelimiter_t*
 crocksdb_ratelimiter_create(int64_t rate_bytes_per_sec,

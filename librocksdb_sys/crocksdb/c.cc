@@ -4863,6 +4863,11 @@ void crocksdb_ingestexternalfileoptions_set_verify_checksums_before_ingest(
   opt->rep.verify_checksums_before_ingest = verify_checksums_before_ingest;
 }
 
+void crocksdb_ingestexternalfileoptions_set_allow_write(
+    crocksdb_ingestexternalfileoptions_t* opt, unsigned char allow_write) {
+  opt->rep.allow_write = allow_write;
+}
+
 void crocksdb_ingestexternalfileoptions_destroy(
     crocksdb_ingestexternalfileoptions_t* opt) {
   delete opt;

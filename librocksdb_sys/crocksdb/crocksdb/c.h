@@ -1977,6 +1977,9 @@ extern C_ROCKSDB_LIBRARY_API void
 crocksdb_ingestexternalfileoptions_set_verify_checksums_before_ingest(
     crocksdb_ingestexternalfileoptions_t* opt,
     unsigned char verify_checksums_before_ingest);
+extern C_ROCKSDB_LIBRARY_API void
+crocksdb_ingestexternalfileoptions_set_allow_write(
+    crocksdb_ingestexternalfileoptions_t* opt, unsigned char allow_write);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_ingestexternalfileoptions_destroy(
     crocksdb_ingestexternalfileoptions_t* opt);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_ingest_external_file(

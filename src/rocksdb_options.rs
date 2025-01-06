@@ -2325,6 +2325,15 @@ impl IngestExternalFileOptions {
             );
         }
     }
+
+    pub fn set_allow_write(&mut self, allow_write: bool) {
+        unsafe {
+            crocksdb_ffi::crocksdb_ingestexternalfileoptions_set_allow_write(
+                self.inner,
+                allow_write,
+            );
+        }
+    }
 }
 
 impl Drop for IngestExternalFileOptions {

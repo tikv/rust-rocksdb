@@ -3556,6 +3556,11 @@ void crocksdb_options_avoid_flush_during_shutdown(crocksdb_options_t* opt,
   opt->rep.avoid_flush_during_shutdown = avoid;
 }
 
+void crocksdb_options_set_track_and_verify_wals_in_manifest(
+    crocksdb_options_t* opt, unsigned char track_wals_in_manifest) {
+  opt->rep.track_and_verify_wals_in_manifest = track_wals_in_manifest;
+}
+
 unsigned char crocksdb_load_latest_options(
     const char* dbpath, crocksdb_env_t* env, crocksdb_options_t* db_options,
     crocksdb_column_family_descriptor*** cf_descs, size_t* cf_descs_len,
@@ -3843,9 +3848,8 @@ void crocksdb_filterpolicy_destroy(crocksdb_filterpolicy_t* filter) {
 // supplied C functions.
 struct FilterPolicyWrapper : public crocksdb_filterpolicy_t {
   const FilterPolicy* rep_;
-  std::string full_name_;
   ~FilterPolicyWrapper() override { delete rep_; }
-  const char* Name() const override { return full_name_.c_str(); }
+  const char* Name() const override { return rep_->Name(); }
   void CreateFilter(const Slice* keys, int n, std::string* dst) const override {
     return rep_->CreateFilter(keys, n, dst);
   }
@@ -3867,12 +3871,6 @@ crocksdb_filterpolicy_t* crocksdb_filterpolicy_create_bloom_format(
     double bits_per_key, bool original_format) {
   FilterPolicyWrapper* wrapper = new FilterPolicyWrapper;
   wrapper->rep_ = NewBloomFilterPolicy(bits_per_key, original_format);
-  wrapper->full_name_ = wrapper->rep_->Name();
-  if (original_format) {
-    wrapper->full_name_ += ".BlockBloom";
-  } else {
-    wrapper->full_name_ += ".FullBloom";
-  }
   wrapper->state_ = nullptr;
   wrapper->delete_filter_ = nullptr;
   wrapper->destructor_ = &FilterPolicyWrapper::DoNothing;
@@ -3894,8 +3892,6 @@ crocksdb_filterpolicy_t* crocksdb_filterpolicy_create_ribbon(
   FilterPolicyWrapper* wrapper = new FilterPolicyWrapper;
   wrapper->rep_ =
       NewRibbonFilterPolicy(bloom_equivalent_bits_per_key, bloom_before_level);
-  wrapper->full_name_ = wrapper->rep_->Name();
-  wrapper->full_name_ += ".Ribbon";
   wrapper->state_ = nullptr;
   wrapper->delete_filter_ = nullptr;
   wrapper->destructor_ = &FilterPolicyWrapper::DoNothing;

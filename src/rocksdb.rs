@@ -2948,7 +2948,7 @@ pub fn load_latest_options(
     let dbpath = CString::new(dbpath.as_bytes()).map_err(|_| ERR_CONVERT_PATH.to_owned())?;
     let db_options = DBOptions::new();
     unsafe {
-        let raw_cf_descs: *mut *mut crocksdb_ffi::ColumnFamilyDescriptor = ptr::null_mut();
+        let mut raw_cf_descs: *mut *mut crocksdb_ffi::ColumnFamilyDescriptor = ptr::null_mut();
         let mut cf_descs_len: size_t = 0;
 
         let ok = ffi_try!(crocksdb_load_latest_options(

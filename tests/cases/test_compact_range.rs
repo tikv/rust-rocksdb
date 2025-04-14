@@ -23,7 +23,14 @@ fn test_compact_range() {
     let path = tempdir_with_prefix("_rust_rocksdb_test_compact_range");
     let mut opts = DBOptions::new();
     opts.create_if_missing(true);
-    let db = DB::open(opts, path.path().to_str().unwrap()).unwrap();
+    let mut cf_opts = ColumnFamilyOptions::new();
+    cf_opts.set_level_zero_file_num_compaction_trigger(20);
+    let db = DB::open_cf(
+        opts,
+        path.path().to_str().unwrap(),
+        vec![("default", cf_opts)],
+    )
+    .unwrap();
     let samples = vec![
         (b"k1".to_vec(), b"value--------1".to_vec()),
         (b"k2".to_vec(), b"value--------2".to_vec()),
@@ -46,7 +53,16 @@ fn test_compact_range() {
     for &(ref k, _) in &samples {
         db.delete(k).unwrap()
     }
-    db.compact_range(None, None);
+    let mut compact_opts = CompactOptions::new();
+    // Set manual compaction `canceled` flag is true to disallow manual compaction.
+    compact_opts.set_manual_compaction_canceled(true);
+    let handle = db.cf_handle("default").unwrap();
+    db.compact_range_cf_opt(handle, &compact_opts, None, None);
+    let new_size = db.get_approximate_sizes(&[Range::new(b"k0", b"k6")])[0];
+    assert_eq!(old_size, new_size);
+    // Reset manual compaction `canceled` flag to allow manual compaction.
+    compact_opts.set_manual_compaction_canceled(false);
+    db.compact_range_cf_opt(handle, &compact_opts, None, None);
     let new_size = db.get_approximate_sizes(&[Range::new(b"k0", b"k6")])[0];
     assert!(old_size > new_size);
 }

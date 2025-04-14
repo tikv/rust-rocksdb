@@ -256,6 +256,7 @@ impl RateLimiter {
         RateLimiter { inner: limiter }
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn new_writeampbased_with_auto_tuned(
         rate_bytes_per_sec: i64,
         refill_period_us: i64,

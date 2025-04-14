@@ -4113,8 +4113,8 @@ void crocksdb_compactoptions_set_bottommost_level_compaction(
 void crocksdb_compactoptions_set_manual_compaction_canceled(
     crocksdb_compactoptions_t* opts, unsigned char v) {
   if (opts->rep.canceled == nullptr) {
-    canceled.store(v, std::memory_order_seq_cst);
-    opts->rep.canceled = &canceled;
+    opts->canceled.store(v, std::memory_order_seq_cst);
+    opts->rep.canceled = &opts->canceled;
   } else {
     opts->rep.canceled->store(v, std::memory_order_seq_cst);
   }

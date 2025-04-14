@@ -855,6 +855,12 @@ impl CompactOptions {
             crocksdb_ffi::crocksdb_compactoptions_set_bottommost_level_compaction(self.inner, v);
         }
     }
+
+    pub fn set_manual_compaction_canceled(&mut self, v: bool) {
+        unsafe {
+            crocksdb_ffi::crocksdb_compactoptions_set_manual_compaction_canceled(self.inner, v);
+        }
+    }
 }
 
 impl Drop for CompactOptions {

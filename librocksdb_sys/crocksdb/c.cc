@@ -11,7 +11,9 @@
 
 #include <stdlib.h>
 
+#include <atomic>
 #include <limits>
+#include <memory>
 
 #include "db/column_family.h"
 #include "file/random_access_file_reader.h"
@@ -275,6 +277,7 @@ struct crocksdb_column_family_descriptor {
 };
 struct crocksdb_compactoptions_t {
   CompactRangeOptions rep;
+  std::atomic<bool> canceled;
 };
 struct crocksdb_block_based_table_options_t {
   BlockBasedTableOptions rep;
@@ -4105,6 +4108,16 @@ void crocksdb_compactoptions_set_bottommost_level_compaction(
     crocksdb_compactoptions_t* opt, uint32_t v) {
   opt->rep.bottommost_level_compaction =
       static_cast<BottommostLevelCompaction>(v);
+}
+
+void crocksdb_compactoptions_set_manual_compaction_canceled(
+    crocksdb_compactoptions_t* opts, unsigned char v) {
+  if (opts->rep.canceled == nullptr) {
+    canceled.store(v, std::memory_order_seq_cst);
+    opts->rep.canceled = &canceled;
+  } else {
+    opts->rep.canceled->store(v, std::memory_order_seq_cst);
+  }
 }
 
 crocksdb_flushoptions_t* crocksdb_flushoptions_create() {

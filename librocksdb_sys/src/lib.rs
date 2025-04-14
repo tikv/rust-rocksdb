@@ -1680,6 +1680,10 @@ extern "C" {
         opt: *mut DBCompactOptions,
         v: DBBottommostLevelCompaction,
     );
+    pub fn crocksdb_compactoptions_set_manual_compaction_canceled(
+        opt: *mut DBCompactOptions,
+        v: bool,
+    );
 
     pub fn crocksdb_fifo_compaction_options_create() -> *mut DBFifoCompactionOptions;
     pub fn crocksdb_fifo_compaction_options_set_max_table_files_size(

@@ -55,13 +55,13 @@ fn test_compact_range() {
     }
     let mut compact_opts = CompactOptions::new();
     // Set manual compaction `canceled` flag is true to disallow manual compaction.
-    compact_opts.set_manual_compaction_canceled(true);
+    CompactOptions::reset_global_manual_compaction_canceled(true);
     let handle = db.cf_handle("default").unwrap();
     db.compact_range_cf_opt(handle, &compact_opts, None, None);
     let new_size = db.get_approximate_sizes(&[Range::new(b"k0", b"k6")])[0];
     assert_eq!(old_size, new_size);
     // Reset manual compaction `canceled` flag to allow manual compaction.
-    compact_opts.set_manual_compaction_canceled(false);
+    CompactOptions::reset_global_manual_compaction_canceled(false);
     db.compact_range_cf_opt(handle, &compact_opts, None, None);
     let new_size = db.get_approximate_sizes(&[Range::new(b"k0", b"k6")])[0];
     assert!(old_size > new_size);

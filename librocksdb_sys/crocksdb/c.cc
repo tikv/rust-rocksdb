@@ -277,7 +277,7 @@ struct crocksdb_column_family_descriptor {
 };
 struct crocksdb_compactoptions_t {
   CompactRangeOptions rep;
-  std::atomic<bool> canceled;
+  static std::atomic<bool> canceled{false};
 };
 struct crocksdb_block_based_table_options_t {
   BlockBasedTableOptions rep;
@@ -4072,7 +4072,11 @@ void crocksdb_writeoptions_set_memtable_insert_hint_per_batch(
 }
 
 crocksdb_compactoptions_t* crocksdb_compactoptions_create() {
-  return new crocksdb_compactoptions_t;
+  auto opts = new crocksdb_compactoptions_t;
+  if (opts->rep.canceled == nullptr) {
+    opts->rep.canceled = &crocksdb_compactoptions_t::canceled;
+  }
+  return opts;
 }
 
 void crocksdb_compactoptions_destroy(crocksdb_compactoptions_t* opt) {
@@ -4110,14 +4114,8 @@ void crocksdb_compactoptions_set_bottommost_level_compaction(
       static_cast<BottommostLevelCompaction>(v);
 }
 
-void crocksdb_compactoptions_set_manual_compaction_canceled(
-    crocksdb_compactoptions_t* opts, unsigned char v) {
-  if (opts->rep.canceled == nullptr) {
-    opts->canceled.store(v, std::memory_order_seq_cst);
-    opts->rep.canceled = &opts->canceled;
-  } else {
-    opts->rep.canceled->store(v, std::memory_order_seq_cst);
-  }
+void crocksdb_compactoptions_set_manual_compaction_canceled(unsigned char v) {
+  crocksdb_compactoptions_t::canceled.store(v, std::memory_order_seq_cst);
 }
 
 crocksdb_flushoptions_t* crocksdb_flushoptions_create() {

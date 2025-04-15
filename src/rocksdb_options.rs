@@ -821,6 +821,12 @@ impl CompactOptions {
         }
     }
 
+    pub fn reset_global_manual_compaction_canceled(v: bool) {
+        unsafe {
+            crocksdb_ffi::crocksdb_compactoptions_set_manual_compaction_canceled(v);
+        }
+    }
+
     pub fn set_exclusive_manual_compaction(&mut self, v: bool) {
         unsafe {
             crocksdb_ffi::crocksdb_compactoptions_set_exclusive_manual_compaction(self.inner, v);
@@ -854,12 +860,6 @@ impl CompactOptions {
     pub fn set_bottommost_level_compaction(&mut self, v: DBBottommostLevelCompaction) {
         unsafe {
             crocksdb_ffi::crocksdb_compactoptions_set_bottommost_level_compaction(self.inner, v);
-        }
-    }
-
-    pub fn set_manual_compaction_canceled(&mut self, v: bool) {
-        unsafe {
-            crocksdb_ffi::crocksdb_compactoptions_set_manual_compaction_canceled(self.inner, v);
         }
     }
 }

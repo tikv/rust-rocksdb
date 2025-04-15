@@ -3617,10 +3617,7 @@ extern "C" {
     );
 }
 extern "C" {
-    pub fn crocksdb_compactoptions_set_manual_compaction_canceled(
-        arg1: *mut crocksdb_compactoptions_t,
-        arg2: libc::c_uchar,
-    );
+    pub fn crocksdb_compactoptions_set_manual_compaction_canceled(arg1: libc::c_uchar);
 }
 extern "C" {
     pub fn crocksdb_flushoptions_create() -> *mut crocksdb_flushoptions_t;

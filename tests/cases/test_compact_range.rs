@@ -53,7 +53,7 @@ fn test_compact_range() {
     for &(ref k, _) in &samples {
         db.delete(k).unwrap()
     }
-    let mut compact_opts = CompactOptions::new();
+    let compact_opts = CompactOptions::new();
     // Set manual compaction `canceled` flag is true to disallow manual compaction.
     CompactOptions::reset_global_manual_compaction_canceled(true);
     let handle = db.cf_handle("default").unwrap();

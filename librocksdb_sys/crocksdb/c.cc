@@ -227,6 +227,7 @@ using rocksdb::NewConcurrentTaskLimiter;
 extern "C" {
 
 const char* block_base_table_str = "BlockBasedTable";
+static std::atomic<bool> GLOBAL_MANUAL_COMPACTION_CANCELED_FLAG{false};
 
 struct crocksdb_t {
   DB* rep;
@@ -277,7 +278,6 @@ struct crocksdb_column_family_descriptor {
 };
 struct crocksdb_compactoptions_t {
   CompactRangeOptions rep;
-  static std::atomic<bool> canceled{false};
 };
 struct crocksdb_block_based_table_options_t {
   BlockBasedTableOptions rep;
@@ -4074,7 +4074,7 @@ void crocksdb_writeoptions_set_memtable_insert_hint_per_batch(
 crocksdb_compactoptions_t* crocksdb_compactoptions_create() {
   auto opts = new crocksdb_compactoptions_t;
   if (opts->rep.canceled == nullptr) {
-    opts->rep.canceled = &crocksdb_compactoptions_t::canceled;
+    opts->rep.canceled = &GLOBAL_MANUAL_COMPACTION_CANCELED_FLAG;
   }
   return opts;
 }
@@ -4115,7 +4115,7 @@ void crocksdb_compactoptions_set_bottommost_level_compaction(
 }
 
 void crocksdb_compactoptions_set_manual_compaction_canceled(unsigned char v) {
-  crocksdb_compactoptions_t::canceled.store(v, std::memory_order_seq_cst);
+  GLOBAL_MANUAL_COMPACTION_CANCELED_FLAG.store(v, std::memory_order_seq_cst);
 }
 
 crocksdb_flushoptions_t* crocksdb_flushoptions_create() {

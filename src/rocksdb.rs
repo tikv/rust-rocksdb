@@ -827,12 +827,18 @@ impl DB {
     }
 
     pub fn disable_manual_compaction(&self) {
+        // Reset the global manual compaction flags `canceled` == true to stop
+        // all in-progress manual compaction jobs.
+        CompactOptions::reset_global_manual_compaction_canceled(true);
         unsafe {
             crocksdb_ffi::crocksdb_disable_manual_compaction(self.inner);
         }
     }
 
     pub fn enable_manual_compaction(&self) {
+        // Reset the global manual compaction flags `canceled` == false to enable
+        // manual compaction jobs.
+        CompactOptions::reset_global_manual_compaction_canceled(false);
         unsafe {
             crocksdb_ffi::crocksdb_enable_manual_compaction(self.inner);
         }

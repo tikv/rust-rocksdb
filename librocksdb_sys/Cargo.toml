@@ -12,7 +12,7 @@ libc = "0.2.11"
 libtitan_sys = { path = "libtitan_sys" }
 libz-sys = { version = "1.1", features = ["static"] }
 openssl-sys = { version = "0.9.54", optional = true }
-zstd-sys = "2.0.1+zstd.1.5.2"
+zstd-sys = "=2.0.13+zstd.1.5.6"
 lz4-sys = "1.9"
 
 [dev-dependencies]
@@ -31,9 +31,7 @@ static_libcpp = []
 [build-dependencies]
 cc = "1.0.3"
 cmake = "0.1"
-bindgen = { version = "=0.65.1", default-features = false, features = [
-    "runtime",
-] }
+bindgen = { version = "0.65", default-features = false, features = ["runtime"] }
 
 [dependencies.tikv-jemalloc-sys]
 version = "0.5.0"

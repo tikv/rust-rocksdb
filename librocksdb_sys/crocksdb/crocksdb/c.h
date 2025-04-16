@@ -352,6 +352,7 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_close(crocksdb_t* db);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_pause_bg_work(crocksdb_t* db);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_continue_bg_work(crocksdb_t* db);
 
+extern C_ROCKSDB_LIBRARY_API void crocksdb_set_global_manual_compaction_canceled(unsigned char);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_disable_manual_compaction(
     crocksdb_t* db);
 extern C_ROCKSDB_LIBRARY_API void crocksdb_enable_manual_compaction(
@@ -1691,8 +1692,6 @@ crocksdb_compactoptions_set_max_subcompactions(crocksdb_compactoptions_t*, int);
 extern C_ROCKSDB_LIBRARY_API void
 crocksdb_compactoptions_set_bottommost_level_compaction(
     crocksdb_compactoptions_t*, uint32_t);
-extern C_ROCKSDB_LIBRARY_API void
-crocksdb_compactoptions_set_manual_compaction_canceled(unsigned char);
 
 /* Flush options */
 

@@ -11,9 +11,7 @@
 
 #include <stdlib.h>
 
-#include <atomic>
 #include <limits>
-#include <memory>
 
 #include "db/column_family.h"
 #include "file/random_access_file_reader.h"
@@ -227,6 +225,10 @@ using rocksdb::NewConcurrentTaskLimiter;
 extern "C" {
 
 const char* block_base_table_str = "BlockBasedTable";
+// Global flag that controls manual compaction cancellation. When set to
+// 'true', all currently in-progress manual compaction operations will be
+// canceled as soon as possible.
+// TODO: Refactor to make this flag DB-instance specific rather than global.
 static std::atomic<bool> GLOBAL_MANUAL_COMPACTION_CANCELED_FLAG{false};
 
 struct crocksdb_t {
@@ -921,6 +923,10 @@ void crocksdb_pause_bg_work(crocksdb_t* db) { db->rep->PauseBackgroundWork(); }
 
 void crocksdb_continue_bg_work(crocksdb_t* db) {
   db->rep->ContinueBackgroundWork();
+}
+
+void crocksdb_set_global_manual_compaction_canceled(unsigned char v) {
+  GLOBAL_MANUAL_COMPACTION_CANCELED_FLAG.store(v, std::memory_order_seq_cst);
 }
 
 void crocksdb_disable_manual_compaction(crocksdb_t* db) {
@@ -4112,10 +4118,6 @@ void crocksdb_compactoptions_set_bottommost_level_compaction(
     crocksdb_compactoptions_t* opt, uint32_t v) {
   opt->rep.bottommost_level_compaction =
       static_cast<BottommostLevelCompaction>(v);
-}
-
-void crocksdb_compactoptions_set_manual_compaction_canceled(unsigned char v) {
-  GLOBAL_MANUAL_COMPACTION_CANCELED_FLAG.store(v, std::memory_order_seq_cst);
 }
 
 crocksdb_flushoptions_t* crocksdb_flushoptions_create() {

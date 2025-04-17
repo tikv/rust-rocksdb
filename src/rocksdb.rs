@@ -826,13 +826,42 @@ impl DB {
         }
     }
 
+    pub fn set_global_manual_compaction_canceled(v: bool) {
+        unsafe {
+            crocksdb_ffi::crocksdb_set_global_manual_compaction_canceled(v);
+        }
+    }
+
+    /// Disables all manual compaction operations in the db.
+    ///
+    /// This function provides comprehensive control over manual compactions by:
+    /// 1. Canceling all currently running (in-progress) manual compaction operations
+    /// 2. Preventing pending manual compactions in the queue from starting
+    /// 3. Rejecting any new incoming manual compaction requests
+    ///
+    /// After PR #826, this function's behavior was enhanced to also stop in-progress
+    /// manual compactions, whereas previously it would only prevent new and pending
+    /// compactions in the compaction queue from running.
+    ///
+    /// # Important Notes
+    /// If you need to re-enable manual compactions after calling this function:
+    /// - You MUST call `enable_manual_compaction()` before executing any `compact_range` operations
+    /// - Any `compact_range` calls made while manual compactions are disabled will be rejected
+    /// - Manual compactions will remain disabled until `enable_manual_compaction()` is explicitly called
     pub fn disable_manual_compaction(&self) {
+        // Reset the global manual compaction flags `canceled` == true to stop
+        // all in-progress manual compaction jobs.
+        DB::set_global_manual_compaction_canceled(true);
         unsafe {
             crocksdb_ffi::crocksdb_disable_manual_compaction(self.inner);
         }
     }
 
+    /// Enable manual compaction operations in the db.
     pub fn enable_manual_compaction(&self) {
+        // Reset the global manual compaction flags `canceled` == false to enable
+        // manual compaction jobs.
+        DB::set_global_manual_compaction_canceled(false);
         unsafe {
             crocksdb_ffi::crocksdb_enable_manual_compaction(self.inner);
         }
@@ -2668,7 +2697,6 @@ pub struct Env {
 }
 
 unsafe impl Send for Env {}
-
 unsafe impl Sync for Env {}
 
 impl Default for Env {

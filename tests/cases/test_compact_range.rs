@@ -53,15 +53,17 @@ fn test_compact_range() {
     for &(ref k, _) in &samples {
         db.delete(k).unwrap()
     }
-    let compact_opts = CompactOptions::new();
-    // Set manual compaction `canceled` flag is true to disallow manual compaction.
-    DB::set_global_manual_compaction_canceled(true);
     let handle = db.cf_handle("default").unwrap();
-    db.compact_range_cf_opt(handle, &compact_opts, None, None);
-    let new_size = db.get_approximate_sizes(&[Range::new(b"k0", b"k6")])[0];
-    assert_eq!(old_size, new_size);
-    // Reset manual compaction `canceled` flag to allow manual compaction.
-    DB::set_global_manual_compaction_canceled(false);
+    let compact_opts = CompactOptions::new();
+    // Set manual compaction flag to validate the cancellation of manual compaction.
+    for flag in [false, true] {
+        db.disable_manual_compaction(flag);
+        db.compact_range_cf_opt(handle, &compact_opts, None, None);
+        let new_size = db.get_approximate_sizes(&[Range::new(b"k0", b"k6")])[0];
+        assert_eq!(old_size, new_size);
+    }
+    // Reset and enable manual compactions.
+    db.enable_manual_compaction();
     db.compact_range_cf_opt(handle, &compact_opts, None, None);
     let new_size = db.get_approximate_sizes(&[Range::new(b"k0", b"k6")])[0];
     assert!(old_size > new_size);

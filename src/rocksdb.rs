@@ -826,13 +826,60 @@ impl DB {
         }
     }
 
-    pub fn disable_manual_compaction(&self) {
+    /// Sets the global flag that controls manual compaction cancellation across all DB instances.
+    ///
+    /// # Arguments
+    /// * `v` - When set to `true`, all currently running manual compaction operations
+    ///         across all DB instances will be canceled. When set to `false`, allows
+    ///         future manual compactions to proceed normally.
+    ///
+    /// # Global Impact
+    /// This is a global setting that affects ALL database instances in the process.
+    /// Use with caution as it will impact manual compactions across all RocksDB
+    /// instances.
+    ///
+    /// # Example Use Case
+    /// Typically used when needing to quickly free up resources by stopping all
+    /// manual compactions, such as during graceful shutdown or emergency resource
+    /// management.
+    pub fn set_global_manual_compaction_canceled(v: bool) {
+        unsafe {
+            crocksdb_ffi::crocksdb_set_global_manual_compaction_canceled(v);
+        }
+    }
+
+    /// Disables all manual compaction operations.
+    ///
+    /// This function controls manual compactions through two mechanisms:
+    /// 1. Instance-level control: Prevents new manual compactions from being scheduled
+    ///    in this database instance.
+    /// 2. Global cancellation (optional): When `global_canceled` is set to true, it will:
+    ///    - Cancel all currently running manual compaction operations
+    ///    - Prevent pending manual compactions from starting
+    ///    - Reject new manual compaction requests
+    ///
+    /// # Arguments
+    /// * `global_canceled` - When set to `true`, cancels all in-progress manual
+    ///                      compactions across all DB instances. When `false`, only
+    ///                      prevents new compactions in this instance.
+    ///
+    /// # Important Notes
+    /// To re-enable manual compactions:
+    /// - Call `enable_manual_compaction()` before attempting new `compact_range` operations
+    /// - All `compact_range` calls will be rejected while manual compactions are disabled
+    /// - The disabled state persists until explicitly re-enabled via `enable_manual_compaction()`
+    pub fn disable_manual_compaction(&self, global_canceled: bool) {
+        DB::set_global_manual_compaction_canceled(global_canceled);
         unsafe {
             crocksdb_ffi::crocksdb_disable_manual_compaction(self.inner);
         }
     }
 
+    /// Enable manual compaction operations in the db.
     pub fn enable_manual_compaction(&self) {
+        // Reset the global manual compaction flags `canceled` == false to enable
+        // manual compaction jobs.
+        DB::set_global_manual_compaction_canceled(false);
         unsafe {
             crocksdb_ffi::crocksdb_enable_manual_compaction(self.inner);
         }
@@ -2668,7 +2715,6 @@ pub struct Env {
 }
 
 unsafe impl Send for Env {}
-
 unsafe impl Sync for Env {}
 
 impl Default for Env {

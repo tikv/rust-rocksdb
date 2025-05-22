@@ -186,7 +186,7 @@ pub enum SeekKey<'a> {
 }
 
 impl<'a> From<&'a [u8]> for SeekKey<'a> {
-    fn from(bs: &'a [u8]) -> SeekKey {
+    fn from(bs: &'a [u8]) -> SeekKey<'a> {
         SeekKey::Key(bs)
     }
 }
@@ -3008,13 +3008,17 @@ pub fn load_latest_options(
         if !ok {
             return Ok(None);
         }
-        let cf_descs_list = slice::from_raw_parts(raw_cf_descs, cf_descs_len);
-        let cf_descs = cf_descs_list
-            .iter()
-            .map(|raw_cf_desc| CColumnFamilyDescriptor::from_raw(*raw_cf_desc))
-            .collect();
-
-        libc::free(raw_cf_descs as *mut c_void);
+        let cf_descs = if raw_cf_descs == ptr::null_mut() || cf_descs_len == 0 {
+            vec![]
+        } else {
+            let cf_descs_list = slice::from_raw_parts(raw_cf_descs, cf_descs_len);
+            let cf_descs = cf_descs_list
+                .iter()
+                .map(|raw_cf_desc| CColumnFamilyDescriptor::from_raw(*raw_cf_desc))
+                .collect();
+            libc::free(raw_cf_descs as *mut c_void);
+            cf_descs
+        };
 
         Ok(Some((db_options, cf_descs)))
     }

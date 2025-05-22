@@ -65,7 +65,7 @@ impl<'a> LevelMetaData<'a> {
     pub fn from_ptr(
         inner: *const DBLevelMetaData,
         _mark: &'a ColumnFamilyMetaData,
-    ) -> LevelMetaData {
+    ) -> LevelMetaData<'a> {
         LevelMetaData { inner, _mark }
     }
 
@@ -91,7 +91,7 @@ impl<'a> SstFileMetaData<'a> {
     pub fn from_ptr(
         inner: *const DBSstFileMetaData,
         _mark: &'a ColumnFamilyMetaData,
-    ) -> SstFileMetaData {
+    ) -> SstFileMetaData<'a> {
         SstFileMetaData { inner, _mark }
     }
 

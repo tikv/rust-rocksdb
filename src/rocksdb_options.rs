@@ -45,6 +45,7 @@ use table_properties_collector_factory::{
     new_table_properties_collector_factory, TablePropertiesCollectorFactory,
 };
 use titan::TitanDBOptions;
+use SstFileManager;
 use TablePropertiesCollector;
 
 #[derive(Default, Debug)]
@@ -1217,6 +1218,12 @@ impl DBOptions {
     pub fn set_rate_limiter(&mut self, rate_limiter: &RateLimiter) {
         unsafe {
             crocksdb_ffi::crocksdb_options_set_ratelimiter(self.inner, rate_limiter.inner);
+        }
+    }
+
+    pub fn set_sst_file_manager(&mut self, file_manager: &SstFileManager) {
+        unsafe {
+            crocksdb_ffi::crocksdb_options_set_sstfilemanager(self.inner, file_manager.inner);
         }
     }
 

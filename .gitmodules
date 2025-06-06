@@ -1,9 +1,7 @@
 [submodule "rocksdb"]
 	path = librocksdb_sys/rocksdb
-	# url = https://github.com/tikv/rocksdb.git
-	# branch = 6.29.tikv
-	url = https://github.com/LykxSassinator/rocksdb.git
-	branch = cp_allow_write_when_ingest
+	url = https://github.com/tikv/rocksdb.git
+	branch = 6.29.tikv
 
 [submodule "titan"]
 	path = librocksdb_sys/libtitan_sys/titan

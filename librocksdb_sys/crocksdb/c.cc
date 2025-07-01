@@ -6854,6 +6854,7 @@ void ctitandb_decode_blob_index(const char* value, size_t value_size,
   index->file_number = bi.file_number;
   index->blob_offset = bi.blob_handle.offset;
   index->blob_size = bi.blob_handle.size;
+  index->blob_raw_size = bi.blob_handle.raw_size;
 }
 
 void ctitandb_encode_blob_index(const ctitandb_blob_index_t* index,
@@ -6862,6 +6863,7 @@ void ctitandb_encode_blob_index(const ctitandb_blob_index_t* index,
   bi.file_number = index->file_number;
   bi.blob_handle.offset = index->blob_offset;
   bi.blob_handle.size = index->blob_size;
+  bi.blob_handle.raw_size = index->blob_raw_size;
   std::string result;
   bi.EncodeTo(&result);
   *value = CopyString(result);

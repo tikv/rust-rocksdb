@@ -2659,7 +2659,6 @@ struct ctitandb_blob_index_t {
   uint64_t file_number;
   uint64_t blob_offset;
   uint64_t blob_size;
-  uint64_t blob_raw_size;
 };
 
 typedef struct ctitandb_options_t ctitandb_options_t;

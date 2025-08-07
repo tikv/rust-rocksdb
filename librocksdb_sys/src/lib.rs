@@ -218,7 +218,6 @@ pub struct DBTitanBlobIndex {
     pub file_number: u64,
     pub blob_offset: u64,
     pub blob_size: u64,
-    pub blob_raw_size: u64,
 }
 
 pub fn new_bloom_filter(bits: c_double) -> *mut DBFilterPolicy {

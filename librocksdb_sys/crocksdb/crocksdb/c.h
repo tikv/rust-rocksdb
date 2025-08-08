@@ -121,6 +121,7 @@ typedef struct crocksdb_envoptions_t crocksdb_envoptions_t;
 typedef struct crocksdb_sequential_file_t crocksdb_sequential_file_t;
 typedef struct crocksdb_ingestexternalfileoptions_t
     crocksdb_ingestexternalfileoptions_t;
+typedef struct crocksdb_sstfilemanager_t crocksdb_sstfilemanager_t;
 typedef struct crocksdb_sstfilereader_t crocksdb_sstfilereader_t;
 typedef struct crocksdb_sstfilewriter_t crocksdb_sstfilewriter_t;
 typedef struct crocksdb_externalsstfileinfo_t crocksdb_externalsstfileinfo_t;
@@ -1878,6 +1879,20 @@ extern C_ROCKSDB_LIBRARY_API size_t crocksdb_file_system_inspector_write(
 extern C_ROCKSDB_LIBRARY_API crocksdb_env_t*
 crocksdb_file_system_inspected_env_create(crocksdb_env_t*,
                                           crocksdb_file_system_inspector_t*);
+
+/* SstFileManager */
+
+extern C_ROCKSDB_LIBRARY_API crocksdb_sstfilemanager_t*
+crocksdb_sstfilemanager_create(crocksdb_env_t* env);
+
+extern C_ROCKSDB_LIBRARY_API void crocksdb_sstfilemanager_destroy(
+    crocksdb_sstfilemanager_t* file_manager);
+
+extern C_ROCKSDB_LIBRARY_API uint64_t
+crocksdb_sstfilemanager_get_total_size(crocksdb_sstfilemanager_t* file_manager);
+
+extern C_ROCKSDB_LIBRARY_API void crocksdb_options_set_sst_filemanager(
+    crocksdb_options_t* opt, crocksdb_sstfilemanager_t* file_manager);
 
 /* SstFile */
 

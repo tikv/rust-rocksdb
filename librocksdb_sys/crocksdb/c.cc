@@ -4120,6 +4120,11 @@ void crocksdb_compactoptions_set_bottommost_level_compaction(
       static_cast<BottommostLevelCompaction>(v);
 }
 
+void crocksdb_compactoptions_set_bottom_level_check_range_overlap(
+    crocksdb_compactoptions_t* opt, unsigned char v) {
+  opt->rep.bottom_level_check_range_overlap = v;
+}
+
 crocksdb_flushoptions_t* crocksdb_flushoptions_create() {
   return new crocksdb_flushoptions_t;
 }

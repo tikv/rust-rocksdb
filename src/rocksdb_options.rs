@@ -856,6 +856,12 @@ impl CompactOptions {
             crocksdb_ffi::crocksdb_compactoptions_set_bottommost_level_compaction(self.inner, v);
         }
     }
+
+    pub fn set_bottom_level_check_range_overlap(&mut self, v: bool) {
+        unsafe {
+            crocksdb_ffi::crocksdb_compactoptions_set_bottom_level_check_range_overlap(self.inner, v);
+        }
+    }
 }
 
 impl Drop for CompactOptions {

@@ -2008,7 +2008,7 @@ crocksdb_slicetransform_create(
     unsigned char (*in_range)(void*, const char* key, size_t length),
     const char* (*name)(void*));
 extern C_ROCKSDB_LIBRARY_API crocksdb_slicetransform_t*
-    crocksdb_slicetransform_create_fixed_prefix(size_t);
+crocksdb_slicetransform_create_fixed_prefix(size_t);
 extern C_ROCKSDB_LIBRARY_API crocksdb_slicetransform_t*
 crocksdb_slicetransform_create_noop();
 extern C_ROCKSDB_LIBRARY_API void crocksdb_slicetransform_destroy(
@@ -2306,10 +2306,10 @@ crocksdb_sst_file_meta_data_smallestkey(const crocksdb_sst_file_meta_data_t*,
                                         size_t*);
 extern C_ROCKSDB_LIBRARY_API const char* crocksdb_sst_file_meta_data_largestkey(
     const crocksdb_sst_file_meta_data_t*, size_t*);
-extern C_ROCKSDB_LIBRARY_API uint64_t crocksdb_sst_file_meta_data_num_entries(
-    const crocksdb_sst_file_meta_data_t*);
-extern C_ROCKSDB_LIBRARY_API uint64_t crocksdb_sst_file_meta_data_num_deletions(
-    const crocksdb_sst_file_meta_data_t*);
+extern C_ROCKSDB_LIBRARY_API uint64_t
+crocksdb_sst_file_meta_data_num_entries(const crocksdb_sst_file_meta_data_t*);
+extern C_ROCKSDB_LIBRARY_API uint64_t
+crocksdb_sst_file_meta_data_num_deletions(const crocksdb_sst_file_meta_data_t*);
 
 /* CompactFiles */
 extern C_ROCKSDB_LIBRARY_API crocksdb_compaction_options_t*

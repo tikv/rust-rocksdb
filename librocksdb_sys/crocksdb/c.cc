@@ -5886,6 +5886,16 @@ const char* crocksdb_sst_file_meta_data_largestkey(
   return meta->rep.largestkey.data();
 }
 
+uint64_t crocksdb_sst_file_meta_data_num_entries(
+    const crocksdb_sst_file_meta_data_t* meta) {
+  return meta->rep.num_entries;
+}
+
+uint64_t crocksdb_sst_file_meta_data_num_deletions(
+    const crocksdb_sst_file_meta_data_t* meta) {
+  return meta->rep.num_deletions;
+}
+
 crocksdb_compaction_options_t* crocksdb_compaction_options_create() {
   return new crocksdb_compaction_options_t();
 }

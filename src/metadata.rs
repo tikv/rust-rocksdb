@@ -121,6 +121,14 @@ impl<'a> SstFileMetaData<'a> {
             slice::from_raw_parts(ptr as *const u8, len)
         }
     }
+
+    pub fn get_num_entries(&self) -> u64 {
+        unsafe { crocksdb_ffi::crocksdb_sst_file_meta_data_num_entries(self.inner) }
+    }
+
+    pub fn get_num_deletions(&self) -> u64 {
+        unsafe { crocksdb_ffi::crocksdb_sst_file_meta_data_num_deletions(self.inner) }
+    }
 }
 
 pub struct LiveFiles {
@@ -170,5 +178,78 @@ impl Drop for LiveFiles {
         unsafe {
             crocksdb_ffi::crocksdb_livefiles_destroy(self.inner);
         }
+    }
+}
+
+/// Represents metadata for an SST file with its key range information.
+#[derive(Debug, Clone)]
+pub struct SstFileInfo {
+    /// The name/path of the SST file
+    pub name: String,
+    /// The size of the file in bytes
+    pub size: usize,
+    /// The level where this file resides
+    pub level: usize,
+    /// The smallest key in this file
+    pub smallest_key: Vec<u8>,
+    /// The largest key in this file
+    pub largest_key: Vec<u8>,
+    /// The number of entries in this file
+    pub num_entries: u64,
+    /// The number of deletions in this file
+    pub num_deletions: u64,
+}
+
+impl SstFileInfo {
+    /// Check if this SST file overlaps with the given key range.
+    /// 
+    /// # Arguments
+    /// * `start_key` - The start of the key range (inclusive), None means no lower bound
+    /// * `end_key` - The end of the key range (exclusive), None means no upper bound
+    /// 
+    /// # Returns
+    /// `true` if the file overlaps with the range, `false` otherwise
+    pub fn overlaps_with_range(&self, start_key: Option<&[u8]>, end_key: Option<&[u8]>) -> bool {
+        // Check if file's largest key is before the start of the range
+        if let Some(start) = start_key {
+            if self.largest_key < start {
+                return false;
+            }
+        }
+        
+        // Check if file's smallest key is at or after the end of the range
+        if let Some(end) = end_key {
+            if self.smallest_key >= end {
+                return false;
+            }
+        }
+        
+        true
+    }
+    
+    /// Check if this SST file is completely contained within the given key range.
+    /// 
+    /// # Arguments
+    /// * `start_key` - The start of the key range (inclusive), None means no lower bound
+    /// * `end_key` - The end of the key range (exclusive), None means no upper bound
+    /// 
+    /// # Returns
+    /// `true` if the file is completely contained within the range, `false` otherwise
+    pub fn is_contained_in_range(&self, start_key: Option<&[u8]>, end_key: Option<&[u8]>) -> bool {
+        // Check if file's smallest key is at or after the start of the range
+        if let Some(start) = start_key {
+            if self.smallest_key < start {
+                return false;
+            }
+        }
+        
+        // Check if file's largest key is before the end of the range
+        if let Some(end) = end_key {
+            if self.largest_key >= end {
+                return false;
+            }
+        }
+        
+        true
     }
 }

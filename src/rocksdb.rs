@@ -2112,6 +2112,153 @@ impl DB {
         }
     }
 
+    /// Get metadata for SST files that overlap with the specified key range.
+    /// 
+    /// For level 0: Files may overlap, so we check all files.
+    /// For levels 1+: Files are non-overlapping and sorted by smallest_key, so we use binary search.
+    /// 
+    /// # Arguments
+    /// * `cf` - The column family handle
+    /// * `start_key` - The start of the key range (inclusive), None means no lower bound
+    /// * `end_key` - The end of the key range (exclusive), None means no upper bound
+    /// 
+    /// # Returns
+    /// A vector of `SstFileInfo` containing metadata for files that overlap with the range
+    pub fn get_sst_files_in_range(
+        &self,
+        cf: &CFHandle,
+        start_key: Option<&[u8]>,
+        end_key: Option<&[u8]>,
+    ) -> Vec<crate::metadata::SstFileInfo> {
+        let cf_metadata = self.get_column_family_meta_data(cf);
+        let mut sst_files = Vec::new();
+        
+        // Iterate through all levels
+        for (level_index, level_metadata) in cf_metadata.get_levels().iter().enumerate() {
+            let files = level_metadata.get_files();
+            
+            if level_index == 0 {
+                // Level 0: Files may overlap, check all files
+                for file_metadata in files {
+                    let file_info = crate::metadata::SstFileInfo {
+                        name: file_metadata.get_name(),
+                        size: file_metadata.get_size(),
+                        level: level_index,
+                        smallest_key: file_metadata.get_smallestkey().to_vec(),
+                        largest_key: file_metadata.get_largestkey().to_vec(),
+                        num_entries: file_metadata.get_num_entries(),
+                        num_deletions: file_metadata.get_num_deletions(),
+                    };
+                    
+                    if file_info.overlaps_with_range(start_key, end_key) {
+                        sst_files.push(file_info);
+                    }
+                }
+            } else {
+                // Levels 1+: Files are non-overlapping and sorted by smallest_key
+                // Use binary search to find the first overlapping file, then iterate forward
+                if files.is_empty() {
+                    continue;
+                }
+                
+                // Find the first file that could overlap with our range
+                let first_overlapping = self.find_first_overlapping_file(&files, start_key, end_key);
+                
+                // Iterate forward from the first overlapping file
+                for i in first_overlapping..files.len() {
+                    let file_metadata = &files[i];
+                    
+                    // Stop iteration if file's smallest_key >= end_key
+                    if let Some(end_key) = end_key {
+                        if file_metadata.get_smallestkey() >= end_key {
+                            break;
+                        }
+                    }
+                    
+                    let file_info = crate::metadata::SstFileInfo {
+                        name: file_metadata.get_name(),
+                        size: file_metadata.get_size(),
+                        level: level_index,
+                        smallest_key: file_metadata.get_smallestkey().to_vec(),
+                        largest_key: file_metadata.get_largestkey().to_vec(),
+                        num_entries: file_metadata.get_num_entries(),
+                        num_deletions: file_metadata.get_num_deletions(),
+                    };
+                    
+                    // Check if this file actually overlaps with the range
+                    if file_info.overlaps_with_range(start_key, end_key) {
+                        sst_files.push(file_info);
+                    }
+                }
+            }
+        }
+        
+        sst_files
+    }
+
+    /// Find the index of the first file that could overlap with the given range.
+    /// Uses binary search since files are sorted by smallest_key.
+    /// Returns the index to start iteration from (we'll iterate forward from here).
+    fn find_first_overlapping_file(
+        &self,
+        files: &[crate::metadata::SstFileMetaData],
+        start_key: Option<&[u8]>,
+        end_key: Option<&[u8]>,
+    ) -> usize {
+        if files.is_empty() {
+            return 0;
+        }
+        
+        // If no start_key, start from the first file
+        if start_key.is_none() {
+            return 0;
+        }
+        
+        let start_key = start_key.unwrap();
+        
+        // Binary search for the first file whose smallest_key <= start_key
+        // This file might overlap if its largest_key >= start_key
+        let mut left = 0;
+        let mut right = files.len();
+        
+        while left < right {
+            let mid = left + (right - left) / 2;
+            let file_smallest_key = files[mid].get_smallestkey();
+            
+            if file_smallest_key <= start_key {
+                left = mid + 1;
+            } else {
+                right = mid;
+            }
+        }
+        
+        // left now points to the first file with smallest_key > start_key
+        // The previous file (left-1) might overlap if its largest_key >= start_key
+        if left > 0 {
+            left - 1
+        } else {
+            0
+        }
+    }
+
+
+    /// Get metadata for SST files that overlap with the specified key range in the default column family.
+    /// 
+    /// # Arguments
+    /// * `start_key` - The start of the key range (inclusive), None means no lower bound
+    /// * `end_key` - The end of the key range (exclusive), None means no upper bound
+    /// 
+    /// # Returns
+    /// A vector of `SstFileInfo` containing metadata for files that overlap with the range
+    pub fn get_sst_files_in_range_default(
+        &self,
+        start_key: Option<&[u8]>,
+        end_key: Option<&[u8]>,
+    ) -> Result<Vec<crate::metadata::SstFileInfo>, String> {
+        let cf_handle = self.cf_handle("default")?;
+        Ok(self.get_sst_files_in_range(cf_handle, start_key, end_key))
+    }
+
     pub fn compact_files_cf(
         &self,
         cf: &CFHandle,

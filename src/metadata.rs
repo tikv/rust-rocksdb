@@ -202,11 +202,11 @@ pub struct SstFileInfo {
 
 impl SstFileInfo {
     /// Check if this SST file overlaps with the given key range.
-    /// 
+    ///
     /// # Arguments
     /// * `start_key` - The start of the key range (inclusive), None means no lower bound
     /// * `end_key` - The end of the key range (exclusive), None means no upper bound
-    /// 
+    ///
     /// # Returns
     /// `true` if the file overlaps with the range, `false` otherwise
     pub fn overlaps_with_range(&self, start_key: Option<&[u8]>, end_key: Option<&[u8]>) -> bool {
@@ -216,23 +216,23 @@ impl SstFileInfo {
                 return false;
             }
         }
-        
+
         // Check if file's smallest key is at or after the end of the range
         if let Some(end) = end_key {
             if self.smallest_key >= end {
                 return false;
             }
         }
-        
+
         true
     }
-    
+
     /// Check if this SST file is completely contained within the given key range.
-    /// 
+    ///
     /// # Arguments
     /// * `start_key` - The start of the key range (inclusive), None means no lower bound
     /// * `end_key` - The end of the key range (exclusive), None means no upper bound
-    /// 
+    ///
     /// # Returns
     /// `true` if the file is completely contained within the range, `false` otherwise
     pub fn is_contained_in_range(&self, start_key: Option<&[u8]>, end_key: Option<&[u8]>) -> bool {
@@ -242,14 +242,14 @@ impl SstFileInfo {
                 return false;
             }
         }
-        
+
         // Check if file's largest key is before the end of the range
         if let Some(end) = end_key {
             if self.largest_key >= end {
                 return false;
             }
         }
-        
+
         true
     }
 }

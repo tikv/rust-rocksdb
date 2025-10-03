@@ -12,9 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use rocksdb::{
-    CFHandle, ColumnFamilyOptions, DBOptions, FlushOptions, SstFileInfo, Writable, DB,
-};
+use rocksdb::{CFHandle, ColumnFamilyOptions, DBOptions, FlushOptions, SstFileInfo, Writable, DB};
 
 use super::tempdir_with_prefix;
 
@@ -25,7 +23,7 @@ fn test_sst_files_in_range_basic() {
     opts.create_if_missing(true);
     let mut cf_opts = ColumnFamilyOptions::new();
     cf_opts.set_disable_auto_compactions(true);
-    
+
     let db = DB::open_cf(
         opts,
         path.path().to_str().unwrap(),
@@ -59,7 +57,7 @@ fn test_sst_files_in_range_basic() {
     // Test 1: Get files in range [key001, key006) - should match file 1 and file 2
     let files_in_range = db.get_sst_files_in_range(cf_handle, Some(b"key001"), Some(b"key006"));
     assert_eq!(files_in_range.len(), 2);
-    
+
     // Verify the files contain the expected keys
     for file in &files_in_range {
         assert!(file.smallest_key <= b"key006");
@@ -91,7 +89,7 @@ fn test_sst_files_in_range_default_cf() {
     let path = tempdir_with_prefix("_rust_rocksdb_test_sst_files_range_default");
     let mut opts = DBOptions::new();
     opts.create_if_missing(true);
-    
+
     let db = DB::open_default(path.path().to_str().unwrap()).unwrap();
     let mut fopts = FlushOptions::default();
     fopts.set_wait(true);
@@ -106,7 +104,9 @@ fn test_sst_files_in_range_default_cf() {
     db.flush(&fopts).unwrap();
 
     // Test getting files in range using default CF method
-    let files_in_range = db.get_sst_files_in_range_default(Some(b"b"), Some(b"d")).unwrap();
+    let files_in_range = db
+        .get_sst_files_in_range_default(Some(b"b"), Some(b"d"))
+        .unwrap();
     assert_eq!(files_in_range.len(), 2);
 
     // Verify file properties
@@ -124,10 +124,10 @@ fn test_sst_files_in_range_with_column_families() {
     let mut opts = DBOptions::new();
     opts.create_if_missing(true);
     opts.create_missing_column_families(true);
-    
+
     let mut cf_opts = ColumnFamilyOptions::new();
     cf_opts.set_disable_auto_compactions(true);
-    
+
     let db = DB::open_cf(
         opts,
         path.path().to_str().unwrap(),
@@ -165,7 +165,8 @@ fn test_sst_files_in_range_with_column_families() {
     assert!(cf2_files[0].largest_key >= b"key3");
 
     // Files from cf1 should not overlap with cf2 range
-    let cf1_files_in_cf2_range = db.get_sst_files_in_range(cf1_handle, Some(b"key3"), Some(b"key5"));
+    let cf1_files_in_cf2_range =
+        db.get_sst_files_in_range(cf1_handle, Some(b"key3"), Some(b"key5"));
     assert_eq!(cf1_files_in_cf2_range.len(), 0);
 }
 
@@ -174,7 +175,7 @@ fn test_sst_file_info_overlap_methods() {
     let path = tempdir_with_prefix("_rust_rocksdb_test_sst_file_info_overlap");
     let mut opts = DBOptions::new();
     opts.create_if_missing(true);
-    
+
     let db = DB::open_default(path.path().to_str().unwrap()).unwrap();
     let mut fopts = FlushOptions::default();
     fopts.set_wait(true);
@@ -213,11 +214,13 @@ fn test_sst_files_in_range_empty_database() {
     let path = tempdir_with_prefix("_rust_rocksdb_test_sst_files_range_empty");
     let mut opts = DBOptions::new();
     opts.create_if_missing(true);
-    
+
     let db = DB::open_default(path.path().to_str().unwrap()).unwrap();
 
     // Empty database should have no SST files
-    let files_in_range = db.get_sst_files_in_range_default(Some(b"a"), Some(b"z")).unwrap();
+    let files_in_range = db
+        .get_sst_files_in_range_default(Some(b"a"), Some(b"z"))
+        .unwrap();
     assert_eq!(files_in_range.len(), 0);
 }
 
@@ -226,7 +229,7 @@ fn test_sst_files_in_range_edge_cases() {
     let path = tempdir_with_prefix("_rust_rocksdb_test_sst_files_range_edge");
     let mut opts = DBOptions::new();
     opts.create_if_missing(true);
-    
+
     let db = DB::open_default(path.path().to_str().unwrap()).unwrap();
     let mut fopts = FlushOptions::default();
     fopts.set_wait(true);
@@ -244,11 +247,15 @@ fn test_sst_files_in_range_edge_cases() {
     assert_eq!(files_exact_end.len(), 1);
 
     // Test range that exactly matches file boundaries
-    let files_exact_range = db.get_sst_files_in_range_default(Some(b"a"), Some(b"z")).unwrap();
+    let files_exact_range = db
+        .get_sst_files_in_range_default(Some(b"a"), Some(b"z"))
+        .unwrap();
     assert_eq!(files_exact_range.len(), 1);
 
     // Test single key range
-    let files_single_key = db.get_sst_files_in_range_default(Some(b"a"), Some(b"b")).unwrap();
+    let files_single_key = db
+        .get_sst_files_in_range_default(Some(b"a"), Some(b"b"))
+        .unwrap();
     assert_eq!(files_single_key.len(), 1);
 }
 
@@ -260,11 +267,11 @@ fn test_sst_files_in_range_binary_search_optimization() {
     let path = tempdir_with_prefix("_rust_rocksdb_test_sst_files_range_binary_search");
     let mut opts = DBOptions::new();
     opts.create_if_missing(true);
-    
+
     let mut cf_opts = ColumnFamilyOptions::new();
     cf_opts.set_disable_auto_compactions(true);
     cf_opts.set_target_file_size_base(1024); // Small target size to create multiple files
-    
+
     let db = DB::open_cf(
         opts,
         path.path().to_str().unwrap(),
@@ -321,12 +328,12 @@ fn test_sst_files_in_range_binary_search_optimization() {
     // Range [150, 250) should only match files 2 and 3
     let files_in_range = db.get_sst_files_in_range(cf_handle, Some(b"key150"), Some(b"key250"));
     assert_eq!(files_in_range.len(), 2);
-    
+
     // Verify the files are from the expected ranges
     for file in &files_in_range {
         assert!(file.smallest_key >= b"key100");
         assert!(file.smallest_key <= b"key299");
-        
+
         // Test the new num_entries and num_deletions fields
         assert!(file.num_entries > 0); // Each file should have entries
         assert!(file.num_deletions >= 0); // Deletions can be 0 or more
@@ -336,7 +343,7 @@ fn test_sst_files_in_range_binary_search_optimization() {
     // Range [50, 150) should only match files 1 and 2
     let files_in_range = db.get_sst_files_in_range(cf_handle, Some(b"key050"), Some(b"key150"));
     assert_eq!(files_in_range.len(), 2);
-    
+
     // Range [250, 350) should only match files 3 and 4
     let files_in_range = db.get_sst_files_in_range(cf_handle, Some(b"key250"), Some(b"key350"));
     assert_eq!(files_in_range.len(), 2);
@@ -367,10 +374,10 @@ fn test_sst_file_info_entries_and_deletions() {
     let path = tempdir_with_prefix("_rust_rocksdb_test_sst_file_info_entries_deletions");
     let mut opts = DBOptions::new();
     opts.create_if_missing(true);
-    
+
     let mut cf_opts = ColumnFamilyOptions::new();
     cf_opts.set_disable_auto_compactions(true);
-    
+
     let db = DB::open_cf(
         opts,
         path.path().to_str().unwrap(),
@@ -388,13 +395,13 @@ fn test_sst_file_info_entries_and_deletions() {
         let value = format!("value_{}", i);
         db.put(key.as_bytes(), value.as_bytes()).unwrap();
     }
-    
+
     // Delete some keys to create deletions
     for i in 2..5 {
         let key = format!("key{:03}", i);
         db.delete(key.as_bytes()).unwrap();
     }
-    
+
     db.flush(&fopts).unwrap();
 
     // Get SST file info
@@ -406,9 +413,12 @@ fn test_sst_file_info_entries_and_deletions() {
         assert!(file.num_entries > 0);
         assert!(file.num_deletions >= 0);
         assert!(file.num_entries >= file.num_deletions);
-        
+
         // For this test, we expect some deletions since we deleted keys 2, 3, 4
         // The exact count depends on RocksDB's internal organization
-        println!("File {}: entries={}, deletions={}", file.name, file.num_entries, file.num_deletions);
+        println!(
+            "File {}: entries={}, deletions={}",
+            file.name, file.num_entries, file.num_deletions
+        );
     }
 }

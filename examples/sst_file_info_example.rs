@@ -22,7 +22,7 @@ use std::path::Path;
 fn print_file_info(file: &SstFileInfo, index: usize) {
     let smallest_str = String::from_utf8_lossy(&file.smallest_key);
     let largest_str = String::from_utf8_lossy(&file.largest_key);
-    
+
     println!(
         "  File {}: {} (Level {}, {} bytes, keys: {}..{}, entries: {}, deletions: {})",
         index + 1,
@@ -36,9 +36,14 @@ fn print_file_info(file: &SstFileInfo, index: usize) {
     );
 }
 
-fn analyze_range_files(db: &DB, start_key: Option<&[u8]>, end_key: Option<&[u8]>, description: &str) {
+fn analyze_range_files(
+    db: &DB,
+    start_key: Option<&[u8]>,
+    end_key: Option<&[u8]>,
+    description: &str,
+) {
     println!("\n=== {} ===", description);
-    
+
     match db.get_sst_files_in_range_default(start_key, end_key) {
         Ok(files) => {
             if files.is_empty() {
@@ -48,7 +53,7 @@ fn analyze_range_files(db: &DB, start_key: Option<&[u8]>, end_key: Option<&[u8]>
                 for (i, file) in files.iter().enumerate() {
                     print_file_info(file, i);
                 }
-                
+
                 // Calculate total size and statistics
                 let total_size: usize = files.iter().map(|f| f.size).sum();
                 let total_entries: u64 = files.iter().map(|f| f.num_entries).sum();
@@ -56,9 +61,15 @@ fn analyze_range_files(db: &DB, start_key: Option<&[u8]>, end_key: Option<&[u8]>
                 println!("Total size: {} bytes", total_size);
                 println!("Total entries: {}", total_entries);
                 println!("Total deletions: {}", total_deletions);
-                println!("Deletion ratio: {:.2}%", 
-                    if total_entries > 0 { (total_deletions as f64 / total_entries as f64) * 100.0 } else { 0.0 });
-                
+                println!(
+                    "Deletion ratio: {:.2}%",
+                    if total_entries > 0 {
+                        (total_deletions as f64 / total_entries as f64) * 100.0
+                    } else {
+                        0.0
+                    }
+                );
+
                 // Show level distribution
                 let mut level_counts = std::collections::HashMap::new();
                 for file in &files {
@@ -126,16 +137,36 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Now analyze different key ranges
     analyze_range_files(&db, None, None, "All SST Files");
-    
+
     analyze_range_files(&db, Some(b"user_000"), Some(b"user_999"), "User Data Range");
-    
-    analyze_range_files(&db, Some(b"order_000"), Some(b"order_999"), "Order Data Range");
-    
-    analyze_range_files(&db, Some(b"product_000"), Some(b"product_999"), "Product Data Range");
-    
-    analyze_range_files(&db, Some(b"order_001"), Some(b"order_003"), "Specific Order Range");
-    
-    analyze_range_files(&db, Some(b"system_"), Some(b"system_999"), "Non-existent Range");
+
+    analyze_range_files(
+        &db,
+        Some(b"order_000"),
+        Some(b"order_999"),
+        "Order Data Range",
+    );
+
+    analyze_range_files(
+        &db,
+        Some(b"product_000"),
+        Some(b"product_999"),
+        "Product Data Range",
+    );
+
+    analyze_range_files(
+        &db,
+        Some(b"order_001"),
+        Some(b"order_003"),
+        "Specific Order Range",
+    );
+
+    analyze_range_files(
+        &db,
+        Some(b"system_"),
+        Some(b"system_999"),
+        "Non-existent Range",
+    );
 
     // Demonstrate the overlap checking functionality
     println!("\n=== Overlap Analysis ===");
@@ -143,19 +174,38 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Ok(files) => {
             for file in &files {
                 println!("\nAnalyzing file: {}", file.name);
-                
+
                 // Test different overlap scenarios
                 let test_ranges = [
-                    (Some(b"user_001" as &[u8]), Some(b"user_003" as &[u8]), "user_001..user_003"),
-                    (Some(b"user_002" as &[u8]), Some(b"user_005" as &[u8]), "user_002..user_005"),
-                    (Some(b"order_000" as &[u8]), Some(b"order_999" as &[u8]), "order_000..order_999"),
-                    (Some(b"user_000" as &[u8]), Some(b"user_999" as &[u8]), "user_000..user_999"),
+                    (
+                        Some(b"user_001" as &[u8]),
+                        Some(b"user_003" as &[u8]),
+                        "user_001..user_003",
+                    ),
+                    (
+                        Some(b"user_002" as &[u8]),
+                        Some(b"user_005" as &[u8]),
+                        "user_002..user_005",
+                    ),
+                    (
+                        Some(b"order_000" as &[u8]),
+                        Some(b"order_999" as &[u8]),
+                        "order_000..order_999",
+                    ),
+                    (
+                        Some(b"user_000" as &[u8]),
+                        Some(b"user_999" as &[u8]),
+                        "user_000..user_999",
+                    ),
                 ];
-                
+
                 for (start, end, desc) in &test_ranges {
                     let overlaps = file.overlaps_with_range(*start, *end);
                     let contained = file.is_contained_in_range(*start, *end);
-                    println!("  Range {}: overlaps={}, contained={}", desc, overlaps, contained);
+                    println!(
+                        "  Range {}: overlaps={}, contained={}",
+                        desc, overlaps, contained
+                    );
                 }
             }
         }
@@ -167,12 +217,23 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Demonstrate binary search optimization
     println!("\n=== Binary Search Optimization ===");
     println!("For levels 1 and above, SST files are non-overlapping and sorted by smallest_key.");
-    println!("The API uses binary search to find the first overlapping file, then iterates forward");
-    println!("until it encounters a file whose smallest_key >= end_key. This provides O(log n + k)");
-    println!("performance where k is the number of overlapping files, instead of O(n) for each level.");
-    
+    println!(
+        "The API uses binary search to find the first overlapping file, then iterates forward"
+    );
+    println!(
+        "until it encounters a file whose smallest_key >= end_key. This provides O(log n + k)"
+    );
+    println!(
+        "performance where k is the number of overlapping files, instead of O(n) for each level."
+    );
+
     // Show performance benefit by analyzing a specific range
-    analyze_range_files(&db, Some(b"order_002"), Some(b"order_004"), "Specific Order Range (Binary Search Optimized)");
+    analyze_range_files(
+        &db,
+        Some(b"order_002"),
+        Some(b"order_004"),
+        "Specific Order Range (Binary Search Optimized)",
+    );
 
     // Clean up
     drop(db);

@@ -212,18 +212,18 @@ impl SstFileInfo {
     pub fn overlaps_with_range(&self, start_key: Option<&[u8]>, end_key: Option<&[u8]>) -> bool {
         // Check if file's largest key is before the start of the range
         if let Some(start) = start_key {
-            if self.largest_key < start {
+            if self.largest_key.as_slice() < start {
                 return false;
             }
         }
-
+        
         // Check if file's smallest key is at or after the end of the range
         if let Some(end) = end_key {
-            if self.smallest_key >= end {
+            if self.smallest_key.as_slice() >= end {
                 return false;
             }
         }
-
+        
         true
     }
 
@@ -238,18 +238,18 @@ impl SstFileInfo {
     pub fn is_contained_in_range(&self, start_key: Option<&[u8]>, end_key: Option<&[u8]>) -> bool {
         // Check if file's smallest key is at or after the start of the range
         if let Some(start) = start_key {
-            if self.smallest_key < start {
+            if self.smallest_key.as_slice() < start {
                 return false;
             }
         }
-
+        
         // Check if file's largest key is before the end of the range
         if let Some(end) = end_key {
-            if self.largest_key >= end {
+            if self.largest_key.as_slice() >= end {
                 return false;
             }
         }
-
+        
         true
     }
 }

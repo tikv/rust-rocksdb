@@ -2204,7 +2204,7 @@ impl DB {
         &self,
         files: &[crate::metadata::SstFileMetaData],
         start_key: Option<&[u8]>,
-        end_key: Option<&[u8]>,
+        _end_key: Option<&[u8]>,
     ) -> usize {
         if files.is_empty() {
             return 0;
@@ -2255,7 +2255,9 @@ impl DB {
         start_key: Option<&[u8]>,
         end_key: Option<&[u8]>,
     ) -> Result<Vec<crate::metadata::SstFileInfo>, String> {
-        let cf_handle = self.cf_handle("default")?;
+        let cf_handle = self
+            .cf_handle("default")
+            .ok_or_else(|| "Default column family not found".to_string())?;
         Ok(self.get_sst_files_in_range(cf_handle, start_key, end_key))
     }
 

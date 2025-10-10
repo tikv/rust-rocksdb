@@ -216,7 +216,7 @@ impl SstFileInfo {
                 return false;
             }
         }
-        
+
         // Check if file's smallest key is at or after the end of the range
         if let Some(end) = end_key {
             if self.smallest_key.as_slice() >= end {
@@ -242,14 +242,14 @@ impl SstFileInfo {
                 return false;
             }
         }
-        
+
         // Check if file's largest key is before the end of the range
         if let Some(end) = end_key {
             if self.largest_key.as_slice() >= end {
                 return false;
             }
         }
-        
+
         true
     }
 }

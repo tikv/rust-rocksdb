@@ -1694,7 +1694,7 @@ extern C_ROCKSDB_LIBRARY_API void
 crocksdb_compactoptions_set_bottommost_level_compaction(
     crocksdb_compactoptions_t*, uint32_t);
 extern C_ROCKSDB_LIBRARY_API void
-crocksdb_compactoptions_set_bottom_level_check_range_overlap(
+crocksdb_compactoptions_set_check_range_overlap_on_bottom_level(
     crocksdb_compactoptions_t*, unsigned char);
 
 /* Flush options */

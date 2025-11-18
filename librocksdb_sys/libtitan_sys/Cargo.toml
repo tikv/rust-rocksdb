@@ -21,7 +21,7 @@ sse = []
 
 [build-dependencies]
 cc = "1.0.3"
-cmake = "0.1.53"
+cmake = "0.1"
 
 [dependencies.snappy-sys]
 git = "https://github.com/tikv/rust-snappy.git"

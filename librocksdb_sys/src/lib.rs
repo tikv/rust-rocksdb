@@ -1680,6 +1680,10 @@ extern "C" {
         opt: *mut DBCompactOptions,
         v: DBBottommostLevelCompaction,
     );
+    pub fn crocksdb_compactoptions_set_check_range_overlap_on_bottom_level(
+        opt: *mut DBCompactOptions,
+        v: bool,
+    );
     pub fn crocksdb_set_global_manual_compaction_canceled(v: bool);
 
     pub fn crocksdb_fifo_compaction_options_create() -> *mut DBFifoCompactionOptions;

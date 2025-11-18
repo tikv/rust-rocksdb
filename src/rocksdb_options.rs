@@ -859,7 +859,9 @@ impl CompactOptions {
 
     pub fn set_check_range_overlap_on_bottom_level(&mut self, v: bool) {
         unsafe {
-            crocksdb_ffi::crocksdb_compactoptions_set_check_range_overlap_on_bottom_level(self.inner, v);
+            crocksdb_ffi::crocksdb_compactoptions_set_check_range_overlap_on_bottom_level(
+                self.inner, v,
+            );
         }
     }
 }

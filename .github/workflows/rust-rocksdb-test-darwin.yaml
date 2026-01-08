@@ -1,0 +1,76 @@
+name: Cargo Build test (Darwin)
+
+on:
+  pull_request:
+    branches:
+      - master
+    paths-ignore:
+      - '**.md'
+      - '**.png'
+      - '**.jpeg'
+      - '**.jpg'
+      - '**.gif'
+      - '**.svg'
+      - '**.pdf'
+      - '.gitignore'
+      - 'Dockerfile'
+      - 'OWNERS'
+      - 'OWNERS_ALIASES'
+
+jobs:
+  test-mac:
+    name: Test on macOS (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [macos-15-intel, macos-15]
+        include:
+          - os: macos-15-intel
+            arch: x86_64
+          - os: macos-15
+            arch: arm64
+        features:
+          - encryption,portable
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Setup CMake
+        uses: jwlawson/actions-setup-cmake@v1.14
+        with:
+          cmake-version: '3.26.5'
+
+      - name: Sync rust-toolchain from TiKV master
+        run: |
+          curl -sSL https://raw.githubusercontent.com/tikv/tikv/master/rust-toolchain.toml > ./rust-toolchain.toml
+          cat ./rust-toolchain.toml
+
+      - name: Install Rust (via rustup)
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Cargo artifacts
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install dependencies
+        run: |
+          if command -v g++ &> /dev/null; then
+            g++ --version
+          elif command -v clang++ &> /dev/null; then
+            clang++ --version
+          fi
+          cmake --version
+
+      - name: Build
+        env:
+          RUST_BACKTRACE: 1
+        run: |
+          cargo build --features=${{ matrix.features }}
+
+      - name: Test
+        env:
+          RUST_BACKTRACE: 1
+        run: |
+          cargo test --all --features=${{ matrix.features }}

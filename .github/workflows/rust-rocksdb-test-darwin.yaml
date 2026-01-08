@@ -19,7 +19,7 @@ on:
 
 jobs:
   test-mac:
-    name: Test on macOS (${{ matrix.os }})
+    name: Test on macOS (${{ matrix.arch }})
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:

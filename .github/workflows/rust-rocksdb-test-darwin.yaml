@@ -16,6 +16,8 @@ on:
       - 'Dockerfile'
       - 'OWNERS'
       - 'OWNERS_ALIASES'
+      - '**/OWNERS'
+      - '**/OWNERS_ALIASES'
 
 jobs:
   test-mac:
@@ -33,13 +35,13 @@ jobs:
           - encryption,portable
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           submodules: recursive
           fetch-depth: 0
 
       - name: Setup CMake
-        uses: jwlawson/actions-setup-cmake@v1.14
+        uses: jwlawson/actions-setup-cmake@v2
         with:
           cmake-version: '3.26.5'
 

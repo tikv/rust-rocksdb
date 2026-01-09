@@ -70,7 +70,6 @@ jobs:
           RUST_BACKTRACE: 1
         run: |
           cargo build --features=${{ matrix.features }}
-
       - name: Test
         env:
           RUST_BACKTRACE: 1

@@ -1223,6 +1223,27 @@ extern "C" {
         valLen: *const size_t,
         err: *mut *mut c_char,
     ) -> *mut u8;
+    pub fn crocksdb_multi_get(
+        db: *mut DBInstance,
+        readopts: *const DBReadOptions,
+        num_keys: size_t,
+        keys_list: *const *const c_char,
+        keys_list_sizes: *const size_t,
+        values_list: *mut *mut c_char,
+        values_list_sizes: *mut size_t,
+        errs: *mut *mut c_char,
+    );
+    pub fn crocksdb_multi_get_cf(
+        db: *mut DBInstance,
+        readopts: *const DBReadOptions,
+        column_families: *const *const DBCFHandle,
+        num_keys: size_t,
+        keys_list: *const *const c_char,
+        keys_list_sizes: *const size_t,
+        values_list: *mut *mut c_char,
+        values_list_sizes: *mut size_t,
+        errs: *mut *mut c_char,
+    );
     pub fn crocksdb_create_iterator(
         db: *mut DBInstance,
         readopts: *const DBReadOptions,

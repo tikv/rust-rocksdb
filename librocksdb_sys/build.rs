@@ -17,6 +17,7 @@ extern crate cmake;
 
 use cc::Build;
 use cmake::Config;
+use std::fs;
 use std::path::{Path, PathBuf};
 use std::{env, str};
 
@@ -170,6 +171,7 @@ fn build_rocksdb() -> Build {
         .very_verbose(true)
         .build();
     let build_dir = format!("{}/build", dst.display());
+    link_optional_uring(&build_dir);
     let mut build = Build::new();
     if target_os == "windows" {
         let profile = match &*env::var("PROFILE").unwrap_or_else(|_| "debug".to_owned()) {
@@ -220,4 +222,43 @@ fn build_rocksdb() -> Build {
         cur_dir.join("rocksdb").display()
     );
     build
+}
+
+fn link_optional_uring(build_dir: &str) {
+    let cache_path = Path::new(build_dir).join("CMakeCache.txt");
+    let cache = match fs::read_to_string(&cache_path) {
+        Ok(cache) => cache,
+        Err(_) => return,
+    };
+
+    let uring_path = cache
+        .lines()
+        .find_map(|line| line.strip_prefix("uring_LIBRARIES:FILEPATH="))
+        .map(str::trim)
+        .filter(|path| !path.is_empty());
+
+    let Some(uring_path) = uring_path else {
+        return;
+    };
+
+    let path = Path::new(uring_path);
+    let Some(parent) = path.parent() else {
+        return;
+    };
+    let Some(file_name) = path.file_name().and_then(|name| name.to_str()) else {
+        return;
+    };
+    let Some(libname) = file_name
+        .strip_prefix("lib")
+        .and_then(|name| name.split('.').next())
+    else {
+        return;
+    };
+
+    println!("cargo:rustc-link-search=native={}", parent.display());
+    if file_name.ends_with(".a") {
+        println!("cargo:rustc-link-lib=static={}", libname);
+    } else {
+        println!("cargo:rustc-link-lib=dylib={}", libname);
+    }
 }

@@ -171,7 +171,6 @@ fn build_rocksdb() -> Build {
         .very_verbose(true)
         .build();
     let build_dir = format!("{}/build", dst.display());
-    link_optional_uring(&build_dir);
     let mut build = Build::new();
     if target_os == "windows" {
         let profile = match &*env::var("PROFILE").unwrap_or_else(|_| "debug".to_owned()) {
@@ -212,6 +211,7 @@ fn build_rocksdb() -> Build {
     println!("cargo:rustc-link-lib=static=lz4");
     println!("cargo:rustc-link-lib=static=zstd");
     println!("cargo:rustc-link-lib=static=snappy");
+    link_optional_uring(&build_dir);
 
     println!(
         "cargo:rerun-if-changed={}",

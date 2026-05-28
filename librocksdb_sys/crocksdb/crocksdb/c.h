@@ -1794,6 +1794,19 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_sequential_file_skip(
 extern C_ROCKSDB_LIBRARY_API void crocksdb_sequential_file_destroy(
     crocksdb_sequential_file_t*);
 
+extern C_ROCKSDB_LIBRARY_API crocksdb_writablefile_t*
+crocksdb_writable_file_create(crocksdb_env_t* env, const char* path,
+                              const crocksdb_envoptions_t* opts,
+                              char** errptr);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_writable_file_append(
+    crocksdb_writablefile_t*, const char* data, size_t len, char** errptr);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_writable_file_flush(
+    crocksdb_writablefile_t*, char** errptr);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_writable_file_close(
+    crocksdb_writablefile_t*, char** errptr);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_writable_file_destroy(
+    crocksdb_writablefile_t*);
+
 /* KeyManagedEncryptedEnv */
 
 #ifdef OPENSSL

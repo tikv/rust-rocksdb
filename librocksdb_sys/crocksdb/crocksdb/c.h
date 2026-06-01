@@ -2023,7 +2023,7 @@ crocksdb_slicetransform_create(
     unsigned char (*in_range)(void*, const char* key, size_t length),
     const char* (*name)(void*));
 extern C_ROCKSDB_LIBRARY_API crocksdb_slicetransform_t*
-    crocksdb_slicetransform_create_fixed_prefix(size_t);
+crocksdb_slicetransform_create_fixed_prefix(size_t);
 extern C_ROCKSDB_LIBRARY_API crocksdb_slicetransform_t*
 crocksdb_slicetransform_create_noop();
 extern C_ROCKSDB_LIBRARY_API void crocksdb_slicetransform_destroy(

@@ -2922,18 +2922,27 @@ impl io::Read for SequentialFile {
 
 pub struct WritableFile {
     inner: *mut DBWritableFile,
+    closed: bool,
 }
 
 impl WritableFile {
     fn new(inner: *mut DBWritableFile) -> WritableFile {
-        WritableFile { inner }
+        WritableFile {
+            inner,
+            closed: false,
+        }
     }
 
     pub fn close(&mut self) -> Result<(), String> {
+        if self.closed {
+            return Ok(());
+        }
+
         unsafe {
             ffi_try!(crocksdb_writable_file_close(self.inner));
-            Ok(())
         }
+        self.closed = true;
+        Ok(())
     }
 }
 
@@ -2977,7 +2986,10 @@ impl io::Write for WritableFile {
 impl Drop for WritableFile {
     fn drop(&mut self) {
         unsafe {
-            crocksdb_ffi::crocksdb_writable_file_destroy(self.inner);
+            if !self.inner.is_null() {
+                let _ = self.close();
+                crocksdb_ffi::crocksdb_writable_file_destroy(self.inner);
+            }
         }
     }
 }
@@ -3998,12 +4010,24 @@ mod test {
         writable.write_all(b"hello").unwrap();
         writable.flush().unwrap();
         writable.close().unwrap();
+        writable.close().unwrap();
         env.file_exists("a").unwrap();
         let mut sequential = env.new_sequential_file("a", EnvOptions::new()).unwrap();
         let mut buf = Vec::new();
         sequential.read_to_end(&mut buf).unwrap();
         assert_eq!(&buf, b"hello");
+
+        {
+            let mut writable = env.new_writable_file("b", EnvOptions::new()).unwrap();
+            writable.write_all(b"bye").unwrap();
+        }
+        let mut sequential = env.new_sequential_file("b", EnvOptions::new()).unwrap();
+        let mut buf = Vec::new();
+        sequential.read_to_end(&mut buf).unwrap();
+        assert_eq!(&buf, b"bye");
+
         env.delete_file("a").unwrap();
+        env.delete_file("b").unwrap();
         assert!(env.file_exists("a").unwrap_err().contains("NotFound"));
         env.set_background_threads(4);
         env.set_background_threads(0);

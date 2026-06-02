@@ -154,6 +154,8 @@ pub struct DBEnv(c_void);
 #[repr(C)]
 pub struct DBSequentialFile(c_void);
 #[repr(C)]
+pub struct DBWritableFile(c_void);
+#[repr(C)]
 pub struct DBColumnFamilyMetaData(c_void);
 #[repr(C)]
 pub struct DBLevelMetaData(c_void);
@@ -1882,6 +1884,23 @@ extern "C" {
         err: *mut *mut c_char,
     );
     pub fn crocksdb_sequential_file_destroy(file: *mut DBSequentialFile);
+
+    // WritableFile
+    pub fn crocksdb_writable_file_create(
+        env: *mut DBEnv,
+        path: *const c_char,
+        opts: *mut EnvOptions,
+        err: *mut *mut c_char,
+    ) -> *mut DBWritableFile;
+    pub fn crocksdb_writable_file_append(
+        file: *mut DBWritableFile,
+        data: *const u8,
+        len: size_t,
+        err: *mut *mut c_char,
+    );
+    pub fn crocksdb_writable_file_flush(file: *mut DBWritableFile, err: *mut *mut c_char);
+    pub fn crocksdb_writable_file_close(file: *mut DBWritableFile, err: *mut *mut c_char);
+    pub fn crocksdb_writable_file_destroy(file: *mut DBWritableFile);
 
     // IngestExternalFileOptions
     pub fn crocksdb_ingestexternalfileoptions_create() -> *mut IngestExternalFileOptions;

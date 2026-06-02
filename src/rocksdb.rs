@@ -15,7 +15,7 @@
 use crocksdb_ffi::{
     self, DBBackupEngine, DBCFHandle, DBCache, DBCompressionType, DBEnv, DBInstance, DBMapProperty,
     DBPinnableSlice, DBPostWriteCallback, DBSequentialFile, DBTablePropertiesCollection,
-    DBTitanDBOptions, DBWriteBatch,
+    DBTitanDBOptions, DBWritableFile, DBWriteBatch,
 };
 use libc::{self, c_char, c_int, c_void, size_t};
 use librocksdb_sys::DBMemoryAllocator;
@@ -2819,6 +2819,18 @@ impl Env {
         }
     }
 
+    pub fn new_writable_file(&self, path: &str, opts: EnvOptions) -> Result<WritableFile, String> {
+        unsafe {
+            let file_path = CString::new(path).unwrap();
+            let file = ffi_try!(crocksdb_writable_file_create(
+                self.inner,
+                file_path.as_ptr(),
+                opts.inner
+            ));
+            Ok(WritableFile::new(file))
+        }
+    }
+
     pub fn file_exists(&self, path: &str) -> Result<(), String> {
         unsafe {
             let file_path = CString::new(path).unwrap();
@@ -2904,6 +2916,80 @@ impl io::Read for SequentialFile {
                 ));
             }
             Ok(size)
+        }
+    }
+}
+
+pub struct WritableFile {
+    inner: *mut DBWritableFile,
+    closed: bool,
+}
+
+impl WritableFile {
+    fn new(inner: *mut DBWritableFile) -> WritableFile {
+        WritableFile {
+            inner,
+            closed: false,
+        }
+    }
+
+    pub fn close(&mut self) -> Result<(), String> {
+        if self.closed {
+            return Ok(());
+        }
+
+        unsafe {
+            ffi_try!(crocksdb_writable_file_close(self.inner));
+        }
+        self.closed = true;
+        Ok(())
+    }
+}
+
+unsafe impl Send for WritableFile {}
+
+impl io::Write for WritableFile {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        unsafe {
+            let mut err = ptr::null_mut();
+            crocksdb_ffi::crocksdb_writable_file_append(
+                self.inner,
+                buf.as_ptr(),
+                buf.len() as size_t,
+                &mut err,
+            );
+            if !err.is_null() {
+                return Err(io::Error::new(
+                    io::ErrorKind::Other,
+                    crocksdb_ffi::error_message(err),
+                ));
+            }
+            Ok(buf.len())
+        }
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        unsafe {
+            let mut err = ptr::null_mut();
+            crocksdb_ffi::crocksdb_writable_file_flush(self.inner, &mut err);
+            if !err.is_null() {
+                return Err(io::Error::new(
+                    io::ErrorKind::Other,
+                    crocksdb_ffi::error_message(err),
+                ));
+            }
+            Ok(())
+        }
+    }
+}
+
+impl Drop for WritableFile {
+    fn drop(&mut self) {
+        unsafe {
+            if !self.inner.is_null() {
+                let _ = self.close();
+                crocksdb_ffi::crocksdb_writable_file_destroy(self.inner);
+            }
         }
     }
 }
@@ -3058,6 +3144,7 @@ pub fn run_sst_dump_tool(sst_dump_args: &[String], opts: &DBOptions) {
 mod test {
     use librocksdb_sys::DBValueType;
     use std::fs;
+    use std::io::{Read, Write};
     use std::path::Path;
     use std::str;
     use std::string::String;
@@ -3918,6 +4005,29 @@ mod test {
     #[test]
     fn test_env_operations() {
         let env = Env::new_mem();
+        assert!(env.file_exists("a").unwrap_err().contains("NotFound"));
+        let mut writable = env.new_writable_file("a", EnvOptions::new()).unwrap();
+        writable.write_all(b"hello").unwrap();
+        writable.flush().unwrap();
+        writable.close().unwrap();
+        writable.close().unwrap();
+        env.file_exists("a").unwrap();
+        let mut sequential = env.new_sequential_file("a", EnvOptions::new()).unwrap();
+        let mut buf = Vec::new();
+        sequential.read_to_end(&mut buf).unwrap();
+        assert_eq!(&buf, b"hello");
+
+        {
+            let mut writable = env.new_writable_file("b", EnvOptions::new()).unwrap();
+            writable.write_all(b"bye").unwrap();
+        }
+        let mut sequential = env.new_sequential_file("b", EnvOptions::new()).unwrap();
+        let mut buf = Vec::new();
+        sequential.read_to_end(&mut buf).unwrap();
+        assert_eq!(&buf, b"bye");
+
+        env.delete_file("a").unwrap();
+        env.delete_file("b").unwrap();
         assert!(env.file_exists("a").unwrap_err().contains("NotFound"));
         env.set_background_threads(4);
         env.set_background_threads(0);

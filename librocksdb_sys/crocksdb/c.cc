@@ -4378,6 +4378,39 @@ void crocksdb_sequential_file_destroy(crocksdb_sequential_file_t* file) {
   delete file;
 }
 
+crocksdb_writablefile_t* crocksdb_writable_file_create(
+    crocksdb_env_t* env, const char* path, const crocksdb_envoptions_t* opts,
+    char** errptr) {
+  std::unique_ptr<WritableFile> result;
+  if (SaveError(errptr, env->rep->NewWritableFile(path, &result, opts->rep))) {
+    return nullptr;
+  }
+  auto file = new crocksdb_writablefile_t;
+  file->rep = result.release();
+  return file;
+}
+
+void crocksdb_writable_file_append(crocksdb_writablefile_t* file,
+                                   const char* data, size_t len,
+                                   char** errptr) {
+  SaveError(errptr, file->rep->Append(Slice(data, len)));
+}
+
+void crocksdb_writable_file_flush(crocksdb_writablefile_t* file,
+                                  char** errptr) {
+  SaveError(errptr, file->rep->Flush());
+}
+
+void crocksdb_writable_file_close(crocksdb_writablefile_t* file,
+                                  char** errptr) {
+  SaveError(errptr, file->rep->Close());
+}
+
+void crocksdb_writable_file_destroy(crocksdb_writablefile_t* file) {
+  delete file->rep;
+  delete file;
+}
+
 #ifdef OPENSSL
 crocksdb_file_encryption_info_t* crocksdb_file_encryption_info_create() {
   crocksdb_file_encryption_info_t* file_info =

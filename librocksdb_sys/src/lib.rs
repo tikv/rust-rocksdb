@@ -2613,6 +2613,8 @@ extern "C" {
         meta: *const DBSstFileMetaData,
         len: *mut size_t,
     ) -> *const c_char;
+    pub fn crocksdb_sst_file_meta_data_num_entries(meta: *const DBSstFileMetaData) -> u64;
+    pub fn crocksdb_sst_file_meta_data_num_deletions(meta: *const DBSstFileMetaData) -> u64;
 
     pub fn crocksdb_livefiles(db: *mut DBInstance) -> *mut DBLivefiles;
     pub fn crocksdb_livefiles_count(lf: *const DBLivefiles) -> size_t;

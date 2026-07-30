@@ -565,3 +565,44 @@ fn test_ingest_external_file_options() {
     ingest_opt.set_write_global_seqno(true);
     assert_eq!(true, ingest_opt.get_write_global_seqno());
 }
+
+#[test]
+fn test_sst_direct_io() {
+    let dir = tempdir_with_prefix("_rust_rocksdb_test_sst_direct_io");
+    let sst_path = dir.path().join("sst");
+    let sst_path_str = sst_path.to_str().unwrap();
+    let expected = vec![
+        (b"k1".to_vec(), b"a".to_vec()),
+        (b"k2".to_vec(), b"b".to_vec()),
+        (b"k3".to_vec(), b"c".to_vec()),
+    ];
+
+    // Write the SST bypassing the OS page cache.
+    let mut env_opt = EnvOptions::new();
+    env_opt.set_use_direct_writes(true);
+    let mut writer = SstFileWriter::new(env_opt, ColumnFamilyOptions::new());
+    writer.open(sst_path_str).unwrap();
+    for &(ref k, ref v) in &expected {
+        writer.put(k, v).unwrap();
+    }
+    writer.finish().unwrap();
+
+    // Read it back bypassing the page cache too.
+    let mut cf_opt = ColumnFamilyOptions::new();
+    cf_opt.set_use_direct_reads(true);
+    let mut reader = SstFileReader::new(cf_opt);
+    reader.open(sst_path_str).unwrap();
+    reader.verify_checksum().unwrap();
+    let mut it = reader.iter();
+    it.seek(SeekKey::Start).unwrap();
+    assert_eq!(it.collect::<Vec<_>>(), expected);
+
+    // A directly-written SST must remain a well-formed, ordinary SST: the
+    // alignment padding O_DIRECT requires must not leak into the file format.
+    let mut reader = SstFileReader::new(ColumnFamilyOptions::new());
+    reader.open(sst_path_str).unwrap();
+    reader.verify_checksum().unwrap();
+    let mut it = reader.iter();
+    it.seek(SeekKey::Start).unwrap();
+    assert_eq!(it.collect::<Vec<_>>(), expected);
+}

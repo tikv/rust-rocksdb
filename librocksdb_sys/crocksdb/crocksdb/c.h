@@ -1782,6 +1782,8 @@ extern C_ROCKSDB_LIBRARY_API crocksdb_envoptions_t*
 crocksdb_envoptions_create();
 extern C_ROCKSDB_LIBRARY_API void crocksdb_envoptions_destroy(
     crocksdb_envoptions_t* opt);
+extern C_ROCKSDB_LIBRARY_API void crocksdb_envoptions_set_use_direct_writes(
+    crocksdb_envoptions_t* opt, unsigned char v);
 
 extern C_ROCKSDB_LIBRARY_API crocksdb_sequential_file_t*
 crocksdb_sequential_file_create(crocksdb_env_t* env, const char* path,

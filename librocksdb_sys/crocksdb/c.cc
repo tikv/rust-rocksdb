@@ -4346,6 +4346,11 @@ crocksdb_envoptions_t* crocksdb_envoptions_create() {
 
 void crocksdb_envoptions_destroy(crocksdb_envoptions_t* opt) { delete opt; }
 
+void crocksdb_envoptions_set_use_direct_writes(crocksdb_envoptions_t* opt,
+                                               unsigned char v) {
+  opt->rep.use_direct_writes = v;
+}
+
 crocksdb_sequential_file_t* crocksdb_sequential_file_create(
     crocksdb_env_t* env, const char* path, const crocksdb_envoptions_t* opts,
     char** errptr) {

@@ -1489,6 +1489,16 @@ impl ColumnFamilyOptions {
         }
     }
 
+    /// Read this options' files with O_DIRECT, bypassing the OS page cache.
+    /// Useful for a standalone SstFileReader (e.g. ingest checksum verification)
+    /// so a one-shot read does not populate the page cache. `DBOptions` exposes
+    /// the same setter; both write to the shared underlying options object.
+    pub fn set_use_direct_reads(&mut self, v: bool) {
+        unsafe {
+            crocksdb_ffi::crocksdb_options_set_use_direct_reads(self.inner, v);
+        }
+    }
+
     pub fn optimize_level_style_compaction(&mut self, memtable_memory_budget: i32) {
         unsafe {
             crocksdb_ffi::crocksdb_options_optimize_level_style_compaction(
@@ -2364,6 +2374,14 @@ impl EnvOptions {
             EnvOptions {
                 inner: crocksdb_ffi::crocksdb_envoptions_create(),
             }
+        }
+    }
+
+    /// Use O_DIRECT for writes through this EnvOptions (e.g. the SstFileWriter).
+    /// Affects only the write path; reads of the resulting file stay buffered.
+    pub fn set_use_direct_writes(&mut self, v: bool) {
+        unsafe {
+            crocksdb_ffi::crocksdb_envoptions_set_use_direct_writes(self.inner, v);
         }
     }
 }

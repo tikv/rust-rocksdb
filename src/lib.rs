@@ -72,6 +72,7 @@ pub use rocksdb_options::{
     WriteBufferManager, WriteOptions,
 };
 pub use slice_transform::SliceTransform;
+pub use sst_file_manager::SstFileManager;
 pub use sst_partitioner::{
     SstPartitioner, SstPartitionerContext, SstPartitionerFactory, SstPartitionerRequest,
 };
@@ -102,6 +103,7 @@ mod perf_context;
 pub mod rocksdb;
 pub mod rocksdb_options;
 mod slice_transform;
+pub mod sst_file_manager;
 pub mod sst_partitioner;
 mod table_filter;
 mod table_properties;

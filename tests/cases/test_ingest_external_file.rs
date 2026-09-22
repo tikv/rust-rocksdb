@@ -566,43 +566,62 @@ fn test_ingest_external_file_options() {
     assert_eq!(true, ingest_opt.get_write_global_seqno());
 }
 
+fn check_sst_contents(path: &str, direct_reads: bool, expected: &[(Vec<u8>, Vec<u8>)]) {
+    let mut cf_opt = ColumnFamilyOptions::new();
+    cf_opt.set_use_direct_reads(direct_reads);
+    let mut reader = SstFileReader::new(cf_opt);
+    reader.open(path).unwrap();
+    reader.verify_checksum().unwrap();
+    let mut it = reader.iter();
+    it.seek(SeekKey::Start).unwrap();
+    assert_eq!(it.collect::<Vec<_>>(), expected);
+}
+
+// Direct I/O is an I/O mode, not an SST format attribute, so every
+// combination of direct/buffered writes and reads must interoperate, and a
+// directly-written SST must serve normal reads once ingested.
 #[test]
 fn test_sst_direct_io() {
     let dir = tempdir_with_prefix("_rust_rocksdb_test_sst_direct_io");
-    let sst_path = dir.path().join("sst");
-    let sst_path_str = sst_path.to_str().unwrap();
     let expected = vec![
         (b"k1".to_vec(), b"a".to_vec()),
         (b"k2".to_vec(), b"b".to_vec()),
         (b"k3".to_vec(), b"c".to_vec()),
     ];
+    let write_sst = |name: &str, direct_writes: bool| {
+        let path = dir.path().join(name);
+        let mut env_opt = EnvOptions::new();
+        env_opt.set_use_direct_writes(direct_writes);
+        let mut writer = SstFileWriter::new(env_opt, ColumnFamilyOptions::new());
+        writer.open(path.to_str().unwrap()).unwrap();
+        for &(ref k, ref v) in &expected {
+            writer.put(k, v).unwrap();
+        }
+        writer.finish().unwrap();
+        path.to_str().unwrap().to_owned()
+    };
 
-    // Write the SST bypassing the OS page cache.
-    let mut env_opt = EnvOptions::new();
-    env_opt.set_use_direct_writes(true);
-    let mut writer = SstFileWriter::new(env_opt, ColumnFamilyOptions::new());
-    writer.open(sst_path_str).unwrap();
+    let direct_sst = write_sst("direct_sst", true);
+    let buffered_sst = write_sst("buffered_sst", false);
+
+    // Direct write -> direct read.
+    check_sst_contents(&direct_sst, true, &expected);
+    // Direct write -> buffered read: the alignment padding direct I/O
+    // requires must not leak into the file format.
+    check_sst_contents(&direct_sst, false, &expected);
+    // Buffered write -> direct read.
+    check_sst_contents(&buffered_sst, true, &expected);
+
+    // Direct write -> ingest -> normal (buffered) DB reads.
+    let db_dir = tempdir_with_prefix("_rust_rocksdb_test_sst_direct_io_db");
+    let db = create_default_database(&db_dir);
+    let ingest_opt = IngestExternalFileOptions::new();
+    db.ingest_external_file(&ingest_opt, &[&direct_sst])
+        .unwrap();
     for &(ref k, ref v) in &expected {
-        writer.put(k, v).unwrap();
+        assert_eq!(db.get(k).unwrap().unwrap().to_vec(), *v);
     }
-    writer.finish().unwrap();
-
-    // Read it back bypassing the page cache too.
-    let mut cf_opt = ColumnFamilyOptions::new();
-    cf_opt.set_use_direct_reads(true);
-    let mut reader = SstFileReader::new(cf_opt);
-    reader.open(sst_path_str).unwrap();
-    reader.verify_checksum().unwrap();
-    let mut it = reader.iter();
-    it.seek(SeekKey::Start).unwrap();
-    assert_eq!(it.collect::<Vec<_>>(), expected);
-
-    // A directly-written SST must remain a well-formed, ordinary SST: the
-    // alignment padding O_DIRECT requires must not leak into the file format.
-    let mut reader = SstFileReader::new(ColumnFamilyOptions::new());
-    reader.open(sst_path_str).unwrap();
-    reader.verify_checksum().unwrap();
-    let mut it = reader.iter();
+    let mut it = db.iter();
     it.seek(SeekKey::Start).unwrap();
     assert_eq!(it.collect::<Vec<_>>(), expected);
 }

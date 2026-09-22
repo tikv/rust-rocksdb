@@ -1489,7 +1489,7 @@ impl ColumnFamilyOptions {
         }
     }
 
-    /// Read this options' files with O_DIRECT, bypassing the OS page cache.
+    /// Read this options' files with direct I/O, bypassing the OS page cache.
     /// Useful for a standalone SstFileReader (e.g. ingest checksum verification)
     /// so a one-shot read does not populate the page cache. `DBOptions` exposes
     /// the same setter; both write to the shared underlying options object.
@@ -2377,7 +2377,7 @@ impl EnvOptions {
         }
     }
 
-    /// Use O_DIRECT for writes through this EnvOptions (e.g. the SstFileWriter).
+    /// Use direct I/O for writes through this EnvOptions (e.g. the SstFileWriter).
     /// Affects only the write path; reads of the resulting file stay buffered.
     pub fn set_use_direct_writes(&mut self, v: bool) {
         unsafe {

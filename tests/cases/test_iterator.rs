@@ -193,25 +193,40 @@ fn test_reset_bounds_and_seek_across_ssts_and_tombstones() {
         (b"a", b"z"),
         (b"j", b"m"),
         (b"o", b"s"),
+        (b"s", b"z"),
+        (b"a", b"b"),
     ];
-    let mut iter = db.iter_opt(bounded_read_options(b"a", b"b"));
-    for &reverse in &[false, true] {
-        for &(lower, upper) in ranges {
-            let mut fresh = db.iter_opt(bounded_read_options(lower, upper));
-            if reverse {
-                fresh.seek_for_prev(SeekKey::Key(upper)).unwrap();
-            } else {
-                fresh.seek(SeekKey::Key(lower)).unwrap();
-            }
-            let valid = fresh.valid().unwrap();
-            assert_eq!(
-                iter.reset_bounds_and_seek(lower, upper, reverse).unwrap(),
-                Some(valid)
-            );
-            if reverse {
-                assert_eq!(prev_collect(&mut iter), prev_collect(&mut fresh));
-            } else {
-                assert_eq!(next_collect(&mut iter), next_collect(&mut fresh));
+    // Exercise both the L0 merging iterator and LevelIterator, which maintains
+    // its own lower-bound cache for files in levels greater than zero.
+    for &compact in &[false, true] {
+        if compact {
+            let mut compact_opts = CompactOptions::new();
+            compact_opts.set_change_level(true);
+            compact_opts.set_target_level(1);
+            let cf = db.cf_handle("default").unwrap();
+            db.compact_range_cf_opt(cf, &compact_opts, None, None);
+            assert_eq!(db.get_property_int("rocksdb.num-files-at-level0"), Some(0));
+            assert!(db.get_property_int("rocksdb.num-files-at-level1").unwrap() > 0);
+        }
+        let mut iter = db.iter_opt(bounded_read_options(b"a", b"b"));
+        for &reverse in &[false, true] {
+            for &(lower, upper) in ranges {
+                let mut fresh = db.iter_opt(bounded_read_options(lower, upper));
+                if reverse {
+                    fresh.seek_for_prev(SeekKey::Key(upper)).unwrap();
+                } else {
+                    fresh.seek(SeekKey::Key(lower)).unwrap();
+                }
+                let valid = fresh.valid().unwrap();
+                assert_eq!(
+                    iter.reset_bounds_and_seek(lower, upper, reverse).unwrap(),
+                    Some(valid)
+                );
+                if reverse {
+                    assert_eq!(prev_collect(&mut iter), prev_collect(&mut fresh));
+                } else {
+                    assert_eq!(next_collect(&mut iter), next_collect(&mut fresh));
+                }
             }
         }
     }

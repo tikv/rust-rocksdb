@@ -72,6 +72,310 @@ fn next_collect<D: Deref<Target = DB>>(iter: &mut DBIterator<D>) -> Vec<(Vec<u8>
     buf
 }
 
+fn bounded_read_options(lower: &[u8], upper: &[u8]) -> ReadOptions {
+    let mut opts = ReadOptions::new();
+    opts.set_iterate_lower_bound(lower.to_vec());
+    opts.set_iterate_upper_bound(upper.to_vec());
+    opts
+}
+
+#[test]
+fn test_reset_bounds_and_seek_both_directions() {
+    let path = tempdir_with_prefix("_rust_rocksdb_reset_bounds");
+    let db = DB::open_default(path.path().to_str().unwrap()).unwrap();
+    for key in b"acegikmoqsuwy" {
+        db.put(&[*key], &[*key]).unwrap();
+    }
+
+    // Jump both ahead of and behind the original range, including EOF, empty
+    // ranges, and keys exactly equal to the exclusive upper bound.
+    let ranges: &[(&[u8], &[u8])] = &[
+        (b"a", b"d"),
+        (b"m", b"r"),
+        (b"d", b"e"),
+        (b"z", b"zz"),
+        (b"c", b"c"),
+        (b"a", b"z"),
+        (b"s", b"y"),
+    ];
+    let mut iter = db.iter_opt(bounded_read_options(b"g", b"j"));
+    for &reverse in &[false, true, false] {
+        for &(lower, upper) in ranges {
+            let mut fresh = db.iter_opt(bounded_read_options(lower, upper));
+            let valid = if reverse {
+                fresh.seek_for_prev(SeekKey::Key(upper)).unwrap()
+            } else {
+                fresh.seek(SeekKey::Key(lower)).unwrap()
+            };
+            assert_eq!(
+                iter.reset_bounds_and_seek(lower, upper, reverse).unwrap(),
+                Some(valid)
+            );
+            if reverse {
+                assert_eq!(prev_collect(&mut iter), prev_collect(&mut fresh));
+            } else {
+                assert_eq!(next_collect(&mut iter), next_collect(&mut fresh));
+            }
+        }
+    }
+}
+
+#[test]
+fn test_reset_bounds_and_seek_keeps_snapshot_and_owns_bounds() {
+    let path = tempdir_with_prefix("_rust_rocksdb_reset_bounds_snapshot");
+    let db = DB::open_default(path.path().to_str().unwrap()).unwrap();
+    db.put(b"long-prefix/b", b"old-b").unwrap();
+    db.put(b"long-prefix/y", b"old-y").unwrap();
+    let snapshot = Snapshot::new(&db);
+    let mut iter = snapshot.iter_opt(bounded_read_options(b"a", b"b"));
+    db.put(b"long-prefix/b", b"new-b").unwrap();
+    db.put(b"long-prefix/m", b"new-m").unwrap();
+    db.delete(b"long-prefix/y").unwrap();
+
+    let expected = vec![
+        (b"long-prefix/b".to_vec(), b"old-b".to_vec()),
+        (b"long-prefix/y".to_vec(), b"old-y".to_vec()),
+    ];
+    for &reverse in &[false, true] {
+        let mut lower = b"long-prefix/a".to_vec();
+        let mut upper = b"long-prefix/z".to_vec();
+        assert_eq!(
+            iter.reset_bounds_and_seek(&lower, &upper, reverse).unwrap(),
+            Some(true)
+        );
+        lower.fill(b'z');
+        upper.fill(b'a');
+        drop((lower, upper));
+        let mut actual = if reverse {
+            prev_collect(&mut iter)
+        } else {
+            next_collect(&mut iter)
+        };
+        if reverse {
+            actual.reverse();
+        }
+        assert_eq!(actual, expected);
+    }
+}
+
+#[test]
+fn test_reset_bounds_and_seek_across_ssts_and_tombstones() {
+    let path = tempdir_with_prefix("_rust_rocksdb_reset_bounds_ssts");
+    let mut opts = DBOptions::new();
+    opts.create_if_missing(true);
+    let mut cf_opts = ColumnFamilyOptions::new();
+    cf_opts.set_disable_auto_compactions(true);
+    let db = DB::open_cf(
+        opts,
+        path.path().to_str().unwrap(),
+        vec![("default", cf_opts)],
+    )
+    .unwrap();
+    let mut fopts = FlushOptions::default();
+    fopts.set_wait(true);
+    for key in b"acegikmoqsuwy" {
+        db.put(&[*key], &[*key]).unwrap();
+    }
+    db.flush(&fopts).unwrap();
+    db.delete(b"c").unwrap();
+    db.delete(b"q").unwrap();
+    db.delete_range(b"g", b"n").unwrap();
+    db.flush(&fopts).unwrap();
+    db.put(b"i", b"reinserted").unwrap();
+    db.put(b"q", b"updated").unwrap();
+    db.flush(&fopts).unwrap();
+    assert_eq!(db.get_property_int("rocksdb.num-files-at-level0"), Some(3));
+
+    let ranges: &[(&[u8], &[u8])] = &[
+        (b"s", b"z"),
+        (b"b", b"f"),
+        (b"g", b"n"),
+        (b"a", b"z"),
+        (b"j", b"m"),
+        (b"o", b"s"),
+    ];
+    let mut iter = db.iter_opt(bounded_read_options(b"a", b"b"));
+    for &reverse in &[false, true] {
+        for &(lower, upper) in ranges {
+            let mut fresh = db.iter_opt(bounded_read_options(lower, upper));
+            if reverse {
+                fresh.seek_for_prev(SeekKey::Key(upper)).unwrap();
+            } else {
+                fresh.seek(SeekKey::Key(lower)).unwrap();
+            }
+            let valid = fresh.valid().unwrap();
+            assert_eq!(
+                iter.reset_bounds_and_seek(lower, upper, reverse).unwrap(),
+                Some(valid)
+            );
+            if reverse {
+                assert_eq!(prev_collect(&mut iter), prev_collect(&mut fresh));
+            } else {
+                assert_eq!(next_collect(&mut iter), next_collect(&mut fresh));
+            }
+        }
+    }
+}
+
+#[test]
+fn test_reset_bounds_and_seek_column_family() {
+    let path = tempdir_with_prefix("_rust_rocksdb_reset_bounds_cf");
+    let mut db = DB::open_default(path.path().to_str().unwrap()).unwrap();
+    db.create_cf("other").unwrap();
+    let cf = db.cf_handle("other").unwrap();
+    for key in b"amny" {
+        db.put(&[*key], b"default").unwrap();
+        db.put_cf(cf, &[*key], b"other").unwrap();
+    }
+    let mut iter = db.iter_cf_opt(cf, bounded_read_options(b"a", b"b"));
+    let expected = vec![
+        (b"m".to_vec(), b"other".to_vec()),
+        (b"n".to_vec(), b"other".to_vec()),
+        (b"y".to_vec(), b"other".to_vec()),
+    ];
+    for &reverse in &[false, true] {
+        assert_eq!(
+            iter.reset_bounds_and_seek(b"m", b"z", reverse).unwrap(),
+            Some(true)
+        );
+        let mut actual = if reverse {
+            prev_collect(&mut iter)
+        } else {
+            next_collect(&mut iter)
+        };
+        if reverse {
+            actual.reverse();
+        }
+        assert_eq!(actual, expected);
+    }
+}
+
+#[test]
+fn test_reset_bounds_and_seek_rejects_missing_bounds() {
+    let path = tempdir_with_prefix("_rust_rocksdb_reset_bounds_missing");
+    let db = DB::open_default(path.path().to_str().unwrap()).unwrap();
+    db.put(b"a", b"a").unwrap();
+    db.put(b"b", b"b").unwrap();
+    let mut lower_only = ReadOptions::new();
+    lower_only.set_iterate_lower_bound(b"a".to_vec());
+    let mut upper_only = ReadOptions::new();
+    upper_only.set_iterate_upper_bound(b"c".to_vec());
+    for opts in vec![
+        ReadOptions::new(),
+        lower_only,
+        upper_only,
+        bounded_read_options(b"", b"c"),
+    ] {
+        let mut iter = db.iter_opt(opts);
+        let was_valid = iter.seek(SeekKey::Start).unwrap();
+        let old_key = if was_valid {
+            iter.key().to_vec()
+        } else {
+            vec![]
+        };
+        for &reverse in &[false, true] {
+            assert_eq!(
+                iter.reset_bounds_and_seek(b"b", b"c", reverse).unwrap(),
+                None
+            );
+            assert_eq!(iter.valid().unwrap(), was_valid);
+            if was_valid {
+                assert_eq!(iter.key(), old_key);
+            }
+        }
+    }
+    let mut iter = db.iter_opt(bounded_read_options(b"a", b"c"));
+    iter.seek(SeekKey::Start).unwrap();
+    for &(lower, upper) in &[(b"" as &[u8], b"c" as &[u8]), (b"a", b"")] {
+        assert_eq!(
+            iter.reset_bounds_and_seek(lower, upper, false).unwrap(),
+            None
+        );
+        assert_eq!(iter.key(), b"a");
+        assert_eq!(iter.value(), b"a");
+    }
+    assert_eq!(next_collect(&mut iter).len(), 2);
+}
+
+#[test]
+fn test_reset_bounds_and_seek_rejects_tailing() {
+    let path = tempdir_with_prefix("_rust_rocksdb_reset_bounds_tailing");
+    let mut opts = DBOptions::new();
+    opts.create_if_missing(true);
+    let mut cf_opts = ColumnFamilyOptions::new();
+    cf_opts.set_disable_auto_compactions(true);
+    let db = DB::open_cf(
+        opts,
+        path.path().to_str().unwrap(),
+        vec![("default", cf_opts)],
+    )
+    .unwrap();
+    let mut fopts = FlushOptions::default();
+    fopts.set_wait(true);
+    db.put(b"a", b"a").unwrap();
+    db.put(b"b", b"b").unwrap();
+    db.flush(&fopts).unwrap();
+    db.put(b"m", b"m").unwrap();
+    db.flush(&fopts).unwrap();
+
+    // The tailing iterator can discard the second SST due to its upper bound.
+    // Reject widening the bound, before changing either its position or bounds.
+    let mut opts = bounded_read_options(b"a", b"c");
+    opts.set_tailing(true);
+    let mut iter = db.iter_opt(opts);
+    assert!(iter.seek(SeekKey::Start).unwrap());
+    for &reverse in &[false, true] {
+        assert_eq!(
+            iter.reset_bounds_and_seek(b"m", b"z", reverse).unwrap(),
+            None
+        );
+        assert_eq!(iter.key(), b"a");
+    }
+    assert_eq!(
+        next_collect(&mut iter),
+        vec![
+            (b"a".to_vec(), b"a".to_vec()),
+            (b"b".to_vec(), b"b".to_vec())
+        ]
+    );
+    let mut fresh = db.iter_opt(bounded_read_options(b"m", b"z"));
+    assert!(fresh.seek(SeekKey::Start).unwrap());
+    assert_eq!(fresh.key(), b"m");
+
+    // Only the final setting determines the kind of iterator that was created.
+    let mut opts = bounded_read_options(b"a", b"c");
+    opts.set_tailing(true);
+    opts.set_tailing(false);
+    let mut iter = db.iter_opt(opts);
+    assert_eq!(
+        iter.reset_bounds_and_seek(b"m", b"z", false).unwrap(),
+        Some(true)
+    );
+    assert_eq!(iter.key(), b"m");
+}
+
+#[test]
+fn test_reset_bounds_and_seek_rejects_titan() {
+    let path = tempdir_with_prefix("_rust_rocksdb_reset_bounds_titan");
+    let mut opts = DBOptions::new();
+    opts.create_if_missing(true);
+    opts.set_titandb_options(&TitanDBOptions::new());
+    let db = DB::open(opts, path.path().to_str().unwrap()).unwrap();
+    db.put(b"a", b"a").unwrap();
+    db.put(b"b", b"b").unwrap();
+    db.put(b"m", b"m").unwrap();
+    let mut iter = db.iter_opt(bounded_read_options(b"a", b"c"));
+    assert!(iter.seek(SeekKey::Start).unwrap());
+    for &reverse in &[false, true] {
+        assert_eq!(
+            iter.reset_bounds_and_seek(b"m", b"z", reverse).unwrap(),
+            None
+        );
+        assert_eq!(iter.key(), b"a");
+    }
+    assert_eq!(next_collect(&mut iter).len(), 2);
+}
+
 #[test]
 pub fn test_iterator() {
     let path = tempdir_with_prefix("_rust_rocksdb_iteratortest");

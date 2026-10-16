@@ -233,6 +233,135 @@ fn test_reset_bounds_and_seek_across_ssts_and_tombstones() {
 }
 
 #[test]
+fn test_reset_bounds_and_seek_across_l1_files_and_retained_range_tombstones() {
+    let path = tempdir_with_prefix("_rust_rocksdb_reset_bounds_l1_files");
+    let mut opts = DBOptions::new();
+    opts.create_if_missing(true);
+    let mut cf_opts = ColumnFamilyOptions::new();
+    cf_opts.set_disable_auto_compactions(true);
+    cf_opts.compression(DBCompressionType::No);
+    cf_opts.set_target_file_size_base(16 << 10);
+    let db = DB::open_cf(
+        opts,
+        path.path().to_str().unwrap(),
+        vec![("default", cf_opts)],
+    )
+    .unwrap();
+    let mut fopts = FlushOptions::default();
+    fopts.set_wait(true);
+    let original_rows: Vec<_> = (0..64)
+        .map(|i| (format!("k{:04}", i).into_bytes(), vec![i as u8; 8 << 10]))
+        .collect();
+    for &(ref key, ref value) in &original_rows {
+        db.put(key, value).unwrap();
+    }
+    db.flush(&fopts).unwrap();
+
+    // Keep all original puts, and therefore the range tombstone that hides
+    // them from later snapshots, alive through compaction.
+    let old_snapshot = Snapshot::new(&db);
+    db.delete_range(b"k0012", b"k0052").unwrap();
+    db.flush(&fopts).unwrap();
+    let replacement = vec![b'r'; 8 << 10];
+    db.put(b"k0032", &replacement).unwrap();
+    db.flush(&fopts).unwrap();
+    let mut compact_opts = CompactOptions::new();
+    compact_opts.set_change_level(true);
+    compact_opts.set_target_level(1);
+    db.compact_range_cf_opt(db.cf_handle("default").unwrap(), &compact_opts, None, None);
+    assert_eq!(db.get_property_int("rocksdb.num-files-at-level0"), Some(0));
+    assert!(db.get_property_int("rocksdb.num-files-at-level1").unwrap() >= 3);
+
+    // Only 65 put versions and one DeleteRange were written. The pinned old
+    // snapshot keeps the 64 original versions, including the replaced value.
+    // SST entries beyond those puts are retained range-tombstone fragments.
+    // Their five-byte end keys also distinguish them from the 8 KiB values.
+    let properties = db.get_properties_of_all_tables().unwrap();
+    let entries: u64 = properties
+        .iter()
+        .map(|(_, props)| props.num_entries())
+        .sum();
+    let value_bytes: u64 = properties
+        .iter()
+        .map(|(_, props)| props.raw_value_size())
+        .sum();
+    let put_versions = original_rows.len() as u64 + 1;
+    assert!(entries >= put_versions + 3);
+    assert_eq!(
+        value_bytes,
+        put_versions * (8 << 10) + (entries - put_versions) * 5
+    );
+
+    let mut old_iter = old_snapshot.iter_opt(bounded_read_options(b"k0000", b"k0064"));
+    assert!(old_iter.seek(SeekKey::Start).unwrap());
+    assert_eq!(next_collect(&mut old_iter), original_rows);
+    let current_rows: Vec<_> = original_rows
+        .into_iter()
+        .enumerate()
+        .filter_map(|(i, (key, value))| {
+            if i == 32 {
+                Some((key, replacement.clone()))
+            } else if (12..52).contains(&i) {
+                None
+            } else {
+                Some((key, value))
+            }
+        })
+        .collect();
+    let snapshot = Snapshot::new(&db);
+    let mut iter = snapshot.iter_opt(bounded_read_options(b"k0000", b"k0001"));
+    // Each complete scan crosses several L1 files. The narrow ranges jump
+    // into and out of the deleted middle, reach EOF, and revisit earlier files.
+    let ranges: &[(&[u8], &[u8])] = &[
+        (b"k0052", b"k0064"),
+        (b"k0013", b"k0031"),
+        (b"k0031", b"k0033"),
+        (b"k0064", b"k0065"),
+        (b"k0000", b"k0064"),
+        (b"k0000", b"k0012"),
+        (b"k0012", b"k0052"),
+        (b"k0052", b"k0064"),
+        (b"k0032", b"k0032"),
+        (b"k0000", b"k0064"),
+    ];
+    for &reverse in &[false, true, false] {
+        for &(lower, upper) in ranges {
+            let mut expected: Vec<_> = current_rows
+                .iter()
+                .filter(|(key, _)| lower <= key.as_slice() && key.as_slice() < upper)
+                .cloned()
+                .collect();
+            if reverse {
+                expected.reverse();
+            }
+            let mut fresh = snapshot.iter_opt(bounded_read_options(lower, upper));
+            let fresh_valid = if reverse {
+                fresh.seek_for_prev(SeekKey::Key(upper)).unwrap()
+            } else {
+                fresh.seek(SeekKey::Key(lower)).unwrap()
+            };
+            assert_eq!(
+                iter.reset_bounds_and_seek(lower, upper, reverse).unwrap(),
+                Some(fresh_valid),
+            );
+            let (actual, fresh_rows) = if reverse {
+                (prev_collect(&mut iter), prev_collect(&mut fresh))
+            } else {
+                (next_collect(&mut iter), next_collect(&mut fresh))
+            };
+            assert_eq!(
+                fresh_rows, expected,
+                "fresh {lower:?}..{upper:?}, reverse={reverse}"
+            );
+            assert_eq!(
+                actual, expected,
+                "reused {lower:?}..{upper:?}, reverse={reverse}"
+            );
+        }
+    }
+}
+
+#[test]
 fn test_reset_bounds_and_seek_column_family() {
     let path = tempdir_with_prefix("_rust_rocksdb_reset_bounds_cf");
     let mut db = DB::open_default(path.path().to_str().unwrap()).unwrap();

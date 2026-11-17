@@ -192,6 +192,45 @@ impl<'a> From<&'a [u8]> for SeekKey<'a> {
 }
 
 impl<D: Deref<Target = DB>> DBIterator<D> {
+    /// Reset the iterator's half-open bounds and seek within the new range.
+    ///
+    /// Returns `None` without changing the iterator if resetting its bounds is
+    /// unsupported. Both the original and new bounds must be nonempty: RocksDB
+    /// copies the pointers to the bound slices when creating the iterator.
+    /// Updating those existing slices keeps their addresses stable, and seeking
+    /// makes RocksDB discard state cached for the previous bounds.
+    ///
+    /// Tailing iterators may omit SST files based on their original upper bound,
+    /// so they are unsupported. Titan iterators are also currently unsupported.
+    /// The caller must create a new iterator in these cases. The original
+    /// snapshot and other read options are preserved. Bounds must obey the
+    /// column family's comparator and prefix constraints, as for a new iterator.
+    pub fn reset_bounds_and_seek(
+        &mut self,
+        lower: &[u8],
+        upper: &[u8],
+        reverse: bool,
+    ) -> Result<Option<bool>, String> {
+        if self._db.is_titan()
+            || self._readopts.is_tailing()
+            || self._readopts.iterate_lower_bound().is_empty()
+            || self._readopts.iterate_upper_bound().is_empty()
+            || lower.is_empty()
+            || upper.is_empty()
+        {
+            return Ok(None);
+        }
+
+        self._readopts.set_iterate_lower_bound(lower.to_vec());
+        self._readopts.set_iterate_upper_bound(upper.to_vec());
+        let valid = if reverse {
+            self.seek_for_prev(SeekKey::Key(upper))?
+        } else {
+            self.seek(SeekKey::Key(lower))?
+        };
+        Ok(Some(valid))
+    }
+
     pub fn new(db: D, readopts: ReadOptions) -> DBIterator<D> {
         unsafe {
             let iterator = if db.is_titan() {

@@ -549,6 +549,7 @@ pub struct ReadOptions {
     inner: *mut DBReadOptions,
     lower_bound: Vec<u8>,
     upper_bound: Vec<u8>,
+    tailing: bool,
     titan_inner: *mut DBTitanReadOptions,
 }
 
@@ -572,6 +573,7 @@ impl Default for ReadOptions {
                 inner: opts,
                 lower_bound: vec![],
                 upper_bound: vec![],
+                tailing: false,
                 titan_inner: ptr::null_mut::<DBTitanReadOptions>(),
             }
         }
@@ -656,6 +658,11 @@ impl ReadOptions {
         unsafe {
             crocksdb_ffi::crocksdb_readoptions_set_tailing(self.inner, v);
         }
+        self.tailing = v;
+    }
+
+    pub(crate) fn is_tailing(&self) -> bool {
+        self.tailing
     }
 
     pub fn set_managed(&mut self, v: bool) {

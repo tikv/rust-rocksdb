@@ -17,6 +17,7 @@ mod test_rate_limiter;
 mod test_read_only;
 mod test_rocksdb_options;
 mod test_slice_transform;
+mod test_sst_file_info;
 mod test_statistics;
 mod test_table_properties;
 mod test_table_properties_rc;

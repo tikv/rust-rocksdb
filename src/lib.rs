@@ -53,7 +53,7 @@ pub use librocksdb_sys::{
 };
 pub use logger::Logger;
 pub use merge_operator::MergeOperands;
-pub use metadata::{ColumnFamilyMetaData, LevelMetaData, SstFileMetaData};
+pub use metadata::{ColumnFamilyMetaData, LevelMetaData, SstFileInfo, SstFileMetaData};
 pub use perf_context::{
     get_perf_level, set_perf_flags, set_perf_level, IOStatsContext, PerfContext, PerfFlag,
     PerfFlags, PerfLevel,

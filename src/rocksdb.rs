@@ -194,11 +194,16 @@ impl<'a> From<&'a [u8]> for SeekKey<'a> {
 impl<D: Deref<Target = DB>> DBIterator<D> {
     /// Reset the iterator's half-open bounds and seek within the new range.
     ///
-    /// Returns `None` without changing the iterator if resetting its bounds is
-    /// unsupported. Both the original and new bounds must be nonempty: RocksDB
-    /// copies the pointers to the bound slices when creating the iterator.
-    /// Updating those existing slices keeps their addresses stable, and seeking
-    /// makes RocksDB discard state cached for the previous bounds.
+    /// Seeks to the first entry in the new range, or to the last entry if
+    /// `reverse` is true. Returns `Ok(Some(true))` if the iterator is
+    /// positioned on an entry, and `Ok(Some(false))` if the seek finds no
+    /// entry. A seek error returns `Err` with the new bounds still installed.
+    ///
+    /// Returns `Ok(None)` if resetting the bounds is unsupported, leaving the
+    /// bounds and position intact. Both the original and new bounds must be
+    /// nonempty. RocksDB copies pointers to the bound slices when creating the
+    /// iterator. Updating those slices keeps their addresses stable, and the
+    /// seek refreshes state cached for the previous bounds.
     ///
     /// Tailing iterators may omit SST files based on their original upper bound,
     /// so they are unsupported. Titan iterators are also currently unsupported.
